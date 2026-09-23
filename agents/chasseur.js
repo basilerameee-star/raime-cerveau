@@ -34,7 +34,8 @@ async function enAttente(brain, combien) {
       JOIN models m ON m.openrouter_id = c.identifiant
       WHERE c.domaine = 'modele_routage'
         AND c.verdict = 'non_evaluable'
-        AND coalesce(m.price_in, 0) > 0
+        -- un modele gratuit merite la batterie autant qu un autre : le prix nul est un prix
+        AND m.price_in IS NOT NULL
         -- les variantes « batch » répondent en différé : la batterie les compte non mesurées
         AND c.identifiant NOT LIKE '%:batch%'
         -- assez d'essais : un modèle déjà passé trois fois sans convaincre cesse de coûter
