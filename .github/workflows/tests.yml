@@ -4,8 +4,8 @@ name: Banc d'essai
 
 on:
   pull_request:
-  push:
-    branches: [main]
+  # Appelé aussi par deployer.yml : rien ne part au serveur sans ce banc au vert.
+  workflow_call:
 
 permissions:
   contents: read

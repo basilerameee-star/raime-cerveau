@@ -1,0 +1,24 @@
+# Le résumé pour Basile en tête de la pull request : jugé par le code, à chaque
+# ouverture et à chaque modification de la description.
+name: Résumé pour Basile
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  resume:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Vérifier le résumé
+        env:
+          PR_CORPS: ${{ github.event.pull_request.body }}
+        run: node porte/verifier_resume.mjs
