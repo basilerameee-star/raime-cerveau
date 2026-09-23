@@ -24,7 +24,9 @@ function charger() {
 export const appels = [];
 
 export function repondre({ task, system, user }) {
-  const f = charger().find((r) => r.tache === task && new RegExp(r.motif, 'i').test(system));
+  // « si_user » affine le choix quand une même consigne reçoit des demandes différentes.
+  const f = charger().find((r) => r.tache === task && new RegExp(r.motif, 'i').test(system)
+    && (!r.si_user || new RegExp(r.si_user, 'i').test(user)));
   if (!f) throw new Error(`Modèle factice : aucune fixture pour la tâche « ${task} » et cette consigne`);
   appels.push({ task, fixture: f.nom, system, user });
   const text = typeof f.reponse === 'string' ? f.reponse : JSON.stringify(f.reponse);
