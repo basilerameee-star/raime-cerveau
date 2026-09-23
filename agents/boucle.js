@@ -36,6 +36,10 @@ const RYTHMES = [
   // L'agent reflexif : il tient les buts, choisit ses sous-taches, s'evalue, corrige ses
   // croyances et pose ses questions a Basile. Premier cycle v2 mesure : 0,0062 $.
   { nom: 'architecte',   module: './architecte.js',  fn: 'architecte',  toutes: 6 * H, besoinN8n: true },
+  // Le savoir general : 23 domaines voulus par Basile (finance, droit, sante, sciences,
+  // quantique, philosophie, metaphysique, spiritualite, esoterisme...). 30 articles par
+  // domaine et par jour, source Wikipedia (CC BY-SA), sans cle ni depense.
+  { nom: 'encyclopediste', module: './encyclopediste.js', fn: 'nourrir', toutes: 24 * H, besoinN8n: false, args: { combien: 30 } },
   // Les yeux dehors : forums, depots de code, nouveaux modeles, travaux de recherche.
   // Quatre API publiques, tri par du code, rangement dans la bibliotheque. Cout : zero.
   { nom: 'veilleur',     module: './veilleur.js',    fn: 'veiller',     toutes: 24 * H, besoinN8n: false },

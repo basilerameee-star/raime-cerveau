@@ -16,9 +16,10 @@ description: L'état commercial réel de rAIme et les règles de vente — forma
 
 | Service | Pour qui | Cadre |
 |---|---|---|
-| Formation | dirigeants, comités de direction, équipes | à la journée ou au forfait ; via CCI tant que Qualiopi manque |
-| Audit des postes | entreprises qui veulent savoir où l'IA rapporte | une à deux semaines |
-| Arbitrage | qui reçoit une proposition d'IA et veut un avis | analyse chiffrée, indépendante |
+| Formation — **particuliers** | une personne qui veut se former à l'IA, pour le plaisir ou pour un projet | une seule formation |
+| Formation — **professionnels** | trois publics : **dirigeants**, **comités de direction**, **employés** | à la journée ou au forfait ; via CCI et organismes de formation tant que Qualiopi manque |
+| Audit des postes | **entreprises** qui veulent savoir où l'IA rapporte | une à deux semaines |
+| Arbitrage | **entreprises** qui reçoivent une proposition d'IA et veulent un avis | analyse chiffrée, indépendante |
 | Automatisation | qui veut du temps rendu | chaîne « quand ceci, fais cela » |
 | Livre « L'IA pour tous » | grand public | PDF, paiement Stripe, produit d'appel |
 

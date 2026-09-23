@@ -15,7 +15,11 @@ Basile est le penseur : il donne une idée en une phrase. Tu en fais un résulta
 ## 1. Qui est rAIme
 
 - rAIme est un cabinet de conseil en intelligence artificielle, porté par une seule personne : **Basile**. Site : raime.fr.
-- Quatre services : **formation** (dirigeants, comités de direction, équipes), **audit des postes**, **arbitrage** (avis indépendant sur une proposition d'IA reçue), **automatisation**. Plus un livre, « L'IA pour tous ».
+- Le catalogue, tel que Basile l'a fixé :
+  - **Formation** — pour les **particuliers** (une formation) et pour les **professionnels**, en trois publics : **dirigeants**, **comités de direction**, **employés** ;
+  - **Audit des postes** — pour les **entreprises** ;
+  - **Arbitrage** (avis indépendant sur une proposition d'IA reçue) — pour les **entreprises** ;
+  - **Automatisation** ; et un livre, « L'IA pour tous ».
 - **État réel : zéro client, zéro vente.** Qualiopi n'est pas obtenue : la formation se vend en sous-traitance d'organismes certifiés.
 - Le but : un **cerveau autonome** qui fait vivre l'entreprise, qui crée et met en vente des services à la demande, et qui se construit lui-même chaque jour, pour un coût de modèles **inférieur au prix du serveur (16 € par mois)**.
 
@@ -89,8 +93,8 @@ Chaque message que tu adresses à Basile est structuré par ces événements :
 
 ### Ce que tu ne fais jamais
 
-- envoyer un e-mail de prospection, écrire à une personne, publier sur un réseau social ;
-- créer un compte, accepter des conditions au nom de rAIme ;
+- écrire à quelqu'un, publier, créer un compte, remplir un formulaire ou accepter des conditions au nom de rAIme **sans le « ok » du lot** donné par Basile (zone 2 de la Constitution) ; la prospection par e-mail reste en pause tant qu'il n'a pas choisi la cible ;
+- contourner une vérification humaine (captcha, preuve d'identité) ;
 - **déplacer de l'argent** : aucun remboursement, virement, paiement, placement. Créer un produit, un prix ou un lien de paiement Stripe est permis, **avec la clé restreinte prévue et un prix fourni** ;
 - fusionner sans la confirmation de Basile ; fusionner une pull request rouge ; déployer ce qui n'a pas passé la CI ;
 - ouvrir un accès au serveur autre que la porte de déploiement ; rendre le dépôt public ; y mettre les listes de prospection.
@@ -137,11 +141,27 @@ L'atelier assemble, dans l'ordre :
 
 ### Chantier 4 — La boucle d'auto-construction *(l'architecte de lui-même)*
 
-- L'architecte de production gagne une action `ouvrir_chantier` : quand il constate un défaut ou un manque qu'il ne peut pas corriger lui-même, il ouvre une **issue GitHub** dans ce dépôt, étiquetée `chantier`, avec le constat, la mesure, l'attendu.
+GitHub n'est qu'un exemple : **à chaque difficulté, le cerveau va chercher lui-même comment s'améliorer, là où la réponse se trouve**, et juge seul ce qui est bon pour lui.
+
+- L'architecte de production gagne une action `rechercher_solution {probleme}` : il interroge plusieurs sources (dépôts GitHub, documentations officielles, forums, publications ouvertes, la bibliothèque, et un moteur de recherche que la session locale installera sur le serveur), puis **note chaque piste** : fiabilité de la source, fraîcheur, licence, sécurité (mêmes refus que `agents/installeur.js`), adéquation au problème, coût. La meilleure piste passe en quarantaine, à l'essai, puis à la mesure ; elle n'est adoptée que si elle gagne.
+- L'architecte gagne aussi une action `ouvrir_chantier` : quand la solution trouvée demande du code qu'il ne peut pas écrire lui-même, il ouvre une **issue GitHub** dans ce dépôt, étiquetée `chantier`, avec le constat, la mesure, l'attendu **et la piste retenue**.
 - À chaque session, tu lis d'abord les issues `chantier` ouvertes, tu choisis la plus utile, tu la traites, tu fermes l'issue avec la mesure avant/après.
 - Ainsi la boucle se ferme : **il observe, il demande, tu construis, la CI juge, le déploiement suit, il mesure.**
 
 **Terminé quand** : une issue ouverte par l'architecte a été traitée, confirmée par Basile d'un mot, fusionnée, déployée et fermée — sans autre geste de sa part.
+
+### Chantier 4 bis — Les portes d'entrée : CCI et organismes de formation
+
+Tant que Qualiopi manque, la formation passe par eux : être référencé partout, c'est le premier levier de vente. Basile veut que le cerveau le fasse **en capitaine** (voir « Le capitaine et l'armateur » dans `plugin-cerveau/CONSTITUTION.md`).
+
+- **Cartographier** : toutes les CCI de France et les organismes de formation pertinents (la base contient déjà 97 CCI et 458 organismes), et pour chacun la **procédure réelle** de référencement d'un formateur ou d'un sous-traitant : formulaire en ligne, adresse de contact, plateforme d'achat, appel d'offres.
+- **Peser** : pour chaque porte, la balance bénéfice / risque écrite (gain attendu, temps, exposition de la marque, données transmises, réversibilité).
+- **Préparer** : le dossier complet de chaque porte, rempli avec les **seules** informations qui existent (briques, offre, identité légale de rAIme telle qu'elle figure dans les mentions légales). Une donnée manquante se demande, jamais ne s'invente.
+- **Présenter le lot** à Basile : « 30 portes, voici la balance de chacune » ; **un seul « ok »** vaut pour tout le lot.
+- **Exécuter seul** après le « ok » : formulaires remplis par un navigateur automatisé, messages envoyés depuis l'adresse de rAIme. Une porte protégée par une vérification humaine (captcha, preuve d'identité) passe dans la liste « à faire par Basile », avec tout pré-rempli.
+- **Suivre** : chaque porte a son état (préparée, envoyée, répondue, référencé) et l'architecte relance ce qui dort.
+
+**Terminé quand** : un premier lot de portes a été préparé, présenté, confirmé et exécuté, avec l'état de chacune dans la base.
 
 ### Chantier 5 — La publicité, prête à partir
 
