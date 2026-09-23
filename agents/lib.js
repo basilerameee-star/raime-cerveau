@@ -14,6 +14,12 @@ export const ROUTER = {
   raisonnement:  { model: 'deepseek/deepseek-v4-pro-0813',   in: 0.660, out: 1.980 },
   contradiction: { model: 'qwen/qwen3-max-thinking',          in: 0.780, out: 3.900 },
   redaction:     { model: 'deepseek/deepseek-v4-flash-0731', in: 0.065, out: 0.180 },
+  // DÉCISION TYPÉE — le travail que ferait JEV, dont l'acces est ferme. Mesure du
+  // 2026-09-23, famille « decision », 3 passages : granite 75/100 pour 0,0037 $ les
+  // mille decisions, contre 83/100 pour 0,0189 $ au titulaire. Cinq fois moins cher
+  // pour huit points de moins : reserve au tri, jamais au cordon ni a l argent, ou
+  // une erreur se paie. Retour arriere : remettre upstage/solar-pro4 ci-dessous.
+  decision:      { model: 'ibm-granite/granite-4.0-h-micro', in: 0.017, out: 0.112 },
 };
 
 // Les prix sont des FAITS, pas des choix : ils viennent du catalogue synchronise,
