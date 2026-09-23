@@ -23,6 +23,11 @@ const JUGEMENTS = new Set(['modele_routage', 'prompt', 'critere_audit', 'source_
 
 // Les batteries de non-régression disponibles aujourd'hui, par domaine.
 // Un domaine absent de cette table n'est pas évaluable — donc pas promouvable.
+// Une consigne se juge sur le travail de SON agent : faire passer au Héraut l'examen
+// de l'Auditeur, ce serait lui faire réciter une leçon qui n'est pas la sienne.
+const BATTERIES_AGENT = {
+  heraut: ['tests/cas_figes_heraut.mjs'],
+};
 const BATTERIES = {
   prompt: ['tests/cas_figes.mjs', 'tests/cas_figes_audit.mjs'],
   critere_audit: ['tests/cas_figes_audit.mjs'],
@@ -99,11 +104,12 @@ async function schema(brain) {
 }
 
 /** Rejoue une batterie de cas figés dans le conteneur. Renvoie {passe, sortie}. */
-function rejouer(fichiers) {
+function rejouer(fichiers, args = '') {
   const sorties = [];
   for (const f of fichiers) {
     try {
-      const out = execSync(`node ${f}`, { cwd: '/app', encoding: 'utf8', timeout: 60000 });
+      // 5 minutes : l'examen du Héraut fait rédiger trois messages par un modèle.
+      const out = execSync(`node ${f} ${args}`.trim(), { cwd: '/app', encoding: 'utf8', timeout: 300000 });
       sorties.push(out.trim());
     } catch (e) {
       return { passe: false, sortie: `${f} : ${(e.stdout || e.message || '').toString().trim().slice(0, 400)}` };
@@ -155,7 +161,8 @@ export async function soumettre(brain, c) {
       return { id: ins[0].id, nature, verdict, motif, mesure };
     }
 
-    const batterie = BATTERIES[c.domaine];
+    const agentVise = c.donnees?.agent || null;
+    const batterie = (c.domaine === 'prompt' && agentVise && BATTERIES_AGENT[agentVise]) || BATTERIES[c.domaine];
     if (!batterie || !batterie.length) {
       // LA CLAUSE QUI PROTÈGE LA MAISON.
       verdict = 'non_evaluable';
@@ -163,12 +170,19 @@ export async function soumettre(brain, c) {
         + `Une promotion serait un pari, pas une décision. Le candidat reste en attente `
         + `jusqu'à ce qu'un instrument de mesure existe.`;
     } else {
-      const r = rejouer(batterie);
+      const args = c.domaine === 'prompt' && agentVise ? `${agentVise} ${c.donnees?.version ?? ''}`.trim() : '';
+      const r = rejouer(batterie, args);
       mesure = { batteries: batterie, sortie: r.sortie };
       verdict = r.passe ? 'promu' : 'refuse';
       motif = r.passe
         ? `Toutes les batteries passent : ${r.sortie}`
         : `Non-régression échouée : ${r.sortie}`;
+      // Une consigne promue reste INACTIVE : l'examen dit qu'elle tient, il ne dit pas
+      // qu'elle doit écrire à de vrais prospects dès ce soir. La mise en service se
+      // demande à Basile — une ligne, et un retour arrière d'une ligne aussi.
+      if (r.passe && c.domaine === 'prompt' && agentVise && c.donnees?.version) {
+        motif += ` — consigne ${agentVise} v${c.donnees.version} prête à être mise en service.`;
+      }
     }
   }
 

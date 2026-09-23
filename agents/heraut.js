@@ -36,17 +36,26 @@ function nomMalmene(corps, nomOrga) {
   const tokens = corps.split(/[^A-Za-zÀ-ÿ]+/).filter(w => w.length > 4).map(w => w.toLowerCase());
   for (const m of mots) for (const t of tokens) {
     const d = distance(m, t);
+    // Le pluriel et le singulier d'un même mot ne sont pas une faute : « transport routier »
+    // dans un message adressé aux « Transports Vallet » faisait refuser un message juste.
+    if (d === 1 && (m === `${t}s` || t === `${m}s`)) continue;
     if (d > 0 && d <= 2) return `nom de l'organisation mal orthographié ("${t}" au lieu de "${m}")`;
   }
   return null;
 }
 
-function valider(objet, corps, nomOrga) {
+export function valider(objet, corps, nomOrga) {
   const erreurs = [];
   const t = `${objet}\n${corps}`;
   for (const re of INTERDITS) if (re.test(t)) erreurs.push(`formulation interdite : ${re}`);
   if (!/Basile Ramé/.test(corps)) erreurs.push('signature « Basile Ramé » absente');
-  if (!/\?/.test(corps)) erreurs.push('aucune question posée');
+  // CONTRADICTION LEVÉE LE 2026-09-23 : la consigne interdit toute question de clôture
+  // (« deux demandes successives diluent ») et le code en exigeait une. Résultat : trois
+  // messages sur quatre refusés pour « aucune question posée », alors qu'ils portaient
+  // la bonne demande. Une demande claire suffit : une question, ou l'offre du premier regard.
+  if (!/\?/.test(corps) && !/premier regard sous 48 heures/.test(corps))
+    erreurs.push('aucune demande claire : ni question, ni offre du premier regard');
+  if ((corps.match(/\?/g) || []).length > 1) erreurs.push('plusieurs questions : une seule demande par message');
   if (corps.length > 1300) erreurs.push(`trop long (${corps.length} caractères, max 1300)`);
   if (corps.length < 250) erreurs.push('trop court');
   if (!objet || objet.length > 80) erreurs.push('objet absent ou trop long');
@@ -58,11 +67,14 @@ function valider(objet, corps, nomOrga) {
   if (/OPCO|Qualiopi/i.test(corps)) erreurs.push('mention OPCO/Qualiopi interdite (certification non obtenue)');
   if (/CPF|compte personnel de formation/i.test(corps)) erreurs.push('mention du CPF interdite en prospection à froid (loi du 19 décembre 2022)');
   if (/\d\s?(€|euros)/i.test(corps)) erreurs.push('prix annoncé dans un premier contact : à réserver à la réponse');
-  if (/^\s*(Madame|Monsieur|Cher|Chère)\s*,/i.test(corps)) erreurs.push('civilité genrée devinée sur un destinataire inconnu : écrire « Madame, Monsieur, »');
+  // « Madame, Monsieur, » est justement la formule neutre attendue : seule une civilité
+  // SEULE trahit un genre deviné. L'ancienne règle refusait la bonne formulation.
+  if (/^\s*(Madame|Monsieur|Cher|Chère)\s*,(?!\s*(Madame|Monsieur))/i.test(corps))
+    erreurs.push('civilité genrée devinée sur un destinataire inconnu : écrire « Madame, Monsieur, »');
   return erreurs;
 }
 
-const SYSTEM = `Tu rédiges un e-mail de premier contact B2B pour Basile Ramé, fondateur de rAIme,
+export const SYSTEM = `Tu rédiges un e-mail de premier contact B2B pour Basile Ramé, fondateur de rAIme,
 cabinet de conseil et d'audit IA indépendant.
 
 ANGLE UNIQUE — la conformité :
@@ -82,7 +94,8 @@ RÈGLES ABSOLUES :
 - Tu écris À LA PLACE de Basile, à la première personne. Signature : "Basile Ramé — rAIme".
 - Tu ne mentionnes JAMAIS qu'une IA a rédigé ce message.
 - Tu ne vends PAS d'automatisation : rAIme conseille et audite, il ne construit pas.
-- Tu poses UNE SEULE question, fermée et facile à répondre, à la fin.
+- Tu formules UNE SEULE demande, et c'est l'offre du premier regard ci-dessous. Aucune
+  question de clôture ne s'y ajoute : la consigne se contredisait, et le code refusait.
 - Aucun lien, aucun emoji, aucun superlatif, aucune flatterie.
 - 6 à 10 lignes maximum. Ton sobre, professionnel, direct.
 - AVANT la signature, tu places TOUJOURS cette offre, mot pour mot :
@@ -195,7 +208,7 @@ Rédige l'e-mail.`;
 
   // L'OBJET est composé par le CODE : aucune orthographe inventée possible.
   const objet = 'Formation IA : obligation applicable depuis le 2 août';
-  let corps = '', erreurs = [], meta = null;
+  let corps = '', erreurs = [], meta = null, meilleur = null;
   for (let essai = 1; essai <= 2; essai++) {
     const consigne = essai === 1 ? user
       : `${user}\n\nTON BROUILLON PRÉCÉDENT A ÉTÉ REFUSÉ pour : ${erreurs.join(' ; ')}. Corrige-le.`;
@@ -203,8 +216,13 @@ Rédige l'e-mail.`;
     meta = r;
     corps = String(r.text || '').replace(/^```[a-z]*|```$/gm, '').trim();
     erreurs = valider(objet, corps, prospect.name);
+    // On garde le MEILLEUR brouillon, pas le dernier. Mesure du 2026-09-23 : la reprise
+    // après refus rend souvent un texte plus fautif que le premier jet, et la maison
+    // jetait alors un message presque bon. Un essai qui empire ne remplace plus rien.
+    if (!meilleur || erreurs.length < meilleur.erreurs.length) meilleur = { corps, erreurs };
     if (!erreurs.length) break;
   }
+  if (meilleur && meilleur.erreurs.length < erreurs.length) ({ corps, erreurs } = meilleur);
 
   // L'en-tete de routage est ajoute par le CODE, apres validation : le modele n'a pas son
   // mot a dire sur le destinataire. 8 messages sur 10 arrivent sur une boite d'accueil qui

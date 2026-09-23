@@ -171,6 +171,24 @@ Identifie le maillon faible et propose une amélioration.`;
     await brain.query(`INSERT INTO journal(acteur, changement, motif) VALUES($1,$2,$3)`,
       ['reflexif', `Proposition d'amélioration v${v} pour l'agent ${am.agent} (INACTIVE, en attente de validation)`,
        (am.pourquoi || '').slice(0, 400)]);
+
+    // La proposition part aussitôt à l'examen : le sas fait rédiger trois messages avec
+    // la consigne candidate et les juge par du code. Le verdict tombe la nuit même,
+    // sans personne. Une consigne qui échoue ne dort plus des semaines en attente.
+    try {
+      const { soumettre } = await import('./sas.js');
+      const e = await soumettre(brain, {
+        domaine: 'prompt',
+        identifiant: `${am.agent}:v${v}`,
+        titre: `Consigne proposée pour ${am.agent}`,
+        source: 'reflexif',
+        donnees: { agent: am.agent, version: v },
+      });
+      versionCree.examen = { verdict: e.verdict, motif: e.motif };
+    } catch (e) {
+      await brain.query(`INSERT INTO journal(acteur, changement, motif) VALUES($1,$2,$3)`,
+        ['reflexif', `Examen impossible pour ${am.agent} v${v}`, e.message.slice(0, 300)]);
+    }
   }
 
   await logRun(brain, { agent: 'reflexif', task: 'raisonnement', model: r.model, tokensIn: r.tokensIn,

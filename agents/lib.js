@@ -13,7 +13,9 @@ export const ROUTER = {
   extraction:    { model: 'upstage/solar-pro4', in: 0.030, out: 0.120 },
   raisonnement:  { model: 'deepseek/deepseek-v4-pro-0813',   in: 0.660, out: 1.980 },
   contradiction: { model: 'qwen/qwen3-max-thinking',          in: 0.780, out: 3.900 },
-  redaction:     { model: 'deepseek/deepseek-v4-flash-0731', in: 0.065, out: 0.180 },
+  // raisonne: false — ce modèle réfléchit avant d'écrire et vidait la moitié de ses
+  // réponses. Coupé, il rend le texte tout de suite, pour trois fois moins cher.
+  redaction:     { model: 'deepseek/deepseek-v4-flash-0731', in: 0.065, out: 0.180, raisonne: false },
   // DÉCISION TYPÉE — le travail que ferait JEV, dont l'acces est ferme. Mesure du
   // 2026-09-23, famille « decision », 3 passages : granite 75/100 pour 0,0037 $ les
   // mille decisions, contre 83/100 pour 0,0189 $ au titulaire. Cinq fois moins cher
@@ -71,15 +73,29 @@ export async function ask({ task, system, user, json = true, maxTokens = 6000, t
     temperature,
   };
   if (json) body.response_format = { type: 'json_object' };
+  // Certains modèles raisonnent avant d'écrire. Quand le budget part entièrement dans le
+  // raisonnement, la réponse revient VIDE avec finish_reason « length » : la maison paie
+  // et ne reçoit rien. Mesure du 2026-09-23 sur deepseek-v4-flash : raisonnement coupé,
+  // 960 caractères pour 0,000043 $ ; budget élargi à 4000, toujours vide pour 0,001142 $.
+  if (cfg.raisonne === false) body.reasoning = { enabled: false };
 
   const t0 = Date.now();
-  const r = await fetch(OR_URL, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  if (!r.ok) throw new Error(`OpenRouter ${r.status}: ${(await r.text()).slice(0, 300)}`);
-  const d = await r.json();
+  const appel = async (corps) => {
+    const rep = await fetch(OR_URL, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(corps),
+    });
+    if (!rep.ok) throw new Error(`OpenRouter ${rep.status}: ${(await rep.text()).slice(0, 300)}`);
+    return rep.json();
+  };
+
+  let d = await appel(body);
+  // Le filet : réponse vide parce que le raisonnement a mangé le budget → on rejoue
+  // une fois sans raisonnement. Mieux vaut un texte que zéro caractère déjà payé.
+  if (!d.choices?.[0]?.message?.content && d.choices?.[0]?.finish_reason === 'length') {
+    d = await appel({ ...body, reasoning: { enabled: false } });
+  }
   const text = d.choices?.[0]?.message?.content ?? '';
   const u = d.usage || {};
   const tokensIn = u.prompt_tokens || 0, tokensOut = u.completion_tokens || 0;
