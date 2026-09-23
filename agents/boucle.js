@@ -27,6 +27,9 @@ const RYTHMES = [
   // Le chasseur ferme la chaine de la veille : il mesure les candidats que le sas a reperes,
   // puis rouvre le sas. Deux modeles neufs par jour, trois passages chacun.
   { nom: 'chasseur',     module: './chasseur.js',    fn: 'chasser',     toutes: 24 * H, besoinN8n: false },
+  // La bibliotheque avale ce qu on depose dans bibliotheque/ : notes, offres, sources.
+  // Recherche en francais dans Postgres, sans appeler personne et sans depenser un centime.
+  { nom: 'bibliothecaire', module: './bibliothecaire.js', fn: 'ranger', toutes: 12 * H, besoinN8n: false },
   { nom: 'prospective',  module: './prospective.js', fn: 'projeter',    toutes: 7 * 24 * H, besoinN8n: false },
   // La courbe de prix se construit un releve a la fois. C'est le temps l'ingredient.
   { nom: 'metrologue', module: './metrologue.js', fn: 'mesurer', toutes: 7 * 24 * H, besoinN8n: false,
