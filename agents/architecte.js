@@ -162,11 +162,25 @@ const ACTIONS = {
     return { resume: `idée d'offre déposée : ${titre}`, donnees: { titre } };
   },
 
+  // À chaque difficulté, chercher partout où la réponse se trouve, et juger par le code.
+  // La meilleure piste va en quarantaine (table pistes) ; rien ne s'installe ici.
+  async rechercher_solution({ brain, args }) {
+    const { rechercherSolution } = await import('./rechercheur.js');
+    const r = await rechercherSolution({ brain, probleme: String(args.probleme || '') });
+    return {
+      resume: r.retenue ? `${r.pistes.length} piste(s) notées ; retenue : ${r.retenue.titre} (${r.retenue.note}/100) ${r.retenue.lien}`
+        : `${r.pistes.length} piste(s), aucune recevable${r.muettes.length ? ` — sources muettes : ${r.muettes.length}` : ''}`,
+      donnees: { retenue: r.retenue && { titre: r.retenue.titre, lien: r.retenue.lien, note: r.retenue.note, notes: r.retenue.notes },
+        suivantes: r.pistes.slice(1, 4).map((x) => ({ titre: x.titre, note: x.note, refus: x.refus })) },
+    };
+  },
+
   // Ce que l'architecte ne peut pas corriger lui-même : une issue « chantier » sur le dépôt,
   // que la session cloud traite. Interne et réversible : une issue se ferme.
   async ouvrir_chantier({ brain, args }) {
     const { ouvrirChantier } = await import('./chantiers.js');
-    const r = await ouvrirChantier({ titre: args.titre, constat: args.constat, mesure: args.mesure, attendu: args.attendu });
+    const r = await ouvrirChantier({ titre: args.titre, constat: args.constat, mesure: args.mesure, attendu: args.attendu,
+      piste: args.piste });
     await brain.query(`INSERT INTO journal(acteur, changement, motif) VALUES($1,$2,$3)`,
       ['architecte', r.ouvert ? `Chantier ouvert : n° ${r.numero} « ${String(args.titre).slice(0, 120)} »`
         : `Chantier non ouvert : « ${String(args.titre || '').slice(0, 120)} »`, r.url || r.motif]);
@@ -186,7 +200,9 @@ const DESCRIPTION_CATALOGUE = `- mesurer : relever l'état réel de la firme (ma
 - examiner_consigne {agent} : faire passer l'examen à la consigne candidate d'un agent (aujourd'hui : heraut).
 - ecrire_note {titre, texte, sources[]} : déposer une connaissance durable (200 caractères au moins, sources obligatoires).
 - proposer_offre {titre, promesse, ancrage, famille} : déposer une idée d'offre vendable.
-- ouvrir_chantier {titre, constat, mesure, attendu} : demander un changement du code que tu ne peux pas faire toi-même
+- rechercher_solution {probleme} : chercher une solution partout (bibliothèque, GitHub, forums, publications, moteur de
+  recherche) ; chaque piste est notée par le code (sécurité, adéquation, fiabilité, licence, fraîcheur, coût), la meilleure part en quarantaine.
+- ouvrir_chantier {titre, constat, mesure, attendu, piste} : demander un changement du code que tu ne peux pas faire toi-même
   (un outil qui manque, un défaut mesuré). Constat, mesure chiffrée et attendu obligatoires. Trois chantiers ouverts au plus.
 - rien {pourquoi} : quand aucune action n'apporte de valeur.`;
 

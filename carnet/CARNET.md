@@ -111,3 +111,24 @@ Format d'une entrée :
 - Évaluation : `knowledge/commerce/strategie-commerciale.md` cite le CPF et des prix de services : une source à ne pas donner au rédacteur.
 - Correction : le rédacteur ne reçoit que les phrases publiques du site, sans tarif ; le code refuse tout prix sauf les 19 € du livre, tout chiffre absent des offres, le CPF et le nom de Basile.
 - Leçon : choisir la source d'un texte public, c'est déjà une garde.
+
+## 2026-09-24 — lecture de la mission mise à jour par la session locale
+- Action : relire le commit « Le savoir entre dans le cerveau… » (session locale) : mission, Constitution, catalogue.
+- Résultat : trois changements pour la session cloud : l'action `rechercher_solution`, une piste retenue dans chaque chantier, le chantier 4 bis (CCI et organismes de formation), et la balance bénéfice / risque en trois zones.
+- Évaluation : le chantier 4 livré cette nuit était incomplet au regard de la mission à jour.
+- Correction : `rechercher_solution` construit dans la foulée.
+- Leçon : relire `main` avant chaque chantier ; la mission bouge pendant la nuit.
+
+## 2026-09-24 — chantier 5 — fusion
+- Action : pull request n° 5 fusionnée (CI verte).
+- Résultat : le publiciste passera une fois par semaine ; brouillons seulement.
+- Évaluation : conforme.
+- Correction : aucune.
+- Leçon : —
+
+## 2026-09-24 — chantier 4 — rechercher_solution
+- Action : `agents/rechercheur.js`, l'action de l'architecte, la piste dans le chantier, 9 tests.
+- Résultat : cinq sources, six critères notés par le code, la meilleure piste en quarantaine ; 117 tests sur 117.
+- Évaluation : le piège prévu (un dépôt très suivi qui fait « curl … | sh ») est refusé par les règles de l'installeur, reprises telles quelles.
+- Correction : aucune.
+- Leçon : réutiliser une garde existante vaut mieux qu'en écrire une seconde qui divergera.

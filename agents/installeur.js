@@ -45,7 +45,7 @@ function entete(texte) {
   return nom ? { nom: nom.trim().replace(/^["']|["']$/g, ''), description: (desc || '').trim() } : null;
 }
 
-function verifier(texte) {
+export function verifier(texte) {
   for (const [motif, raison] of REFUS) if (motif.test(texte)) return raison;
   return null;
 }

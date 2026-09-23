@@ -35,7 +35,7 @@ async function github(chemin, { methode = 'GET', corps } = {}) {
 
 const normaliser = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
 
-export function preparer({ titre, constat, mesure, attendu, source = 'architecte' }) {
+export function preparer({ titre, constat, mesure, attendu, piste = null, source = 'architecte' }) {
   const t = String(titre || '').trim().slice(0, 120);
   const champs = { constat, mesure, attendu };
   const manquants = Object.entries(champs).filter(([, v]) => String(v || '').trim().length < 10).map(([k]) => k);
@@ -43,7 +43,9 @@ export function preparer({ titre, constat, mesure, attendu, source = 'architecte
   if (manquants.length) return { refus: `chantier refusé : ${manquants.join(', ')} absent(s) ou trop court(s)` };
   if (!/\d/.test(String(mesure))) return { refus: 'chantier refusé : la mesure ne porte aucun chiffre' };
   const corps = `## Constat\n${String(constat).trim()}\n\n## Mesure\n${String(mesure).trim()}\n\n`
-    + `## Attendu\n${String(attendu).trim()}\n\n---\n_Ouvert par l'${source} de production. Fermer avec la mesure avant / après._`;
+    + `## Attendu\n${String(attendu).trim()}\n\n`
+    + (piste ? `## Piste retenue\n${String(piste).trim()}\n\n` : '')
+    + `---\n_Ouvert par l'${source} de production. Fermer avec la mesure avant / après._`;
   if (SECRETS.some((re) => re.test(`${t}\n${corps}`))) return { refus: 'chantier refusé : le texte porte un secret' };
   return { titre: t, corps };
 }

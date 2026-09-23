@@ -23,7 +23,7 @@ Le cycle est celui que Basile a écrit le 23 septembre 2026. Le code vit dans `a
 ## Les trois gardes, écrites dans le code
 
 - **Souveraineté** : aucun argument, aucune note, aucune question ne transporte une clé ou un secret.
-- **Faisabilité** : catalogue fermé de sept actions (`mesurer`, `chercher`, `examiner_consigne`, `ecrire_note`, `proposer_offre`, `ouvrir_chantier`, `rien`), quatre sous-tâches au plus, budget de 0,05 $ par cycle.
+- **Faisabilité** : catalogue fermé de huit actions (`mesurer`, `chercher`, `examiner_consigne`, `ecrire_note`, `proposer_offre`, `rechercher_solution`, `ouvrir_chantier`, `rien`), quatre sous-tâches au plus, budget de 0,05 $ par cycle.
 - **Éthique** : rien ne part vers un tiers ; une note sans source est refusée.
 
 Les croyances qui portent le nom d'une limite de la Constitution (`argent`, `souverainete`, `ethique`, `autorite`, `depense`) ne se révisent pas en méta-réflexion. Un but se clôt sur la parole de Basile.
@@ -55,10 +55,17 @@ L'architecte lit les réponses au cycle suivant et en tient compte.
 ssh -i ~/.ssh/raime_vps root@2.29.6.94 '/opt/raime/raime-brain/run.sh "node agents/architecte.js"'
 ```
 
+## Chercher une solution partout
+
+`rechercher_solution {probleme}` (`agents/rechercheur.js`) interroge la bibliothèque, GitHub, Hacker News, arXiv et,
+une fois installé, le moteur SearXNG du serveur (`RECHERCHE_URL`). Le code note chaque piste sur six critères :
+sécurité (les refus de l'installeur), adéquation, fiabilité, licence, fraîcheur, coût. La meilleure part en
+**quarantaine** (table `pistes`) ; elle n'est adoptée qu'après essai et mesure.
+
 ## Les chantiers : ce qu'il demande à la session cloud
 
 Quand l'architecte constate un défaut qu'il ne peut pas corriger lui-même, `ouvrir_chantier` ouvre une issue
-GitHub étiquetée `chantier` dans `raime-cerveau` : constat, **mesure chiffrée**, attendu (`agents/chantiers.js`).
+GitHub étiquetée `chantier` dans `raime-cerveau` : constat, **mesure chiffrée**, attendu et piste retenue (`agents/chantiers.js`).
 Trois chantiers ouverts au plus, jamais deux fois le même, aucun secret. Le jeton `GITHUB_CHANTIER_TOKEN`
 (droit « Issues : écriture » sur ce seul dépôt) vit dans le `.env` du serveur ; absent, rien ne part.
 
