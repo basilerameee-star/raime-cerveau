@@ -63,6 +63,13 @@ export async function derivePrix() {
 export async function ask({ task, system, user, json = true, maxTokens = 6000, temperature = 0.1 }) {
   const cfg = ROUTER[task];
   if (!cfg) throw new Error(`Tâche inconnue: ${task}`);
+  // Banc d'essai : avec MODELE_FACTICE=1, aucune requête ne part. La réponse vient des
+  // fixtures, toujours la même pour la même consigne, et ne coûte rien. Sans cette
+  // variable, rien ne change : la production ne la pose jamais.
+  if (process.env.MODELE_FACTICE === '1') {
+    const { repondre } = await import('./modele_factice.js');
+    return repondre({ task, system, user });
+  }
   const key = process.env.OPENROUTER_API_KEY;
   if (!key) throw new Error('OPENROUTER_API_KEY manquante');
 

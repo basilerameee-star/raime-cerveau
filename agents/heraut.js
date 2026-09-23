@@ -64,8 +64,8 @@ export function valider(objet, corps, nomOrga) {
   if (!/raime\.fr/.test(corps)) erreurs.push('site raime.fr absent de la signature');
   if (!/premier regard sous 48 heures/.test(corps)) erreurs.push('offre du premier regard absente : le message doit demander un devis, pas seulement un rendez-vous');
   if (/audit gratuit|audit offert/i.test(corps)) erreurs.push('« audit gratuit » promet le produit complet : ce qui est offert est un premier regard');
-  if (/OPCO|Qualiopi/i.test(corps)) erreurs.push('mention OPCO/Qualiopi interdite (certification non obtenue)');
-  if (/CPF|compte personnel de formation/i.test(corps)) erreurs.push('mention du CPF interdite en prospection à froid (loi du 19 décembre 2022)');
+  if (/\bOPCO\b|Qualiopi/i.test(corps)) erreurs.push('mention OPCO/Qualiopi interdite (certification non obtenue)');
+  if (/\bCPF\b|compte personnel de formation/i.test(corps)) erreurs.push('mention du CPF interdite en prospection à froid (loi du 19 décembre 2022)');
   if (/\d\s?(€|euros)/i.test(corps)) erreurs.push('prix annoncé dans un premier contact : à réserver à la réponse');
   // « Madame, Monsieur, » est justement la formule neutre attendue : seule une civilité
   // SEULE trahit un genre deviné. L'ancienne règle refusait la bonne formulation.

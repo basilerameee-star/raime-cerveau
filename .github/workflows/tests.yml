@@ -1,0 +1,41 @@
+# Le banc d'essai sur chaque pull request : deux bases Postgres de test, le modèle
+# factice, aucune clé. Une pull request rouge ne se fusionne pas.
+name: Banc d'essai
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  npm-test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: raime
+          # mot de passe jetable d'une base de test qui disparaît avec la tâche
+          POSTGRES_PASSWORD: banc
+          POSTGRES_DB: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U raime"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: raime
+      PGPASSWORD: banc
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test

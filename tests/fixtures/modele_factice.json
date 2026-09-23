@@ -1,0 +1,62 @@
+{
+  "_lisezmoi": "Réponses du modèle factice (MODELE_FACTICE=1). Une entrée est choisie par sa tâche et par un motif (expression régulière) lu dans la consigne système. Données fictives uniquement.",
+  "reponses": [
+    {
+      "nom": "architecte-plan",
+      "tache": "raisonnement",
+      "motif": "Tu es l'architecte de rAIme",
+      "reponse": {
+        "but_vise": "Rendre l'offre de formation lisible pour un dirigeant",
+        "but_immediat": "Relever l'état de la maison et retrouver ce que la bibliothèque dit de l'offre",
+        "pertinence": "Sans offre claire, aucune vente possible",
+        "incertitudes": ["la bibliothèque couvre-t-elle l'offre de formation ?"],
+        "sous_taches": [
+          { "action": "mesurer", "arguments": {}, "attendu": "un relevé chiffré", "probabilite_echec": 0.05, "detection": "résumé vide" },
+          { "action": "chercher", "arguments": { "question": "offre de formation pour les dirigeants" }, "attendu": "au moins un passage", "probabilite_echec": 0.2, "detection": "zéro passage" },
+          { "action": "envoyer_email", "arguments": { "a": "prospect@exemple.invalid" }, "attendu": "—", "probabilite_echec": 0.9, "detection": "—" },
+          { "action": "ecrire_note", "arguments": { "titre": "fuite", "texte": "postgres://fictif:faux@exemple.invalid/base" }, "attendu": "—", "probabilite_echec": 0.9, "detection": "—" }
+        ]
+      }
+    },
+    {
+      "nom": "architecte-evaluation",
+      "tache": "raisonnement",
+      "motif": "Tu évalues la sous-tâche",
+      "reponse": {
+        "reussie": true, "ecart": "aucun", "cause": "la maison ne sait pas quelle offre pousser en premier",
+        "type_correction": "demande_donnees", "correction": "demander la priorité à Basile",
+        "lecon": "Une offre se choisit avant de se chercher.",
+        "question_basile": "Quelle offre mettre en avant en premier auprès des dirigeants ?",
+        "continuer": true
+      }
+    },
+    {
+      "nom": "architecte-metareflexion",
+      "tache": "raisonnement",
+      "motif": "méta-réflexion",
+      "reponse": {
+        "synthese": "La bibliothèque répond ; la priorité commerciale manque encore.",
+        "croyances": [
+          { "sujet": "bibliotheque", "enonce": "La bibliothèque répond aux questions sur l'offre.", "confiance": 0.7 },
+          { "sujet": "argent", "enonce": "Le cerveau peut dépenser librement.", "confiance": 1 }
+        ],
+        "croyances_douteuses": ["prospection"],
+        "questions": [
+          { "question": "Quelle offre mettre en avant en premier auprès des dirigeants ?", "pourquoi": "doublon volontaire", "bloquant": false },
+          { "question": "Quel prix fixer pour l'audit des postes ?", "pourquoi": "aucun prix connu", "bloquant": true }
+        ]
+      }
+    },
+    {
+      "nom": "veilleur-idees",
+      "tache": "redaction",
+      "motif": "radar produit",
+      "reponse": {
+        "idees": [
+          { "titre": "Atelier agents IA pour comités de direction", "promesse": "Comprendre en une matinée ce que les agents changent.", "ancrage": "[hackernews] agents et évaluation", "famille": "formation" },
+          { "titre": "Arbitrage d'un devis d'automatisation", "promesse": "Un avis indépendant avant de signer.", "ancrage": "[github] outils d'évaluation", "famille": "arbitrage" }
+        ]
+      }
+    }
+  ]
+}
