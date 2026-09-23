@@ -9,12 +9,45 @@
         "but_vise": "Rendre l'offre de formation lisible pour un dirigeant",
         "but_immediat": "Relever l'état de la maison et retrouver ce que la bibliothèque dit de l'offre",
         "pertinence": "Sans offre claire, aucune vente possible",
-        "incertitudes": ["la bibliothèque couvre-t-elle l'offre de formation ?"],
+        "incertitudes": [
+          "la bibliothèque couvre-t-elle l'offre de formation ?"
+        ],
         "sous_taches": [
-          { "action": "mesurer", "arguments": {}, "attendu": "un relevé chiffré", "probabilite_echec": 0.05, "detection": "résumé vide" },
-          { "action": "chercher", "arguments": { "question": "offre de formation pour les dirigeants" }, "attendu": "au moins un passage", "probabilite_echec": 0.2, "detection": "zéro passage" },
-          { "action": "envoyer_email", "arguments": { "a": "prospect@exemple.invalid" }, "attendu": "—", "probabilite_echec": 0.9, "detection": "—" },
-          { "action": "ecrire_note", "arguments": { "titre": "fuite", "texte": "postgres://fictif:faux@exemple.invalid/base" }, "attendu": "—", "probabilite_echec": 0.9, "detection": "—" }
+          {
+            "action": "mesurer",
+            "arguments": {},
+            "attendu": "un relevé chiffré",
+            "probabilite_echec": 0.05,
+            "detection": "résumé vide"
+          },
+          {
+            "action": "chercher",
+            "arguments": {
+              "question": "offre de formation pour les dirigeants"
+            },
+            "attendu": "au moins un passage",
+            "probabilite_echec": 0.2,
+            "detection": "zéro passage"
+          },
+          {
+            "action": "envoyer_email",
+            "arguments": {
+              "a": "prospect@exemple.invalid"
+            },
+            "attendu": "—",
+            "probabilite_echec": 0.9,
+            "detection": "—"
+          },
+          {
+            "action": "ecrire_note",
+            "arguments": {
+              "titre": "fuite",
+              "texte": "postgres://fictif:faux@exemple.invalid/base"
+            },
+            "attendu": "—",
+            "probabilite_echec": 0.9,
+            "detection": "—"
+          }
         ]
       }
     },
@@ -23,8 +56,11 @@
       "tache": "raisonnement",
       "motif": "Tu évalues la sous-tâche",
       "reponse": {
-        "reussie": true, "ecart": "aucun", "cause": "la maison ne sait pas quelle offre pousser en premier",
-        "type_correction": "demande_donnees", "correction": "demander la priorité à Basile",
+        "reussie": true,
+        "ecart": "aucun",
+        "cause": "la maison ne sait pas quelle offre pousser en premier",
+        "type_correction": "demande_donnees",
+        "correction": "demander la priorité à Basile",
         "lecon": "Une offre se choisit avant de se chercher.",
         "question_basile": "Quelle offre mettre en avant en premier auprès des dirigeants ?",
         "continuer": true
@@ -37,13 +73,31 @@
       "reponse": {
         "synthese": "La bibliothèque répond ; la priorité commerciale manque encore.",
         "croyances": [
-          { "sujet": "bibliotheque", "enonce": "La bibliothèque répond aux questions sur l'offre.", "confiance": 0.7 },
-          { "sujet": "argent", "enonce": "Le cerveau peut dépenser librement.", "confiance": 1 }
+          {
+            "sujet": "bibliotheque",
+            "enonce": "La bibliothèque répond aux questions sur l'offre.",
+            "confiance": 0.7
+          },
+          {
+            "sujet": "argent",
+            "enonce": "Le cerveau peut dépenser librement.",
+            "confiance": 1
+          }
         ],
-        "croyances_douteuses": ["prospection"],
+        "croyances_douteuses": [
+          "prospection"
+        ],
         "questions": [
-          { "question": "Quelle offre mettre en avant en premier auprès des dirigeants ?", "pourquoi": "doublon volontaire", "bloquant": false },
-          { "question": "Quel prix fixer pour l'audit des postes ?", "pourquoi": "aucun prix connu", "bloquant": true }
+          {
+            "question": "Quelle offre mettre en avant en premier auprès des dirigeants ?",
+            "pourquoi": "doublon volontaire",
+            "bloquant": false
+          },
+          {
+            "question": "Quel prix fixer pour l'audit des postes ?",
+            "pourquoi": "aucun prix connu",
+            "bloquant": true
+          }
         ]
       }
     },
@@ -53,9 +107,236 @@
       "motif": "radar produit",
       "reponse": {
         "idees": [
-          { "titre": "Atelier agents IA pour comités de direction", "promesse": "Comprendre en une matinée ce que les agents changent.", "ancrage": "[hackernews] agents et évaluation", "famille": "formation" },
-          { "titre": "Arbitrage d'un devis d'automatisation", "promesse": "Un avis indépendant avant de signer.", "ancrage": "[github] outils d'évaluation", "famille": "arbitrage" }
+          {
+            "titre": "Atelier agents IA pour comités de direction",
+            "promesse": "Comprendre en une matinée ce que les agents changent.",
+            "ancrage": "[hackernews] agents et évaluation",
+            "famille": "formation"
+          },
+          {
+            "titre": "Arbitrage d'un devis d'automatisation",
+            "promesse": "Un avis indépendant avant de signer.",
+            "ancrage": "[github] outils d'évaluation",
+            "famille": "arbitrage"
+          }
         ]
+      }
+    },
+    {
+      "nom": "atelier-brief-livre",
+      "tache": "extraction",
+      "motif": "Tu es l'atelier de rAIme",
+      "si_user": "atelier en ligne de rAIme",
+      "reponse": {
+        "nom": "atelier-agents",
+        "produit": "Atelier en ligne sur les agents IA",
+        "cible": "dirigeants",
+        "prix": {
+          "montant": 49,
+          "devise": "EUR"
+        },
+        "vendeur": null,
+        "couleurs": null,
+        "nature": "service",
+        "maison": "raime"
+      }
+    },
+    {
+      "nom": "atelier-brief-voitures",
+      "tache": "extraction",
+      "motif": "Tu es l'atelier de rAIme",
+      "si_user": "voitures",
+      "reponse": {
+        "nom": "exemplia-occasion",
+        "produit": "Voitures électriques d'occasion Exemplia",
+        "cible": null,
+        "prix": {
+          "montant": 15000,
+          "devise": "EUR"
+        },
+        "vendeur": {
+          "raison_sociale": "Exemplia Auto SAS",
+          "siren": "000000000",
+          "adresse": "1 rue Fictive",
+          "email": "ventes@exemplia.invalid"
+        },
+        "couleurs": null,
+        "nature": "physique",
+        "maison": "client"
+      }
+    },
+    {
+      "nom": "atelier-brief-bougies",
+      "tache": "extraction",
+      "motif": "Tu es l'atelier de rAIme",
+      "si_user": "bougies",
+      "reponse": {
+        "nom": "bougies",
+        "produit": "Bougies artisanales",
+        "cible": null,
+        "prix": {
+          "montant": 24,
+          "devise": "EUR"
+        },
+        "vendeur": null,
+        "couleurs": [
+          "#2f4f4f",
+          "#e0b36a"
+        ],
+        "nature": "physique",
+        "maison": "client"
+      }
+    },
+    {
+      "nom": "atelier-contenu-corrige",
+      "tache": "redaction",
+      "motif": "Tu rédiges le site d'une offre",
+      "si_user": "PREMIÈRE VERSION A ÉTÉ REFUSÉE",
+      "reponse": {
+        "accroche": "Un savoir-faire à portée de main",
+        "sous_titre": "Une offre claire, pensée pour vous, prête dès aujourd'hui.",
+        "pour_qui": [
+          "Les particuliers qui veulent un produit soigné",
+          "Les entreprises qui cherchent un partenaire fiable",
+          "Les curieux qui aiment découvrir"
+        ],
+        "ce_que_vous_recevez": [
+          "Un produit préparé avec soin",
+          "Un accompagnement par e-mail",
+          "Des conseils d'utilisation simples"
+        ],
+        "comment_commencer": [
+          "Choisissez l'offre",
+          "Envoyez votre demande ou réglez en ligne",
+          "Recevez la réponse par e-mail"
+        ],
+        "offre": {
+          "titre": "L'offre complète",
+          "description": "Tout ce qu'il faut pour bien démarrer. Chaque demande reçoit une réponse personnelle."
+        },
+        "questions": [
+          {
+            "q": "Est-ce que je peux poser une question avant de commander ?",
+            "r": "Oui, le formulaire de contact est là pour cela."
+          },
+          {
+            "q": "Comment se passe le paiement ?",
+            "r": "Le paiement se fait sur la page sécurisée de Stripe, ou sur devis."
+          },
+          {
+            "q": "Quand vais-je recevoir ma réponse ?",
+            "r": "La réponse arrive par e-mail, au plus vite."
+          },
+          {
+            "q": "À qui s'adresse cette offre ?",
+            "r": "Aux particuliers comme aux entreprises."
+          }
+        ],
+        "merci": {
+          "titre": "Merci pour votre confiance.",
+          "texte": "Votre demande est bien arrivée. La suite vous parvient par e-mail."
+        }
+      }
+    },
+    {
+      "nom": "atelier-contenu-fautif",
+      "tache": "redaction",
+      "motif": "Tu rédiges le site d'une offre",
+      "si_user": "fautive",
+      "reponse": {
+        "accroche": "Je vous propose le meilleur prix",
+        "sous_titre": "Livraison en 48 heures, sans aucun frais.",
+        "pour_qui": [
+          "Les particuliers qui veulent un produit soigné",
+          "Les entreprises qui cherchent un partenaire fiable",
+          "Les curieux qui aiment découvrir"
+        ],
+        "ce_que_vous_recevez": [
+          "Un produit préparé avec soin",
+          "Un accompagnement par e-mail",
+          "Des conseils d'utilisation simples"
+        ],
+        "comment_commencer": [
+          "Choisissez l'offre",
+          "Envoyez votre demande ou réglez en ligne",
+          "Recevez la réponse par e-mail"
+        ],
+        "offre": {
+          "titre": "L'offre complète",
+          "description": "Tout ce qu'il faut pour bien démarrer. Chaque demande reçoit une réponse personnelle."
+        },
+        "questions": [
+          {
+            "q": "Est-ce que je peux poser une question avant de commander ?",
+            "r": "Oui, le formulaire de contact est là pour cela."
+          },
+          {
+            "q": "Comment se passe le paiement ?",
+            "r": "Le paiement se fait sur la page sécurisée de Stripe, ou sur devis."
+          },
+          {
+            "q": "Quand vais-je recevoir ma réponse ?",
+            "r": "La réponse arrive par e-mail, au plus vite."
+          },
+          {
+            "q": "À qui s'adresse cette offre ?",
+            "r": "Aux particuliers comme aux entreprises."
+          }
+        ],
+        "merci": {
+          "titre": "Merci pour votre confiance.",
+          "texte": "Votre demande est bien arrivée. La suite vous parvient par e-mail."
+        }
+      }
+    },
+    {
+      "nom": "atelier-contenu",
+      "tache": "redaction",
+      "motif": "Tu rédiges le site d'une offre",
+      "reponse": {
+        "accroche": "Un savoir-faire à portée de main",
+        "sous_titre": "Une offre claire, pensée pour vous, prête dès aujourd'hui.",
+        "pour_qui": [
+          "Les particuliers qui veulent un produit soigné",
+          "Les entreprises qui cherchent un partenaire fiable",
+          "Les curieux qui aiment découvrir"
+        ],
+        "ce_que_vous_recevez": [
+          "Un produit préparé avec soin",
+          "Un accompagnement par e-mail",
+          "Des conseils d'utilisation simples"
+        ],
+        "comment_commencer": [
+          "Choisissez l'offre",
+          "Envoyez votre demande ou réglez en ligne",
+          "Recevez la réponse par e-mail"
+        ],
+        "offre": {
+          "titre": "L'offre complète",
+          "description": "Tout ce qu'il faut pour bien démarrer. Chaque demande reçoit une réponse personnelle."
+        },
+        "questions": [
+          {
+            "q": "Est-ce que je peux poser une question avant de commander ?",
+            "r": "Oui, le formulaire de contact est là pour cela."
+          },
+          {
+            "q": "Comment se passe le paiement ?",
+            "r": "Le paiement se fait sur la page sécurisée de Stripe, ou sur devis."
+          },
+          {
+            "q": "Quand vais-je recevoir ma réponse ?",
+            "r": "La réponse arrive par e-mail, au plus vite."
+          },
+          {
+            "q": "À qui s'adresse cette offre ?",
+            "r": "Aux particuliers comme aux entreprises."
+          }
+        ],
+        "merci": {
+          "titre": "Merci pour votre confiance.",
+          "texte": "Votre demande est bien arrivée. La suite vous parvient par e-mail."
+        }
       }
     }
   ]

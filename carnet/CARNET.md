@@ -68,3 +68,18 @@ Format d'une entrée :
 - Évaluation : trois défauts trouvés avant tout serveur. ① Dans un `if`, bash ignore `set -e` à l'intérieur des fonctions : un `docker build` raté serait passé sans bruit. ② Au premier déploiement, aucune version précédente : un échec aurait écrasé le cerveau sans copie. ③ `rsync` n'est pas sûr d'être présent sur le serveur.
 - Correction : ① chaque étape rend son échec explicite ; ② la porte photographie le cerveau en service (« initiale ») avant d'y toucher ; ③ `tar` à la place de `rsync`. Vérifié par mutation : le retour en arrière coupé, deux tests tombent.
 - Leçon : un test qui passe du premier coup se vérifie en cassant exprès ce qu'il protège.
+
+## 2026-09-24 — chantier 2 — fusion
+- Action : pull request n° 2 fusionnée (CI verte, résumé conforme, « ok » de Basile).
+- Résultat : la « Livraison » a tourné sur `main` : banc vert, envoi sauté avec un avertissement (porte pas encore installée).
+- Évaluation : conforme au comportement voulu ; le critère « en ligne toute seule » attend l'installation de `porte/INSTALLER.md`.
+- Correction : aucune.
+- Leçon : une étape qui dépend d'une clé absente doit s'arrêter en vert avec un avertissement, sinon chaque fusion rougit pour rien.
+
+## 2026-09-24 — chantier 3 — l'atelier, hors ligne
+- Action : `atelier/` (brief, contenu, site, Stripe, contrôles) et 19 tests sur trois phrases fictives, modèle et Stripe factices.
+- Résultat : trois services qui passent les huit contrôles ; 84 tests sur 84 pour tout le banc.
+- Évaluation : les captures d'écran ont montré deux défauts que les tests ne voyaient pas : un fond qui s'arrête au premier écran, un prix éloigné de son bouton. Et le texte vérifié par la porte aurait échoué sur une apostrophe (le HTML la transforme).
+- Correction : fond sans `fixed`, prix collé au bouton, menu allégé sur téléphone ; le texte vérifié s'arrête avant tout caractère transformé.
+- Leçon : un contrôle par code juge le fond, une capture juge la forme ; il faut les deux avant de dire « prêt ».
+- Règle posée : le compte Stripe de rAIme n'encaisse que pour rAIme, ou en mode test pour une démonstration. Pour un client, le paiement attend son propre compte.
