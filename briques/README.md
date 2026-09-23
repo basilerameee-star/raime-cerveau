@@ -14,6 +14,16 @@
 | **Hébergement** | `hebergement/exemple_voyage.txt` | voyage.raime.fr, cockpit.raime.fr, n8n.raime.fr | un service = un conteneur dans `docker-compose.override.yml` + un bloc Caddy `<nom>.raime.fr { reverse_proxy <nom>:<port> }` ; Caddy obtient le certificat tout seul |
 | Sauvegardes | (serveur) | 23/09/2026 | chaque nuit : base chiffrée vers Cloudflare R2 + seconde copie sur le serveur |
 
+## Construites, en attente de leur première mise en service
+
+Elles passent leurs tests au banc d'essai ; elles entreront au registre ci-dessus après leur premier service réel.
+
+| Brique | Fichiers | État | Règle d'usage |
+|---|---|---|---|
+| **Atelier** (une phrase → un site vendable) | `atelier/` | testé (3 phrases fictives, 8 contrôles) ; attend la porte et `STRIPE_CLE_TEST` | reprend les briques ci-dessus ; sans prix ou sans vendeur, « Demander un devis » ; le Stripe de rAIme n'encaisse que pour rAIme ou en test |
+| **Porte de déploiement** | `porte/porte.sh`, `.github/workflows/deployer.yml` | testée à blanc (14 cas) ; attend `porte/INSTALLER.md` | un service = `services/<nom>/` (Dockerfile + `service.conf`) ; vérification et retour arrière automatiques |
+| **Visuels de publication** | `agents/publiciste.js` (`visuelSvg`) | testés | image fixe sur la palette rose, texte seul, aucun visage |
+
 ## La voix, pour tout texte public
 
 Français courant, **aucun « je »**, **aucune tournure négative**, peu de jargon. Le client d'abord : est-ce pour moi, qu'est-ce que je reçois, comment commencer. **Aucun prix inventé**, **aucune mention du CPF**.

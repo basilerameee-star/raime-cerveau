@@ -146,3 +146,17 @@ Format d'une entrée :
 - Évaluation : l'adresse postale de rAIme est « communiquée sur demande » dans les mentions légales : elle manque aux dossiers qui l'exigent ; de même le téléphone, le CV, le tarif journalier, l'attestation d'assurance.
 - Correction : ces champs sont listés comme manquants dans chaque dossier et en tête du lot, jamais remplis au hasard.
 - Leçon : l'exécution d'un lot (formulaires, e-mails) demande le « ok » de CE lot, présenté avec sa balance : l'accord général de la nuit ne le remplace pas.
+
+## 2026-09-24 — chantier 4 bis — fusion
+- Action : pull request n° 7 fusionnée (CI verte).
+- Résultat : la boucle cartographiera 40 portes par jour dès le prochain déploiement.
+- Évaluation : conforme ; le critère (un lot préparé, présenté, confirmé, exécuté) attend la production et le « ok » du premier lot.
+- Correction : aucune.
+- Leçon : —
+
+## 2026-09-24 — chantier 6 — documenter
+- Action : `ARCHITECTURE.md`, `RUNBOOK.md` ; mises à jour de `README.md`, `briques/README.md`, des compétences `agent` et `evolution`.
+- Résultat : la compétence `agent` décrivait encore un déploiement par `scp` et une fonction `appeler()` qui n'existe pas dans `lib.js` ; la requête de vérification lisait `started_at`, colonne absente d'`agent_runs` (c'est `created_at`).
+- Évaluation : trois erreurs de documentation antérieures à cette nuit, trouvées en relisant le code.
+- Correction : exemples alignés sur `askJson` et `created_at` ; déploiement par pull request, banc et porte ; `reflexif` retiré des agents « endormis » (il a son rythme).
+- Leçon : une documentation se relit contre le code, jamais contre la mémoire.
