@@ -99,7 +99,48 @@ async function arxiv() {
   });
 }
 
-const SOURCES = { hackernews, github, huggingface, arxiv };
+// ── ⑤ Les figures de l'IA, par Google Actualités ─────────────────────────────
+// Repris du flux « Vigie · Radar personnalités IA » : ce que disent et font trente
+// personnes dont les choix techniques finissent par devenir les nôtres.
+const FIGURES = [
+  'Geoffrey Hinton', 'Yoshua Bengio', 'Yann LeCun', 'Jürgen Schmidhuber', 'Andrew Ng', 'Fei-Fei Li',
+  'Ian Goodfellow', 'Andrej Karpathy', 'François Chollet', 'Demis Hassabis', 'Ilya Sutskever', 'Jeff Dean',
+  'Sam Altman', 'Dario Amodei', 'Mira Murati', 'Jim Fan',
+  'Stuart Russell', 'Paul Christiano', 'Eliezer Yudkowsky', 'Dan Hendrycks', 'Chris Olah',
+  'Jan Leike', 'Helen Toner', 'Leopold Aschenbrenner', 'Daniel Kokotajlo',
+  'Timnit Gebru', 'Margaret Mitchell', 'Gary Marcus', 'Emily Bender', 'Meredith Whittaker',
+];
+
+async function personnalites() {
+  const propre = (s) => (s || '').replace(/<!\[CDATA\[|\]\]>/g, '').replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&').replace(/&#0?39;|&apos;/g, "'").replace(/&quot;/g, '"')
+    .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ')
+    .replace(/&#(\d+);/g, (m, n) => String.fromCharCode(+n)).trim();
+  const sortie = [];
+  for (const qui of FIGURES) {
+    const q = encodeURIComponent(`"${qui}" (AI OR "artificial intelligence" OR "intelligence artificielle")`);
+    let xml;
+    try {
+      xml = await texte(`https://news.google.com/rss/search?q=${q}&hl=fr&gl=FR&ceid=FR:fr`, H('application/rss+xml'));
+    } catch { continue; }
+    const items = xml.split(/<item[\s>]/i).slice(1, 3);   // deux articles par personne, au plus
+    for (const c of items) {
+      const titre = propre((c.match(/<title[^>]*>([\s\S]*?)<\/title>/i) || [])[1]);
+      const lien = propre((c.match(/<link[^>]*>([\s\S]*?)<\/link>/i) || [])[1]);
+      const date = (c.match(/<pubDate[^>]*>([\s\S]*?)<\/pubDate>/i) || [])[1];
+      if (!titre || !lien) continue;
+      const age = date ? Date.now() - new Date(date.trim()).getTime() : 0;
+      if (age > 4 * JOUR) continue;
+      sortie.push({
+        source: 'personnalites', titre: `${qui} — ${titre}`, lien,
+        detail: qui, corps: `${qui} ${titre}`,
+      });
+    }
+  }
+  return sortie;
+}
+
+const SOURCES = { hackernews, github, huggingface, arxiv, personnalites };
 
 async function schema(brain) {
   await brain.query(`
@@ -116,6 +157,51 @@ async function schema(brain) {
   await brain.query('CREATE INDEX IF NOT EXISTS veille_date ON veille(vu_le DESC)');
 }
 
+// L'actualité devient une offre : deux à quatre idées vendables par semaine, ancrées
+// sur ce que la veille a réellement rapporté. Rien n'est promis à un client : ce sont
+// des pistes, écrites au journal, que Basile garde ou jette.
+async function idees(brain) {
+  await brain.query(`
+    CREATE TABLE IF NOT EXISTS idees_offres (
+      id bigserial PRIMARY KEY, titre text NOT NULL, promesse text, ancrage text,
+      famille text, cree_le timestamptz NOT NULL DEFAULT now())`);
+  const { rows: [recent] } = await brain.query(
+    `SELECT max(cree_le) AS le FROM idees_offres`);
+  if (recent?.le && Date.now() - new Date(recent.le).getTime() < 6 * JOUR) return null;
+
+  const { rows: sujets } = await brain.query(
+    `SELECT titre, source FROM veille WHERE vu_le > now() - interval '7 days'
+     ORDER BY score DESC LIMIT 25`);
+  if (sujets.length < 5) return null;
+
+  const { askJson } = await import('./lib.js');
+  const r = await askJson({
+    task: 'redaction',
+    system: 'Tu es le radar produit de rAIme, conseil en intelligence artificielle : formation, ' +
+            'audit des postes, arbitrage des propositions reçues, automatisation. À partir de la ' +
+            'veille de la semaine, propose 2 à 4 offres vendables dès maintenant à des entreprises ' +
+            'françaises. Chaque idée : un titre court, une promesse en une phrase, la ligne de veille ' +
+            'qui l’ancre, et la famille parmi formation, audit, arbitrage, automatisation. ' +
+            'Réponds en JSON : {"idees":[{"titre":"","promesse":"","ancrage":"","famille":""}]}',
+    user: sujets.map((s) => `- [${s.source}] ${s.titre}`).join('\n'),
+    maxTokens: 1200,
+  });
+  const liste = (r.data?.idees || []).slice(0, 4);
+  for (const i of liste) {
+    await brain.query(
+      `INSERT INTO idees_offres(titre, promesse, ancrage, famille) VALUES($1,$2,$3,$4)`,
+      [String(i.titre || '').slice(0, 200), String(i.promesse || '').slice(0, 500),
+       String(i.ancrage || '').slice(0, 300), String(i.famille || '').slice(0, 40)]);
+  }
+  if (liste.length) {
+    await brain.query(
+      `INSERT INTO journal(acteur, changement, motif) VALUES($1,$2,$3)`,
+      ['veilleur', `${liste.length} idée(s) d'offre tirées de la veille`,
+       liste.map((i) => `${i.titre} (${i.famille})`).join(' · ')]);
+  }
+  return liste;
+}
+
 export async function veiller({ brain, sources = Object.keys(SOURCES) }) {
   await schema(brain);
   const retenus = [], pannes = [];
@@ -124,7 +210,8 @@ export async function veiller({ brain, sources = Object.keys(SOURCES) }) {
     try {
       const items = await SOURCES[nom]();
       for (const it of items) {
-        const s = note(`${it.titre} ${it.corps}`);
+        // Pour les figures de l'IA, c'est le nom qui fait la pertinence, pas les mots du titre.
+        const s = note(`${it.titre} ${it.corps}`) + (it.source === 'personnalites' ? 4 : 0);
         if (s < SEUIL || !it.lien) continue;
         const r = await brain.query(
           `INSERT INTO veille(source, titre, lien, detail, score) VALUES($1,$2,$3,$4,$5)
@@ -155,6 +242,10 @@ export async function veiller({ brain, sources = Object.keys(SOURCES) }) {
     }
     await ranger({ brain, racine });
   }
+
+  // Une fois par semaine : ce que la veille suggère de vendre. Repris du flux
+  // « Radar · Veille → produit ». Un seul appel de modèle, quelques millièmes d'euro.
+  try { await idees(brain); } catch (e) { pannes.push(`idées : ${e.message}`); }
 
   const parSource = {};
   retenus.forEach((r) => { parSource[r.source] = (parSource[r.source] || 0) + 1; });

@@ -55,6 +55,23 @@ async function performances(brain, n8n) {
     note: "Aucun agent ne dispose encore d'une boucle de retour client. Toute conclusion sur la QUALITÉ est donc une hypothèse, pas une mesure."
   };
 
+  // L'etat du marche, repris du flux « Athena » qui tournait chaque soir : sans lui, le
+  // Reflexif juge les agents sans savoir si la reserve de prospects se vide ou se remplit.
+  try {
+    const { rows: m } = await n8n.query(`
+      SELECT (SELECT count(*) FROM prospects)::int AS prospects,
+             (SELECT count(*) FROM prospects WHERE status = 'nouveau')::int AS reserve,
+             (SELECT count(*) FROM prospects WHERE contact_email IS NOT NULL)::int AS avec_email,
+             (SELECT count(*) FROM prospects WHERE status = 'client')::int AS clients,
+             (SELECT count(*) FROM veille_ia WHERE captured_at > now() - interval '7 days')::int AS veille_7j,
+             (SELECT count(*) FROM system_learnings WHERE resolved = false)::int AS decouvertes_ouvertes,
+             (SELECT string_agg(segment || ' (' || c || ')', ', ')
+                FROM (SELECT segment, count(*) c FROM prospects GROUP BY segment ORDER BY c DESC LIMIT 6) t) AS segments`);
+    p.marche = m[0];
+  } catch (e) {
+    p.marche = { indisponible: e.message.slice(0, 120) };
+  }
+
   // Versions de prompts en circulation
   const { rows: v } = await brain.query(`
     SELECT agent, version, active, created_at::date AS le, motif
