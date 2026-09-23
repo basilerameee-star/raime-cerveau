@@ -132,3 +132,17 @@ Format d'une entrée :
 - Évaluation : le piège prévu (un dépôt très suivi qui fait « curl … | sh ») est refusé par les règles de l'installeur, reprises telles quelles.
 - Correction : aucune.
 - Leçon : réutiliser une garde existante vaut mieux qu'en écrire une seconde qui divergera.
+
+## 2026-09-24 — chantier 4 — fusion de rechercher_solution
+- Action : pull request n° 6 fusionnée (CI verte).
+- Résultat : l'architecte a huit actions ; SearXNG attend la session locale (`porte/INSTALLER.md`, étape 8).
+- Évaluation : conforme.
+- Correction : aucune.
+- Leçon : —
+
+## 2026-09-24 — chantier 4 bis — les portes d'entrée, jusqu'au lot
+- Action : `agents/portes.js` (importer, cartographier, peser, préparer, présenter un lot), 10 tests, passage quotidien dans la boucle.
+- Résultat : 127 tests sur 127. Un lot se présente dès que 30 portes sont prêtes, un seul à la fois.
+- Évaluation : l'adresse postale de rAIme est « communiquée sur demande » dans les mentions légales : elle manque aux dossiers qui l'exigent ; de même le téléphone, le CV, le tarif journalier, l'attestation d'assurance.
+- Correction : ces champs sont listés comme manquants dans chaque dossier et en tête du lot, jamais remplis au hasard.
+- Leçon : l'exécution d'un lot (formulaires, e-mails) demande le « ok » de CE lot, présenté avec sa balance : l'accord général de la nuit ne le remplace pas.

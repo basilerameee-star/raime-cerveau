@@ -44,6 +44,9 @@ const RYTHMES = [
   // Quatre API publiques, tri par du code, rangement dans la bibliotheque. Cout : zero.
   { nom: 'veilleur',     module: './veilleur.js',    fn: 'veiller',     toutes: 24 * H, besoinN8n: false },
   { nom: 'prospective',  module: './prospective.js', fn: 'projeter',    toutes: 7 * 24 * H, besoinN8n: false },
+  // Les portes d'entrée (CCI, organismes de formation) : 40 sites lus par jour, robots.txt
+  // respecté ; un lot de 30 portes présenté à Basile quand il est prêt. RIEN n'est envoyé ici.
+  { nom: 'portes',       module: './portes.js',      fn: 'portes',      toutes: 24 * H, besoinN8n: true },
   // La publicité de la semaine suivante : neuf BROUILLONS (LinkedIn, Facebook, Instagram,
   // TikTok), texte et image fixe, relus par le code. Rien n'est publié : aucun compte n'existe.
   { nom: 'publiciste',   module: './publiciste.js',  fn: 'preparerSemaine', toutes: 7 * 24 * H, besoinN8n: false },
