@@ -8,3 +8,11 @@
 node_modules/
 out/
 *.log
+
+# donnees de prospection : dirigeants nommes, telephones, e-mails.
+# Elles restent sur le disque et sur le serveur, jamais dans un depot public (RGPD).
+cibles.json
+cibles_compact.json
+liste74.json
+liste74_compact.json
+bibliotheque/
