@@ -29,12 +29,13 @@ process.env.BIBLIO_ENTREE = BIBLIO;
 // Un test peut déclarer des réponses pour des adresses précises ; tout le reste échoue.
 const reponsesPrevues = [];
 export const requetes = [];
-globalThis.fetch = async (adresse) => {
+// Une réponse peut être une fonction (adresse, options) → corps, ou { statut, corps } pour une erreur.
+globalThis.fetch = async (adresse, options = {}) => {
   const u = String(adresse);
   requetes.push(u);
   const prevue = reponsesPrevues.find((r) => r.motif.test(u));
   if (!prevue) throw new Error(`réseau coupé au banc d'essai : ${u}`);
-  const corps = prevue.corps;
+  const corps = typeof prevue.corps === 'function' ? prevue.corps(u, options) : prevue.corps;
   return {
     ok: true, status: 200, statusText: 'OK',
     json: async () => corps,
