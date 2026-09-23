@@ -17,7 +17,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const ICI = path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'));
-const QUARANTAINE = process.env.INSTALLEUR_QUARANTAINE || path.join(ICI, '..', 'competences-candidates')   // hors du plugin : rien ne se charge par accident;
+// Hors du plugin, volontairement : une compétence en quarantaine ne doit jamais se charger par accident.
+const QUARANTAINE = process.env.INSTALLEUR_QUARANTAINE || path.join(ICI, '..', 'competences-candidates');
 const ENTETES = { 'User-Agent': 'rAIme-installeur/1.0 (+https://raime.fr)', Accept: 'application/vnd.github+json' };
 const TAILLE_MAX = 120_000;
 
