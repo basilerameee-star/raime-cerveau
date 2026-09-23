@@ -30,6 +30,12 @@ Cette phrase gouverne tout le reste : le choix des modèles, la réécriture des
 | `bibliothecaire` | la mémoire longue : range les textes, les retrouve en français, sans appeler personne |
 | `auditeur` · `analyste` · `redacteur` | le métier : corréler, expliquer, écrire |
 | `cordon` · `garde_audit` | les garde-fous de ce qui part vers l'extérieur |
+| `architecte` | l'agent réflexif : buts, croyances, cycle complet ; cherche ses solutions (`rechercheur`) et ouvre des chantiers |
+| `encyclopediste` | le savoir général, depuis Wikipédia en français |
+| `publiciste` | neuf brouillons de publication par semaine — jamais publiés par lui |
+| `portes` | cartographie les CCI et organismes de formation, pèse chaque porte, présente un lot à Basile |
+
+L'**atelier** (`atelier/`) fait d'une phrase un service vendable à `<nom>.raime.fr`.
 
 ## La souveraineté, en quatre couches
 
@@ -43,6 +49,12 @@ Cette phrase gouverne tout le reste : le choix des modèles, la réécriture des
 ## Les compétences (`plugin-cerveau/`)
 
 Un plugin de compétences décrit la maison à qui veut l'aider : la carte du cerveau, comment ajouter un agent, la souveraineté, l'offre, l'argent, l'identité, la bibliothèque, l'évolution. La **Constitution** prime sur toute amélioration automatique.
+
+## Tester, livrer, revenir en arrière
+
+`npm test` fait tourner le banc d'essai (bases fictives, modèle factice, réseau coupé) ; la CI le rejoue sur chaque
+pull request. Chaque fusion sur `main` part en ligne par la porte de déploiement, qui revient seule en arrière si la
+vérification échoue. Détails : [`ARCHITECTURE.md`](ARCHITECTURE.md) et [`RUNBOOK.md`](RUNBOOK.md).
 
 ## Ce que ce dépôt ne contient jamais
 

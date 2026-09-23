@@ -20,15 +20,16 @@ Un cerveau qui ne change jamais est un outil. Un cerveau qui change sans preuve 
 
 Le code du cerveau vit dans un dépôt **Git privé**. Le cerveau y écrit comme un collaborateur :
 
-- une branche par proposition, nommée `auto/<sujet>` ;
-- une pull request qui porte le constat, le changement, la preuve et le retour arrière ;
-- la revue par Basile, puis la fusion.
+- une branche par proposition, nommée `auto/<sujet>` (cerveau) ou `cloud/<sujet>` (session cloud) ;
+- une pull request qui commence par « ## Pour Basile » (cinq lignes : ce qui change en ligne, ce qu'il pourra vendre, comment revenir en arrière) puis porte le constat, le changement, la preuve et le retour arrière ;
+- le banc d'essai (`npm test`) juge dans la CI ; une pull request rouge ne se fusionne jamais ;
+- la confirmation de Basile, puis la fusion.
 
 **Se fusionne seul** (le cerveau décide) : notes de la base de connaissance, seeds de données publiques, corrections de prix venues du catalogue, documentation, ajout d'essais.
 
 **Attend Basile** (toujours) : tout ce qui écrit vers l'extérieur, tout ce qui touche l'argent, un prix, un texte public, un secret, un fournisseur, et toute modification de `boucle.js`, de la Constitution ou de cette compétence.
 
-Après fusion, le déploiement suit la compétence `agent` : envoi du fichier, essai isolé, redémarrage si la boucle a changé, vérification dans `agent_runs`.
+Après fusion, la livraison est automatique : l'action « Livraison » envoie `main` par la porte de déploiement, qui vérifie et revient seule en arrière si la vérification échoue (`RUNBOOK.md`). Ce que le cerveau ne peut pas coder lui-même, il le demande par une issue `chantier` (compétence `architecte`).
 
 ## Mesurer la performance
 

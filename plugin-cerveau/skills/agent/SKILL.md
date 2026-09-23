@@ -11,11 +11,11 @@ Un agent rAIme est un module JavaScript qui fait **une** chose, laisse une trace
 
 ```js
 // agents/exemple.js
-import { db, appeler, tracer } from './lib.js';
+import { db, askJson, logRun } from './lib.js';
 
 export async function exemple({ brain, n8n }) {
   const { rows } = await brain.query(`SELECT ... LIMIT 50`);
-  const reponse = await appeler('extraction', [{ role: 'user', content: '...' }]);
+  const r = await askJson({ task: 'extraction', system: '...', user: '...' });
   await brain.query(`INSERT INTO journal(acteur, changement, motif) VALUES($1,$2,$3)`,
     ['exemple', 'ce qui a changé', 'pourquoi']);
 }
@@ -35,33 +35,38 @@ Dans `agents/boucle.js`, table `RYTHMES` :
 
 Règle de rythme : plus la donnée bouge vite, plus le passage est fréquent. Une heure pour ce qui part vers un client, six heures pour la veille, une semaine pour la prospective.
 
-## Déployer
+## Tester, puis déployer
+
+1. **Un test au banc d'essai** (`tests/banc/<agent>.test.mjs`) : bases fictives, modèle factice (`MODELE_FACTICE=1`,
+   réponses dans `tests/fixtures/modele_factice.json`), réseau coupé. `npm test` doit passer.
+2. **Une pull request** qui commence par « ## Pour Basile » ; la CI la juge, Basile confirme.
+3. **La fusion déploie** : l'action « Livraison » envoie le code par la porte (`porte/porte.sh`), qui vérifie que le
+   cerveau se charge et revient seule en arrière sinon. Voir `RUNBOOK.md`.
+
+Essai isolé sur le serveur, une fois déployé :
 
 ```bash
-# 1. le fichier part sur le serveur (le dossier est monté en direct dans le conteneur)
-scp -i ~/.ssh/raime_vps agents/exemple.js root@2.29.6.94:/opt/raime/raime-brain/agents/
-
-# 2. un essai isolé, hors boucle
 ssh -i ~/.ssh/raime_vps root@2.29.6.94 '/opt/raime/raime-brain/run.sh "node agents/exemple.js"'
-
-# 3. si boucle.js a changé, la boucle redémarre ; sinon elle prend le nouveau code au prochain passage
+# si boucle.js a changé :
 ssh -i ~/.ssh/raime_vps root@2.29.6.94 'docker restart raime-boucle && sleep 5 && docker logs --tail 20 raime-boucle'
 ```
 
-`run.sh` lit le mot de passe Postgres dans le conteneur et la clé OpenRouter dans `.env` : **aucun secret ne s'écrit dans le code ni dans un message**.
+Secours sans la porte : `./deploy.sh agents/exemple.js` (dépôt en zone d'attente, essai, retour arrière).
+
+`run.sh` lit le mot de passe Postgres dans le conteneur et les clés dans `.env` : **aucun secret ne s'écrit dans le code ni dans un message**.
 
 ## Vérifier qu'il vit
 
 ```sql
-SELECT agent, count(*), max(started_at) FROM agent_runs
-WHERE started_at > now() - interval '48 hours' GROUP BY 1 ORDER BY 3 DESC;
+SELECT agent, count(*), max(created_at) FROM agent_runs
+WHERE created_at > now() - interval '48 hours' GROUP BY 1 ORDER BY 3 DESC;
 ```
 
 Et la trace des décisions : `SELECT * FROM journal ORDER BY created_at DESC LIMIT 20;`
 
 ## Réveiller un agent endormi
 
-`auditeur`, `analyste`, `annuaire`, `cartographe`, `contradicteur`, `garde_audit`, `mission`, `redacteur`, `reflexif`, `score` existent et attendent un rythme. Avant de réveiller : lancer l'agent une fois à la main, lire ce qu'il écrit, mesurer son coût, puis l'inscrire dans `RYTHMES`.
+`auditeur`, `analyste`, `annuaire`, `cartographe`, `contradicteur`, `garde_audit`, `mission`, `redacteur`, `score` existent et attendent un rythme. Avant de réveiller : lancer l'agent une fois à la main, lire ce qu'il écrit, mesurer son coût, puis l'inscrire dans `RYTHMES`.
 
 ## Garde-fous
 
