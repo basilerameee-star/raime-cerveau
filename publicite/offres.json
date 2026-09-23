@@ -1,0 +1,158 @@
+{
+  "_source": "Phrases publiées sur raime.fr, reprises de briques/site/generateur_parcours.py (NOEUDS) ; livre : briques/README.md et briques/paiement/page_merci_modele.html. Aucun prix de service : le site n'en affiche aucun.",
+  "adresse": "raime.fr",
+  "offres": [
+    {
+      "cle": "pro/formation/dirigeant",
+      "titre": "Dirigeant",
+      "phrase": "Comprenez l'IA en une journée, et fixez le cap de votre entreprise.",
+      "faits": [
+        {
+          "quoi": "Pour qui",
+          "valeur": "Dirigeants, gérants, associés"
+        },
+        {
+          "quoi": "Durée",
+          "valeur": "Une journée, chez vous ou en visio"
+        },
+        {
+          "quoi": "Le résultat",
+          "valeur": "Vos priorités, écrites et datées"
+        }
+      ]
+    },
+    {
+      "cle": "pro/formation/codir",
+      "titre": "Codir",
+      "phrase": "Une journée pour que toute la direction parle le même langage.",
+      "faits": [
+        {
+          "quoi": "Pour qui",
+          "valeur": "Votre comité de direction, jusqu'à 8 personnes"
+        },
+        {
+          "quoi": "Durée",
+          "valeur": "Une journée"
+        },
+        {
+          "quoi": "Le résultat",
+          "valeur": "Un cap commun et des règles claires pour tous"
+        }
+      ]
+    },
+    {
+      "cle": "pro/formation/employes",
+      "titre": "Employés",
+      "phrase": "Une journée pour que vos équipes gagnent du temps dès le lendemain.",
+      "faits": [
+        {
+          "quoi": "Pour qui",
+          "valeur": "Vos équipes, jusqu'à 10 personnes"
+        },
+        {
+          "quoi": "Durée",
+          "valeur": "Une journée, ou plus au forfait, sur leurs vraies tâches"
+        },
+        {
+          "quoi": "Le résultat",
+          "valeur": "Des gestes utilisés dès le jour suivant"
+        }
+      ]
+    },
+    {
+      "cle": "pro/audit",
+      "titre": "Audit de vos postes",
+      "phrase": "Découvrez, poste par poste, où l'IA vous fait gagner du temps, avant d'investir un euro.",
+      "faits": [
+        {
+          "quoi": "Pour qui",
+          "valeur": "Les entreprises qui veulent savoir où l'IA rapporte, de la TPE au groupe"
+        },
+        {
+          "quoi": "Durée",
+          "valeur": "Une à deux semaines"
+        },
+        {
+          "quoi": "Le résultat",
+          "valeur": "Les gains classés et un plan d'action sur 90 jours"
+        }
+      ]
+    },
+    {
+      "cle": "pro/arbitrage",
+      "titre": "Arbitrage",
+      "phrase": "Un prestataire vous propose de l'IA ? Un avis indépendant avant de signer.",
+      "faits": [
+        {
+          "quoi": "Pour qui",
+          "valeur": "Dirigeants qui ont reçu une ou plusieurs offres"
+        },
+        {
+          "quoi": "Durée",
+          "valeur": "Une semaine"
+        },
+        {
+          "quoi": "Le résultat",
+          "valeur": "Le coût réel sur trois ans, et une recommandation claire"
+        }
+      ]
+    },
+    {
+      "cle": "pro/automatisation",
+      "titre": "Automatisation",
+      "phrase": "Confiez vos tâches répétitives à des agents qui travaillent pour vous, jour et nuit.",
+      "faits": [
+        {
+          "quoi": "Pour qui",
+          "valeur": "Les entreprises dont les équipes passent des heures sur des tâches répétitives"
+        },
+        {
+          "quoi": "Durée",
+          "valeur": "De quelques jours à quelques semaines, selon le projet"
+        },
+        {
+          "quoi": "Le résultat",
+          "valeur": "Des agents en service, suivis, et du temps rendu à vos équipes"
+        },
+        {
+          "quoi": "La preuve : les agents qui font tourner rAIme",
+          "valeur": "projets/raime"
+        }
+      ]
+    },
+    {
+      "cle": "particulier",
+      "titre": "Se former à l'IA",
+      "phrase": "Apprenez à vous servir de l'IA au quotidien, pour le plaisir, pour créer, ou pour lancer votre activité.",
+      "faits": [
+        {
+          "quoi": "Pour qui",
+          "valeur": "Les débutants, les curieux, les futurs indépendants"
+        },
+        {
+          "quoi": "Le format",
+          "valeur": "Un accompagnement personnel, avec un formateur"
+        },
+        {
+          "quoi": "Et après",
+          "valeur": "Une plateforme de cours, accès à vie"
+        }
+      ]
+    },
+    {
+      "cle": "livre",
+      "titre": "L'IA pour tous",
+      "phrase": "Un livre pour comprendre l'IA et vous en servir dès aujourd'hui.",
+      "faits": [
+        {
+          "quoi": "Prix",
+          "valeur": "19 €"
+        },
+        {
+          "quoi": "Format",
+          "valeur": "PDF, 44 pages"
+        }
+      ]
+    }
+  ]
+}

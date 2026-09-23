@@ -338,6 +338,105 @@
           "texte": "Votre demande est bien arrivée. La suite vous parvient par e-mail."
         }
       }
+    },
+    {
+      "nom": "publiciste-calendrier",
+      "tache": "redaction",
+      "motif": "calendrier de publications",
+      "reponse": {
+        "publications": [
+          {
+            "reseau": "linkedin",
+            "jour": 1,
+            "offre": "pro/formation/dirigeant",
+            "texte": "Un dirigeant qui comprend l'IA décide plus vite, et mieux. La formation Dirigeant tient en une journée, chez vous ou en visio. Elle part de vos décisions de la semaine et montre où l'IA fait gagner du temps. Vous repartez avec vos priorités, écrites et datées, et un cap clair pour toute l'entreprise. Pour les dirigeants, gérants et associés. Tout commence par un échange : raime.fr #IA #Dirigeants",
+            "visuel": {
+              "titre": "Décider avec l'IA",
+              "ligne": "Une journée pour fixer le cap de votre entreprise"
+            }
+          },
+          {
+            "reseau": "instagram",
+            "jour": 1,
+            "offre": "pro/audit",
+            "texte": "Découvrez, poste par poste, où l'IA vous fait gagner du temps, avant d'investir un euro. L'audit de vos postes dure une à deux semaines et livre les gains classés et un plan d'action sur 90 jours. Lien en bio. #IA #Audit #Entreprise #Productivite",
+            "visuel": {
+              "titre": "Où gagner du temps ?",
+              "ligne": "L'audit de vos postes, poste par poste"
+            }
+          },
+          {
+            "reseau": "facebook",
+            "jour": 2,
+            "offre": "pro/formation/codir",
+            "texte": "Une journée pour que toute la direction parle le même langage. La formation Codir réunit votre comité de direction, jusqu'à 8 personnes, et fixe un cap commun et des règles claires pour tous. Tout commence sur raime.fr #IA #Direction",
+            "visuel": {
+              "titre": "Toute la direction",
+              "ligne": "dans le même sens"
+            }
+          },
+          {
+            "reseau": "linkedin",
+            "jour": 3,
+            "offre": "pro/arbitrage",
+            "texte": "Un prestataire vous propose de l'IA ? Avant de signer, un avis indépendant change la donne. L'arbitrage de rAIme lit l'offre reçue, calcule son coût réel sur trois ans et rend une recommandation claire, en une semaine. Pour les dirigeants qui ont reçu une ou plusieurs offres et veulent choisir en confiance. Le bon prestataire, au bon prix. Détails sur raime.fr #IA #Achats",
+            "visuel": {
+              "titre": "Avant de signer",
+              "ligne": "Un avis indépendant sur l'offre reçue"
+            }
+          },
+          {
+            "reseau": "tiktok",
+            "jour": 3,
+            "offre": "pro/audit",
+            "texte": "Où l'IA vous fait-elle gagner du temps ? Un audit poste par poste répond, avant d'investir un euro. #IA #Audit #Entreprise",
+            "visuel": {
+              "titre": "Poste par poste",
+              "ligne": "Le temps gagné, avant d'investir"
+            }
+          },
+          {
+            "reseau": "instagram",
+            "jour": 4,
+            "offre": "livre",
+            "texte": "Un livre pour comprendre l'IA et vous en servir dès aujourd'hui. L'IA pour tous, 44 pages en PDF, 19 €. Une lecture claire, avec des exercices pour passer à la pratique. Lien en bio. #IA #Livre #Apprendre",
+            "visuel": {
+              "titre": "L'IA pour tous",
+              "ligne": "Le livre pour s'en servir dès aujourd'hui"
+            }
+          },
+          {
+            "reseau": "facebook",
+            "jour": 5,
+            "offre": "pro/formation/employes",
+            "texte": "Une journée pour que vos équipes gagnent du temps dès le lendemain. La formation Employés travaille sur leurs vraies tâches, jusqu'à 10 personnes, pour des gestes utilisés dès le jour suivant. raime.fr #IA #Equipes",
+            "visuel": {
+              "titre": "Du temps gagné",
+              "ligne": "dès le lendemain, pour vos équipes"
+            }
+          },
+          {
+            "reseau": "linkedin",
+            "jour": 5,
+            "offre": "pro/automatisation",
+            "texte": "Vos équipes passent des heures sur des tâches répétitives ? L'automatisation confie ce travail à des agents qui tournent jour et nuit, suivis et mesurés. De quelques jours à quelques semaines selon le projet, pour du temps rendu aux équipes sur ce qui compte vraiment. La preuve : les agents qui font tourner rAIme chaque jour. Parlons de votre cas sur raime.fr #Automatisation #IA",
+            "visuel": {
+              "titre": "L'IA travaille pour vous",
+              "ligne": "Des agents en service, suivis et mesurés"
+            }
+          },
+          {
+            "reseau": "tiktok",
+            "jour": 6,
+            "offre": "pro/formation/dirigeant",
+            "texte": "Comprendre l'IA en une journée et fixer le cap de votre entreprise : la formation Dirigeant. #IA #Dirigeants #Formation",
+            "visuel": {
+              "titre": "Fixer le cap",
+              "ligne": "Une journée pour comprendre l'IA"
+            }
+          }
+        ]
+      }
     }
   ]
 }
