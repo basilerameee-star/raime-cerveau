@@ -21,6 +21,9 @@ const RYTHMES = [
   { nom: 'superviseur',  module: './superviseur.js', fn: 'superviser', toutes: 4 * H,   besoinN8n: true },
   { nom: 'sync',         module: null,               fn: null,          toutes: 12 * H, besoinN8n: false, cmd: 'sync' },
   { nom: 'heraut',       module: './heraut.js',      fn: null,          toutes: 24 * H, besoinN8n: true,  cmd: 'heraut' },
+  // Le reflexif passe chaque jour : il mesure les agents, designe le maillon faible et propose
+  // une version de prompt INACTIVE, jamais activee par lui-meme. Mesure du 2026-09-23 : 0,0028 $.
+  { nom: 'reflexif',     module: './reflexif.js',    fn: 'reflechir',   toutes: 24 * H, besoinN8n: true },
   { nom: 'prospective',  module: './prospective.js', fn: 'projeter',    toutes: 7 * 24 * H, besoinN8n: false },
   // La courbe de prix se construit un releve a la fois. C'est le temps l'ingredient.
   { nom: 'metrologue', module: './metrologue.js', fn: 'mesurer', toutes: 7 * 24 * H, besoinN8n: false,
