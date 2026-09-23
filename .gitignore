@@ -16,3 +16,6 @@ cibles_compact.json
 liste74.json
 liste74_compact.json
 bibliotheque/
+
+# competences rapportees par l installeur : en quarantaine, jamais en service
+competences-candidates/
