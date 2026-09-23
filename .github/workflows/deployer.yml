@@ -1,0 +1,98 @@
+# LA LIVRAISON — chaque fusion sur main part en ligne toute seule, si et seulement si
+# le banc d'essai passe. Le code voyage en archive par la porte de déploiement : une clé
+# qui ne peut lancer qu'un seul script sur le serveur (porte/porte.sh).
+#
+# Secrets attendus (posés par la session locale, voir porte/INSTALLER.md) :
+#   PORTE_CLE         la clé privée de la porte
+#   PORTE_HOTE        utilisateur@adresse du serveur
+#   PORTE_HOTE_CONNU  la ligne known_hosts du serveur (on ne fait confiance à aucune autre)
+# Tant qu'ils manquent, la livraison s'arrête proprement avec un avertissement.
+name: Livraison
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: livraison
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  banc:
+    uses: ./.github/workflows/tests.yml
+
+  deployer:
+    needs: banc
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write   # pour écrire une ligne au carnet si la version revient en arrière
+    env:
+      PORTE_CLE: ${{ secrets.PORTE_CLE }}
+      PORTE_HOTE: ${{ secrets.PORTE_HOTE }}
+      PORTE_HOTE_CONNU: ${{ secrets.PORTE_HOTE_CONNU }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: La porte est-elle prête ?
+        id: porte
+        run: |
+          if [ -z "$PORTE_CLE" ] || [ -z "$PORTE_HOTE" ] || [ -z "$PORTE_HOTE_CONNU" ]; then
+            echo "::warning::Porte de déploiement pas encore installée (secrets PORTE_CLE, PORTE_HOTE, PORTE_HOTE_CONNU). Rien n'est envoyé au serveur."
+            echo "prete=non" >> "$GITHUB_OUTPUT"
+          else
+            echo "prete=oui" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Envoyer la version par la porte
+        id: envoi
+        if: steps.porte.outputs.prete == 'oui'
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$PORTE_CLE" > ~/.ssh/porte && chmod 600 ~/.ssh/porte
+          printf '%s\n' "$PORTE_HOTE_CONNU" > ~/.ssh/known_hosts
+          set +e
+          git archive --format=tar.gz HEAD \
+            | ssh -i ~/.ssh/porte -o BatchMode=yes -o StrictHostKeyChecking=yes \
+                  -o UserKnownHostsFile="$HOME/.ssh/known_hosts" "$PORTE_HOTE" "deployer $GITHUB_SHA" \
+            2>&1 | tee porte.log
+          code=${PIPESTATUS[1]}
+          set -e
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          exit "$code"
+
+      - name: Vérifier depuis l'extérieur
+        if: steps.envoi.outcome == 'success'
+        run: |
+          for conf in services/*/service.conf; do
+            [ -f "$conf" ] || continue
+            nom=$(basename "$(dirname "$conf")")
+            chemin=$(sed -n 's/^chemin=//p' "$conf" | head -n1); contient=$(sed -n 's/^contient=//p' "$conf" | head -n1)
+            if curl -fsS --max-time 20 "https://$nom.raime.fr${chemin:-/}" | grep -qF -- "$contient"; then
+              echo "✓ https://$nom.raime.fr répond ce qu'il doit" | tee -a "$GITHUB_STEP_SUMMARY"
+            else
+              echo "::warning::https://$nom.raime.fr ne répond pas encore de l'extérieur (DNS ?). Le serveur, lui, l'a vérifié."
+            fi
+          done
+
+      - name: Écrire le retour en arrière au carnet
+        if: failure() && steps.envoi.outputs.code != ''
+        run: |
+          {
+            echo
+            echo "## $(date -u +%F) — livraison — échec, retour automatique"
+            echo "- Action : déploiement de ${GITHUB_SHA:0:12} par la porte."
+            echo "- Résultat : code ${{ steps.envoi.outputs.code }} (3 = version précédente remise, 4 = aucune version précédente)."
+            echo "- Évaluation : $(grep -E 'ÉCHEC|RETOUR|REFUS' porte.log | tail -n 2 | sed 's/^[0-9TZ:-]* //' | tr '\n' ' ')"
+            echo "- Correction : aucune version cassée ne reste en ligne ; la cause est à traiter dans une nouvelle pull request."
+            echo "- Leçon : à tirer par la session suivante."
+          } >> carnet/CARNET.md
+          git config user.name "livraison-raime"
+          git config user.email "livraison@raime.invalid"
+          git add carnet/CARNET.md
+          git commit -m "Carnet : retour automatique après l'échec de ${GITHUB_SHA:0:12}"
+          git pull --rebase origin main && git push origin HEAD:main
