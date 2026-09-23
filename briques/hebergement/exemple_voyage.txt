@@ -1,0 +1,17 @@
+voyage.raime.fr {
+  reverse_proxy voyage:8080
+}
+---
+/opt/raime/docker-compose.override.yml:2:  voyage:
+/opt/raime/docker-compose.override.yml-3-    build: ./voyage
+/opt/raime/docker-compose.override.yml-4-    restart: always
+/opt/raime/docker-compose.override.yml-5-    depends_on: [postgres]
+/opt/raime/docker-compose.override.yml-6-    expose:
+/opt/raime/docker-compose.override.yml-7-      - "8080"
+/opt/raime/docker-compose.override.yml-8-    environment:
+/opt/raime/docker-compose.override.yml-9-      PORT: "8080"
+/opt/raime/docker-compose.override.yml-10-      ORIGIN_IATA: CDG
+/opt/raime/docker-compose.override.yml-11-      CURRENCY: EUR
+/opt/raime/docker-compose.override.yml-12-      AMADEUS_CLIENT_ID: ${AMADEUS_CLIENT_ID:-}
+/opt/raime/docker-compose.override.yml-13-      AMADEUS_CLIENT_SECRET: ${AMADEUS_CLIENT_SECRET:-}
+/opt/raime/docker-compose.override.yml-14-      AMADEUS_ENV: ${AMADEUS_ENV:-test}
