@@ -20,7 +20,10 @@ const RYTHMES = [
   { nom: 'reconciliateur', module: './reconciliateur.js', fn: 'reconcilier', toutes: 2 * H, besoinN8n: true },
   { nom: 'superviseur',  module: './superviseur.js', fn: 'superviser', toutes: 4 * H,   besoinN8n: true },
   { nom: 'sync',         module: null,               fn: null,          toutes: 12 * H, besoinN8n: false, cmd: 'sync' },
-  { nom: 'heraut',       module: './heraut.js',      fn: null,          toutes: 24 * H, besoinN8n: true,  cmd: 'heraut' },
+  // EN PAUSE depuis le 2026-09-23, sur la parole de Basile : « on ne s'est pas mis d'accord
+  // sur l'e-mail ». Le Heraut ne redige plus de brouillons tant que le nouveau message n'est
+  // pas valide. Pour le relancer : retirer les deux barres de commentaire ci-dessous.
+  // { nom: 'heraut',       module: './heraut.js',      fn: null,          toutes: 24 * H, besoinN8n: true,  cmd: 'heraut' },
   // Le reflexif passe chaque jour : il mesure les agents, designe le maillon faible et propose
   // une version de prompt INACTIVE, jamais activee par lui-meme. Mesure du 2026-09-23 : 0,0028 $.
   { nom: 'reflexif',     module: './reflexif.js',    fn: 'reflechir',   toutes: 24 * H, besoinN8n: true },
@@ -30,6 +33,9 @@ const RYTHMES = [
   // La bibliotheque avale ce qu on depose dans bibliotheque/ : notes, offres, sources.
   // Recherche en francais dans Postgres, sans appeler personne et sans depenser un centime.
   { nom: 'bibliothecaire', module: './bibliothecaire.js', fn: 'ranger', toutes: 12 * H, besoinN8n: false },
+  // L'agent reflexif : il tient les buts, choisit ses sous-taches, s'evalue, corrige ses
+  // croyances et pose ses questions a Basile. Premier cycle v2 mesure : 0,0062 $.
+  { nom: 'architecte',   module: './architecte.js',  fn: 'architecte',  toutes: 6 * H, besoinN8n: true },
   // Les yeux dehors : forums, depots de code, nouveaux modeles, travaux de recherche.
   // Quatre API publiques, tri par du code, rangement dans la bibliotheque. Cout : zero.
   { nom: 'veilleur',     module: './veilleur.js',    fn: 'veiller',     toutes: 24 * H, besoinN8n: false },

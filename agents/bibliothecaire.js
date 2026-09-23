@@ -69,6 +69,9 @@ function fichiers(racine) {
   const visiter = (d) => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       const p = path.join(d, e.name);
+      // Les dossiers cachés (.obsidian, .git…) portent des réglages, pas du savoir :
+      // l'architecte a reçu « workspace.json » en réponse à une question commerciale.
+      if (e.name.startsWith('.')) continue;
       if (e.isDirectory()) visiter(p);
       else if (/\.(md|markdown|txt|csv|json)$/i.test(e.name) && fs.statSync(p).size < 4_000_000) sortie.push(p);
     }
@@ -110,35 +113,50 @@ export async function ranger({ brain, racine = ENTREE }) {
 // Recherche par les mots, en français : racines, accents et pluriels compris.
 // Deux temps : d'abord les passages qui portent TOUS les mots, ensuite ceux qui en portent
 // quelques-uns. Une question longue trouve ainsi toujours de quoi répondre.
-export async function chercher({ brain, question, combien = 5, domaine = null }) {
+// `exclure` écarte des domaines entiers : la documentation technique en anglais, versée en
+// masse, noyait les notes de la maison. Leçon de l'architecte, premier cycle v2 (2026-09-23).
+export async function chercher({ brain, question, combien = 5, domaine = null, exclure = [] }) {
   await schema(brain);
-  const filtre = domaine ? 'AND domaine = $4' : '';
-  const params = (q, mode) => domaine ? [q, combien, mode, domaine] : [q, combien, mode];
+  const conditions = [], extra = [];
+  if (domaine) { extra.push(domaine); conditions.push(`domaine = $${3 + extra.length}`); }
+  if (exclure.length) { extra.push(exclure); conditions.push(`NOT (domaine = ANY($${3 + extra.length}::text[]))`); }
+  const filtre = conditions.length ? `AND ${conditions.join(' AND ')}` : '';
+  // On lit quatre fois plus large, puis on garde un seul passage par document.
+  const params = (q, mode) => [q, combien * 4, mode, ...extra];
 
+  // Le TITRE et le chemin pèsent trois fois plus que le corps : « Carte commerciale » est un
+  // titre, et la recherche l'ignorait (écart persistant relevé par l'architecte, 2026-09-23).
+  // websearch_to_tsquery ne lève jamais d'erreur de syntaxe, quelle que soit la question.
   const requete = async (expression, mode) => {
+    const q = mode === 'tous les mots' ? "plainto_tsquery('french', $1)" : "websearch_to_tsquery('french', $1)";
     const { rows } = await brain.query(`
       SELECT source, titre, domaine, rang, $3::text AS mode,
-             ts_rank_cd(mots, ${mode === 'tous les mots' ? "plainto_tsquery('french', $1)" : "to_tsquery('french', $1)"}) AS poids,
+             ts_rank_cd(mots, ${q}) + 3 * ts_rank_cd(coalesce(mots_titre, ''::tsvector), ${q}) AS poids,
              left(texte, 700) AS extrait
       FROM kb_chunks
-      WHERE mots @@ ${mode === 'tous les mots' ? "plainto_tsquery('french', $1)" : "to_tsquery('french', $1)"} ${filtre}
+      WHERE (mots @@ ${q} OR coalesce(mots_titre, ''::tsvector) @@ ${q}) ${filtre}
       ORDER BY poids DESC LIMIT $2`, params(expression, mode));
     return rows;
   };
 
-  const trouves = await requete(question, 'tous les mots');
-  if (trouves.length >= combien) return trouves;
+  // Un document ne répond qu'une fois : trois morceaux du même texte ne font pas trois sources.
+  const diversifier = (liste) => {
+    const vus = new Set();
+    return liste.filter((l) => (vus.has(l.source) ? false : vus.add(l.source)));
+  };
+
+  const trouves = diversifier(await requete(question, 'tous les mots'));
+  if (trouves.length >= combien) return trouves.slice(0, combien);
 
   // Quelques mots suffisent : on garde les mots utiles, on les joint par « ou ».
   const mots = question.toLowerCase()
-    .replace(/[^\p{L}\p{N}\s-]/gu, ' ')
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
     .split(/\s+/)
     .filter((m) => m.length > 3);
   if (!mots.length) return trouves;
 
-  const large = await requete(mots.join(' | '), 'quelques mots');
-  const vus = new Set(trouves.map((t) => `${t.source}#${t.rang}`));
-  return [...trouves, ...large.filter((l) => !vus.has(`${l.source}#${l.rang}`))].slice(0, combien);
+  const large = await requete(mots.join(' OR '), 'quelques mots');
+  return diversifier([...trouves, ...large]).slice(0, combien);
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
