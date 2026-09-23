@@ -15,7 +15,7 @@
 // plutôt que beaucoup d'un coup.
 import { ROUTER } from './lib.js';
 import { mesurer } from './metrologue.js';
-import { balayer } from './sas.js';
+import { balayer, soumettre } from './sas.js';
 
 const CANDIDATS_PAR_PASSAGE = 2;   // combien de modèles neufs par jour
 const PASSAGES = 3;                // le sas exige 3 relevés : un seul ne distingue pas la chance
@@ -35,6 +35,10 @@ async function enAttente(brain, combien) {
       WHERE c.domaine = 'modele_routage'
         AND c.verdict = 'non_evaluable'
         AND coalesce(m.price_in, 0) > 0
+        -- les variantes « batch » répondent en différé : la batterie les compte non mesurées
+        AND c.identifiant NOT LIKE '%:batch%'
+        -- assez d'essais : un modèle déjà passé trois fois sans convaincre cesse de coûter
+        AND (SELECT count(*) FROM metrologie m2 WHERE m2.modele = c.identifiant) < 24
       ORDER BY c.identifiant, m.price_in ASC
     ) z
     ORDER BY (z.price_in + z.price_out) ASC
@@ -83,9 +87,22 @@ export async function chasser({ brain }) {
     }
   }
 
-  // Le sas tranche : promu seulement si la note tient et que le coût baisse.
-  const verdicts = await balayer({ brain });
-  const promus = (verdicts || []).filter((v) => v.verdict === 'promu').map((v) => v.identifiant);
+  // Le sas tranche, candidat par candidat, face au TITULAIRE DU JOUR — jamais face à un
+  // ancien nom resté dans le code. Promu seulement si la note tient et que le coût baisse.
+  const titulaire = ROUTER.extraction.model;
+  const verdicts = [];
+  for (const n of neufs) {
+    verdicts.push(await soumettre(brain, {
+      domaine: 'modele_routage',
+      identifiant: n.identifiant,
+      titre: `Mesuré par le chasseur face à ${titulaire}`,
+      source: 'chasseur',
+      donnees: { price_in: n.price_in, price_out: n.price_out, contexte: n.context_tokens, titulaire },
+    }));
+  }
+  // Puis le balayage habituel du catalogue.
+  verdicts.push(...(await balayer({ brain })) || []);
+  const promus = verdicts.filter((v) => v && v.verdict === 'promu').map((v) => v.identifiant);
 
   const tableau = await classement(brain);
   const tete = tableau.slice(0, 3)
