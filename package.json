@@ -1,0 +1,14 @@
+{
+  "name": "raime-brain",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "description": "Cerveau souverain d'audit rAIme — Pilier 1 (base de connaissance).",
+  "scripts": {
+    "seed": "node seed/load_seed.js",
+    "sync": "node sync/openrouter_sync.js"
+  },
+  "dependencies": {
+    "pg": "^8.13.1"
+  }
+}

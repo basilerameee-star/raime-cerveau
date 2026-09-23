@@ -1,0 +1,6 @@
+{
+  "name": "raime-cerveau",
+  "version": "0.1.0",
+  "description": "Le cerveau de rAIme : carte des agents, règles de souveraineté, offre réelle, argent, identité, évolution quotidienne. À charger avant toute action sur la firme.",
+  "author": { "name": "rAIme" }
+}

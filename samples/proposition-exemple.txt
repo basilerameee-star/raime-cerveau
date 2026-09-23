@@ -1,0 +1,75 @@
+PROPOSITION COMMERCIALE — AUTOMATISATION IA DU SERVICE CLIENT
+NexaFlow Solutions SAS — Réf. NF-2026-0847 — 28 août 2026
+
+Client : Cabinet Delmas & Associés (expertise comptable, 45 collaborateurs, Annecy)
+
+--------------------------------------------------------------------
+1. CONTEXTE ET BESOIN
+
+Le cabinet reçoit environ 1 200 e-mails clients par semaine (demandes de documents,
+questions de TVA, relances, prise de rendez-vous). Le traitement manuel mobilise
+actuellement 1,5 ETP au secrétariat.
+
+Objectif : automatiser le tri, la qualification et la réponse de premier niveau.
+
+--------------------------------------------------------------------
+2. SOLUTION PROPOSÉE
+
+Nous proposons une architecture agentique de dernière génération :
+
+- Orchestrateur multi-agents propriétaire NexaFlow Core™
+- 5 agents spécialisés (Classification, Extraction, Rédaction, Escalade, Supervision)
+- Modèle de langage : GPT-5 Pro (le plus performant du marché)
+- Base vectorielle Pinecone pour la mémoire conversationnelle
+- Intégration Outlook 365 + votre logiciel métier (via API)
+- Interface de supervision NexaFlow Studio™
+
+Notre moteur agentique atteint 99 % de précision sur le tri des e-mails
+et rédige des réponses de qualité humaine.
+
+--------------------------------------------------------------------
+3. MISE EN ŒUVRE
+
+Phase 1 — Cadrage et connexion des sources ....... 3 semaines
+Phase 2 — Entraînement sur votre corpus .......... 4 semaines
+Phase 3 — Déploiement et accompagnement .......... 2 semaines
+
+Démarrage possible sous 15 jours.
+
+--------------------------------------------------------------------
+4. CONDITIONS FINANCIÈRES
+
+Frais de mise en œuvre (one-shot) ............... 24 000 € HT
+Abonnement plateforme NexaFlow Core™ ............ 1 890 € HT / mois
+Support et évolutions (obligatoire 24 mois) ..... inclus
+
+Engagement : 24 mois, reconductible tacitement.
+
+Le coût d'inférence des modèles est inclus dans l'abonnement dans la limite
+d'un usage raisonnable.
+
+--------------------------------------------------------------------
+5. HÉBERGEMENT ET DONNÉES
+
+Infrastructure cloud haute disponibilité. Les traitements sont opérés via nos
+partenaires technologiques. Nous appliquons les meilleures pratiques du marché
+en matière de sécurité.
+
+--------------------------------------------------------------------
+6. GARANTIES
+
+- Disponibilité de la plateforme : 99,5 %
+- Accompagnement dédié pendant toute la durée du contrat
+- Mises à jour incluses
+
+Les configurations, prompts et paramétrages développés dans le cadre du projet
+demeurent la propriété intellectuelle de NexaFlow Solutions.
+
+--------------------------------------------------------------------
+7. POURQUOI NEXAFLOW
+
+Plus de 40 clients nous font confiance. Notre technologie propriétaire est le
+fruit de 3 années de R&D. Nous sommes le seul acteur à proposer une orchestration
+multi-agents véritablement autonome sur le marché français.
+
+Validité de l'offre : 30 jours.

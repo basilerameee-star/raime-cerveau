@@ -1,0 +1,11 @@
+# rAIme — execution continue des agents
+# INSTALLATION (une seule commande, a lancer par Basile) :
+#   ssh -i ~/.ssh/raime_vps root@2.29.6.94 'cp /opt/raime/raime-brain/cron.raime /etc/cron.d/raime-brain && chmod 0644 /etc/cron.d/raime-brain && service cron restart'
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+# Catalogue de modeles a jour (prix + nouveaux modeles) - 5h30
+30 5 * * * root /opt/raime/raime-brain/run.sh "node sync/openrouter_sync.js" >> /opt/raime/raime-brain/out/sync.log 2>&1
+# Reconstitution du stock d e-mails avant l envoi de 8h - 7h15
+15 7 * * * root /opt/raime/raime-brain/run.sh "node agents/heraut.js 14" >> /opt/raime/raime-brain/out/heraut.log 2>&1
+# Supervision toutes les 4 heures : constat, decision, initiative
+5 */4 * * * root /opt/raime/raime-brain/run.sh "node agents/superviseur.js" >> /opt/raime/raime-brain/out/supervision.log 2>&1

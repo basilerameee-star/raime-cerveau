@@ -1,0 +1,23 @@
+{
+  "_comment": "Méthodologie d'audit rAIme — source de vérité pour l'agent Auditeur. Charger dans audit_criteria + audit_questions.",
+  "proof_principle": "Besoin métier → choix technique → justification → mesure → coût → risque → décision. Une affirmation fournisseur n'est pas une preuve : une architecture doit pouvoir être expliquée, testée et comparée à une alternative plus simple et moins coûteuse.",
+  "criteria": [
+    { "rank": 1, "code": "adequation_metier", "label": "Adéquation métier", "description": "Le système résout-il le bon problème ?", "checks": ["volumes réels", "fréquences", "exceptions", "interventions humaines", "critères de réussite mesurables"] },
+    { "rank": 2, "code": "architecture", "label": "Architecture technique", "description": "Le choix des modèles, agents, workflows, RAG, bases, APIs et hébergement est-il justifié par le besoin ?", "checks": ["justification vs alternative plus simple", "part déterministe vs LLM", "dépendances"] },
+    { "rank": 3, "code": "performance", "label": "Performance réelle", "description": "Les promesses sont-elles démontrées par des tests ?", "checks": ["taux de réussite sur données client", "erreurs et cas limites", "latence", "robustesse"] },
+    { "rank": 4, "code": "economie", "label": "Économie", "description": "Quel coût réel et quel ROI à l'échelle ?", "checks": ["coût par exécution", "coût à volume x10", "inférence + infra + maintenance", "gain marginal vs surcoût"] },
+    { "rank": 5, "code": "donnees_securite", "label": "Données & sécurité", "description": "Quelles données sortent, où sont-elles traitées ?", "checks": ["champs concernés", "prestataires tiers", "zones d'hébergement", "logs, accès, permissions", "durées de conservation"] },
+    { "rank": 6, "code": "souverainete", "label": "Souveraineté & réversibilité", "description": "Le client peut-il changer de modèle, d'intégrateur ou d'hébergeur ?", "checks": ["export données/workflows/configs", "absence de verrou propriétaire", "documentation"] },
+    { "rank": 7, "code": "exploitabilite", "label": "Exploitabilité", "description": "Qui maintient le système dans la durée ?", "checks": ["responsabilité mises à jour", "gestion incidents", "changements d'API/modèle", "suivi des dérives"] }
+  ],
+  "questions": [
+    { "rank": 1, "criterion": "architecture", "question": "Pourquoi cette architecture plutôt qu'une alternative plus simple ?", "method": "Établir un scénario de référence plus sobre (modèle plus léger, logique déterministe, moins d'agents) et le comparer sur des critères identiques ; l'écart de prix n'est retenu que s'il est justifié par un gain mesurable." },
+    { "rank": 2, "criterion": "architecture", "question": "Ce niveau de modèle correspond-il vraiment à la tâche ?", "method": "Évaluer plusieurs niveaux de modèle sur la tâche réelle et quantifier l'écart de qualité ; aligner la capacité sur l'exigence métier." },
+    { "rank": 3, "criterion": "performance", "question": "Quels résultats sur les données réelles du client ?", "method": "Exiger une évaluation sur un échantillon représentatif ; documenter taux de réussite, nature des erreurs, coût métier." },
+    { "rank": 4, "criterion": "economie", "question": "Quel coût réel à volume multiplié par dix ?", "method": "Modéliser le coût complet par exécution au volume actuel puis à l'échelle (inférence + infra + maintenance)." },
+    { "rank": 5, "criterion": "architecture", "question": "Qu'est-ce qui est déterministe, et qu'est-ce qui dépend d'un modèle ?", "method": "Cartographier la part déterministe (règles, code) et probabiliste (modèle) ; favoriser un socle déterministe large." },
+    { "rank": 6, "criterion": "donnees_securite", "question": "Quelles données quittent l'entreprise et où sont-elles traitées ?", "method": "Établir le flux précis : champs, prestataires tiers, zones d'hébergement, durées de conservation." },
+    { "rank": 7, "criterion": "souverainete", "question": "Peut-on changer de prestataire en gardant ses données ?", "method": "Vérifier réversibilité : export données/workflows/configs, absence de dépendance propriétaire." },
+    { "rank": 8, "criterion": "exploitabilite", "question": "Qui maintient le système quand une API ou un modèle évolue ?", "method": "Clarifier la gouvernance d'exploitation : mises à jour, incidents, dérives de performance et coûts associés." }
+  ]
+}

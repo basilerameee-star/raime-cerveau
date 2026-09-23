@@ -1,0 +1,11 @@
+{
+  "name": "raime",
+  "owner": { "name": "rAIme" },
+  "plugins": [
+    {
+      "name": "raime-cerveau",
+      "source": "./plugin-cerveau",
+      "description": "Le cerveau de rAIme : carte des agents, souveraineté, offre réelle, argent, identité, évolution quotidienne."
+    }
+  ]
+}

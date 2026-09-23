@@ -1,0 +1,29 @@
+{
+  "_comment": "Amorce du catalogue de modèles. Les prix/params sont à CONFIRMER par la sync OpenRouter (Pilier 2). Ne jamais présenter ces chiffres comme définitifs sans sync. as_of = date de saisie manuelle.",
+  "as_of": "2026-09-02",
+  "source": "manual-seed",
+  "task_router": {
+    "_comment": "Le cœur de la valeur : quel palier de modèle pour quelle tâche, au juste coût. L'Auditeur s'en sert pour challenger une proposition.",
+    "classification_simple": { "reco_tier": "small", "note": "Une tâche de tri/classification se traite souvent par un petit modèle + workflow déterministe. Un modèle premium est rarement justifié." },
+    "extraction_structuree": { "reco_tier": "small-mid", "note": "Extraction sur gabarit stable : petit/moyen modèle + validation déterministe (regex/schéma)." },
+    "redaction_courte": { "reco_tier": "mid", "note": "Rédaction cadrée : modèle milieu de gamme suffisant." },
+    "raisonnement_complexe": { "reco_tier": "large", "note": "Planification/raisonnement multi-étapes : modèle haut de gamme ou reasoning justifié." },
+    "code": { "reco_tier": "mid-large", "note": "Génération/revue de code : selon criticité." },
+    "rag_recherche": { "reco_tier": "small-mid", "note": "Sur RAG bien construit, le modèle compte moins que la qualité du retrieval et du nettoyage." }
+  },
+  "tiers": {
+    "small":  "économique, tâches cadrées, gros volumes",
+    "mid":    "polyvalent, bon rapport perf/coût",
+    "large":  "raisonnement/qualité maximale, coût élevé"
+  },
+  "models": [
+    { "provider": "DeepSeek", "name": "DeepSeek V3", "openrouter_id": "deepseek/deepseek-chat", "tier": "mid", "deterministic_friendly": true, "strengths": {"code": 0.8, "raisonnement": 0.75, "rapport_cout": 0.95}, "verify": true },
+    { "provider": "DeepSeek", "name": "DeepSeek R1", "openrouter_id": "deepseek/deepseek-r1", "tier": "large", "strengths": {"raisonnement": 0.9, "rapport_cout": 0.85}, "params": {"reasoning": true}, "verify": true },
+    { "provider": "Qwen", "name": "Qwen3 (via OpenRouter)", "openrouter_id": "qwen/qwen3", "tier": "small-mid", "deterministic_friendly": true, "strengths": {"rapport_cout": 0.95, "multilingue": 0.85}, "verify": true },
+    { "provider": "Mistral", "name": "Mistral (à préciser)", "openrouter_id": "mistralai/…", "tier": "mid", "verify": true },
+    { "provider": "OpenAI", "name": "GPT (palier à préciser)", "openrouter_id": "openai/…", "tier": "mid-large", "verify": true },
+    { "provider": "Google", "name": "Gemini (palier à préciser)", "openrouter_id": "google/…", "tier": "mid-large", "verify": true },
+    { "provider": "Anthropic", "name": "Claude (palier à préciser)", "openrouter_id": "anthropic/…", "tier": "large", "verify": true }
+  ],
+  "sync_plan": "Un job n8n interroge quotidiennement l'API OpenRouter (liste des modèles + prix), met à jour la table models (source='openrouter', verify=false), et journalise les changements de prix dans radar_events (kind='price_change')."
+}

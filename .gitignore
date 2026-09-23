@@ -1,0 +1,10 @@
+# secrets : jamais versionnes
+.env
+*.env
+!.env.example
+*.pem
+*.key
+# sorties et dependances
+node_modules/
+out/
+*.log
