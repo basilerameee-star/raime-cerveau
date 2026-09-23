@@ -54,3 +54,17 @@ Format d'une entrée :
 - Évaluation : conforme à l'attendu.
 - Correction : aucune.
 - Leçon : un fournisseur factice qui échoue quand aucune fixture ne correspond vaut mieux qu'un fournisseur qui invente : un appel imprévu se voit tout de suite.
+
+## 2026-09-24 — chantier 1 — fusion
+- Action : pull request n° 1 fusionnée après la CI verte (46 tests sur 46) et le « ok » de Basile.
+- Résultat : le banc d'essai est sur `main`.
+- Évaluation : conforme.
+- Correction : aucune.
+- Leçon : le « ok » arrive vite quand le résumé tient en cinq lignes.
+
+## 2026-09-24 — chantier 2 — la porte de déploiement, essayée à blanc
+- Action : écrire `porte/porte.sh` (le seul script que la clé de GitHub pourra lancer), l'action « Livraison », le contrôle du résumé pour Basile, et 14 tests à blanc (faux Docker, faux Caddy, vraies archives).
+- Résultat : 14 sur 14 ; `npm test` passe de 46 à 65 tests.
+- Évaluation : trois défauts trouvés avant tout serveur. ① Dans un `if`, bash ignore `set -e` à l'intérieur des fonctions : un `docker build` raté serait passé sans bruit. ② Au premier déploiement, aucune version précédente : un échec aurait écrasé le cerveau sans copie. ③ `rsync` n'est pas sûr d'être présent sur le serveur.
+- Correction : ① chaque étape rend son échec explicite ; ② la porte photographie le cerveau en service (« initiale ») avant d'y toucher ; ③ `tar` à la place de `rsync`. Vérifié par mutation : le retour en arrière coupé, deux tests tombent.
+- Leçon : un test qui passe du premier coup se vérifie en cassant exprès ce qu'il protège.
