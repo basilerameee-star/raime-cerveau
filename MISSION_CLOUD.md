@@ -114,7 +114,7 @@ Basile confirme sur ta parole : ta parole doit donc reposer sur des tests. Donc 
 ### Chantier 2 — La livraison automatique
 
 - **Fusion sur confirmation** : chaque pull request porte en tête un résumé pour Basile — ce qui change en ligne, ce qu'il pourra vendre de nouveau, comment revenir en arrière — en cinq lignes au plus. La CI verte **et** la confirmation de Basile : tu fusionnes.
-- **Déploiement automatique** : une action GitHub, déclenchée par chaque fusion sur `main`, envoie le code au serveur par la **porte de déploiement** (clé stockée dans les secrets GitHub, qui ne peut lancer qu'un seul script sur le serveur). Le script met à jour le cerveau, et chaque service décrit dans `services/<nom>/` devient un conteneur + un bloc Caddy `<nom>.raime.fr` (modèle : `briques/hebergement/`).
+- **Déploiement automatique** : une action GitHub, déclenchée par chaque fusion sur la branche principale `master`, envoie le code au serveur par la **porte de déploiement** (clé stockée dans les secrets GitHub, qui ne peut lancer qu'un seul script sur le serveur). Le script met à jour le cerveau, et chaque service décrit dans `services/<nom>/` devient un conteneur + un bloc Caddy `<nom>.raime.fr` (modèle : `briques/hebergement/`).
 - **Vérification après déploiement** : l'adresse répond, la page contient ce qu'elle doit contenir ; sinon **retour automatique** à la version précédente, et une ligne au carnet.
 - Si la porte n'est pas encore prête côté serveur quand tu arrives ici : construis tout, teste à blanc, et `DEMANDER_INFOS` en disant exactement ce qui manque.
 
