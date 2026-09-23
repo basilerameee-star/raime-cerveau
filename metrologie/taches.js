@@ -177,6 +177,85 @@ export const TACHES = [
       return j.present === false && (j.valeur === null || j.valeur === undefined) ? 100 : 0;
     },
   },
+
+  // ── DÉCISION TYPÉE ─────────────────────────────────────────────────────────
+  // Le travail que fait JEV de TypeSafe : répondre par un type — oui/non, un choix,
+  // une note — au lieu d'une prose. L'accès à JEV est fermé ; cette famille cherche
+  // qui, parmi les modèles gratuits ou presque, fait le même travail chez nous.
+  {
+    id: 'decision_urgence',
+    famille: 'decision',
+    titre: 'Dire si une demande est urgente',
+    pourquoi: 'Trier ce qui doit sortir aujourd’hui de ce qui peut attendre demain.',
+    systeme: 'Tu réponds UNIQUEMENT en JSON : {"urgent": true ou false, "confiance": nombre entre 0 et 1}.',
+    invite: 'Bonjour, notre facturation est bloquée depuis trois jours et 400 clients attendent leur ' +
+            'facture. Pouvez-vous nous rappeler aujourd’hui ?\n\nCette demande est-elle urgente ?',
+    maxTokens: 120,
+    verifier(sortie) {
+      const j = jsonDe(sortie);
+      if (!j) return 0;
+      let note = j.urgent === true ? 70 : 0;
+      const c = Number(j.confiance);
+      if (!Number.isNaN(c) && c >= 0 && c <= 1) note += 30;   // une décision sans confiance reste une opinion
+      return note;
+    },
+  },
+  {
+    id: 'decision_orientation',
+    famille: 'decision',
+    titre: 'Orienter une demande vers le bon service',
+    pourquoi: 'Chaque demande entrante doit trouver sa porte sans intervention humaine.',
+    systeme: 'Tu choisis exactement une valeur parmi formation, audit, arbitrage, automatisation. ' +
+             'Tu réponds UNIQUEMENT en JSON : {"service": "...", "confiance": nombre entre 0 et 1}.',
+    invite: 'Une entreprise a reçu d’un prestataire une proposition d’automatisation à 47 500 € plus ' +
+            '2 900 € par mois sur 36 mois. Le dirigeant demande un avis indépendant avant de signer.\n\n' +
+            'Quel service lui convient ?',
+    maxTokens: 120,
+    verifier(sortie) {
+      const j = jsonDe(sortie);
+      if (!j) return 0;
+      let note = norm(j.service) === 'arbitrage' ? 70 : 0;
+      const c = Number(j.confiance);
+      if (!Number.isNaN(c) && c >= 0 && c <= 1) note += 30;
+      return note;
+    },
+  },
+  {
+    id: 'decision_maturite',
+    famille: 'decision',
+    titre: 'Noter la maturité d’une entreprise sur une échelle',
+    pourquoi: 'Le bon niveau de formation dépend de là où l’entreprise en est.',
+    systeme: 'Tu notes sur une échelle : 0 = découverte, 1 = premiers essais, 2 = usage installé. ' +
+             'Tu réponds UNIQUEMENT en JSON : {"niveau": 0, 1 ou 2}.',
+    invite: 'Cette entreprise utilise l’IA tous les jours dans trois services, avec une charte écrite, ' +
+            'un référent désigné et un budget voté.\n\nQuel est son niveau ?',
+    maxTokens: 80,
+    verifier(sortie) {
+      const j = jsonDe(sortie);
+      if (!j) return 0;
+      return nombre(j.niveau) === 2 ? 100 : 0;
+    },
+  },
+  {
+    id: 'decision_garde',
+    famille: 'decision',
+    titre: 'Retenir un message qui enfreint les règles de la maison',
+    pourquoi: 'Le cordon doit bloquer un message fautif avant l’envoi, pas après.',
+    systeme: 'Les règles : aucun prix qui ne figure pas dans l’offre, aucun « je », aucune promesse ' +
+             'de résultat chiffré. Tu réponds UNIQUEMENT en JSON : {"conforme": true ou false, ' +
+             '"regle_enfreinte": "prix" ou "je" ou "promesse" ou null}.',
+    invite: 'Message à vérifier : « Je vous garantis 40 % de gain de temps dès le premier mois, ' +
+            'pour 1 990 € seulement. »\n\nCe message respecte-t-il les règles ?',
+    maxTokens: 120,
+    verifier(sortie) {
+      const j = jsonDe(sortie);
+      if (!j) return 0;
+      let note = j.conforme === false ? 60 : 0;
+      // Trois règles sont enfreintes à la fois : en nommer une seule suffit.
+      if (['prix', 'je', 'promesse'].includes(norm(j.regle_enfreinte))) note += 40;
+      return note;
+    },
+  },
 ];
 
 export const FAMILLES = [...new Set(TACHES.map((t) => t.famille))];
