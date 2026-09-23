@@ -44,6 +44,9 @@ const RYTHMES = [
   // Quatre API publiques, tri par du code, rangement dans la bibliotheque. Cout : zero.
   { nom: 'veilleur',     module: './veilleur.js',    fn: 'veiller',     toutes: 24 * H, besoinN8n: false },
   { nom: 'prospective',  module: './prospective.js', fn: 'projeter',    toutes: 7 * 24 * H, besoinN8n: false },
+  // La publicité de la semaine suivante : neuf BROUILLONS (LinkedIn, Facebook, Instagram,
+  // TikTok), texte et image fixe, relus par le code. Rien n'est publié : aucun compte n'existe.
+  { nom: 'publiciste',   module: './publiciste.js',  fn: 'preparerSemaine', toutes: 7 * 24 * H, besoinN8n: false },
   // La courbe de prix se construit un releve a la fois. C'est le temps l'ingredient.
   { nom: 'metrologue', module: './metrologue.js', fn: 'mesurer', toutes: 7 * 24 * H, besoinN8n: false,
     args: { modeles: ['upstage/solar-pro4', 'deepseek/deepseek-v4-flash-0731', 'nex-agi/nex-n2-mini'] } },

@@ -97,3 +97,17 @@ Format d'une entrée :
 - Évaluation : premier jet trop permissif : une « mesure » sans aucun chiffre passait.
 - Correction : la mesure doit porter un chiffre, sinon refus. Trois chantiers ouverts au plus, jamais deux fois le même, aucun secret.
 - Leçon : la règle « mesurer avant de changer » vaut aussi pour ce que le cerveau demande.
+
+## 2026-09-24 — chantier 4 — fusion
+- Action : pull request n° 4 fusionnée (CI verte, accord de Basile pour la nuit).
+- Résultat : l'architecte a sept actions ; `ouvrir_chantier` attend son jeton (`porte/INSTALLER.md`, étape 7).
+- Évaluation : le critère du chantier 4 (une issue ouverte par l'architecte en production, traitée et fermée) attend la porte et le jeton.
+- Correction : aucune.
+- Leçon : aucune issue « chantier » ouverte à ce jour ; relu en début de travail, comme le veut la règle de session.
+
+## 2026-09-24 — chantier 5 — le publiciste
+- Action : `agents/publiciste.js`, `publicite/offres.json` (phrases déjà publiées sur raime.fr), migration `019`, 17 tests.
+- Résultat : neuf brouillons par semaine sur quatre réseaux, un visuel fixe chacun, et la vue `publications_mesure` prête pour les résultats ; 108 tests sur 108.
+- Évaluation : `knowledge/commerce/strategie-commerciale.md` cite le CPF et des prix de services : une source à ne pas donner au rédacteur.
+- Correction : le rédacteur ne reçoit que les phrases publiques du site, sans tarif ; le code refuse tout prix sauf les 19 € du livre, tout chiffre absent des offres, le CPF et le nom de Basile.
+- Leçon : choisir la source d'un texte public, c'est déjà une garde.
