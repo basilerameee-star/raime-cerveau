@@ -76,3 +76,15 @@ ssh -i ~/.ssh/raime_vps root@2.29.6.94 '/opt/raime/porte/porte.sh revenir'
 ```
 
 Le journal de la porte : `/opt/raime/porte/journal.log`.
+
+## 7. Le jeton des chantiers (l'architecte demande, la session cloud construit)
+
+Sur GitHub → Settings (du compte) → Developer settings → Fine-grained tokens → Generate :
+dépôt **raime-cerveau seulement**, permission **Issues : Read and write**, rien d'autre, expiration un an.
+Puis, sur le serveur, l'ajouter au `.env` du cerveau (jamais dans le dépôt) :
+
+```bash
+ssh -i ~/.ssh/raime_vps root@2.29.6.94 "echo 'GITHUB_CHANTIER_TOKEN=<le jeton>' >> /opt/raime/raime-brain/.env"
+```
+
+Essai : lancer un cycle de l'architecte ; s'il constate un manque mesuré, une issue « chantier » apparaît sur le dépôt.

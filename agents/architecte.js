@@ -20,7 +20,8 @@
 //   éthique       rien ne part vers un tiers ; toute note écrite cite ses sources
 //
 // CE QU'IL NE FAIT JAMAIS : écrire à quelqu'un, dépenser, créer un compte, activer une
-// consigne, clore un but, assouplir ses propres limites. Il peut le PROPOSER à Basile.
+// consigne, clore un but, assouplir ses propres limites. Il peut le PROPOSER à Basile,
+// ou ouvrir un chantier sur le dépôt (ouvrir_chantier) pour que la session cloud le construise.
 //
 //   node agents/architecte.js          un cycle
 //   node agents/architecte.js 2        deux cycles d'affilée
@@ -161,17 +162,32 @@ const ACTIONS = {
     return { resume: `idée d'offre déposée : ${titre}`, donnees: { titre } };
   },
 
+  // Ce que l'architecte ne peut pas corriger lui-même : une issue « chantier » sur le dépôt,
+  // que la session cloud traite. Interne et réversible : une issue se ferme.
+  async ouvrir_chantier({ brain, args }) {
+    const { ouvrirChantier } = await import('./chantiers.js');
+    const r = await ouvrirChantier({ titre: args.titre, constat: args.constat, mesure: args.mesure, attendu: args.attendu });
+    await brain.query(`INSERT INTO journal(acteur, changement, motif) VALUES($1,$2,$3)`,
+      ['architecte', r.ouvert ? `Chantier ouvert : n° ${r.numero} « ${String(args.titre).slice(0, 120)} »`
+        : `Chantier non ouvert : « ${String(args.titre || '').slice(0, 120)} »`, r.url || r.motif]);
+    return { resume: r.ouvert ? `chantier n° ${r.numero} ouvert : ${r.url}` : r.motif,
+      donnees: r, refus: !r.ouvert && /refusé/.test(r.motif || '') };
+  },
+
   async rien({ args }) {
     return { resume: `aucune action utile : ${String(args.pourquoi || 'motif absent').slice(0, 300)}`, donnees: {} };
   },
 };
 const CATALOGUE = Object.keys(ACTIONS);
+export { ACTIONS };
 
 const DESCRIPTION_CATALOGUE = `- mesurer : relever l'état réel de la firme (machine et commerce).
 - chercher {question, domaine?} : interroger la bibliothèque de la maison (domaines : notes, offre, cerveau, veille, architecte ; « harness » seulement sur demande).
 - examiner_consigne {agent} : faire passer l'examen à la consigne candidate d'un agent (aujourd'hui : heraut).
 - ecrire_note {titre, texte, sources[]} : déposer une connaissance durable (200 caractères au moins, sources obligatoires).
 - proposer_offre {titre, promesse, ancrage, famille} : déposer une idée d'offre vendable.
+- ouvrir_chantier {titre, constat, mesure, attendu} : demander un changement du code que tu ne peux pas faire toi-même
+  (un outil qui manque, un défaut mesuré). Constat, mesure chiffrée et attendu obligatoires. Trois chantiers ouverts au plus.
 - rien {pourquoi} : quand aucune action n'apporte de valeur.`;
 
 // ── LE CARNET : un événement par étape ──────────────────────────────────────

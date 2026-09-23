@@ -83,3 +83,17 @@ Format d'une entrée :
 - Correction : fond sans `fixed`, prix collé au bouton, menu allégé sur téléphone ; le texte vérifié s'arrête avant tout caractère transformé.
 - Leçon : un contrôle par code juge le fond, une capture juge la forme ; il faut les deux avant de dire « prêt ».
 - Règle posée : le compte Stripe de rAIme n'encaisse que pour rAIme, ou en mode test pour une démonstration. Pour un client, le paiement attend son propre compte.
+
+## 2026-09-24 — chantier 3 — fusion de l'atelier
+- Action : pull request n° 3 fusionnée (CI verte ; Basile a donné son accord pour la suite de la nuit).
+- Résultat : l'atelier est sur `main` ; aucun service en ligne tant que la porte n'est pas installée.
+- Évaluation : conforme ; le critère du chantier 3 (trois services en ligne, un paiement de test) attend la porte et la clé Stripe de test.
+- Correction : aucune.
+- Leçon : un accord donné d'avance couvre la fusion au vert, jamais ce que la mission interdit.
+
+## 2026-09-24 — chantier 4 — l'action ouvrir_chantier
+- Action : `agents/chantiers.js` et l'action `ouvrir_chantier` de l'architecte ; 7 tests contre un GitHub factice.
+- Résultat : 91 tests sur 91.
+- Évaluation : premier jet trop permissif : une « mesure » sans aucun chiffre passait.
+- Correction : la mesure doit porter un chiffre, sinon refus. Trois chantiers ouverts au plus, jamais deux fois le même, aucun secret.
+- Leçon : la règle « mesurer avant de changer » vaut aussi pour ce que le cerveau demande.
