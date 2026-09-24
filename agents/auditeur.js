@@ -102,7 +102,13 @@ export function maturiteConstatee(argument, profil) {
   return Object.keys(m).length ? m : null;
 }
 
-export async function auditer({ proposalId, companyId = null, maturite = null, client }) {
+/** Cout horaire charge constate chez le client : l'argument prime, sinon la fiche client. */
+export function coutHoraireConstate(argument, profil) {
+  const v = Number(argument ?? profil?.profile?.cout_horaire);
+  return Number.isFinite(v) && v > 0 && v < 1000 ? v : null;
+}
+
+export async function auditer({ proposalId, companyId = null, maturite = null, coutHoraire = null, client }) {
   const own = !client;
   const c = client || db();
   if (own) await c.connect();
@@ -205,7 +211,10 @@ Produis l'audit.`;
     // constat fait chez le client, jamais du modele : toute cle M renvoyee par lui est ecartee.
     let score = null;
     if (status === 'ok' && a.score_raime_entrees) {
-      const entrees = { ...a.score_raime_entrees, maturite: maturiteConstatee(maturite, profil) };
+      // Le cout horaire est un fait du client : constate chez lui, il prime sur le chiffre du prestataire.
+      const ch = coutHoraireConstate(coutHoraire, profil);
+      const economie = { ...(a.score_raime_entrees.economie || {}), ...(ch ? { coutHoraire: ch } : {}) };
+      const entrees = { ...a.score_raime_entrees, economie, maturite: maturiteConstatee(maturite, profil) };
       score = depuisExtractionV2(entrees);
       a.score_raime = score;
       if (score.rendu) {

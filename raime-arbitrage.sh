@@ -2,14 +2,17 @@
 # =====================================================================
 #  rAIme — ARBITRAGE DE PLUSIEURS OFFRES, EN UNE COMMANDE
 #
-#  ./raime-arbitrage.sh "Nom du client" "<maturite>" offre1.pdf offre2.docx [offre3.txt ...]
+#  ./raime-arbitrage.sh "Nom du client" "<maturite>" "<cout horaire>" offre1.pdf offre2.docx [...]
 #
 #  maturite : constatée chez le client, ex. "M1=oui,M2=non,M3=oui,M4=oui".
 #             Mettre "-" si elle n'est pas encore constatée : les offres sont lues,
 #             mais l'axe C (réalisme) n'est pas noté, et le rapport le dit.
+#  cout horaire : coût horaire chargé des équipes du client, en euros (ex. 38).
+#             Un prestataire ne le fournit jamais : il se constate chez le client.
+#             Mettre "-" s'il est inconnu : l'axe B (rentabilité) n'est alors pas noté.
 #
 #  Exemple :
-#    ./raime-arbitrage.sh "Cabinet Martin" "M1=oui,M2=oui,M3=non,M4=oui" nexaflow.pdf atelier.docx
+#    ./raime-arbitrage.sh "Cabinet Martin" "M1=oui,M2=oui,M3=non,M4=oui" 38 nexaflow.pdf atelier.docx
 #
 #  Chaque offre passe par l'Analyste, l'Auditeur (Score rAIme v2.0) et le Contradicteur ;
 #  le classement et le rapport (modèle ARB-01) sont ensuite calculés par du code.
@@ -25,9 +28,10 @@ CHROME="/c/Program Files/Google/Chrome/Application/chrome.exe"
 SORTIE_DIR="$HOME/OneDrive/Desktop/rAIme/arbitrages"
 ICI="$(cd "$(dirname "$0")" && pwd)"
 
-CLIENT="${1:?Usage: ./raime-arbitrage.sh \"Nom du client\" \"M1=oui,...\"|- offre1 offre2 [...]}"
+CLIENT="${1:?Usage: ./raime-arbitrage.sh \"Nom du client\" \"M1=oui,...\"|- 38|- offre1 offre2 [...]}"
 MATURITE="${2:?Maturité requise (ou - si elle n’est pas encore constatée)}"
-shift 2
+COUT_HORAIRE="${3:?Coût horaire requis (ou - s’il est inconnu)}"
+shift 3
 [ $# -ge 1 ] || { echo "Au moins une offre est nécessaire."; exit 1; }
 # Une apostrophe droite casserait la commande distante : on passe à l'apostrophe typographique.
 CLIENT="${CLIENT//\'/’}"
@@ -38,7 +42,7 @@ SSH="ssh -o BatchMode=yes -o ConnectTimeout=20 -i $VPS_KEY $VPS_USER@$VPS_IP"
 DISTANTS=""
 for f in "$@"; do
   [ -f "$f" ] || { echo "Fichier introuvable : $f"; exit 1; }
-  nom=$(basename "${f%.*}" | tr -c 'A-Za-z0-9._-' '_')
+  nom=$(printf '%s' "$(basename "${f%.*}")" | tr -c 'A-Za-z0-9._-' '_')
   case "${f,,}" in
     *.txt|*.md) cp "$f" "$TRAVAIL/$nom.txt" ;;
     *) echo "▸ Lecture de $(basename "$f")..."
@@ -55,6 +59,7 @@ done
 echo "▸ Arbitrage en cours (2 à 3 minutes par offre)..."
 ARGS="--client \"$CLIENT\""
 [ "$MATURITE" != "-" ] && ARGS="$ARGS --maturite \"$MATURITE\""
+[ "$COUT_HORAIRE" != "-" ] && ARGS="$ARGS --cout-horaire \"$COUT_HORAIRE\""
 ARGS="$ARGS $DISTANTS"
 
 RESULTAT=$($SSH "PGPASS=\$(docker exec raime-postgres-1 printenv POSTGRES_PASSWORD); \

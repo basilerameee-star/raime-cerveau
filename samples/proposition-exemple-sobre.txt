@@ -1,0 +1,44 @@
+PROPOSITION — TRI DES E-MAILS CLIENTS (EXEMPLE FICTIF, POUR ESSAI INTERNE)
+Atelier Sobre — Réf. AS-2026-012 — 2 septembre 2026
+
+Client : Cabinet Delmas & Associés (expertise comptable, 45 collaborateurs, Annecy)
+
+1. OBJET
+Trier automatiquement les e-mails clients entrants (environ 1 200 par semaine, soit
+5 200 par mois) en quatre files : demandes de pièces, questions fiscales, rendez-vous,
+autres. Les réponses restent rédigées par le secrétariat, à partir de modèles.
+
+2. SITUATION ACTUELLE ET GAIN VISÉ
+Mesure faite chez vous du 1er au 5 septembre sur 300 e-mails : 6 minutes en moyenne
+par e-mail (lecture, tri, recherche du dossier). Après mise en service : 3 minutes.
+Le temps libéré (environ 260 heures par mois) sera réaffecté aux relances de pièces
+manquantes, à hauteur de 60 %, selon le plan validé avec la responsable du secrétariat.
+
+3. DÉMARCHE
+Étape 1 — pilote de quatre semaines sur la seule boîte « factures » (1 000 € HT).
+Point de décision à la fin du pilote : poursuite seulement si 90 % des e-mails sont
+correctement triés, mesuré sur 200 e-mails relus par le secrétariat.
+Étape 2 — extension aux autres boîtes (5 000 € HT), après décision écrite du cabinet.
+Chaque étape peut être arrêtée ; seule l'étape engagée est due.
+Une demi-journée de formation du secrétariat est comprise, puis un point à 30 jours.
+
+4. PRIX
+Mise en route totale : 6 000 € HT (pilote compris).
+Abonnement : 390 € HT par mois, sans hausse pendant 24 mois ; au-delà, révision
+plafonnée à l'indice Syntec.
+Licences tierces : aucune (modèle hébergé en France chez notre hébergeur, compris).
+Maintenance : 900 € HT par an (corrections, mises à jour des règles de tri, 2 jours).
+Temps de vos équipes : 5 jours au total (responsable du secrétariat).
+
+5. DONNÉES, PROPRIÉTÉ, SORTIE
+Vos données restent votre propriété ; export complet en CSV et fichiers d'origine
+sous 10 jours, sans frais. Les règles de tri et modèles créés vous appartiennent.
+Sortie : préavis de 3 mois, aucun frais de sortie.
+Hébergement : France (OVHcloud, Roubaix), droit français.
+Engagement : 12 mois, puis mois par mois.
+
+6. RÉALISATION
+Réalisé par Claire Martin, fondatrice. Mise en service de l'étape 1 sous 3 semaines
+après signature. Restent à votre charge : l'accès aux boîtes e-mail et la relecture
+des 200 e-mails du pilote. Alternative plus simple évoquée : des règles de tri
+natives de votre messagerie, moins précises (environ 70 % de bon tri estimé).

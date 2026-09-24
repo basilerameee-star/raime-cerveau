@@ -2,10 +2,12 @@
 # =====================================================================
 #  rAIme — AUDIT D'UNE PROPOSITION, EN UNE COMMANDE
 #
-#  ./raime-audit.sh <proposition.pdf|.docx|.odt|.txt> "Nom du client" [secteur] [taille] [maturite]
+#  ./raime-audit.sh <proposition.pdf|.docx|.odt|.txt> "Nom du client" [secteur] [taille] [maturite] [cout horaire]
 #
 #  maturite : constatée chez le client, ex. "M1=oui,M2=non,M3=oui,M4=oui" (sans elle,
 #  l'axe C du Score rAIme ne se note pas et le rapport le dit).
+#  cout horaire : coût horaire chargé des équipes du client, en euros (ex. 38) ; sans lui,
+#  l'axe B (rentabilité) ne se note pas, un prestataire ne le fournissant jamais.
 #
 #  Exemple :
 #    ./raime-audit.sh devis-nexaflow.txt "Cabinet Martin" "Expertise comptable" "30 salaries"
@@ -26,6 +28,7 @@ CLIENT="${2:?Nom du client requis}"
 SECTEUR="${3:-}"
 TAILLE="${4:-}"
 MATURITE="${5:-}"
+COUT_HORAIRE="${6:-}"
 # Une apostrophe droite casserait la commande distante : on passe à l'apostrophe typographique.
 CLIENT="${CLIENT//\'/’}"
 
@@ -52,6 +55,7 @@ ARGS="samples/$BASE --client \"$CLIENT\""
 [ -n "$SECTEUR" ] && ARGS="$ARGS --secteur \"$SECTEUR\""
 [ -n "$TAILLE" ]  && ARGS="$ARGS --taille \"$TAILLE\""
 [ -n "$MATURITE" ] && ARGS="$ARGS --maturite \"$MATURITE\""
+[ -n "$COUT_HORAIRE" ] && [ "$COUT_HORAIRE" != "-" ] && ARGS="$ARGS --cout-horaire \"$COUT_HORAIRE\""
 
 RESULTAT=$($SSH "PGPASS=\$(docker exec raime-postgres-1 printenv POSTGRES_PASSWORD); \
 timeout 540 docker run --rm --network raime_default \

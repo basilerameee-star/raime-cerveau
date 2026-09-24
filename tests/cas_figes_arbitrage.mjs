@@ -3,8 +3,9 @@
 // score, un coût absent n'est jamais un zéro, la maturité ne se devine pas, les clauses
 // C2, C3 et C4 passent en premier, et le même dossier donne le même rapport.
 import { scoreRaimeV2, depuisExtractionV2, BAREME, BAREME_REALISME } from '../agents/score.js';
-import { lireMaturite, coutTroisAns, aObtenirParEcrit, classer, recommander, rapportArbitrage, QUESTIONS, LIBELLES } from '../agents/arbitrage.js';
-import { maturiteConstatee } from '../agents/auditeur.js';
+import { lireMaturite, coutTroisAns, aObtenirParEcrit, classer, recommander, rapportArbitrage, QUESTIONS, LIBELLES,
+         lireCoutHoraire, renoter } from '../agents/arbitrage.js';
+import { maturiteConstatee, coutHoraireConstate } from '../agents/auditeur.js';
 
 const TOUS_A = BAREME.map((b) => b.code);
 const TOUS_R = BAREME_REALISME.filter((b) => b.groupe === 'demarche').map((b) => b.code);
@@ -95,6 +96,19 @@ verifie('questions completes', [...BAREME, ...BAREME_REALISME.filter((b) => b.gr
 const rD = rapportArbitrage({ ...dossier, offres: [D, offre('Sigma', TOUS_A.filter((x) => x !== 'D1'), TOUS_R, { ...ECO, partReaffectee: undefined })] }).markdown;
 verifie('accents au rapport', rD.includes('À renégocier') && rD.includes('Une référence vérifiable') && !/renegocier|reference verifiable|plafonne a/.test(rD));
 verifie('reserve de reaffectation', rD.includes('valeur conventionnelle de 50 %'));
+
+// 11. le coût horaire est un fait du client : saisi une fois, il prime, et renote sans modèle
+verifie('cout horaire lu', lireCoutHoraire('38') === 38 && lireCoutHoraire('38,5') === 38.5 && lireCoutHoraire('-') === null && lireCoutHoraire('') === null);
+refuse = false; try { lireCoutHoraire('beaucoup'); } catch { refuse = true; }
+verifie('cout horaire illisible refuse', refuse);
+verifie('cout horaire : fiche client en secours', coutHoraireConstate(null, { profile: { cout_horaire: 42 } }) === 42 && coutHoraireConstate(null, null) === null);
+const releve = { criteres_satisfaits: [...TOUS_A, ...TOUS_R], economie: { ...ECO, coutHoraire: undefined } };
+verifie('sans cout horaire : non note', !renoter(releve, { maturite: MATURE }).rendu && renoter(releve, { maturite: MATURE }).aObtenir.includes('coutHoraire'));
+verifie('avec cout horaire client : note', renoter(releve, { maturite: MATURE, coutHoraire: 45 }).rendu);
+const vendeur = { criteres_satisfaits: [...TOUS_A, ...TOUS_R], economie: { ...ECO, coutHoraire: 90 } };
+verifie('le client prime sur le vendeur', renoter(vendeur, { maturite: MATURE, coutHoraire: 20 }).axeB.gainBrut < renoter(vendeur, { maturite: MATURE }).axeB.gainBrut);
+const rH = rapportArbitrage({ ...dossier, coutHoraire: 38 }).markdown;
+verifie('cout horaire affiche', /Coût horaire chargé de vos équipes : 38 €/.test(rH));
 
 console.log(`cas figes arbitrage : ${ok}/${ok + ko} ${ko ? 'KO' : 'OK'}`);
 process.exit(ko ? 1 : 0);

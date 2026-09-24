@@ -8,7 +8,7 @@ import { analyser } from './analyste.js';
 import { auditer } from './auditeur.js';
 import { contredire } from './contradicteur.js';
 import { rediger } from './redacteur.js';
-import { lireMaturite } from './arbitrage.js';
+import { lireMaturite, lireCoutHoraire } from './arbitrage.js';
 
 function arg(nom, def = null) {
   const i = process.argv.indexOf(`--${nom}`);
@@ -17,7 +17,7 @@ function arg(nom, def = null) {
 
 const fichier = process.argv[2];
 if (!fichier || fichier.startsWith('--')) {
-  console.error('Usage: node agents/mission.js <fichier-proposition> --client "Nom" [--secteur "..."] [--taille "..."] [--contexte "..."] [--maturite M1=oui,M2=non,M3=oui,M4=oui]');
+  console.error('Usage: node agents/mission.js <fichier-proposition> --client "Nom" [--secteur "..."] [--taille "..."] [--contexte "..."] [--maturite M1=oui,M2=non,M3=oui,M4=oui] [--cout-horaire 38]');
   process.exit(1);
 }
 const nomClient = arg('client', 'Client non nommé');
@@ -26,6 +26,8 @@ const taille = arg('taille');
 const contexte = arg('contexte');
 // Maturite constatee chez le client (M1 a M4) : sans elle, l'axe C du Score ne se note pas.
 const maturite = lireMaturite(arg('maturite'));
+// Cout horaire charge des equipes du client : un fait du client, que le prestataire ne fournit pas.
+const coutHoraire = lireCoutHoraire(arg('cout-horaire'));
 
 const c = db();
 await c.connect();
@@ -52,7 +54,7 @@ try {
 
   // 3. AUDITEUR
   process.stdout.write('▸ Auditeur (7 regards + 8 questions)... ');
-  const au = await auditer({ proposalId: an.id, companyId, maturite, client: c });
+  const au = await auditer({ proposalId: an.id, companyId, maturite, coutHoraire, client: c });
   if (au.meta.status !== 'ok') throw new Error(`Auditeur en échec : ${au.meta.status}`);
   const sr = au.audit.score_raime;
   const lu = sr?.rendu ? `Score rAIme ${sr.score}/1000 ${sr.mention}` : `Score non rendu (a obtenir : ${(sr?.aObtenir || []).join(', ')})`;

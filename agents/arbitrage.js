@@ -6,9 +6,13 @@
 // Deux offres identiques donnent le meme rapport aujourd'hui et dans trois ans.
 //
 //   node agents/arbitrage.js --client "Nom" [--secteur ".."] [--taille ".."]
-//        [--maturite M1=oui,M2=non,M3=oui,M4=oui] offre1.txt offre2.txt [offre3.txt]
-//   node agents/arbitrage.js --client "Nom" --audits <id1>,<id2>   (audits deja faits)
-import { BAREME, BAREME_REALISME, REDHIBITOIRES } from './score.js';
+//        [--maturite M1=oui,M2=non,M3=oui,M4=oui] [--cout-horaire 38] offre1.txt offre2.txt
+//   node agents/arbitrage.js --client "Nom" --audits <id1>,<id2>   (audits deja faits : zero appel de modele)
+//
+// Deux faits appartiennent au CLIENT, pas aux offres : la maturite (M1 a M4) et le cout
+// horaire charge de ses equipes. Ils se constatent chez lui, une fois, et valent pour toutes
+// les offres ; un prestataire ne peut pas les fournir a sa place.
+import { BAREME, BAREME_REALISME, REDHIBITOIRES, depuisExtractionV2 } from './score.js';
 
 // ── La question a poser pour chaque critere manquant ────────────────────────
 // Une par code, ecrite pour etre lue telle quelle au prestataire.
@@ -150,6 +154,28 @@ export function lireMaturite(texte) {
   return m;
 }
 
+/** « 38 », « 38,5 » -> nombre ; « - » ou vide -> null. Une valeur absurde arrete tout. */
+export function lireCoutHoraire(texte) {
+  if (texte == null) return null;
+  const t = String(texte).trim();
+  if (!t || t === '-') return null;
+  const v = Number(t.replace(',', '.').replace(/\s|€/g, ''));
+  if (!Number.isFinite(v) || v <= 0 || v >= 1000) throw new Error(`cout horaire illisible : « ${texte} » (un nombre d'euros par heure, ex. 38)`);
+  return v;
+}
+
+/**
+ * Recalcule le score d'une offre a partir de ce que l'Auditeur a RELEVE (entrees stockees)
+ * et des faits constates chez le client. Aucun appel de modele : meme releve, memes faits,
+ * meme score. Le cout horaire constate chez le client prime sur un chiffre ecrit par le
+ * prestataire : c'est la realite de l'entreprise, pas une hypothese de vente.
+ */
+export function renoter(entrees = {}, { maturite = null, coutHoraire = null } = {}) {
+  const economie = { ...(entrees.economie || {}) };
+  if (nombre(coutHoraire) && coutHoraire > 0) economie.coutHoraire = coutHoraire;
+  return depuisExtractionV2({ ...entrees, economie, maturite });
+}
+
 /**
  * Cout complet sur 36 mois, a partir des grandeurs relevees dans la proposition.
  * Une grandeur absente n'est jamais comptee zero en silence : elle est listee dans
@@ -252,7 +278,7 @@ const esc = (s) => String(s ?? '').replace(/\|/g, '\\|').replace(/\s+/g, ' ').tr
 const PREUVE = { A: 'vérifié', B: 'déclaré', C: 'à tester' };
 
 /** Le rapport ARB-01, en markdown. Pur : memes offres, meme texte. */
-export function rapportArbitrage({ client, objet = null, date, offres, maturite = null }) {
+export function rapportArbitrage({ client, objet = null, date, offres, maturite = null, coutHoraire = null }) {
   const cl = classer(offres);
   const reco = recommander(cl);
   const toutes = [...cl.notees, ...cl.nonNotees];
@@ -349,6 +375,13 @@ export function rapportArbitrage({ client, objet = null, date, offres, maturite 
     p('Maturité non constatée : l’axe C ne peut pas être noté. Elle se constate chez vous, en entretien (4 questions, M1 à M4).');
     p('');
   }
+  if (nombre(coutHoraire)) {
+    p(`Coût horaire chargé de vos équipes : ${new Intl.NumberFormat('fr-FR').format(coutHoraire)} € (constaté chez vous, commun à toutes les offres).`);
+    p('');
+  } else if (toutes.some((o) => (o.score?.aObtenir || []).includes('coutHoraire'))) {
+    p('Coût horaire de vos équipes non renseigné : la rentabilité (axe B) ne peut pas être calculée. Il se donne une fois, pour toutes les offres.');
+    p('');
+  }
   p('Méthode complète : Score rAIme v2.0, publique et recalculable.');
   p('');
 
@@ -374,7 +407,7 @@ export function rapportArbitrage({ client, objet = null, date, offres, maturite 
 }
 
 // ── Branchement sur la base : des audits deja faits vers le rapport ─────────
-export async function arbitrer({ auditIds, client, maturite = null, objet = null }) {
+export async function arbitrer({ auditIds, client, maturite = null, coutHoraire = null, objet = null }) {
   const { rows } = await client.query(
     `SELECT a.id, a.findings, a.cost_model, p.vendor, p.parsed, co.name AS client_nom
      FROM audits a JOIN proposals p ON p.id = a.proposal_id
@@ -387,11 +420,14 @@ export async function arbitrer({ auditIds, client, maturite = null, objet = null
     vus.set(nom, (vus.get(nom) || 0) + 1);
     if (vus.get(nom) > 1) nom = `${nom} (${vus.get(nom)})`;
     const cm = r.cost_model || {};
-    return { nom, auditId: r.id, score: cm.score_raime || null,
-             economie: cm.entrees_score?.economie || {}, constats: Array.isArray(r.findings) ? r.findings : [] };
+    // Le score est recalcule depuis le releve de l'Auditeur et les faits du client du jour :
+    // une maturite ou un cout horaire saisis apres coup ne demandent pas de relancer l'IA.
+    const score = cm.entrees_score ? renoter(cm.entrees_score, { maturite, coutHoraire }) : (cm.score_raime || null);
+    return { nom, auditId: r.id, score, economie: cm.entrees_score?.economie || {},
+             constats: Array.isArray(r.findings) ? r.findings : [] };
   });
   const date = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
-  return rapportArbitrage({ client: rows[0].client_nom || 'Client', objet, date, offres, maturite });
+  return rapportArbitrage({ client: rows[0].client_nom || 'Client', objet, date, offres, maturite, coutHoraire });
 }
 
 // ── CLI ─────────────────────────────────────────────────────────────────────
@@ -404,7 +440,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 
   const args = process.argv.slice(2);
   const opt = (nom) => { const i = args.indexOf(`--${nom}`); return i > -1 ? args[i + 1] : null; };
-  const avecValeur = new Set(['client', 'secteur', 'taille', 'maturite', 'audits', 'objet']);
+  const avecValeur = new Set(['client', 'secteur', 'taille', 'maturite', 'cout-horaire', 'audits', 'objet']);
   const fichiers = args.filter((a, i) => !a.startsWith('--') && !(i > 0 && avecValeur.has(args[i - 1].slice(2))));
   const nomClient = opt('client');
   if (!nomClient || (!fichiers.length && !opt('audits'))) {
@@ -412,6 +448,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     process.exit(1);
   }
   let maturite = lireMaturite(opt('maturite'));
+  let coutHoraire = lireCoutHoraire(opt('cout-horaire'));
 
   const c = db();
   await c.connect();
@@ -429,13 +466,19 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     } else {
       maturite = rows[0].profile?.maturite || null;
     }
+    if (coutHoraire) {
+      await c.query(`UPDATE companies SET profile = coalesce(profile,'{}'::jsonb) || jsonb_build_object('cout_horaire', $2::numeric) WHERE id=$1`,
+        [companyId, coutHoraire]);
+    } else {
+      coutHoraire = lireCoutHoraire(rows[0].profile?.cout_horaire ?? null);
+    }
 
     let auditIds = opt('audits') ? opt('audits').split(',').map((s) => s.trim()) : [];
     for (const f of fichiers) {
       process.stdout.write(`▸ ${f} : lecture… `);
       const an = await analyser({ texte: readFileSync(f, 'utf8'), companyId, client: c });
       process.stdout.write('audit… ');
-      const au = await auditer({ proposalId: an.id, companyId, maturite, client: c });
+      const au = await auditer({ proposalId: an.id, companyId, maturite, coutHoraire, client: c });
       if (au.meta.status !== 'ok') throw new Error(`Auditeur en échec sur ${f} : ${au.meta.status}`);
       process.stdout.write('revue… ');
       await contredire({ auditId: au.id, client: c });
@@ -444,7 +487,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       auditIds.push(au.id);
     }
 
-    const r = await arbitrer({ auditIds, client: c, maturite, objet: opt('objet') });
+    const r = await arbitrer({ auditIds, client: c, maturite, coutHoraire, objet: opt('objet') });
     mkdirSync('out', { recursive: true });
     const slug = nomClient.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase();
     const sortie = `out/arbitrage-${slug}-${new Date().toISOString().slice(0, 10)}.md`;
