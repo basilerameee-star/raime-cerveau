@@ -31,7 +31,7 @@ export async function rediger({ auditId, client }) {
     // mais ne figure pas au rapport : une moyenne masquerait le maillon faible.
     const sr = cm.score_raime || null;
     const p = a.parsed || {};
-    const date = new Date(a.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+    const date = new Date(a.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'Europe/Paris' });
 
     // Coût total de la proposition, calculé (déterministe)
     const initial = Number(p.couts?.initial) || 0;

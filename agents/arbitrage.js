@@ -432,7 +432,7 @@ export async function arbitrer({ auditIds, client, maturite = null, coutHoraire 
     return { nom, auditId: r.id, score, economie: cm.entrees_score?.economie || {},
              constats: Array.isArray(r.findings) ? r.findings : [] };
   });
-  const date = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+  const date = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Paris' });
   return rapportArbitrage({ client: rows[0].client_nom || 'Client', objet, date, offres, maturite, coutHoraire });
 }
 
@@ -496,7 +496,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     const r = await arbitrer({ auditIds, client: c, maturite, coutHoraire, objet: opt('objet') });
     mkdirSync('out', { recursive: true });
     const slug = nomClient.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase();
-    const sortie = `out/arbitrage-${slug}-${new Date().toISOString().slice(0, 10)}.md`;
+    const sortie = `out/arbitrage-${slug}-${new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' })}.md`;
     writeFileSync(sortie, r.markdown, 'utf8');
     console.log(`\nRECOMMANDATION : ${r.recommandation.titre} — ${r.recommandation.texte}`);
     console.log(`RAPPORT : ${sortie}`);
