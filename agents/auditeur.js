@@ -5,6 +5,7 @@
 import { askJson, db, logRun, money } from './lib.js';
 import { appliquerGardeFous } from './garde_audit.js';
 import { depuisExtractionV2, BAREME, BAREME_REALISME, VERSION_2 as SCORE_VERSION } from './score.js';
+import { relire } from './relecture.js';
 
 const PROMPT_VERSION = 'auditeur-v3-score2';
 
@@ -119,7 +120,7 @@ export async function auditer({ proposalId, companyId = null, maturite = null, c
     if (!regards.length) throw new Error('Aucun regard d’audit en base — le cerveau est vide.');
 
     // 2. La proposition + le profil entreprise
-    const { rows: props } = await c.query('SELECT id,vendor,parsed,company_id FROM proposals WHERE id=$1', [proposalId]);
+    const { rows: props } = await c.query('SELECT id,vendor,parsed,raw,company_id FROM proposals WHERE id=$1', [proposalId]);
     if (!props.length) throw new Error(`Proposition ${proposalId} introuvable`);
     const prop = props[0];
     const cid = companyId || prop.company_id;
@@ -210,6 +211,13 @@ Produis l'audit.`;
     // v2.0 : trois axes, le plus bas x 10, sur 1000. La maturite (axe C) vient du
     // constat fait chez le client, jamais du modele : toute cle M renvoyee par lui est ecartee.
     let score = null;
+    // Seconde lecture des criteres juges absents : citation exacte exigee, verifiee par le code.
+    // Elle ne peut qu'ajouter ce qui est ecrit ; un echec laisse le releve intact.
+    if (status === 'ok' && a.score_raime_entrees && prop.raw) {
+      const rl = await relire({ texte: prop.raw, entrees: a.score_raime_entrees, client: c, ref: proposalId });
+      a.score_raime_entrees = rl.entrees;
+      a.relecture = rl.journal;
+    }
     if (status === 'ok' && a.score_raime_entrees) {
       // Le cout horaire est un fait du client : constate chez lui, il prime sur le chiffre du prestataire.
       const ch = coutHoraireConstate(coutHoraire, profil);
@@ -247,6 +255,7 @@ Produis l'audit.`;
                         niveau_confiance: a.niveau_confiance || null,
                         score_raime: score,
                         entrees_score: a.score_raime_entrees || null,
+                        relecture: a.relecture || null,
                         garde_fou: garde,
                         modele: r.model, cout_usd: r.costUsd, prompt: PROMPT_VERSION })]
     );
