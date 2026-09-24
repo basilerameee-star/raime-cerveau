@@ -37,6 +37,10 @@ ESSAIS="${PORTE_ESSAIS:-6}"          # vérifications d'un service avant de conc
 PAUSE="${PORTE_PAUSE:-10}"           # secondes entre deux essais (le premier certificat prend du temps)
 TAILLE_MAX="${PORTE_TAILLE_MAX:-209715200}"   # 200 Mo : au-delà, ce n'est pas le dépôt
 GARDER=5                              # versions conservées pour revenir en arrière
+# La boucle garde en mémoire les modules qu'elle a chargés : sans redémarrage, le code
+# livré dort sur le disque. Vide : aucune boucle à relancer (banc d'essai).
+BOUCLE="${PORTE_BOUCLE-raime-boucle}"
+ATTENTE_BOUCLE="${PORTE_ATTENTE_BOUCLE:-20}"   # secondes laissées à la boucle pour démarrer
 
 VERSIONS="$MAISON/versions"
 JOURNAL="$MAISON/journal.log"
@@ -124,6 +128,10 @@ appliquer() {
   if [ ! -d "$CERVEAU/node_modules" ] || ! cmp -s "$v/package-lock.json" "$VERSIONS/$avant/package-lock.json" 2>/dev/null; then
     "$LANCEUR" "npm ci --omit=dev --no-audit --no-fund" >/dev/null || { echo "installation des dépendances échouée"; return 1; }
   fi
+  if [ -n "$BOUCLE" ]; then
+    date -u +%FT%TZ > "$MAISON/.boucle_depuis"
+    "$DOCKER" restart "$BOUCLE" >/dev/null || { echo "la boucle ne redémarre pas"; return 1; }
+  fi
   # Les services de la version sont mis ; ceux que la porte avait posés et qui n'y sont plus, retirés.
   for nom in $(services_de "$sha"); do mettre_service "$sha" "$nom" || return 1; done
   for p in "$CADDY_DOSSIER"/*.caddy; do
@@ -140,6 +148,16 @@ verifier() {
   local sha="$1" nom conf chemin contient page i ok
   "$LANCEUR" 'for f in agents/*.js; do node --check "$f" || exit 1; done && node -e "import(\"./agents/lib.js\")"' >/dev/null \
     || { echo "le cerveau ne se charge pas"; return 1; }
+  if [ -n "$BOUCLE" ]; then
+    local depuis journal
+    sleep "$ATTENTE_BOUCLE"
+    depuis="$(cat "$MAISON/.boucle_depuis" 2>/dev/null || echo 10m)"
+    [ "$("$DOCKER" inspect -f '{{.State.Running}}' "$BOUCLE" 2>/dev/null)" = "true" ] \
+      || { echo "la boucle ne tourne plus après le redémarrage"; return 1; }
+    journal="$("$DOCKER" logs --since "$depuis" "$BOUCLE" 2>&1 || true)"
+    grep -qF '[boucle] démarrée' <<<"$journal" || { echo "la boucle n'a pas redémarré proprement"; return 1; }
+    ! grep -qF 'arrêt fatal' <<<"$journal" || { echo "la boucle s'est arrêtée : arrêt fatal"; return 1; }
+  fi
   for nom in $(services_de "$sha"); do
     conf="$VERSIONS/$sha/services/$nom/service.conf"
     chemin="$(lire_conf "$conf" chemin)"; contient="$(lire_conf "$conf" contient)"

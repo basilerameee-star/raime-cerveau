@@ -19,3 +19,4 @@ bibliotheque/
 
 # competences rapportees par l installeur : en quarantaine, jamais en service
 competences-candidates/
+__pycache__/

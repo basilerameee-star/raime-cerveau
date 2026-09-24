@@ -1,12 +1,11 @@
 # LA LIVRAISON — chaque fusion sur main part en ligne toute seule, si et seulement si
-# le banc d'essai passe. Le code voyage en archive par la porte de déploiement : une clé
-# qui ne peut lancer qu'un seul script sur le serveur (porte/porte.sh).
+# le banc d'essai passe. Le code voyage en archive jusqu'à la porte du serveur
+# (https://cockpit.raime.fr/porte/), qui le passe à porte/porte.sh.
 #
-# Secrets attendus (posés par la session locale, voir porte/INSTALLER.md) :
-#   PORTE_CLE         la clé privée de la porte
-#   PORTE_HOTE        utilisateur@adresse du serveur
-#   PORTE_HOTE_CONNU  la ligne known_hosts du serveur (on ne fait confiance à aucune autre)
-# Tant qu'ils manquent, la livraison s'arrête proprement avec un avertissement.
+# AUCUN SECRET. GitHub signe pour chaque passage un jeton (OIDC) qui dit quel dépôt, quelle
+# branche et quelle action livrent ; la porte vérifie cette signature avec la clé publique
+# de GitHub (porte/porte_http.py). Rien à copier, rien qui puisse fuir. Si la porte ne
+# répond pas, la livraison s'arrête proprement avec un avertissement.
 name: Livraison
 
 on:
@@ -28,40 +27,39 @@ jobs:
   deployer:
     needs: banc
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 30
     permissions:
       contents: write   # pour écrire une ligne au carnet si la version revient en arrière
+      id-token: write   # pour que GitHub signe le jeton qui ouvre la porte
     env:
-      PORTE_CLE: ${{ secrets.PORTE_CLE }}
-      PORTE_HOTE: ${{ secrets.PORTE_HOTE }}
-      PORTE_HOTE_CONNU: ${{ secrets.PORTE_HOTE_CONNU }}
+      PORTE_URL: https://cockpit.raime.fr/porte
     steps:
       - uses: actions/checkout@v4
 
       - name: La porte est-elle prête ?
         id: porte
         run: |
-          if [ -z "$PORTE_CLE" ] || [ -z "$PORTE_HOTE" ] || [ -z "$PORTE_HOTE_CONNU" ]; then
-            echo "::warning::Porte de déploiement pas encore installée (secrets PORTE_CLE, PORTE_HOTE, PORTE_HOTE_CONNU). Rien n'est envoyé au serveur."
-            echo "prete=non" >> "$GITHUB_OUTPUT"
-          else
+          if curl -fsS --max-time 15 "$PORTE_URL/sante" | grep -q 'porte prête'; then
             echo "prete=oui" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::La porte du serveur ne répond pas ($PORTE_URL/sante). Rien n'est envoyé."
+            echo "prete=non" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Envoyer la version par la porte
         id: envoi
         if: steps.porte.outputs.prete == 'oui'
         run: |
-          install -m 700 -d ~/.ssh
-          printf '%s\n' "$PORTE_CLE" > ~/.ssh/porte && chmod 600 ~/.ssh/porte
-          printf '%s\n' "$PORTE_HOTE_CONNU" > ~/.ssh/known_hosts
+          jeton=$(curl -fsS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+                    "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=raime-porte" | jq -r .value)
+          git archive --format=tar.gz HEAD -o version.tar.gz
           set +e
-          git archive --format=tar.gz HEAD \
-            | ssh -i ~/.ssh/porte -o BatchMode=yes -o StrictHostKeyChecking=yes \
-                  -o UserKnownHostsFile="$HOME/.ssh/known_hosts" "$PORTE_HOTE" "deployer $GITHUB_SHA" \
-            2>&1 | tee porte.log
-          code=${PIPESTATUS[1]}
+          curl -sS --no-buffer --max-time 1700 -X POST \
+               -H "Authorization: Bearer $jeton" -H "Content-Type: application/gzip" \
+               --data-binary @version.tar.gz "$PORTE_URL/livrer?sha=$GITHUB_SHA" | tee porte.log
           set -e
+          code=$(sed -n 's/^code=//p' porte.log | tail -n1)
+          code=${code:-1}
           echo "code=$code" >> "$GITHUB_OUTPUT"
           exit "$code"
 

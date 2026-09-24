@@ -1,83 +1,97 @@
 # Installer la porte de déploiement — pour la session locale de Basile
 
 À faire **une seule fois**, depuis l'ordinateur de Basile, qui a déjà l'accès au serveur
-(`~/.ssh/raime_vps`, comme `deploy.sh`). La session cloud n'a pas cet accès : ces étapes
-lui sont impossibles, et c'est voulu.
+(`~/.ssh/raime_vps`). La session cloud n'a pas cet accès : ces étapes lui sont impossibles,
+et c'est voulu.
 
 Une fois faites, chaque fusion sur `main` part en ligne toute seule (`.github/workflows/deployer.yml`).
 
-## 1. Poser la porte sur le serveur
+## Aucun secret (version du 24 septembre 2026)
 
-La porte vit **hors** du dossier du cerveau : une fusion ne peut donc jamais la modifier
-elle-même. Une nouvelle version de la porte se pose à la main, avec cette même commande.
+La première version demandait une clé privée copiée dans les secrets GitHub. Basile ne
+manipule pas de clés, et une clé qui dort quelque part peut fuir. La porte fonctionne donc
+autrement : à chaque livraison, **GitHub signe un jeton** (OIDC) qui dit quel dépôt, quelle
+branche et quelle action livrent. Sur le serveur, `porte/porte_http.py` vérifie la signature
+avec la clé **publique** de GitHub, puis chaque affirmation : dépôt `raime-cerveau`, branche
+`main`, action `deployer.yml` (donc après le banc d'essai), jeton neuf et non périmé. Alors
+seulement la version passe à `porte.sh`.
+
+Rien à copier dans GitHub. Rien à effacer ensuite.
+
+## 1. Poser la porte et son écoute
+
+La porte vit **hors** du dossier du cerveau : une fusion ne peut jamais la modifier.
+Une nouvelle version se pose à la main, avec ces mêmes commandes.
 
 ```bash
-ssh -i ~/.ssh/raime_vps root@2.29.6.94 'mkdir -p /opt/raime/porte /opt/raime/caddy-services'
-scp -i ~/.ssh/raime_vps porte/porte.sh root@2.29.6.94:/opt/raime/porte/porte.sh
-ssh -i ~/.ssh/raime_vps root@2.29.6.94 'chown root:root /opt/raime/porte/porte.sh && chmod 755 /opt/raime/porte/porte.sh \
-  && command -v flock tar cmp && /opt/raime/porte/porte.sh etat'
+K="-i ~/.ssh/raime_vps"
+ssh $K root@2.29.6.94 'mkdir -p /opt/raime/porte /opt/raime/caddy-services'
+scp $K porte/porte.sh porte/porte_http.py porte/raime-porte.service root@2.29.6.94:/opt/raime/porte/
+ssh $K root@2.29.6.94 'cd /opt/raime/porte && chmod 755 porte.sh porte_http.py \
+  && mv raime-porte.service /etc/systemd/system/ && systemctl daemon-reload \
+  && systemctl enable --now raime-porte && ./porte.sh etat \
+  && docker exec raime-caddy-1 wget -qO- http://172.18.0.1:8765/porte/sante'
 ```
 
-Attendu : trois chemins d'outils, puis `en service :` (vide) et `précédente :` (vide).
+Attendu : `en service :` (vide), `précédente :` (vide), puis `porte prête`.
+L'écoute se fait sur `172.18.0.1:8765`, la passerelle du réseau Docker `raime_default` :
+Caddy la joint, Internet non.
 
-## 2. La clé qui ne sait ouvrir que la porte
+## 2. Caddy : l'entrée de la porte et les blocs des services
 
-```bash
-ssh-keygen -t ed25519 -N "" -C porte-github -f ./porte_github
-PUB=$(cat ./porte_github.pub)
-ssh -i ~/.ssh/raime_vps root@2.29.6.94 \
-  "echo 'command=\"/opt/raime/porte/porte.sh\",restrict $PUB' >> /root/.ssh/authorized_keys"
-# Essai : même en demandant autre chose, seule la porte répond.
-ssh -i ./porte_github root@2.29.6.94 'ls /'      # → « REFUS : demande inconnue »
-ssh -i ./porte_github root@2.29.6.94 etat       # → en service : …
-```
+Sauvegarder `Caddyfile` et `docker-compose.yml`, puis :
 
-## 3. Les trois secrets GitHub
+1. Dans le bloc `cockpit.raime.fr`, la porte échappe au mot de passe (elle a sa propre
+   vérification) et passe avant le Cockpit :
 
-Dans le dépôt `raime-cerveau` → Settings → Secrets and variables → Actions → New repository secret :
+   ```
+   cockpit.raime.fr {
+     @protected not path /unsub* /porte/*
+     basic_auth @protected { … inchangé … }
+     handle /porte/* {
+       reverse_proxy 172.18.0.1:8765 {
+         flush_interval -1
+       }
+     }
+     handle {
+       reverse_proxy cockpit:8090
+     }
+   }
+   ```
 
-| Nom | Valeur |
-|---|---|
-| `PORTE_CLE` | tout le contenu de `./porte_github` (la clé **privée**) |
-| `PORTE_HOTE` | `root@2.29.6.94` |
-| `PORTE_HOTE_CONNU` | la sortie de `ssh-keyscan -t ed25519 2.29.6.94` (une ligne) |
-
-Puis **effacer** `./porte_github` et `./porte_github.pub` de l'ordinateur : la clé vit
-désormais seulement dans GitHub.
-
-## 4. Caddy lit les blocs des services
-
-Chaque service posé par la porte écrit son bloc dans `/opt/raime/caddy-services/<nom>.caddy`.
-Caddy doit les voir et les lire :
-
-1. Dans `/opt/raime/docker-compose.yml` (ou l'override), au service `caddy`, ajouter le volume :
+2. À la fin du `Caddyfile` : `import /etc/caddy/services/*.caddy`
+3. Dans `docker-compose.yml`, au service `caddy`, le volume
    `- ./caddy-services:/etc/caddy/services:ro`
-2. À la fin du `Caddyfile`, ajouter la ligne : `import /etc/caddy/services/*.caddy`
-3. `cd /opt/raime && docker compose up -d caddy && docker exec raime-caddy-1 caddy validate --config /etc/caddy/Caddyfile`
+4. Écrire le `Caddyfile` **en place** (`cat nouveau > Caddyfile`, jamais `sed -i` : le fichier
+   est monté seul dans le conteneur, un nouveau fichier ne serait pas vu), puis
+   `docker compose up -d --no-deps caddy` et
+   `docker exec raime-caddy-1 caddy validate --config /etc/caddy/Caddyfile`.
+5. Depuis l'extérieur : `curl https://cockpit.raime.fr/porte/sante` → `porte prête`.
 
-Si le conteneur ne s'appelle pas `raime-caddy-1`, ou le réseau pas `raime_default`, le dire
-à la session cloud : ce sont deux réglages en tête de `porte/porte.sh`.
+## 3. Le DNS des sous-domaines
 
-## 5. Le DNS des sous-domaines
+Un enregistrement **A** générique chez Cloudflare, **sans le nuage orange** :
+`*.raime.fr → 2.29.6.94`. Chaque service `<nom>` répond alors à `https://<nom>.raime.fr`,
+Caddy obtient le certificat seul. Sans lui, un service ne peut pas avoir de certificat, sa
+vérification échoue et la porte revient en arrière : c'est bloquant pour les services, pas
+pour le cerveau.
 
-Un enregistrement **A** générique : `*.raime.fr → 2.29.6.94`. Chaque service `<nom>`
-répond alors à `https://<nom>.raime.fr` sans autre geste ; Caddy obtient le certificat seul.
+## 4. Premier envoi
 
-## 6. Premier envoi
-
-GitHub → Actions → « Livraison » → Run workflow. Au premier passage, la porte photographie
-le cerveau en service (version « initiale ») avant d'y toucher : en cas d'échec, il revient tel quel.
+GitHub → Actions → « Livraison » → Run workflow (ou la prochaine fusion sur `main`).
+Au premier passage, la porte photographie le cerveau en service (version « initiale »)
+avant d'y toucher : en cas d'échec, il revient tel quel. Elle redémarre ensuite la boucle
+et vérifie qu'elle repart proprement, sinon elle revient en arrière.
 
 ## Revenir en arrière à la main
 
 ```bash
-ssh -i ./porte_github root@2.29.6.94 revenir     # ou, sans la clé de la porte :
 ssh -i ~/.ssh/raime_vps root@2.29.6.94 '/opt/raime/porte/porte.sh revenir'
 ```
 
-Le journal de la porte : `/opt/raime/porte/journal.log`.
+Le journal de la porte : `/opt/raime/porte/journal.log` (réception web et déploiements).
 
-## 7. Le jeton des chantiers (l'architecte demande, la session cloud construit)
+## 5. Le jeton des chantiers (l'architecte demande, la session cloud construit)
 
 Sur GitHub → Settings (du compte) → Developer settings → Fine-grained tokens → Generate :
 dépôt **raime-cerveau seulement**, permission **Issues : Read and write**, rien d'autre, expiration un an.
@@ -89,7 +103,7 @@ ssh -i ~/.ssh/raime_vps root@2.29.6.94 "echo 'GITHUB_CHANTIER_TOKEN=<le jeton>' 
 
 Essai : lancer un cycle de l'architecte ; s'il constate un manque mesuré, une issue « chantier » apparaît sur le dépôt.
 
-## 8. Le moteur de recherche du cerveau (SearXNG)
+## 6. Le moteur de recherche du cerveau (SearXNG)
 
 Pour que `rechercher_solution` lise aussi les documentations et les forums, sans clé ni abonnement :
 un conteneur `searxng/searxng` sur le réseau `raime_default`, **sans** bloc Caddy (il reste interne),

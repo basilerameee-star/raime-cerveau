@@ -52,7 +52,7 @@ sh -c "$1"`, 0o755);
 
 const env = () => ({ ...process.env, PORTE_RACINE: R.racine, PORTE_DOCKER: path.join(R.outils, 'docker'),
   PORTE_CURL: path.join(R.outils, 'curl'), PORTE_LANCEUR: path.join(R.outils, 'lanceur'),
-  PORTE_ESSAIS: '2', PORTE_PAUSE: '0', SSH_ORIGINAL_COMMAND: '' });
+  PORTE_ESSAIS: '2', PORTE_PAUSE: '0', PORTE_BOUCLE: '', SSH_ORIGINAL_COMMAND: '' });
 
 // ── Une version = une archive du dépôt ──────────────────────────────────────
 let n = 0;

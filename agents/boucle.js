@@ -39,7 +39,11 @@ const RYTHMES = [
   // Le savoir general : 23 domaines voulus par Basile (finance, droit, sante, sciences,
   // quantique, philosophie, metaphysique, spiritualite, esoterisme...). 30 articles par
   // domaine et par jour, source Wikipedia (CC BY-SA), sans cle ni depense.
-  { nom: 'encyclopediste', module: './encyclopediste.js', fn: 'nourrir', toutes: 24 * H, besoinN8n: false, args: { combien: 30 } },
+  // 60 par domaine depuis le 2026-09-24 : environ 1 400 articles par jour, 2 Go par mois au
+  // plus, pour 131 Go libres. Le disque tient plus de cinq ans a ce rythme.
+  { nom: 'encyclopediste', module: './encyclopediste.js', fn: 'nourrir', toutes: 24 * H, besoinN8n: false, args: { combien: 60 } },
+  // Ce que Basile demande a Cortex et que la bibliotheque ignorait y entre dans l'heure.
+  { nom: 'curieux',      module: './encyclopediste.js', fn: 'apprendreDemandes', toutes: 1 * H, besoinN8n: false },
   // Les yeux dehors : forums, depots de code, nouveaux modeles, travaux de recherche.
   // Quatre API publiques, tri par du code, rangement dans la bibliotheque. Cout : zero.
   { nom: 'veilleur',     module: './veilleur.js',    fn: 'veiller',     toutes: 24 * H, besoinN8n: false },
@@ -57,10 +61,32 @@ const RYTHMES = [
 
 const dernier = {};   // mémoire en RAM ; au démarrage on lit la base pour ne pas tout relancer
 
+// Chaque passage est noté par la boucle elle-même. Avant le 2026-09-24, seuls les agents qui
+// écrivaient dans agent_runs laissaient une trace : les autres (chasseur, veilleur, sas,
+// bibliothécaire...) repartaient à CHAQUE redémarrage — et le chasseur dépense. Avec la
+// livraison automatique, un redémarrage par fusion aurait multiplié la facture.
+async function preparer(brain) {
+  await brain.query(`
+    CREATE TABLE IF NOT EXISTS boucle_passages (
+      agent     text        NOT NULL,
+      fin_le    timestamptz NOT NULL DEFAULT now(),
+      statut    text        NOT NULL,
+      duree_ms  int
+    )`);
+  await brain.query(`CREATE INDEX IF NOT EXISTS boucle_passages_agent ON boucle_passages(agent, fin_le DESC)`);
+}
+
 async function derniereExecution(brain, agent) {
   const { rows } = await brain.query(
-    `SELECT max(created_at) AS le FROM agent_runs WHERE agent = $1`, [agent]);
+    `SELECT greatest((SELECT max(created_at) FROM agent_runs WHERE agent = $1),
+                     (SELECT max(fin_le) FROM boucle_passages WHERE agent = $1)) AS le`, [agent]);
   return rows[0]?.le ? new Date(rows[0].le).getTime() : 0;
+}
+
+async function noterPassage(brain, agent, statut, ms) {
+  try {
+    await brain.query(`INSERT INTO boucle_passages(agent, statut, duree_ms) VALUES($1,$2,$3)`, [agent, statut, ms]);
+  } catch { /* la boucle ne meurt jamais d'une erreur de journalisation */ }
 }
 
 async function executer(tache, brain, n8n) {
@@ -77,8 +103,10 @@ async function executer(tache, brain, n8n) {
       await mod[tache.fn]({ brain, n8n, ...(tache.args || {}) });
     }
     console.log(`[${new Date().toISOString()}] ✓ ${tache.nom} terminé en ${Math.round((Date.now() - t0) / 1000)}s`);
+    await noterPassage(brain, tache.nom, 'ok', Date.now() - t0);
   } catch (e) {
     console.error(`[${new Date().toISOString()}] ✗ ${tache.nom} en échec : ${e.message}`);
+    await noterPassage(brain, tache.nom, 'echec', Date.now() - t0);
     try {
       await brain.query(`INSERT INTO journal(acteur, changement, motif) VALUES($1,$2,$3)`,
         ['boucle', `Échec de l'agent ${tache.nom}`, e.message.slice(0, 400)]);
@@ -90,6 +118,7 @@ async function main() {
   const brain = db(); await brain.connect();
   const n8n = new pg.Client({ connectionString: process.env.DATABASE_URL_N8N }); await n8n.connect();
 
+  await preparer(brain);
   for (const t of RYTHMES) dernier[t.nom] = await derniereExecution(brain, t.nom);
   console.log(`[boucle] démarrée — ${RYTHMES.length} agents sous rythme`);
   for (const t of RYTHMES) {

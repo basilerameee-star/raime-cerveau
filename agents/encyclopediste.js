@@ -88,6 +88,15 @@ async function schema(brain) {
       caracteres  int,
       recupere_le timestamptz NOT NULL DEFAULT now()
     )`);
+  // Ce que Basile a demandé à Cortex et que la bibliothèque ignorait : Cortex y note le
+  // titre de l'article Wikipédia qui a répondu, l'encyclopédiste le range en entier.
+  await brain.query(`
+    CREATE TABLE IF NOT EXISTS savoir_demandes (
+      titre      text PRIMARY KEY,
+      question   text,
+      demande_le timestamptz NOT NULL DEFAULT now(),
+      range_le   timestamptz
+    )`);
   for (const [domaine, racines] of Object.entries(DOMAINES)) {
     for (const cat of racines) {
       await brain.query(
@@ -158,6 +167,29 @@ async function nourrirDomaine(brain, domaine, combien) {
       [cat.categorie, suite, !suite]);
   }
   return ranges;
+}
+
+// Toutes les heures : les articles qui ont servi à répondre à Basile entrent en entier dans
+// la bibliothèque (dossier savoir-curiosites). Rien à faire, rien ne se dépense.
+export async function apprendreDemandes({ brain }) {
+  await schema(brain);
+  const { rows } = await brain.query(
+    `SELECT titre FROM savoir_demandes WHERE range_le IS NULL ORDER BY demande_le LIMIT 40`);
+  let ranges = 0;
+  for (const { titre } of rows) {
+    const deja = await brain.query(`SELECT 1 FROM savoir_pages WHERE titre = $1`, [titre]);
+    try { if (!deja.rowCount && await rangerArticle(brain, 'curiosites', titre)) ranges++; }
+    catch { continue; /* on retentera à l'heure suivante */ }
+    await brain.query(`UPDATE savoir_demandes SET range_le = now() WHERE titre = $1`, [titre]);
+  }
+  if (ranges) {
+    const { ranger } = await import('./bibliothecaire.js');
+    await ranger({ brain, racine: RACINE });
+    await brain.query(`INSERT INTO journal(acteur, changement, motif) VALUES($1,$2,$3)`,
+      ['encyclopediste', `${ranges} article(s) appris des questions de Basile`,
+       rows.map((r) => r.titre).slice(0, 12).join(' · ')]);
+  }
+  return { ranges };
 }
 
 export async function nourrir({ brain, combien = 30 }) {

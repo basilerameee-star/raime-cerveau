@@ -50,6 +50,41 @@ async function bibliotheque(question) {
   } catch (e) { return []; }
 }
 
+// LE SAVOIR VIVANT — quand la bibliothèque ne suffit pas, Cortex interroge Wikipédia en
+// français, en direct, et note le titre : l'encyclopédiste rangera l'article entier dans
+// l'heure. La bibliothèque grandit ainsi d'abord de ce que Basile demande vraiment.
+const WIKI = 'https://fr.wikipedia.org/w/api.php';
+const WIKI_UA = { 'User-Agent': 'rAIme-cortex/1.0 (https://raime.fr; contact@raime.fr)' };
+
+async function wiki(params) {
+  const c = new AbortController();
+  const minuteur = setTimeout(() => c.abort(), 6000);
+  try {
+    const r = await fetch(`${WIKI}?${new URLSearchParams({ format: 'json', formatversion: '2', ...params })}`,
+      { headers: WIKI_UA, signal: c.signal });
+    return r.ok ? await r.json() : null;
+  } catch (e) { return null; } finally { clearTimeout(minuteur); }
+}
+
+async function savoirVivant(question, dejaVus) {
+  const mots = String(question).toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .split(/\s+/).filter((m) => m.length > 3).slice(0, 8);
+  if (!mots.length) return [];
+  const s = await wiki({ action: 'query', list: 'search', srsearch: mots.join(' '), srlimit: '3', srnamespace: '0' });
+  const titres = (s?.query?.search || []).map((x) => x.title).filter((t) => !dejaVus.has(t));
+  if (!titres.length) return [];
+  const d = await wiki({ action: 'query', prop: 'extracts', exintro: '1', explaintext: '1',
+    exlimit: String(titres.length), redirects: '1', titles: titres.join('|') });
+  const pages = (d?.query?.pages || []).filter((p) => p.extract && p.extract.length > 200);
+  for (const p of pages) {
+    try {
+      await cerveau.query(`INSERT INTO savoir_demandes(titre, question) VALUES($1,$2) ON CONFLICT DO NOTHING`,
+        [p.title, String(question).slice(0, 300)]);
+    } catch (e) { /* la note ne doit jamais bloquer la réponse */ }
+  }
+  return pages.map((p) => ({ titre: p.title, domaine: 'Wikipédia, en direct', extrait: p.extract.slice(0, 1200) }));
+}
+
 // Les questions que l'agent réflexif attend de Basile : Cortex les rappelle au bon moment.
 async function questionsOuvertes() {
   try {
@@ -60,7 +95,7 @@ async function questionsOuvertes() {
 }
 
 const CORTEX_SYS = "Tu es Cortex, la voix du cerveau de rAIme — le cabinet de conseil en intelligence artificielle de Basile Ramé (formation des particuliers et des professionnels : dirigeants, comités de direction, employés ; audit des postes et arbitrage pour les entreprises ; automatisation). Tu es son bras droit et son interface avec tout le système. "
-  + "Le cerveau : une boucle permanente de 14 agents sur le serveur — l'architecte (l'agent réflexif, qui tient les buts et se corrige), le réflexif, le veilleur (forums, dépôts de code, publications), le chasseur et le sas (le meilleur modèle au meilleur prix), le bibliothécaire et l'encyclopédiste (la bibliothèque de savoir : finance, droit, santé, sciences, physique quantique, philosophie, métaphysique, spiritualité, ésotérisme, religions, histoire, informatique, marketing, management…), et les agents de surveillance. La prospection par e-mail est en pause. "
+  + "Le cerveau : une boucle permanente d'agents sur le serveur — l'architecte (l'agent réflexif, qui tient les buts et se corrige), le réflexif, le veilleur (forums, dépôts de code, publications), le chasseur et le sas (le meilleur modèle au meilleur prix), le bibliothécaire et l'encyclopédiste (la bibliothèque de savoir : finance, droit, santé, sciences, physique quantique, philosophie, métaphysique, spiritualité, ésotérisme, religions, histoire, informatique, marketing, management…), et les agents de surveillance. La prospection par e-mail est en pause. "
   + "SAVOIR : pour toute question de connaissance, appuie-toi d'abord sur les PASSAGES DE LA BIBLIOTHÈQUE fournis et cite-les entre crochets [Titre]. Complète avec tes connaissances générales en le signalant (« au-delà de la bibliothèque… »). Tous les sujets sont bienvenus, y compris spiritualité, ésotérisme et métaphysique : expose les traditions et les idées fidèlement, et distingue ce qui relève du savoir établi, de la tradition ou de la croyance. "
   + "Réponds en français, direct, concret, chaleureux et HONNÊTE : si tu ne sais pas, ou si quelque chose n'est pas encore en place, dis-le clairement. Tu conseilles, fais le point, expliques, aides à décider. Tu n'exécutes pas d'actions toi-même. Les « Tâches en cours » sont À FAIRE, pas faites. N'invente aucun chiffre sur l'entreprise : ne t'appuie que sur ceux fournis.";
 
@@ -219,9 +254,13 @@ const server = http.createServer(async (req, res) => {
       await q("INSERT INTO cortex_chat (role, content) VALUES ('user', $1)", [message]);
       const ctx = await buildContext();
       const passages = await bibliotheque(message);
+      // D'abord la bibliothèque, puis le monde : moins de trois passages, on va chercher.
+      if (passages.length < 3) {
+        passages.push(...await savoirVivant(message, new Set(passages.map((p) => p.titre))));
+      }
       const enAttente = await questionsOuvertes();
       const savoir = passages.length
-        ? "\n\nPASSAGES DE LA BIBLIOTHÈQUE (à citer entre crochets) :\n" + passages.map((p) =>
+        ? "\n\nPASSAGES DE LA BIBLIOTHÈQUE ET DE WIKIPÉDIA EN DIRECT (à citer entre crochets) :\n" + passages.map((p) =>
             `[${p.titre}] (${p.domaine}) ${String(p.extrait).replace(/\s+/g, ' ')}`).join('\n\n')
         : "\n\nPASSAGES DE LA BIBLIOTHÈQUE : aucun passage pertinent — réponds avec tes connaissances générales et dis-le.";
       const questions = enAttente ? "\n\nQUESTIONS QUE L'ARCHITECTE ATTEND DE BASILE :\n" + enAttente : '';

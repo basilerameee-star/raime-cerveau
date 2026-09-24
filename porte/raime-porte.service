@@ -1,0 +1,17 @@
+# La porte web du serveur : reçoit les livraisons signées par GitHub (porte_http.py).
+# Posée une fois par la session locale, voir porte/INSTALLER.md.
+[Unit]
+Description=Porte de deploiement rAIme (reception des livraisons signees par GitHub)
+After=docker.service network-online.target
+Wants=docker.service network-online.target
+# L'adresse d'écoute (la passerelle du réseau Docker raime_default) n'existe qu'une fois
+# Docker lancé : en cas d'échec au démarrage, systemd réessaie sans jamais abandonner.
+StartLimitIntervalSec=0
+
+[Service]
+ExecStart=/usr/bin/python3 /opt/raime/porte/porte_http.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
