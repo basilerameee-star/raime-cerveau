@@ -200,3 +200,10 @@ Merci pour le travail de cette nuit : le banc a déjà trouvé un vrai défaut e
 - Correction : fins de ligne converties ; une règle de pare-feu étroite (réseau Docker vers le port 8765 seulement). Notice mise à jour.
 - Reste : l'entrée publique dans Caddy (`cockpit.raime.fr/porte/`), puis le premier envoi. Arrêté par le garde-fou de la session locale : attend Basile.
 - Leçon : un script copié depuis Windows se copie depuis Git, jamais depuis le dossier de travail.
+
+## 2026-09-24 — livraison — échec, retour automatique
+- Action : déploiement de b1b3a02088ce par la porte.
+- Résultat : code 3 (3 = version précédente remise, 4 = aucune version précédente).
+- Évaluation : ÉCHEC de b1b3a02088ce1b89a23472488d1508a39c37ee45 : installation des dépendances échouée — retour à initiale RETOUR ARRIÈRE réussi : initiale en service 
+- Correction : aucune version cassée ne reste en ligne ; la cause est à traiter dans une nouvelle pull request.
+- Leçon : à tirer par la session suivante.
