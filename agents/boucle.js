@@ -42,7 +42,10 @@ const RYTHMES = [
   // domaine et par jour, source Wikipedia (CC BY-SA), sans cle ni depense.
   // 60 par domaine depuis le 2026-09-24 : environ 1 400 articles par jour, 2 Go par mois au
   // plus, pour 131 Go libres. Le disque tient plus de cinq ans a ce rythme.
-  { nom: 'encyclopediste', module: './encyclopediste.js', fn: 'nourrir', toutes: 24 * H, besoinN8n: false, args: { combien: 60 } },
+  // EN PAUSE depuis le 2026-09-25, sur la parole de Basile : « on évite les sources comme
+  // Wikipédia, c'est un peu du slop ». Le savoir viendra de la recherche Internet classique
+  // (moteur souverain + Gemini) et des sources premières (FEUILLE_DE_ROUTE.md).
+  // { nom: 'encyclopediste', module: './encyclopediste.js', fn: 'nourrir', toutes: 24 * H, besoinN8n: false, args: { combien: 60 } },
   // Ce que Basile demande a Cortex et que la bibliotheque ignorait y entre dans l'heure.
   { nom: 'curieux',      module: './encyclopediste.js', fn: 'apprendreDemandes', toutes: 1 * H, besoinN8n: false },
   // Les yeux dehors : forums, depots de code, nouveaux modeles, travaux de recherche.
