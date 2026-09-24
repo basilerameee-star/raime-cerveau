@@ -3,6 +3,7 @@
 // Chaque agent a son rythme ; la boucle survit aux redémarrages du serveur.
 import { db } from './lib.js';
 import pg from 'pg';
+import * as experience from './experience.js';
 
 const MIN = 60_000, H = 60 * MIN;
 
@@ -91,6 +92,11 @@ async function noterPassage(brain, agent, statut, ms) {
 
 async function executer(tache, brain, n8n) {
   const t0 = Date.now();
+  // La mémoire d'expérience : la situation avant, l'action, la situation après (JEPA.md).
+  const avant = await experience.photographier(brain);
+  const noterExperience = async (succes, resultat) => experience.noter(brain, {
+    agent: tache.nom, action: tache.fn || tache.cmd || tache.nom, arguments: tache.args || {},
+    avant, apres: await experience.photographier(brain), succes, resultat, duree_ms: Date.now() - t0 });
   try {
     if (tache.cmd === 'sync') {
       const { execSync } = await import('node:child_process');
@@ -104,9 +110,11 @@ async function executer(tache, brain, n8n) {
     }
     console.log(`[${new Date().toISOString()}] ✓ ${tache.nom} terminé en ${Math.round((Date.now() - t0) / 1000)}s`);
     await noterPassage(brain, tache.nom, 'ok', Date.now() - t0);
+    await noterExperience(true, 'terminé');
   } catch (e) {
     console.error(`[${new Date().toISOString()}] ✗ ${tache.nom} en échec : ${e.message}`);
     await noterPassage(brain, tache.nom, 'echec', Date.now() - t0);
+    await noterExperience(false, e.message);
     try {
       await brain.query(`INSERT INTO journal(acteur, changement, motif) VALUES($1,$2,$3)`,
         ['boucle', `Échec de l'agent ${tache.nom}`, e.message.slice(0, 400)]);
@@ -119,6 +127,7 @@ async function main() {
   const n8n = new pg.Client({ connectionString: process.env.DATABASE_URL_N8N }); await n8n.connect();
 
   await preparer(brain);
+  await experience.preparer(brain);
   for (const t of RYTHMES) dernier[t.nom] = await derniereExecution(brain, t.nom);
   console.log(`[boucle] démarrée — ${RYTHMES.length} agents sous rythme`);
   for (const t of RYTHMES) {
