@@ -287,8 +287,19 @@ const server = http.createServer(async (req, res) => {
       await q("INSERT INTO cortex_chat (role, content) VALUES ('user', $1)", [message]);
       const ctx = await buildContext();
       const passages = await bibliotheque(message);
-      // D'abord la bibliothèque, puis le monde : moins de trois passages, on va chercher.
-      if (passages.length < 3) {
+      // D'abord la bibliothèque, puis le monde. LE DÉCLENCHEUR « JE NE SAIS PAS » : moins de
+      // trois passages, OU des passages qui ne couvrent pas les mots importants de la question
+      // (un nom, un code, un chiffre absents de ce que la bibliothèque a rendu). Le 25/09, trois
+      // passages vagues ont suffi à retenir la recherche, et Cortex a inventé le certificateur
+      // de la RS6776 : un nombre de passages ne dit pas qu'on sait.
+      const motsQuestion = message.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/)
+        .filter((m) => m.length > 3 || /\d/.test(m));
+      const lu = passages.map((p) => `${p.titre} ${p.extrait}`).join(' ').toLowerCase();
+      const couverture = motsQuestion.length
+        ? motsQuestion.filter((m) => lu.includes(m)).length / motsQuestion.length : 1;
+      const precis = motsQuestion.filter((m) => /\d/.test(m) || m.length > 8);
+      const manquePrecis = precis.some((m) => !lu.includes(m));
+      if (passages.length < 3 || couverture < 0.6 || manquePrecis) {
         passages.push(...await savoirVivant(message, new Set(passages.map((p) => p.titre))));
       }
       const enAttente = await questionsOuvertes();
