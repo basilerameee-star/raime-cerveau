@@ -154,6 +154,12 @@ export function lireMaturite(texte) {
   return m;
 }
 
+/** Nom d'un prestataire pour le rapport : sans la precision entre parentheses ajoutee a la lecture. */
+export function nomPropre(nom) {
+  const n = String(nom ?? '').replace(/\s*\([^)]*\)\s*$/, '').trim();
+  return n || String(nom ?? '').trim();
+}
+
 /** « 38 », « 38,5 » -> nombre ; « - » ou vide -> null. Une valeur absurde arrete tout. */
 export function lireCoutHoraire(texte) {
   if (texte == null) return null;
@@ -416,7 +422,7 @@ export async function arbitrer({ auditIds, client, maturite = null, coutHoraire 
   if (rows.length !== auditIds.length) throw new Error(`arbitrage : ${auditIds.length - rows.length} audit(s) introuvable(s)`);
   const vus = new Map();
   const offres = rows.map((r, i) => {
-    let nom = r.vendor || r.parsed?.fournisseur || `Offre ${i + 1}`;
+    let nom = nomPropre(r.vendor || r.parsed?.fournisseur) || `Offre ${i + 1}`;
     vus.set(nom, (vus.get(nom) || 0) + 1);
     if (vus.get(nom) > 1) nom = `${nom} (${vus.get(nom)})`;
     const cm = r.cost_model || {};

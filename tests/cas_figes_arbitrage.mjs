@@ -4,7 +4,7 @@
 // C2, C3 et C4 passent en premier, et le même dossier donne le même rapport.
 import { scoreRaimeV2, depuisExtractionV2, BAREME, BAREME_REALISME } from '../agents/score.js';
 import { lireMaturite, coutTroisAns, aObtenirParEcrit, classer, recommander, rapportArbitrage, QUESTIONS, LIBELLES,
-         lireCoutHoraire, renoter } from '../agents/arbitrage.js';
+         lireCoutHoraire, renoter, nomPropre } from '../agents/arbitrage.js';
 import { maturiteConstatee, coutHoraireConstate } from '../agents/auditeur.js';
 
 const TOUS_A = BAREME.map((b) => b.code);
@@ -109,6 +109,9 @@ const vendeur = { criteres_satisfaits: [...TOUS_A, ...TOUS_R], economie: { ...EC
 verifie('le client prime sur le vendeur', renoter(vendeur, { maturite: MATURE, coutHoraire: 20 }).axeB.gainBrut < renoter(vendeur, { maturite: MATURE }).axeB.gainBrut);
 const rH = rapportArbitrage({ ...dossier, coutHoraire: 38 }).markdown;
 verifie('cout horaire affiche', /Coût horaire chargé de vos équipes : 38 €/.test(rH));
+
+// 12. le nom du prestataire au rapport, sans la précision ajoutée à la lecture
+verifie('nom propre', nomPropre('Atelier Sobre (Claire Martin, fondatrice)') === 'Atelier Sobre' && nomPropre('NexaFlow SAS') === 'NexaFlow SAS' && nomPropre('(inconnu)') === '(inconnu)');
 
 console.log(`cas figes arbitrage : ${ok}/${ok + ko} ${ko ? 'KO' : 'OK'}`);
 process.exit(ko ? 1 : 0);
