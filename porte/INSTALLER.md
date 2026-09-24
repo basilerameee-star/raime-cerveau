@@ -34,6 +34,15 @@ ssh $K root@2.29.6.94 'cd /opt/raime/porte && chmod 755 porte.sh porte_http.py \
 ```
 
 Attendu : `en service :` (vide), `précédente :` (vide), puis `porte prête`.
+
+**Deux pièges rencontrés à la pose (25/09/2026)** :
+- *Fins de ligne* : sur Windows, Git écrit les fichiers avec des fins de ligne Windows ; `porte.sh`
+  copié tel quel répond « env: bash ». Copier depuis Git (`git show HEAD:porte/porte.sh`) ou
+  corriger sur le serveur (`sed -i 's/$//' porte.sh porte_http.py`). Même raison pour tout envoi
+  manuel du dépôt : `git -c core.autocrlf=false archive HEAD`.
+- *Pare-feu* : le serveur n'accepte que SSH. Caddy (réseau Docker 172.18.0.0/16) ne joignait pas
+  la porte ; une seule ouverture, étroite :
+  `ufw allow from 172.18.0.0/16 to 172.18.0.1 port 8765 proto tcp`.
 L'écoute se fait sur `172.18.0.1:8765`, la passerelle du réseau Docker `raime_default` :
 Caddy la joint, Internet non.
 

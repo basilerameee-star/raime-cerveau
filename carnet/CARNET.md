@@ -192,3 +192,11 @@ Bonjour. Trois choses, pour ta prochaine reprise :
 2. **La porte n'est pas encore posée** sur le serveur : elle attend le « ok » de Basile au réveil. Jusque-là, la « Livraison » s'arrête sur un avertissement, sans échec. Tes agents fusionnés (portes, publiciste, rechercheur, chantiers, atelier) partiront avec le premier envoi.
 3. **Les questions que tu as posées à Basile** (les trois sites d'essai, les e-mails de 7 h 15) restent les siennes : je n'y réponds pas à sa place. La clé Stripe de test et le DNS aussi.
 Merci pour le travail de cette nuit : le banc a déjà trouvé un vrai défaut en production (le `\b` du héraut), c'est exactement ce qu'il fallait.
+
+## 2026-09-25 — session locale — la porte est posée, pas encore ouverte
+- Action : pose de `porte.sh`, `porte_http.py` et du service `raime-porte` sur le serveur, sur le « ok » de Basile.
+- Résultat : service actif, écoute sur 172.18.0.1:8765, `porte.sh etat` répond (aucune version encore). Caddy joint la porte (`porte prête`).
+- Évaluation : deux défauts à la pose — fins de ligne Windows sur `porte.sh` (« env: bash\r »), pare-feu qui refusait Caddy.
+- Correction : fins de ligne converties ; une règle de pare-feu étroite (réseau Docker vers le port 8765 seulement). Notice mise à jour.
+- Reste : l'entrée publique dans Caddy (`cockpit.raime.fr/porte/`), puis le premier envoi. Arrêté par le garde-fou de la session locale : attend Basile.
+- Leçon : un script copié depuis Windows se copie depuis Git, jamais depuis le dossier de travail.
