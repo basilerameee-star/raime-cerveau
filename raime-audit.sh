@@ -2,7 +2,10 @@
 # =====================================================================
 #  rAIme — AUDIT D'UNE PROPOSITION, EN UNE COMMANDE
 #
-#  ./raime-audit.sh <fichier-proposition.txt> "Nom du client" [secteur] [taille]
+#  ./raime-audit.sh <proposition.pdf|.docx|.odt|.txt> "Nom du client" [secteur] [taille] [maturite]
+#
+#  maturite : constatée chez le client, ex. "M1=oui,M2=non,M3=oui,M4=oui" (sans elle,
+#  l'axe C du Score rAIme ne se note pas et le rapport le dit).
 #
 #  Exemple :
 #    ./raime-audit.sh devis-nexaflow.txt "Cabinet Martin" "Expertise comptable" "30 salaries"
@@ -18,12 +21,24 @@ VPS_DIR=/opt/raime/raime-brain
 CHROME="/c/Program Files/Google/Chrome/Application/chrome.exe"
 SORTIE_DIR="$HOME/OneDrive/Desktop/rAIme/audits"
 
-FICHIER="${1:?Usage: ./raime-audit.sh <fichier> \"Nom du client\" [secteur] [taille]}"
+FICHIER="${1:?Usage: ./raime-audit.sh <fichier> \"Nom du client\" [secteur] [taille] [maturite]}"
 CLIENT="${2:?Nom du client requis}"
 SECTEUR="${3:-}"
 TAILLE="${4:-}"
+MATURITE="${5:-}"
+# Une apostrophe droite casserait la commande distante : on passe à l'apostrophe typographique.
+CLIENT="${CLIENT//\'/’}"
 
 [ -f "$FICHIER" ] || { echo "Fichier introuvable : $FICHIER"; exit 1; }
+
+# PDF, Word, OpenDocument : le texte est extrait ici, avant l'envoi. Un scan est refusé.
+case "${FICHIER,,}" in
+  *.txt|*.md) ;;
+  *) TXT="$(mktemp -d)/$(basename "${FICHIER%.*}").txt"
+     echo "▸ Lecture du document..."
+     python "$(dirname "$0")/tools/extraire_texte.py" "$FICHIER" "$TXT" || exit 1
+     FICHIER="$TXT" ;;
+esac
 mkdir -p "$SORTIE_DIR"
 
 SSH="ssh -o BatchMode=yes -o ConnectTimeout=20 -i $VPS_KEY $VPS_USER@$VPS_IP"
@@ -36,6 +51,7 @@ echo "▸ Lancement de la mission (2 à 3 minutes)..."
 ARGS="samples/$BASE --client \"$CLIENT\""
 [ -n "$SECTEUR" ] && ARGS="$ARGS --secteur \"$SECTEUR\""
 [ -n "$TAILLE" ]  && ARGS="$ARGS --taille \"$TAILLE\""
+[ -n "$MATURITE" ] && ARGS="$ARGS --maturite \"$MATURITE\""
 
 RESULTAT=$($SSH "PGPASS=\$(docker exec raime-postgres-1 printenv POSTGRES_PASSWORD); \
 timeout 540 docker run --rm --network raime_default \
@@ -53,7 +69,7 @@ LOCAL_MD="$SORTIE_DIR/$(basename "$MD")"
 
 echo "▸ Génération du PDF de marque..."
 HTML="${LOCAL_MD%.md}.html"
-python "$(dirname "$0")/tools/md2html.py" "$LOCAL_MD" "$HTML" "Audit independant - confidentiel"
+python "$(dirname "$0")/tools/md2html.py" "$LOCAL_MD" "$HTML" "Analyse indépendante · confidentiel"
 PDF_WIN=$(cygpath -w "${LOCAL_MD%.md}.pdf")
 HTML_URL="file:///$(cygpath -m "$HTML")"
 "$CHROME" --headless=new --disable-gpu --no-first-run --no-default-browser-check \

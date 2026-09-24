@@ -1,7 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Markdown -> HTML de marque rAIme (prêt pour impression PDF, filigrane inclus).
-Usage: python tools/md2html.py <fichier.md> <sortie.html> "<sous-titre entete>"
+"""Markdown -> HTML de marque rAIme (prêt pour impression PDF).
+Usage: python tools/md2html.py <fichier.md> <sortie.html> "<sous-titre>"
+
+Depuis le 24/09/2026, le rapport sort dans la charte NOIRE des documents rAIme :
+le gabarit, la feuille de style, les polices et l'identité viennent du constructeur
+de documents (04_Offre_de_formation/_sources/build.py). Un rapport d'audit ou
+d'arbitrage a donc exactement l'allure des modèles AUDIT-02 et ARB-01.
+Si ce constructeur est introuvable, l'ancien gabarit clair sert de secours.
 """
 import sys, re, html, os
 
@@ -71,10 +77,10 @@ def convert(md):
             i += 2; rows = []
             while i < n and re.match(r'^\|.*\|$', lines[i].strip()):
                 rows.append([c.strip() for c in lines[i].strip().strip('|').split('|')]); i += 1
-            t = "<table><tr>" + "".join(f"<th>{inline(h)}</th>" for h in head) + "</tr>"
+            t = "<table><thead><tr>" + "".join(f"<th>{inline(h)}</th>" for h in head) + "</tr></thead><tbody>"
             for r in rows:
                 t += "<tr>" + "".join(f"<td>{inline(c)}</td>" for c in r) + "</tr>"
-            out.append(t + "</table>"); continue
+            out.append(t + "</tbody></table>"); continue
         if s.startswith("#"):
             lvl = len(s) - len(s.lstrip("#"))
             out.append(f"<h{min(lvl,3)}>{inline(s.lstrip('#').strip())}</h{min(lvl,3)}>")
@@ -98,10 +104,60 @@ def convert(md):
         if buf: out.append("<p>" + inline(" ".join(buf)) + "</p>")
     return "\n".join(out)
 
+CONSTRUCTEUR = os.path.expanduser(r"~/OneDrive/Desktop/rAIme/04_Offre_de_formation/_sources")
+
+
+def entete_md(md):
+    """Front matter (title, ref) et premier titre # : ils vont dans l'en-tête du gabarit."""
+    meta, lignes = {}, md.split("\n")
+    if lignes and lignes[0].strip() == "---":
+        j = 1
+        while j < len(lignes) and lignes[j].strip() != "---":
+            cle, _, val = lignes[j].partition(":")
+            if cle.strip():
+                meta[cle.strip().lower()] = val.strip()
+            j += 1
+        lignes = lignes[j + 1:]
+    for k, l in enumerate(lignes):
+        if re.match(r"^#\s", l.strip()):
+            meta["titre"] = l.strip()[1:].strip()
+            del lignes[k]
+            break
+    return meta, "\n".join(lignes)
+
+
+def a_la_charte(corps):
+    """Chaque titre ## reçoit le numéro de la charte, dans l'ordre (01, 02...) ; encadrés -> blocs."""
+    rang = iter(range(1, 100))
+    corps = re.sub(r"<h2>(?:\d+\.\s*)?(.*?)</h2>",
+                   lambda m: '<h2><span class="num">%02d</span>%s</h2>' % (next(rang), m.group(1)), corps)
+    return corps.replace("<blockquote>", '<div class="bloc">').replace("</blockquote>", "</div>")
+
+
+def charte(md, sub):
+    sys.path.insert(0, CONSTRUCTEUR)
+    import json
+    import build
+    meta, reste = entete_md(md)
+    meta.setdefault("titre", "*Rapport*")
+    if sub:
+        meta.setdefault("soustitre", sub)
+    meta.setdefault("version", "1.0")
+    ident = json.loads((build.SOURCES / "identite.json").read_text(encoding="utf-8"))
+    css, logos = build.ressources()
+    return build.gabarit(meta, a_la_charte(convert(reste)), ident, css, logos["noir"], False)
+
+
 def main():
     src, dst = sys.argv[1], sys.argv[2]
-    sub = sys.argv[3] if len(sys.argv) > 3 else "Document interne"
+    sub = sys.argv[3] if len(sys.argv) > 3 else ""
     md = open(src, encoding="utf-8").read()
+    if os.path.isdir(CONSTRUCTEUR):
+        doc = charte(md, sub)
+        open(dst, "w", encoding="utf-8").write(doc)
+        print("HTML ecrit (charte noire):", os.path.basename(dst), len(doc), "octets")
+        return
+    sub = sub or "Document interne"
     body = convert(md)
     doc = f"""<!doctype html><html lang="fr"><head><meta charset="utf-8">
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&family=Space+Mono&display=swap" rel="stylesheet">

@@ -285,7 +285,15 @@ export function axeC({ demarche = [], maturite } = {}) {
   const inconnus = (demarche || []).filter((c) => !codesR.has(c));
   if (inconnus.length) throw new Error(`score v2: code(s) de demarche inconnu(s) : ${inconnus.join(', ')}`);
   const nonConstates = codesM.filter((c) => !maturite || typeof maturite[c] !== 'boolean');
-  if (nonConstates.length) return { mesurable: false, nonConstates, note: null };
+  if (nonConstates.length) {
+    // Axe non note, mais la demarche, elle, se lit deja : on garde ce qui manque a l'ecrit,
+    // pour que le rapport puisse le demander au prestataire sans attendre le constat.
+    const lus = new Set(demarche || []);
+    const demarcheManquante = BAREME_REALISME
+      .filter((b) => b.groupe === 'demarche' && !lus.has(b.code))
+      .map((b) => ({ code: b.code, poids: b.poids, groupe: b.groupe, libelle: b.libelle }));
+    return { mesurable: false, nonConstates, note: null, demarcheManquante };
+  }
 
   const vus = new Set(demarche);
   const detail = BAREME_REALISME.map((b) => ({ ...b, satisfait: b.groupe === 'demarche' ? vus.has(b.code) : maturite[b.code] }));

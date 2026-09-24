@@ -4,13 +4,23 @@
 // Règle d'or : aucune conclusion engageante sur une preuve de niveau C seul.
 import { askJson, db, logRun, money } from './lib.js';
 import { appliquerGardeFous } from './garde_audit.js';
-import { depuisExtraction, formuler, BAREME, VERSION as SCORE_VERSION } from './score.js';
+import { depuisExtractionV2, BAREME, BAREME_REALISME, VERSION_2 as SCORE_VERSION } from './score.js';
 
-const PROMPT_VERSION = 'auditeur-v2-score';
+const PROMPT_VERSION = 'auditeur-v3-score2';
+
+// Codes de maturite du client : ils se CONSTATENT chez lui (entretien, visite),
+// jamais dans la proposition. Le modele ne les voit pas et ne peut pas les remplir.
+const CODES_MATURITE = BAREME_REALISME.filter((b) => b.groupe === 'maturite').map((b) => b.code);
 
 // Liste des 22 criteres, construite DEPUIS le bareme : le prompt ne peut pas
 // diverger de la methode publiee, meme si un poids change demain.
 const CRITERES_PROMPT = BAREME
+  .map((b) => `- ${b.code} : ${b.libelle}`)
+  .join('\n');
+
+// Axe C, partie « demarche » : elle se lit dans la proposition, comme l'axe A.
+const DEMARCHE_PROMPT = BAREME_REALISME
+  .filter((b) => b.groupe === 'demarche')
   .map((b) => `- ${b.code} : ${b.libelle}`)
   .join('\n');
 
@@ -47,14 +57,18 @@ la proposition CONTIENT. Deux règles, sans exception :
    d'un ordre de grandeur habituel. Mets null. Une valeur inventée fausserait le score de
    tous les autres dossiers.
 
-Les 22 critères, à reporter par leur code :
+Les 22 critères de sincérité, à reporter par leur code :
 ${CRITERES_PROMPT}
+
+Les 5 critères de démarche (réalisme du projet), à reporter aussi par leur code, avec la même règle :
+${DEMARCHE_PROMPT}
+La maturité du client ne se lit pas dans une proposition : elle est constatée chez lui, ne la renseigne pas.
 
 Réponds UNIQUEMENT en JSON valide :
 {
   "synthese": "3 phrases maximum, la conclusion pour un dirigeant pressé",
   "score_raime_entrees": {
-    "criteres_satisfaits": ["les codes des critères ÉCRITS dans la proposition, rien d'autre"],
+    "criteres_satisfaits": ["les codes A1 à D5 et R1 à R5 ÉCRITS dans la proposition, rien d'autre"],
     "justifications": {"CODE": "la phrase de la proposition qui satisfait ce critère"},
     "economie": {
       "volumeMensuel": null, "tempsActuelMin": null, "tempsResiduelMin": null,
@@ -75,7 +89,20 @@ Réponds UNIQUEMENT en JSON valide :
 }
 Le champ "score" va de 0 à 10 (10 = parfaitement justifié pour le besoin réel).`;
 
-export async function auditer({ proposalId, companyId = null, client }) {
+/**
+ * Maturite constatee chez le client : l'argument prime, sinon companies.profile.maturite.
+ * On ne garde que des booleens sur les codes M connus : une valeur floue reste ABSENTE,
+ * et le score n'est pas rendu, plutot que de lire un « peut-etre » comme un « oui ».
+ */
+export function maturiteConstatee(argument, profil) {
+  const source = argument || profil?.profile?.maturite || null;
+  if (!source || typeof source !== 'object') return null;
+  const m = {};
+  for (const code of CODES_MATURITE) if (typeof source[code] === 'boolean') m[code] = source[code];
+  return Object.keys(m).length ? m : null;
+}
+
+export async function auditer({ proposalId, companyId = null, maturite = null, client }) {
   const own = !client;
   const c = client || db();
   if (own) await c.connect();
@@ -174,16 +201,19 @@ Produis l'audit.`;
     // C'est la seule note que le cabinet publie, et elle doit etre recalculable
     // par un tiers a partir de la methode publiee. Elle ne peut donc pas sortir
     // d'un modele : elle sort de score.js, a partir de ce que le modele a releve.
+    // v2.0 : trois axes, le plus bas x 10, sur 1000. La maturite (axe C) vient du
+    // constat fait chez le client, jamais du modele : toute cle M renvoyee par lui est ecartee.
     let score = null;
     if (status === 'ok' && a.score_raime_entrees) {
-      score = depuisExtraction(a.score_raime_entrees);
+      const entrees = { ...a.score_raime_entrees, maturite: maturiteConstatee(maturite, profil) };
+      score = depuisExtractionV2(entrees);
       a.score_raime = score;
       if (score.rendu) {
-        a.synthese = `Score rAIme ${score.score}/100 — ${score.mention} (methode v${SCORE_VERSION}). `
+        a.synthese = `Score rAIme ${score.score}/1000 — ${score.mention} (methode v${SCORE_VERSION}). `
           + (a.synthese || '');
       } else {
-        a.synthese = `Score rAIme non rendu : axe economique non mesurable, `
-          + `${score.donneesManquantes.length} grandeur(s) a obtenir. ` + (a.synthese || '');
+        a.synthese = `Score rAIme non rendu : ${score.aObtenir.length} donnee(s) a obtenir `
+          + `(${score.aObtenir.join(', ')}). ` + (a.synthese || '');
       }
     }
 
@@ -195,8 +225,10 @@ Produis l'audit.`;
        VALUES($1,$2,$3,$4,$5,$6) RETURNING id`,
       [cid, proposalId, JSON.stringify({ par_regard: scoresParRegard, global: a.score_global ?? null,
                           raime: score && score.rendu ? score.score : null,
+                          raime_sur: score ? score.sur ?? 1000 : null,
                           raime_axe_a: score ? score.axeA?.note ?? null : null,
                           raime_axe_b: score ? score.axeB?.note ?? null : null,
+                          raime_axe_c: score ? score.axeC?.note ?? null : null,
                           raime_version: score ? score.version : null }),
        JSON.stringify(a.constats || []), a.recommandation || null,
        JSON.stringify({ synthese: a.synthese || null,
@@ -205,6 +237,7 @@ Produis l'audit.`;
                         informations_manquantes: a.informations_manquantes || [],
                         niveau_confiance: a.niveau_confiance || null,
                         score_raime: score,
+                        entrees_score: a.score_raime_entrees || null,
                         garde_fou: garde,
                         modele: r.model, cout_usd: r.costUsd, prompt: PROMPT_VERSION })]
     );
@@ -216,9 +249,10 @@ Produis l'audit.`;
   } finally { if (own) await c.end(); }
 }
 
-// CLI : node agents/auditeur.js <proposalId>
+// CLI : node agents/auditeur.js <proposalId> [M1=oui,M2=non,M3=oui,M4=non]
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const out = await auditer({ proposalId: process.argv[2] });
+  const { lireMaturite } = await import('./arbitrage.js');
+  const out = await auditer({ proposalId: process.argv[2], maturite: lireMaturite(process.argv[3]) });
   console.log(JSON.stringify(out.audit, null, 2));
   console.log(`\n[auditeur] ${out.meta.model} · ${out.meta.cout} · ${out.meta.ms} ms · audit ${out.id}`);
   if (out.garde) console.log(`[garde-fou] ${out.garde}`);
