@@ -160,3 +160,35 @@ Format d'une entrée :
 - Évaluation : trois erreurs de documentation antérieures à cette nuit, trouvées en relisant le code.
 - Correction : exemples alignés sur `askJson` et `created_at` ; déploiement par pull request, banc et porte ; `reflexif` retiré des agents « endormis » (il a son rythme).
 - Leçon : une documentation se relit contre le code, jamais contre la mémoire.
+
+## 2026-09-24 — session locale — la porte sans secret
+- Action : réécrire la réception de la porte. GitHub signe chaque livraison (jeton OIDC) ; `porte/porte_http.py`, sur le serveur, vérifie la signature avec la clé publique de GitHub, puis le dépôt, la branche `main`, l'action `deployer.yml`, l'audience `raime-porte`, la version, la date, et qu'un jeton ne sert qu'une fois. `deployer.yml` envoie l'archive à `https://cockpit.raime.fr/porte/livrer`.
+- Résultat : 12 tests (`tests/banc/porte_http_test.py`, clé d'essai fabriquée par openssl) ; une signature toujours acceptée fait tomber un test.
+- Évaluation : plus aucune clé privée à copier dans GitHub, plus d'accès SSH entrant pour GitHub. Basile n'a rien à manipuler.
+- Correction : `porte.sh` redémarre aussi la boucle après la recopie et vérifie qu'elle repart (`[boucle] démarrée`, pas d'`arrêt fatal`) ; sinon retour en arrière. Sans cela, le code livré dormait sur le disque : la boucle garde ses modules en mémoire. Le banc la déclare absente (`PORTE_BOUCLE=''`).
+- Leçon : un secret qu'on n'a pas à garder est un secret qui ne fuit pas.
+
+## 2026-09-24 — session locale — la boucle ne rejoue plus tout à chaque redémarrage
+- Action : lire `derniereExecution()` de la boucle.
+- Résultat : elle ne regardait qu'`agent_runs`. Le chasseur, le veilleur, le sas, le bibliothécaire, l'encyclopédiste n'y écrivent pas : ils repartaient à CHAQUE redémarrage.
+- Évaluation : avec une livraison par fusion, la facture du chasseur aurait suivi le nombre de fusions.
+- Correction : la boucle note elle-même chaque passage (`boucle_passages`) et prend le plus récent des deux.
+- Leçon : un rythme qui dépend de la bonne volonté de chaque agent n'est pas un rythme.
+
+## 2026-09-24 — session locale — le savoir vivant
+- Action : quand la bibliothèque rend moins de trois passages, Cortex interroge Wikipédia en direct ; le titre qui a répondu est noté (`savoir_demandes`) et l'agent `curieux` (toutes les heures) range l'article entier. L'encyclopédiste passe à 60 articles par domaine et par jour (23 domaines).
+- Résultat : essai sur « intrication quantique », « kabbale et arbre de vie », « microbiote intestinal » : l'article juste arrive en tête à chaque fois.
+- Évaluation : conforme ; en attente de mise en service.
+- Leçon : la bibliothèque grandit d'abord de ce qu'on lui demande vraiment.
+
+## 2026-09-24 — session locale — ce qui attend Basile
+- La mise en service sur le serveur (porte, Caddy, cerveau, Cockpit) est **arrêtée par le garde-fou de la session locale** tant que Basile dort : toute mise en production attend sa parole. Tout est prêt, la notice est `porte/INSTALLER.md`.
+- Le DNS `*.raime.fr` (Cloudflare) : ni la session locale ni la session cloud n'y ont accès.
+- La clé Stripe restreinte de test : c'est la clé du compte d'argent de Basile ; aucune session ne la crée ni ne la manipule. Basile la crée ; la session locale la pose dans le `.env` du serveur.
+
+### Message de la session locale à la session cloud
+Bonjour. Trois choses, pour ta prochaine reprise :
+1. **Ta porte a changé de serrure, pas de rôle.** Plus de `PORTE_CLE` / `PORTE_HOTE` / `PORTE_HOTE_CONNU` : GitHub signe, le serveur vérifie (`porte/porte_http.py`, `deployer.yml` avec `id-token: write`). `porte.sh` reste le tien ; j'y ai seulement ajouté le redémarrage vérifié de la boucle. Si tu modifies `deployer.yml`, garde le nom du fichier, la branche `main` et l'audience `raime-porte` : la porte les exige.
+2. **La porte n'est pas encore posée** sur le serveur : elle attend le « ok » de Basile au réveil. Jusque-là, la « Livraison » s'arrête sur un avertissement, sans échec. Tes agents fusionnés (portes, publiciste, rechercheur, chantiers, atelier) partiront avec le premier envoi.
+3. **Les questions que tu as posées à Basile** (les trois sites d'essai, les e-mails de 7 h 15) restent les siennes : je n'y réponds pas à sa place. La clé Stripe de test et le DNS aussi.
+Merci pour le travail de cette nuit : le banc a déjà trouvé un vrai défaut en production (le `\b` du héraut), c'est exactement ce qu'il fallait.

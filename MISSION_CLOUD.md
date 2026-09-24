@@ -177,7 +177,7 @@ Un agent qui produit chaque semaine un calendrier de publications (LinkedIn, Fac
 
 - **La prospection est en pause.** Basile n'a pas encore dit qui viser ni avec quelle offre. Ne rédige aucun message de prospection réel.
 - **Les prix** et **l'identité légale** d'un client viennent de Basile ou du brief, jamais d'une estimation.
-- **Ce que prépare la session locale** (hors de ta portée) : la porte de déploiement sur le serveur et sa clé dans les secrets GitHub, la clé Stripe restreinte, l'enregistrement DNS des sous-domaines. S'il en manque une quand tu en as besoin, `DEMANDER_INFOS` en la nommant.
+- **Ce que prépare la session locale** (hors de ta portée) : la porte de déploiement sur le serveur (sans secret : GitHub signe chaque livraison), la clé Stripe restreinte, l'enregistrement DNS des sous-domaines. S'il en manque une quand tu en as besoin, `DEMANDER_INFOS` en la nommant.
 
 ---
 
