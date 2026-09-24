@@ -74,7 +74,8 @@ export const SOURCES = {
     });
   },
   async moteur({ probleme }) {
-    const base = process.env.RECHERCHE_URL;
+    // Le moteur souverain du serveur (SearXNG, installé le 25/09/2026) ; l'adresse se change par RECHERCHE_URL.
+    const base = process.env.RECHERCHE_URL || (process.env.MODELE_FACTICE === '1' ? '' : 'http://searxng:8080');
     if (!base) return [];
     const d = await json(`${base.replace(/\/$/, '')}/search?format=json&language=fr&q=${encodeURIComponent(probleme)}`);
     return (d.results || []).slice(0, 8).map((x) => ({ source: 'moteur', titre: x.title || '', lien: x.url,

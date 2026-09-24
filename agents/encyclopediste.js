@@ -97,6 +97,16 @@ async function schema(brain) {
       demande_le timestamptz NOT NULL DEFAULT now(),
       range_le   timestamptz
     )`);
+  // Les pages web que Cortex a lues pour répondre à Basile (moteur souverain, depuis le 25/09).
+  await brain.query(`
+    CREATE TABLE IF NOT EXISTS savoir_web (
+      url        text PRIMARY KEY,
+      titre      text,
+      extrait    text,
+      question   text,
+      vu_le      timestamptz NOT NULL DEFAULT now(),
+      range_le   timestamptz
+    )`);
   for (const [domaine, racines] of Object.entries(DOMAINES)) {
     for (const cat of racines) {
       await brain.query(
@@ -169,27 +179,35 @@ async function nourrirDomaine(brain, domaine, combien) {
   return ranges;
 }
 
-// Toutes les heures : les articles qui ont servi à répondre à Basile entrent en entier dans
-// la bibliothèque (dossier savoir-curiosites). Rien à faire, rien ne se dépense.
+// Toutes les heures : les pages web qui ont servi à répondre à Basile entrent dans la
+// bibliothèque (dossier savoir-recherches), chacune avec son adresse et sa date. Seul le
+// passage utile est gardé, pour un usage interne : la source reste citée.
 export async function apprendreDemandes({ brain }) {
   await schema(brain);
   const { rows } = await brain.query(
-    `SELECT titre FROM savoir_demandes WHERE range_le IS NULL ORDER BY demande_le LIMIT 40`);
-  let ranges = 0;
-  for (const { titre } of rows) {
-    const deja = await brain.query(`SELECT 1 FROM savoir_pages WHERE titre = $1`, [titre]);
-    try { if (!deja.rowCount && await rangerArticle(brain, 'curiosites', titre)) ranges++; }
-    catch { continue; /* on retentera à l'heure suivante */ }
-    await brain.query(`UPDATE savoir_demandes SET range_le = now() WHERE titre = $1`, [titre]);
+    `SELECT url, titre, extrait, question FROM savoir_web WHERE range_le IS NULL ORDER BY vu_le LIMIT 40`);
+  if (!rows.length) return { ranges: 0 };
+  const dossier = path.join(RACINE, 'savoir-recherches');
+  fs.mkdirSync(dossier, { recursive: true });
+  const jour = new Date().toISOString().slice(0, 10);
+  for (const r of rows) {
+    const nom = nomFichier(`${r.titre || 'page'}-${Buffer.from(r.url).toString('base64url').slice(-8)}`);
+    fs.writeFileSync(path.join(dossier, `${nom}.md`),
+      `# ${r.titre || r.url}
+
+${r.extrait}
+
+---
+Source : ${r.url}. Lu le ${jour} pour répondre à : « ${r.question || ''} ».
+`, 'utf8');
+    await brain.query(`UPDATE savoir_web SET range_le = now() WHERE url = $1`, [r.url]);
   }
-  if (ranges) {
-    const { ranger } = await import('./bibliothecaire.js');
-    await ranger({ brain, racine: RACINE });
-    await brain.query(`INSERT INTO journal(acteur, changement, motif) VALUES($1,$2,$3)`,
-      ['encyclopediste', `${ranges} article(s) appris des questions de Basile`,
-       rows.map((r) => r.titre).slice(0, 12).join(' · ')]);
-  }
-  return { ranges };
+  const { ranger } = await import('./bibliothecaire.js');
+  await ranger({ brain, racine: RACINE });
+  await brain.query(`INSERT INTO journal(acteur, changement, motif) VALUES($1,$2,$3)`,
+    ['encyclopediste', `${rows.length} page(s) web apprise(s) des questions de Basile`,
+     rows.map((r) => r.titre || r.url).slice(0, 12).join(' · ')]);
+  return { ranges: rows.length };
 }
 
 export async function nourrir({ brain, combien = 30 }) {

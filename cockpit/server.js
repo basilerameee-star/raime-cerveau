@@ -50,39 +50,72 @@ async function bibliotheque(question) {
   } catch (e) { return []; }
 }
 
-// LE SAVOIR VIVANT — quand la bibliothèque ne suffit pas, Cortex interroge Wikipédia en
-// français, en direct, et note le titre : l'encyclopédiste rangera l'article entier dans
-// l'heure. La bibliothèque grandit ainsi d'abord de ce que Basile demande vraiment.
-const WIKI = 'https://fr.wikipedia.org/w/api.php';
-const WIKI_UA = { 'User-Agent': 'rAIme-cortex/1.0 (https://raime.fr; contact@raime.fr)' };
+// LE SAVOIR VIVANT — quand la bibliothèque ne suffit pas, Cortex cherche sur Internet par le
+// moteur souverain du serveur (SearXNG : Google, DuckDuckGo, Brave… sans compte ni clé), lit
+// les pages trouvées et cite ses sources. Wikipédia est écartée, sur la parole de Basile
+// (« un peu du slop »). Ce qui a servi est noté : l'agent curieux le range dans la
+// bibliothèque dans l'heure. La bibliothèque grandit d'abord de ce que Basile demande.
+const RECHERCHE = process.env.RECHERCHE_URL || 'http://searxng:8080';
+const ECARTES = /(^|\.)(wikipedia\.org|wikiwand\.com|wikimedia\.org|youtube\.com|facebook\.com|instagram\.com|tiktok\.com|pinterest\.[a-z.]+)$/;
+const UA = { 'User-Agent': 'Mozilla/5.0 (compatible; rAIme-cortex/1.0; +https://raime.fr)' };
 
-async function wiki(params) {
+async function chercherTexte(url, ms) {
   const c = new AbortController();
-  const minuteur = setTimeout(() => c.abort(), 6000);
+  const minuteur = setTimeout(() => c.abort(), ms);
   try {
-    const r = await fetch(`${WIKI}?${new URLSearchParams({ format: 'json', formatversion: '2', ...params })}`,
-      { headers: WIKI_UA, signal: c.signal });
-    return r.ok ? await r.json() : null;
-  } catch (e) { return null; } finally { clearTimeout(minuteur); }
+    const r = await fetch(url, { headers: UA, signal: c.signal, redirect: 'follow' });
+    if (!r.ok || !/text\/html|json/.test(r.headers.get('content-type') || '')) return '';
+    return (await r.text()).slice(0, 600000);
+  } catch (e) { return ''; } finally { clearTimeout(minuteur); }
+}
+
+// Le texte lisible d'une page : sans scripts, styles, menus ni pieds de page.
+function texteLisible(html) {
+  return String(html)
+    .replace(/<(script|style|noscript|svg|nav|footer|header|form|aside)[\s\S]*?<\/\1>/gi, ' ')
+    .replace(/<br\s*\/?>|<\/(p|div|li|h[1-6]|tr)>/gi, '\n').replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;|&rsquo;/g, "'")
+    .replace(/[ \t]+/g, ' ').replace(/\n\s*\n+/g, '\n').trim();
+}
+
+// Le passage de la page qui répond le mieux : la fenêtre qui contient le plus de mots de la question.
+function meilleurPassage(texte, mots, taille = 1200) {
+  if (texte.length <= taille) return texte;
+  let meilleur = texte.slice(0, taille), note = -1;
+  for (let i = 0; i < texte.length - 200; i += 400) {
+    const f = texte.slice(i, i + taille).toLowerCase();
+    const n = mots.reduce((s, m) => s + (f.includes(m) ? 1 : 0), 0);
+    if (n > note) { note = n; meilleur = texte.slice(i, i + taille); }
+  }
+  return meilleur;
 }
 
 async function savoirVivant(question, dejaVus) {
   const mots = String(question).toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ')
-    .split(/\s+/).filter((m) => m.length > 3).slice(0, 8);
+    .split(/\s+/).filter((m) => m.length > 3).slice(0, 10);
   if (!mots.length) return [];
-  const s = await wiki({ action: 'query', list: 'search', srsearch: mots.join(' '), srlimit: '3', srnamespace: '0' });
-  const titres = (s?.query?.search || []).map((x) => x.title).filter((t) => !dejaVus.has(t));
-  if (!titres.length) return [];
-  const d = await wiki({ action: 'query', prop: 'extracts', exintro: '1', explaintext: '1',
-    exlimit: String(titres.length), redirects: '1', titles: titres.join('|') });
-  const pages = (d?.query?.pages || []).filter((p) => p.extract && p.extract.length > 200);
-  for (const p of pages) {
+  let resultats = [];
+  try {
+    const brut = await chercherTexte(`${RECHERCHE}/search?format=json&language=fr&q=${encodeURIComponent(question)}`, 8000);
+    resultats = (JSON.parse(brut || '{}').results || []).filter((x) => {
+      try { return !ECARTES.test(new URL(x.url).hostname) && !dejaVus.has(x.title); } catch (e) { return false; }
+    }).slice(0, 4);
+  } catch (e) { return []; }
+  const pages = await Promise.all(resultats.map(async (x) => {
+    const texte = texteLisible(await chercherTexte(x.url, 6000));
+    const extrait = texte.length > 400 ? meilleurPassage(texte, mots) : String(x.content || '');
+    let site = ''; try { site = new URL(x.url).hostname.replace(/^www\./, ''); } catch (e) {}
+    return { titre: String(x.title || site).slice(0, 140), domaine: `web · ${site}`, extrait, lien: x.url };
+  }));
+  const utiles = pages.filter((p) => p.extrait.length > 120).slice(0, 3);
+  for (const p of utiles) {
     try {
-      await cerveau.query(`INSERT INTO savoir_demandes(titre, question) VALUES($1,$2) ON CONFLICT DO NOTHING`,
-        [p.title, String(question).slice(0, 300)]);
+      await cerveau.query(
+        `INSERT INTO savoir_web(url, titre, extrait, question) VALUES($1,$2,$3,$4) ON CONFLICT (url) DO NOTHING`,
+        [p.lien, p.titre, p.extrait, String(question).slice(0, 300)]);
     } catch (e) { /* la note ne doit jamais bloquer la réponse */ }
   }
-  return pages.map((p) => ({ titre: p.title, domaine: 'Wikipédia, en direct', extrait: p.extract.slice(0, 1200) }));
+  return utiles;
 }
 
 // Les questions que l'agent réflexif attend de Basile : Cortex les rappelle au bon moment.
@@ -96,7 +129,7 @@ async function questionsOuvertes() {
 
 const CORTEX_SYS = "Tu es Cortex, la voix du cerveau de rAIme — le cabinet de conseil en intelligence artificielle de Basile Ramé (formation des particuliers et des professionnels : dirigeants, comités de direction, employés ; audit des postes et arbitrage pour les entreprises ; automatisation). Tu es son bras droit et son interface avec tout le système. "
   + "Le cerveau : une boucle permanente d'agents sur le serveur — l'architecte (l'agent réflexif, qui tient les buts et se corrige), le réflexif, le veilleur (forums, dépôts de code, publications), le chasseur et le sas (le meilleur modèle au meilleur prix), le bibliothécaire et l'encyclopédiste (la bibliothèque de savoir : finance, droit, santé, sciences, physique quantique, philosophie, métaphysique, spiritualité, ésotérisme, religions, histoire, informatique, marketing, management…), et les agents de surveillance. La prospection par e-mail est en pause. "
-  + "SAVOIR : pour toute question de connaissance, appuie-toi d'abord sur les PASSAGES DE LA BIBLIOTHÈQUE fournis et cite-les entre crochets [Titre]. Complète avec tes connaissances générales en le signalant (« au-delà de la bibliothèque… »). Tous les sujets sont bienvenus, y compris spiritualité, ésotérisme et métaphysique : expose les traditions et les idées fidèlement, et distingue ce qui relève du savoir établi, de la tradition ou de la croyance. "
+  + "SAVOIR : pour toute question de connaissance, appuie-toi d'abord sur les PASSAGES fournis (bibliothèque, puis pages web trouvées en direct) et cite-les entre crochets [Titre], avec l'adresse pour une page web. Juge la fiabilité d'une page avant de la reprendre (site officiel, publication, presse sérieuse plutôt que forum ou page commerciale) et dis-le quand une source est faible. Complète avec tes connaissances générales en le signalant (« au-delà des sources… »). Tous les sujets sont bienvenus, y compris spiritualité, ésotérisme et métaphysique : expose les traditions et les idées fidèlement, et distingue ce qui relève du savoir établi, de la tradition ou de la croyance. "
   + "Réponds en français, direct, concret, chaleureux et HONNÊTE : si tu ne sais pas, ou si quelque chose n'est pas encore en place, dis-le clairement. Tu conseilles, fais le point, expliques, aides à décider. Tu n'exécutes pas d'actions toi-même. Les « Tâches en cours » sont À FAIRE, pas faites. N'invente aucun chiffre sur l'entreprise : ne t'appuie que sur ceux fournis.";
 
 async function buildContext() {
@@ -260,8 +293,8 @@ const server = http.createServer(async (req, res) => {
       }
       const enAttente = await questionsOuvertes();
       const savoir = passages.length
-        ? "\n\nPASSAGES DE LA BIBLIOTHÈQUE ET DE WIKIPÉDIA EN DIRECT (à citer entre crochets) :\n" + passages.map((p) =>
-            `[${p.titre}] (${p.domaine}) ${String(p.extrait).replace(/\s+/g, ' ')}`).join('\n\n')
+        ? "\n\nPASSAGES DE LA BIBLIOTHÈQUE ET DU WEB (à citer entre crochets [Titre] ; pour une page web, donner aussi son adresse) :\n" + passages.map((p) =>
+            `[${p.titre}] (${p.domaine}${p.lien ? ' — ' + p.lien : ''}) ${String(p.extrait).replace(/\s+/g, ' ')}`).join('\n\n')
         : "\n\nPASSAGES DE LA BIBLIOTHÈQUE : aucun passage pertinent — réponds avec tes connaissances générales et dis-le.";
       const questions = enAttente ? "\n\nQUESTIONS QUE L'ARCHITECTE ATTEND DE BASILE :\n" + enAttente : '';
       const hist = rowsOr(await q("SELECT role, content FROM cortex_chat ORDER BY id DESC LIMIT 12"), []).reverse();
