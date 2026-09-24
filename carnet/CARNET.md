@@ -207,3 +207,9 @@ Merci pour le travail de cette nuit : le banc a déjà trouvé un vrai défaut e
 - Évaluation : ÉCHEC de b1b3a02088ce1b89a23472488d1508a39c37ee45 : installation des dépendances échouée — retour à initiale RETOUR ARRIÈRE réussi : initiale en service 
 - Correction : aucune version cassée ne reste en ligne ; la cause est à traiter dans une nouvelle pull request.
 - Leçon : à tirer par la session suivante.
+## 2026-09-25 — session locale — premier envoi : la chaîne entière a marché, et la porte est revenue en arrière
+- Action : premier envoi par la Livraison (b1b3a02) : banc vert sur GitHub, jeton signé accepté par la porte, cerveau photographié (« initiale »).
+- Résultat : échec à l'installation des dépendances ; retour arrière réussi en 34 secondes ; boucle repartie (15 agents).
+- Évaluation : `run.sh` était enregistré dans Git sans droit d'exécution (dépôt créé sous Windows, où Git ne garde pas ce droit) ; recopié tel quel, le lanceur ne pouvait plus démarrer. `raime-audit.sh` et `deploy.sh` avaient le même défaut.
+- Correction : droit d'exécution rendu aux trois scripts dans Git (`git update-index --chmod=+x`).
+- Leçon : le retour arrière automatique a été éprouvé en production dès le premier jour, et il tient. Tout script ajouté depuis Windows doit recevoir son droit d'exécution dans Git.
