@@ -6,7 +6,7 @@
 import { ask, db, logRun, money, instructionActive } from './lib.js';
 import pg from 'pg';
 
-const PROMPT_VERSION = 'heraut-v2-aiact';
+const PROMPT_VERSION = 'heraut-v3-taches'; // message dicté par Basile le 25/09/2026
 
 // ————— GARDE-FOUS DÉTERMINISTES —————
 const INTERDITS = [
@@ -15,7 +15,6 @@ const INTERDITS = [
   /\bagent (ia|déployé)/i,
   /écrit par une ia/i,
   /\bamy\b/i,
-  /automatis(er|ation) vos/i,      // on ne vend plus d'automatisation
   /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u,  // emoji
 ];
 
@@ -53,16 +52,18 @@ export function valider(objet, corps, nomOrga) {
   // (« deux demandes successives diluent ») et le code en exigeait une. Résultat : trois
   // messages sur quatre refusés pour « aucune question posée », alors qu'ils portaient
   // la bonne demande. Une demande claire suffit : une question, ou l'offre du premier regard.
-  if (!/\?/.test(corps) && !/premier regard sous 48 heures/.test(corps))
-    erreurs.push('aucune demande claire : ni question, ni offre du premier regard');
+  // Depuis le message v3 (25/09/2026), la demande claire est la phrase d'appel de Basile,
+  // vérifiée plus bas mot pour mot : ni question ni « premier regard » ne sont plus exigés.
   if ((corps.match(/\?/g) || []).length > 1) erreurs.push('plusieurs questions : une seule demande par message');
-  if (corps.length > 1300) erreurs.push(`trop long (${corps.length} caractères, max 1300)`);
+  if (corps.length > 1900) erreurs.push(`trop long (${corps.length} caractères, max 1900)`);
   if (corps.length < 250) erreurs.push('trop court');
   if (!objet || objet.length > 80) erreurs.push('objet absent ou trop long');
   const mn = nomMalmene(corps, nomOrga); if (mn) erreurs.push(mn);
   if (/https?:\/\//.test(corps)) erreurs.push('lien cliquable présent (nuit à la délivrabilité du 1er contact)');
   if (!/raime\.fr/.test(corps)) erreurs.push('site raime.fr absent de la signature');
-  if (!/premier regard sous 48 heures/.test(corps)) erreurs.push('offre du premier regard absente : le message doit demander un devis, pas seulement un rendez-vous');
+  if (!corps.includes('tâche administrative particulièrement chronophage')) erreurs.push("phrase d'appel de Basile absente ou modifiée");
+  if ((corps.match(/^\s*[-•]\s+\S/gm) || []).length < 5) erreurs.push('moins de cinq tâches du métier listées');
+  if (/\d+([,.]\d+)?\s*%|\bpour ?cent\b/i.test(corps)) erreurs.push('chiffre ou pourcentage présent : aucun chiffre sans source validée par Basile');
   if (/audit gratuit|audit offert/i.test(corps)) erreurs.push('« audit gratuit » promet le produit complet : ce qui est offert est un premier regard');
   if (/\bOPCO\b|Qualiopi/i.test(corps)) erreurs.push('mention OPCO/Qualiopi interdite (certification non obtenue)');
   if (/\bCPF\b|compte personnel de formation/i.test(corps)) erreurs.push('mention du CPF interdite en prospection à froid (loi du 19 décembre 2022)');
@@ -74,51 +75,33 @@ export function valider(objet, corps, nomOrga) {
   return erreurs;
 }
 
-export const SYSTEM = `Tu rédiges un e-mail de premier contact B2B pour Basile Ramé, fondateur de rAIme,
-cabinet de conseil et d'audit IA indépendant.
+// Le message de Basile, dicté le 25/09/2026, que le modèle adapte au secteur du destinataire.
+export const APPEL = "Si vous avez aujourd'hui une tâche administrative particulièrement chronophage, vous pouvez simplement me répondre en me l'indiquant : je pourrai vous dire concrètement si elle peut être automatisée, et de quelle manière.";
+export const SIGNATURE = `Bien cordialement,
+Basile Ramé
+rAIme — conseil IA indépendant
+raime.fr`;
+export const SYSTEM = `Tu rédiges un e-mail de premier contact B2B pour Basile Ramé, fondateur de rAIme, conseil IA indépendant.
+Tu suis FIDÈLEMENT la structure du message de Basile, en l'adaptant au métier du destinataire :
 
-ANGLE UNIQUE — la conformité :
-L'article 4 de l'AI Act ("maîtrise de l'IA") s'applique depuis le 2 février 2025 à toute organisation
-qui déploie un système d'IA — utiliser ChatGPT ou Copilot suffit à être concerné. Elle doit assurer ET
-DOCUMENTER la formation de son personnel aux usages, limites et risques. Depuis le 2 août 2026, les
-sanctions nationales sont applicables.
-rAIme est un CABINET DE CONSEIL EN INTÉGRATION D'IA : nous n'installons rien et ne vendons aucune
-technologie — nous aidons à choisir la bonne IA, et à le prouver. Nous formons les équipes et remettons
-le dossier de preuve. INTERDICTION ABSOLUE — ne mentionne JAMAIS le CPF, ni aucun dispositif de financement,
-ni le prix, dans un premier contact. La loi du 19 décembre 2022 interdit la prospection
-commerciale promouvant des formations éligibles au CPF. Le financement ne se dit qu'en
-RÉPONSE à une question du prospect. Ton message parle de l'obligation et du risque,
-jamais de l'argent.
+1. « Bonjour, » (ou « Bonjour Madame/Monsieur <Nom>, » si le dirigeant est connu).
+2. « Je me permets de vous contacter car j'accompagne les organisations dans l'identification et l'automatisation de leurs tâches grâce à l'IA. »
+3. Une phrase : de plus en plus d'entreprises utilisent l'intelligence artificielle au quotidien, et beaucoup perdent encore du temps sur des tâches qui ne sont pas le cœur de leur mission, par exemple :
+4. UNE LISTE D'AU MOINS CINQ TÂCHES concrètes et propres au métier du destinataire, une par ligne, chacune commençant par « - ». Des tâches administratives réelles de ce métier (pas des généralités).
+5. « Certaines de ces tâches peuvent aujourd'hui être automatisées presque intégralement grâce à des workflows, des agents IA et des connexions à vos outils existants. L'objectif : vous faire gagner du temps et de l'argent, en identifiant ce qui est réellement faisable. »
+6. « Chez rAIme, j'interviens notamment sur l'analyse, l'identification, la conception, l'intégration, la mise en place et le suivi des gains. »
+7. Mot pour mot : ${APPEL}
+8. La signature exacte :
+${SIGNATURE}
 
 RÈGLES ABSOLUES :
-- Tu écris À LA PLACE de Basile, à la première personne. Signature : "Basile Ramé — rAIme".
-- Tu ne mentionnes JAMAIS qu'une IA a rédigé ce message.
-- Tu ne vends PAS d'automatisation : rAIme conseille et audite, il ne construit pas.
-- Tu formules UNE SEULE demande, et c'est l'offre du premier regard ci-dessous. Aucune
-  question de clôture ne s'y ajoute : la consigne se contredisait, et le code refusait.
-- Aucun lien, aucun emoji, aucun superlatif, aucune flatterie.
-- 6 à 10 lignes maximum. Ton sobre, professionnel, direct.
-- AVANT la signature, tu places TOUJOURS cette offre, mot pour mot :
-Si une proposition d'un prestataire est actuellement sur votre bureau, vous pouvez me l'envoyer : je vous rends un premier regard sous 48 heures, sans frais. C'est la façon la plus simple de juger notre travail avant d'en parler.
-  C'est le coeur du message : on ne demande pas un rendez-vous, on demande UN DOCUMENT.
-  UNE SEULE demande par courriel. Cette offre EST l'appel a l'action : tu n'ajoutes donc
-  AUCUNE autre question de cloture, ni « souhaitez-vous une proposition », ni « seriez-vous
-  disponible ». Deux demandes successives diluent, et le prospect ne repond ni a l'une ni
-  a l'autre.
-  Un devis recu ouvre la conversation ET nourrit notre chaine d'audit. N'ecris jamais
-  « audit gratuit » : ce qui est offert est un PREMIER REGARD, pas un audit complet.
-- Tu termines par la signature exacte :
-Basile Ramé — rAIme
-
-rAIme — cabinet de conseil en intégration d'IA.
-Nous n'installons rien : nous aidons à choisir la bonne, et à le prouver.
-raime.fr
-- Une phrase doit ancrer le message dans le métier précis du destinataire.
-- Registre factuel : tu informes d'une obligation et proposes d'y répondre. Tu ne fais pas peur.
-
-Tu n'écris QUE LE CORPS de l'e-mail, en texte brut, sans objet, sans balise, sans guillemets.
-Tu n'écris JAMAIS le nom de l'organisation destinataire (risque d'orthographe erronée) :
-désigne-la par "votre cabinet", "votre organisme", "votre structure".`;
+- AUCUN chiffre, aucun pourcentage, aucune statistique : tant qu'un chiffre officiel sourcé n'est pas validé par Basile, on n'en écrit pas.
+- Ne mentionne JAMAIS le CPF ni aucun dispositif de financement, ni aucun prix (loi du 19 décembre 2022 sur la prospection et le CPF).
+- Tu écris à la place de Basile, à la première personne ; tu ne dis jamais qu'une IA a rédigé le message.
+- Aucun lien cliquable (écris seulement « raime.fr »), aucun emoji, aucun superlatif, aucune flatterie.
+- Ton sobre, professionnel, direct ; français impeccable.
+- Tu n'écris QUE LE CORPS de l'e-mail, en texte brut, sans objet, sans balise, sans guillemets.
+- Tu n'écris JAMAIS le nom de l'organisation destinataire (risque d'orthographe erronée) : « votre cabinet », « votre structure », « votre organisme ».`;
 
 
 // ── ROUTAGE DU DESTINATAIRE ─────────────────────────────────────────────────
@@ -185,7 +168,7 @@ export async function rediger({ prospect, playbook, brain, n8n }) {
   // Le prompt vit en base : si le Reflexif a fait valider une amelioration, elle s'applique
   // immediatement, sans redeploiement. Sinon on tourne sur le prompt d'origine.
   const amelioration = await instructionActive(brain, 'heraut');
-  const systemeActif = amelioration
+  const systemeActif = amelioration && String(amelioration.version || '').startsWith('v3')
     ? `${SYSTEM}
 
 ## AMÉLIORATION EN VIGUEUR (v${amelioration.version})
@@ -207,7 +190,7 @@ ${contexteSecteur}
 Rédige l'e-mail.`;
 
   // L'OBJET est composé par le CODE : aucune orthographe inventée possible.
-  const objet = 'Formation IA : obligation applicable depuis le 2 août';
+  const objet = 'Vos tâches administratives chronophages';
   let corps = '', erreurs = [], meta = null, meilleur = null;
   for (let essai = 1; essai <= 2; essai++) {
     const consigne = essai === 1 ? user

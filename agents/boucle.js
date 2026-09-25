@@ -25,7 +25,9 @@ const RYTHMES = [
   // EN PAUSE depuis le 2026-09-23, sur la parole de Basile : « on ne s'est pas mis d'accord
   // sur l'e-mail ». Le Heraut ne redige plus de brouillons tant que le nouveau message n'est
   // pas valide. Pour le relancer : retirer les deux barres de commentaire ci-dessous.
-  // { nom: 'heraut',       module: './heraut.js',      fn: null,          toutes: 24 * H, besoinN8n: true,  cmd: 'heraut' },
+  // REPRIS le 2026-09-25 : Basile a dicté le message (heraut v3). Il ne rédige que des BROUILLONS ;
+  // rien ne part sans la validation de Basile dans le cockpit.
+  { nom: 'heraut',       module: './heraut.js',      fn: null,          toutes: 24 * H, besoinN8n: true,  cmd: 'heraut' },
   // Le reflexif passe chaque jour : il mesure les agents, designe le maillon faible et propose
   // une version de prompt INACTIVE, jamais activee par lui-meme. Mesure du 2026-09-23 : 0,0028 $.
   { nom: 'reflexif',     module: './reflexif.js',    fn: 'reflechir',   toutes: 24 * H, besoinN8n: true },

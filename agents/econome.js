@@ -12,7 +12,7 @@
 export const PLAFOND_EUR = 16; // Constitution, principe 5 : le prix du serveur
 
 // Les agents de la boucle qui appellent un modèle payant (relevé du 25/09/2026).
-export const PAYANTS = new Set(['superviseur', 'architecte', 'reflexif', 'chasseur', 'metrologue', 'prospective', 'publiciste', 'penseur']);
+export const PAYANTS = new Set(['heraut', 'superviseur', 'architecte', 'reflexif', 'chasseur', 'metrologue', 'prospective', 'publiciste', 'penseur']);
 // Ceux qu'on ralentit sans jamais les arrêter avant l'arrêt complet : la surveillance et le cap.
 export const ESSENTIELS = new Set(['superviseur', 'architecte']);
 
