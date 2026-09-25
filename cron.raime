@@ -6,6 +6,9 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 # Catalogue de modeles a jour (prix + nouveaux modeles) - 5h30
 30 5 * * * root /opt/raime/raime-brain/run.sh "node sync/openrouter_sync.js" >> /opt/raime/raime-brain/out/sync.log 2>&1
 # Reconstitution du stock d e-mails avant l envoi de 8h - 7h15
-15 7 * * * root /opt/raime/raime-brain/run.sh "node agents/heraut.js 14" >> /opt/raime/raime-brain/out/heraut.log 2>&1
+# EN PAUSE depuis le 2026-09-23, comme dans agents/boucle.js : la prospection attend que Basile
+# choisisse la cible et le message. Pour la relancer : retirer le « # » de la ligne ci-dessous,
+# puis réinstaller ce fichier (commande en tête).
+# 15 7 * * * root /opt/raime/raime-brain/run.sh "node agents/heraut.js 14" >> /opt/raime/raime-brain/out/heraut.log 2>&1
 # Supervision toutes les 4 heures : constat, decision, initiative
 5 */4 * * * root /opt/raime/raime-brain/run.sh "node agents/superviseur.js" >> /opt/raime/raime-brain/out/supervision.log 2>&1
