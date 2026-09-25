@@ -66,7 +66,7 @@ canvas#boule{cursor:pointer}
 <aside class="gauche">
   <section class="bloc"><h3 class="etiquette">La pensée de la nuit</h3><div id="pensee"><p>…</p></div></section>
   <section class="bloc"><h3 class="etiquette">Ce qui a changé</h3><ul id="journal"></ul></section>
-  <section class="bloc"><h3 class="etiquette">Noté pour Claude</h3><ul id="commandes"></ul></section>
+  <section class="bloc"><h3 class="etiquette">Tes demandes · <a href="/livrables" style="color:inherit">livrables</a></h3><ul id="commandes"></ul></section>
   <section class="bloc"><h3 class="etiquette">Ce qui attend ta décision</h3><ul id="attente"></ul></section>
 </aside>
 
@@ -156,7 +156,8 @@ canvas#boule{cursor:pointer}
     (d.journal || []).forEach(function (e) { var x = document.createElement('li'); x.innerHTML = '<em>' + e.heure + '</em> '; x.appendChild(document.createTextNode(e.qui + ' · ' + e.quoi)); j.appendChild(x); });
     if (!(d.journal || []).length) j.innerHTML = '<li>Rien de nouveau en 48 h.</li>';
     var co = document.getElementById('commandes'); co.innerHTML = '';
-    li((d.commandes || []).slice(0, 2), function (e) { return 'n°' + e.id + ' · ' + e.texte; }).forEach(function (n) { co.appendChild(n); });
+    var ETAT = { a_faire: 'en attente', en_cours: 'en cours', faite: 'faite', refusee: 'refusée' };
+    li((d.commandes || []).slice(0, 3), function (e) { return 'n°' + e.id + ' · ' + (e.etat === 'a_faire' && e.pour === 'claude' ? 'pour Claude' : ETAT[e.etat] || e.etat) + ' · ' + e.texte; }).forEach(function (n) { co.appendChild(n); });
     if (!(d.commandes || []).length) co.innerHTML = '<li>Rien en attente.</li>';
     var at = document.getElementById('attente'); at.innerHTML = '';
     li((d.attente || []).slice(0, 2), function (e) { return e.question; }).forEach(function (n) { at.appendChild(n); });

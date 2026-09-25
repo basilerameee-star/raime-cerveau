@@ -1,0 +1,19 @@
+# Route des modèles du Harness sur le serveur rAIme : OpenRouter, clé désignée par son NOM
+# (OPENROUTER_API_KEY, lue dans l environnement) ; aucune valeur secrète dans ce fichier.
+- id: llm-pi-ai
+  config:
+    providers:
+      openrouter:
+        displayName: OpenRouter
+        apiKeyEnv: OPENROUTER_API_KEY
+        baseURL: https://openrouter.ai/api/v1
+        api: openai-completions
+        models:
+          - id: deepseek/deepseek-v4-flash-0731
+            contextWindow: 128000
+          - id: deepseek/deepseek-v4-pro-0813
+            contextWindow: 128000
+- id: agent-default-model
+  config:
+    provider: openrouter
+    model: deepseek/deepseek-v4-flash-0731

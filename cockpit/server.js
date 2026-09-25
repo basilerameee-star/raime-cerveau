@@ -132,8 +132,8 @@ async function questionsOuvertes() {
 const CORTEX_SYS = "Tu es Cortex, la voix du cerveau de rAIme — le cabinet de conseil en intelligence artificielle de Basile Ramé (formation des particuliers et des professionnels : dirigeants, comités de direction, employés ; audit des postes et arbitrage pour les entreprises ; automatisation). Tu es son bras droit et son interface avec tout le système. "
   + "Le cerveau : une boucle permanente d'agents sur le serveur — l'architecte (l'agent réflexif, qui tient les buts et se corrige), le réflexif, le veilleur (forums, dépôts de code, publications), le chasseur et le sas (le meilleur modèle au meilleur prix), le bibliothécaire et l'encyclopédiste (la bibliothèque de savoir : finance, droit, santé, sciences, physique quantique, philosophie, métaphysique, spiritualité, ésotérisme, religions, histoire, informatique, marketing, management…), et les agents de surveillance ; le penseur (la pensée de la nuit : il relit la veille, la bibliothèque et le journal, et propose au matin trois idées au plus, chacune sourcée, sans conseil de placement) ; l'essayeur (il cherche du code sur GitHub, le note selon des critères précis, l'essaie dans un bac à sable isolé du réseau, et propose de l'intégrer) ; le Gardien (deux faces : la vigie qui surveille le serveur toutes les 30 minutes, et le sas qui envoie toute action risquée au bac à sable avant de couper, et n'en garde que le positif) ; l'auditeur, la relecture et l'arbitrage (l'analyse d'une proposition commerciale et le Score rAIme sur 1000). Jarvis est l'interface vocale où Basile te parle. Si on t'interroge sur un agent que cette liste ne décrit pas, dis que tu ne sais pas. La prospection par e-mail est en pause. "
   + "SAVOIR : pour toute question de connaissance, appuie-toi d'abord sur les PASSAGES fournis (bibliothèque, puis pages web trouvées en direct) et cite-les entre crochets [Titre], avec l'adresse pour une page web. Juge la fiabilité d'une page avant de la reprendre (site officiel, publication, presse sérieuse plutôt que forum ou page commerciale) et dis-le quand une source est faible. Complète avec tes connaissances générales en le signalant (« au-delà des sources… »). Tous les sujets sont bienvenus, y compris spiritualité, ésotérisme et métaphysique : expose les traditions et les idées fidèlement, et distingue ce qui relève du savoir établi, de la tradition ou de la croyance. "
-  + "Réponds en français, direct, concret, chaleureux et HONNÊTE : si tu ne sais pas, ou si quelque chose n'est pas encore en place, dis-le clairement. Tu conseilles, fais le point, expliques, aides à décider. Tu n'exécutes pas d'actions toi-même : une action demandée est notée pour Claude, qui l'exécute sur le serveur, le site et le code ; Basile n'a jamais à la faire lui-même. Les « Tâches en cours » sont À FAIRE, pas faites. N'invente aucun chiffre sur l'entreprise : ne t'appuie que sur ceux fournis.";
-const CORTEX_ORAL = " RÉPONSE ORALE (Jarvis la dit à voix haute) : deux à quatre phrases courtes, sans liste, sans titre, sans astérisque, sans adresse web ni crochet ; nomme une source en clair si besoin (« d'après l'INSEE »). Tutoie Basile. Parle un français soutenu, précis et vivant, sans anglicisme ni formule creuse, comme un bras droit brillant qui a suivi tout ce qui s'est passé. Seulement si Basile ORDONNE une action concrète à exécuter (créer, corriger, publier, lancer, modifier, envoyer…), commence ta réponse exactement par [[COMMANDE]] puis une seule phrase courte qui reformule l'ordre, et rien d'autre : le système la note pour Claude. Une question, même sur tes capacités, n'est jamais une commande. Ne dis jamais qu'une action est faite ni notée toi-même.";
+  + "Réponds en français, direct, concret, chaleureux et HONNÊTE : si tu ne sais pas, ou si quelque chose n'est pas encore en place, dis-le clairement. Tu conseilles, fais le point, expliques, aides à décider. Tu n'exécutes pas d'actions toi-même : une action demandée part à l'exécutant du cerveau (DeepSeek Harness, sur le serveur, dans un dossier isolé) ; ce qu'il ne peut pas faire (publier, déployer, envoyer) revient à Claude. Basile n'a jamais à la faire lui-même. Les demandes faites et leur compte rendu figurent dans l'état du système. Les « Tâches en cours » sont À FAIRE, pas faites. N'invente aucun chiffre sur l'entreprise : ne t'appuie que sur ceux fournis.";
+const CORTEX_ORAL = " RÉPONSE ORALE (Jarvis la dit à voix haute) : deux à quatre phrases courtes, sans liste, sans titre, sans astérisque, sans adresse web ni crochet ; nomme une source en clair si besoin (« d'après l'INSEE »). Tutoie Basile. Parle un français soutenu, précis et vivant, sans anglicisme ni formule creuse, comme un bras droit brillant qui a suivi tout ce qui s'est passé. Seulement si Basile ORDONNE une action concrète à exécuter (créer, corriger, publier, lancer, modifier, envoyer…), commence ta réponse exactement par [[COMMANDE]] puis une seule phrase courte qui reformule l'ordre, et rien d'autre : le système la confie à l'exécutant. Une question, même sur tes capacités, n'est jamais une commande. Ne dis jamais qu'une action est faite ni notée toi-même.";
 
 // Le régime de dépense fixé par l'économe (agents/econome.js) ; « normal » si rien n'est lu.
 // Mesure du 25/09/2026 sur une vraie question de client (devis sur trois ans) : DeepSeek V4 Flash
@@ -372,23 +372,74 @@ async function etatDuCerveau() {
   const lire = async (sql) => { try { return (await cerveau.query(sql)).rows; } catch (e) { return []; } };
   const journal = await lire("SELECT acteur, left(changement, 160) AS c FROM journal WHERE created_at > now() - interval '48 hours' ORDER BY created_at DESC LIMIT 8");
   const pensee = await lire("SELECT titre, proposition FROM pensees WHERE nuit = (SELECT max(nuit) FROM pensees) ORDER BY rang LIMIT 3");
-  const commandes = await lire("SELECT id, texte, etat FROM commandes WHERE etat IN ('a_faire','en_cours') ORDER BY cree_le LIMIT 6");
+  const commandes = await lire("SELECT id, texte, etat, left(coalesce(reponse, ''), 300) AS reponse FROM commandes WHERE etat IN ('a_faire','en_cours') OR traite_le > now() - interval '24 hours' ORDER BY cree_le DESC LIMIT 6");
   let t = '';
   if (journal.length) t += "\nCe qui a changé (48 h) :\n" + journal.map((j) => `- ${j.acteur} : ${j.c}`).join('\n');
   if (pensee.length) t += "\nLa pensée de la nuit :\n" + pensee.map((p) => `- ${p.titre} — ${p.proposition}`).join('\n');
-  if (commandes.length) t += "\nCommandes notées pour Claude, pas encore faites :\n" + commandes.map((c) => `- n°${c.id} ${c.texte}`).join('\n');
+  if (commandes.length) t += "\nDemandes d'action de Basile (état et compte rendu de l'exécutant) :\n" + commandes.map((c) => `- n°${c.id} [${c.etat}] ${c.texte}${c.reponse ? ' → ' + c.reponse : ''}`).join('\n');
   return t;
 }
 
 // Une action demandée : notée dans la table commandes, que Claude lit à chaque ouverture de session.
 async function noterCommande(message, reformulation) {
   let id = null;
-  try { id = (await cerveau.query("INSERT INTO commandes (texte) VALUES ($1) RETURNING id", [message])).rows[0].id; } catch (e) {}
+  try { id = (await cerveau.query("INSERT INTO commandes (texte, pour) VALUES ($1, 'harness') RETURNING id", [message])).rows[0].id; } catch (e) {}
   const reply = id
-    ? `C'est noté, commande numéro ${id}, pour Claude${reformulation ? ' : ' + reformulation.replace(/\s+$/, '').replace(/([^.!?…])$/, '$1.') : '.'} Il la prend à l'ouverture de sa prochaine session et te rend compte. Elle n'est pas encore faite.`
+    ? `C'est parti, demande numéro ${id}${reformulation ? ' : ' + reformulation.replace(/\s+$/, '').replace(/([^.!?…])$/, '$1.') : '.'} L'exécutant s'y met dans la minute ; je te dirai ce qu'il a fait. Ce qu'il ne sait pas faire reviendra à Claude.`
     : "Je n'ai pas pu noter cette demande à l'instant. Redis-la-moi dans un moment.";
   await q("INSERT INTO cortex_chat (role, content) VALUES ('assistant', $1)", [reply]);
   return { voie: 'action', reply, commande: id };
+}
+
+// ── LE RELAIS Jarvis → exécutant. Une demande à la fois ; rien en régime « arrêt » ; en cas d'échec
+// ou d'exécutant injoignable, la demande revient à Claude avec la raison. Le résultat va au journal.
+const EXECUTANT = process.env.EXECUTANT_URL || 'http://harness:8201';
+let relaisOccupe = false;
+async function relayer() {
+  if (relaisOccupe || (await regimeActuel()) === 'arret') return;
+  let c;
+  try {
+    c = (await cerveau.query(`UPDATE commandes SET etat = 'en_cours' WHERE id = (SELECT id FROM commandes
+      WHERE etat = 'a_faire' AND pour = 'harness' ORDER BY cree_le LIMIT 1) RETURNING id, texte`)).rows[0];
+  } catch (e) { return; }
+  if (!c) return;
+  relaisOccupe = true;
+  const consigne = `Tu es l'exécutant du cerveau rAIme, le cabinet de conseil en IA de Basile Ramé. Tu travailles dans le dossier courant, isolé : tu n'as accès ni au site, ni au serveur, ni à la base. `
+    + `Crée le sous-dossier demande-${c.id} et écris-y tes livrables. Si la tâche exige ce que tu n'as pas (publier, déployer, envoyer un e-mail, payer), prépare tout ce qui peut l'être et dis-le. `
+    + `Termine par un compte rendu en français, trois phrases au plus : ce que tu as fait, où est le résultat, ce qui reste.\n\nDemande de Basile : ${c.texte}`;
+  try {
+    const r = await fetch(EXECUTANT + '/tache', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tache: consigne }), signal: AbortSignal.timeout(16 * 60_000) });
+    const d = await r.json();
+    const ok = r.ok && d.code === 0 && !!d.sortie;
+    await cerveau.query(`UPDATE commandes SET etat = $2, pour = $3, reponse = $4, traite_le = now() WHERE id = $1`,
+      [c.id, ok ? 'faite' : 'a_faire', ok ? 'harness' : 'claude',
+       ok ? d.sortie.slice(-4000) : `L'exécutant n'a pas abouti (code ${d.code ?? r.status}) : repris par Claude. ${String(d.trace || d.erreur || '').slice(-400)}`]);
+    await cerveau.query(`INSERT INTO journal(acteur, changement, motif) VALUES('executant', $1, $2)`,
+      [`Demande n°${c.id} ${ok ? `faite en ${d.duree_s} s` : 'renvoyée à Claude'}`, String(ok ? d.sortie : d.trace || '').slice(-400)]);
+  } catch (e) {
+    await cerveau.query(`UPDATE commandes SET etat = 'a_faire', pour = 'claude', reponse = $2 WHERE id = $1`,
+      [c.id, `Exécutant injoignable (${e.message}) : repris par Claude.`]).catch(() => {});
+  } finally { relaisOccupe = false; }
+}
+setInterval(() => { relayer().catch(() => {}); }, 30_000);
+
+// Les livrables de l'exécutant, en lecture seule : /livrables et /livrables/demande-12/fichier.md
+const LIVRABLES = process.env.LIVRABLES_DIR || '/travail';
+function livrables(req, res) {
+  const rel = decodeURIComponent(req.url.replace(/^\/livrables\/?/, '').split('?')[0]);
+  const chemin = path.resolve(LIVRABLES, rel);
+  if (chemin !== LIVRABLES && !chemin.startsWith(LIVRABLES + path.sep)) { res.writeHead(403); res.end(); return; }
+  let st; try { st = fs.statSync(chemin); } catch (e) { res.writeHead(404); res.end('Introuvable'); return; }
+  if (st.isDirectory()) {
+    const noms = fs.readdirSync(chemin).sort().reverse();
+    const lien = (n) => `<li><a href="/livrables/${encodeURI(path.posix.join(rel, n))}">${n.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</a></li>`;
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+    res.end(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>rAIme — livrables</title><style>body{background:#000;color:#fff;font:15px Inter,-apple-system,"Segoe UI",sans-serif;max-width:720px;margin:48px auto;padding:0 16px}a{color:#ff7eb0}li{margin:8px 0}</style><h1>Livrables de l'exécutant${rel ? ' · ' + rel.replace(/</g, '&lt;') : ''}</h1><ul>${noms.map(lien).join('') || '<li>Rien encore.</li>'}</ul>`);
+    return;
+  }
+  res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' });
+  fs.createReadStream(chemin).pipe(res);
 }
 
 async function jarvisDire(message) {
@@ -500,7 +551,80 @@ async function kpi() {
   return out;
 }
 
+// ── LE COFFRE — Basile y range lui-même ses accès (Gmail, Google). Les valeurs ne sont jamais
+// renvoyées ni journalisées : la page ne dit que « présent » ou « absent ». Un en-tête maison est
+// exigé pour écrire, ce qu'un autre site ne peut pas envoyer (pas de dépôt forcé depuis ailleurs).
+const COFFRE = process.env.COFFRE_FICHIER || '/coffre/secrets.env';
+const RANGEMENTS = {
+  DEEPSEEK_API_KEY: 'Clé DeepSeek (platform.deepseek.com)',
+  GEMINI_API_KEY: 'Clé Google AI Studio (Gemini)',
+  GMAIL_ADRESSE: 'Ton adresse Gmail',
+  GMAIL_MOT_DE_PASSE_APPLI: "Mot de passe d'application Gmail (16 lettres)",
+  GROQ_API_KEY: 'Clé Groq',
+};
+const NOM_LIBRE = /^[A-Z][A-Z0-9_]{2,40}$/; // « autre clé » : un nom en MAJUSCULES, comme MISTRAL_API_KEY
+function lireCoffre() {
+  try {
+    return Object.fromEntries(fs.readFileSync(COFFRE, 'utf8').split('\n').filter((l) => l.includes('='))
+      .map((l) => [l.slice(0, l.indexOf('=')), l.slice(l.indexOf('=') + 1)]));
+  } catch (e) { return {}; }
+}
+function rangerCoffre(nom, valeur) {
+  const c = lireCoffre(); c[nom] = valeur;
+  fs.writeFileSync(COFFRE, Object.entries(c).map(([k, v]) => `${k}=${v}`).join('\n') + '\n', { mode: 0o600 });
+  fs.chmodSync(COFFRE, 0o600);
+}
+const PAGE_COFFRE = `<!doctype html><html lang="fr"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>rAIme — coffre</title>
+<style>body{margin:0;background:#000;color:#fff;font:15px Inter,-apple-system,"Segoe UI",sans-serif;display:grid;place-items:center;min-height:100vh}
+main{width:min(520px,92vw)}h1{font-size:22px;font-weight:600;letter-spacing:-.02em}p{color:#aaa;line-height:1.55;font-size:14px}
+label{display:block;margin:22px 0 8px;font-size:13px;color:#ccc}select,input{width:100%;box-sizing:border-box;height:48px;padding:0 16px;background:#0a0a0a;border:1px solid rgba(255,255,255,.12);border-radius:12px;color:#fff;font:15px inherit}
+button{margin-top:22px;height:48px;padding:0 26px;border-radius:999px;border:1px solid #ff7eb0;background:#000;color:#fff;font:15px inherit;cursor:pointer}
+ul{list-style:none;padding:0;margin:28px 0 0}li{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.07);font-size:14px}
+li b{font-weight:500;color:#ff7eb0}li b.non{color:#777}#dit{margin-top:14px;color:#ff7eb0;min-height:20px}</style>
+<main><h1>Le coffre</h1><p>Tu ranges ici tes accès. Ils restent sur ton serveur. Personne ne peut les relire depuis cette page, pas même Claude : elle dit seulement s'ils sont présents.</p>
+<label for="nom">Quoi</label><select id="nom"></select><input id="libre" placeholder="Nom de la clé, par exemple MISTRAL_API_KEY" style="display:none;margin-top:10px">
+<label for="val">La valeur</label><input id="val" type="password" autocomplete="off" spellcheck="false">
+<button id="ok">Ranger dans le coffre</button><div id="dit" aria-live="polite"></div><ul id="liste"></ul></main>
+<script>
+var R=${JSON.stringify(RANGEMENTS)};
+var sel=document.getElementById('nom'),libre=document.getElementById('libre');Object.keys(R).forEach(function(k){var o=document.createElement('option');o.value=k;o.textContent=R[k];sel.appendChild(o)});var a=document.createElement('option');a.value='';a.textContent='Autre clé…';sel.appendChild(a);sel.onchange=function(){libre.style.display=sel.value?'none':'block'};
+function voir(){fetch('/api/coffre').then(function(r){return r.json()}).then(function(d){var l=document.getElementById('liste');l.innerHTML='';Object.keys(d).forEach(function(k){var x=document.createElement('li');x.textContent=R[k]||k;var b=document.createElement('b');b.textContent=d[k]?'présent':'absent';if(!d[k])b.className='non';x.appendChild(b);l.appendChild(x)})})}
+document.getElementById('ok').onclick=function(){var v=document.getElementById('val');if(!v.value.trim())return;
+fetch('/api/coffre',{method:'POST',headers:{'Content-Type':'application/json','X-Coffre':'1'},body:JSON.stringify({nom:sel.value||libre.value.trim().toUpperCase(),valeur:v.value.trim()})})
+.then(function(r){return r.json()}).then(function(d){document.getElementById('dit').textContent=d.ok?'Rangé.':'Refusé : '+(d.erreur||'');v.value='';voir()})};
+voir();
+</script></html>`;
+
 const server = http.createServer(async (req, res) => {
+  if (req.method === 'GET' && (req.url === '/livrables' || req.url.startsWith('/livrables/'))) return livrables(req, res);
+  if (req.url === '/coffre' && req.method === 'GET') {
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+    res.end(PAGE_COFFRE);
+    return;
+  }
+  if (req.url === '/api/coffre') {
+    res.setHeader('Cache-Control', 'no-store');
+    if (req.method === 'GET') {
+      const c = lireCoffre();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(Object.fromEntries([...new Set([...Object.keys(RANGEMENTS), ...Object.keys(c)])].map((k) => [k, !!c[k]]))));
+      return;
+    }
+    if (req.method === 'POST' && req.headers['x-coffre'] === '1') {
+      let r = { ok: false, erreur: 'demande illisible' };
+      try {
+        const { nom, valeur } = JSON.parse((await corpsBrut(req, 4000)).toString('utf8'));
+        const v = String(valeur || '').trim();
+        if (!RANGEMENTS[nom] && !NOM_LIBRE.test(String(nom))) r.erreur = 'nom invalide (MAJUSCULES, chiffres et _)';
+        else if (!v || v.length > 400 || /[\r\n]/.test(v)) r.erreur = 'valeur vide ou trop longue';
+        else { rangerCoffre(nom, v); r = { ok: true }; }
+      } catch (e) {}
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(r));
+      return;
+    }
+    res.writeHead(403); res.end(); return;
+  }
   // Déclenche Léonard pour préparer des fiches d'audit sur les prospects cochés
   if (req.method === 'POST' && req.url === '/api/prepare-audit') {
     let body = '';
@@ -633,7 +757,7 @@ const server = http.createServer(async (req, res) => {
     const veille = await lire("SELECT count(*)::int AS n FROM veille WHERE vu_le > now() - interval '24 hours'");
     const agents = await lire("SELECT count(DISTINCT agent)::int AS n FROM boucle_passages WHERE fin_le > now() - interval '24 hours' AND statut = 'ok'");
     const nbQuestions = await lire("SELECT count(*)::int AS n FROM demandes WHERE etat = 'ouverte'");
-    const commandes = await lire("SELECT id, texte FROM commandes WHERE etat IN ('a_faire','en_cours') ORDER BY cree_le LIMIT 4");
+    const commandes = await lire("SELECT id, texte, etat, pour FROM commandes WHERE etat IN ('a_faire','en_cours') OR traite_le > now() - interval '24 hours' ORDER BY cree_le DESC LIMIT 4");
     const b = await budget();
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
     res.end(JSON.stringify({ pensee, attente, journal, commandes, penseur: !!(penseurActif && penseurActif.n),
