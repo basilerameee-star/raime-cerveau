@@ -55,7 +55,7 @@ export function regime({ plafondEur = PLAFOND_EUR, depenseMoisEur, rythmeJourEur
   if (chiffres.jours_credits != null) {
     mesures.push(chiffres.jours_credits < 7
       ? `Les crédits de modèles ne tiennent plus que ${chiffres.jours_credits} jours : une recharge est à prévoir.`
-      : `Les crédits de modèles tiennent environ ${chiffres.jours_credits} jours à ce rythme ; je préviens à 7 jours.`);
+      : `Les crédits de modèles tiennent environ ${chiffres.jours_credits} jours à ce rythme ; alerte prévue à 7 jours.`);
   }
   return { mode, facteur, pauses, chiffres, mesures };
 }

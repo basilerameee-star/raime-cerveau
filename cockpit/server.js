@@ -344,7 +344,7 @@ function phraseBudget(b) {
 
 // Le routeur. Le budget se dit avec les chiffres, sans modèle. Une action se note pour Claude
 // (Jarvis n'exécute rien lui-même). Tout le reste va à Cortex, avec ce que le cerveau sait.
-const INTENTION_BUDGET = /\b(budget|tokens?|jetons?|crédits?|credits?|pourcentage|forfait|combien (il )?(me |te |nous )?reste|reste-t-il|il reste combien|dépensé|limite)\b/i;
+const INTENTION_BUDGET = /\b(budget|tokens?|jetons?|crédits?|credits?|pourcentage|forfait|combien (il )?(me |te |nous )?reste|reste-t-il|(il )?(me |te |nous )?reste combien|dépensé|limite)\b/i;
 const INTENTION_ACTION = /^(?:(?:jarvis|cortex)[, ]+)?(?:(?:est-ce que tu peux|est-ce que tu pourrais|peux-tu|tu peux|pourrais-tu|je veux que tu|il faut que tu|j'aimerais que tu|je voudrais que tu|note que tu dois)\s+)?(?:cré|construi|lanc|met|ajout|modifi|corrig|déploi|publi|envoi|envoy|install|supprim|chang|programm|développ|cod|génér|refai|refass|amélior|répar|automatis|intégr|prépar|fabriqu)[\p{L}]*/iu;
 
 async function etatDuCerveau() {
