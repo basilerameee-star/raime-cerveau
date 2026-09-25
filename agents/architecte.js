@@ -29,6 +29,7 @@ import { askJson, db, logRun, money } from './lib.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { prioriser, retenir, justesse } from './priorite.js';
 
 const PROMPT_VERSION = 'architecte-v2';
 const RACINE_BIBLIO = process.env.BIBLIO_ENTREE || '/app/bibliotheque';
@@ -239,6 +240,14 @@ export async function cycle({ brain, n8n = null }) {
   // ① AUTO-OBSERVATION
   const moi = await etatInterne(brain);
 
+  // ①bis LA PRIORITÉ, calculée par le code (25/09/2026) : urgence de l'horizon × négligence × échecs récents.
+  const travaux = (await brain.query(`SELECT but_id, max(cree_le) AS dernier FROM etats
+    WHERE type = 'PROPOSER' AND but_id IS NOT NULL GROUP BY but_id`)).rows;
+  const echecs = (await brain.query(`SELECT but_id, count(*)::int AS n FROM etats
+    WHERE type = 'EVALUER' AND but_id IS NOT NULL AND cree_le > now() - interval '7 days'
+      AND arguments->>'reussie' = 'false' GROUP BY but_id`)).rows;
+  const classement = prioriser(moi.buts, travaux, echecs);
+
   // ② PROPOSER — le but visé, sa pertinence, les incertitudes, des sous-tâches atomiques.
   const plan = await askJson({
     task: 'raisonnement',
@@ -249,10 +258,15 @@ et tu le décomposes en sous-tâches atomiques (${SOUS_TACHES_MAX} au plus), pri
 ${DESCRIPTION_CATALOGUE}
 Pour chaque sous-tâche tu réponds : quel résultat j'attends (vérifiable), quelle probabilité d'échec,
 comment je verrai l'échec. Une sous-tâche hors catalogue sera refusée par le code.
-Réponds en JSON : {"but_vise":"énoncé exact d'un but ouvert","but_immediat":"ce que ce cycle doit accomplir",
+Le but à travailler est donné par la PRIORITÉ CALCULÉE : prends le premier. Tu peux prendre le deuxième ou le
+troisième seulement avec une raison écrite dans "raison_ecart" ; tout autre choix sera remplacé par le premier.
+Réponds en JSON : {"but_vise":"énoncé exact d'un but ouvert","raison_ecart":"vide si tu prends le premier","but_immediat":"ce que ce cycle doit accomplir",
 "pertinence":"en quoi il sert le but à long terme","incertitudes":["..."],
 "sous_taches":[{"action":"...","arguments":{},"attendu":"...","probabilite_echec":0.0,"detection":"..."}]}`,
-    user: `MES BUTS OUVERTS :
+    user: `PRIORITÉ CALCULÉE (du premier au dernier) :
+${classement.map((b, i) => `${i + 1}. [${b.horizon}] ${b.enonce} — priorité ${b.priorite} (négligence ${b.detail.negligence}, échecs ${b.detail.echecs})`).join('\n')}
+
+MES BUTS OUVERTS :
 ${moi.buts.map((b) => `- [${b.horizon}] ${b.enonce} (mesure : ${b.mesure || '—'} ; cible : ${b.cible || '—'})`).join('\n')}
 
 MES CROYANCES :
@@ -275,7 +289,9 @@ Propose le cycle.`,
   });
   compter(plan.meta);
   const p = plan.data || {};
-  const but = moi.buts.find((b) => b.enonce === p.but_vise) || moi.buts[0] || null;
+  const choix = retenir(classement, p.but_vise, p.raison_ecart);
+  const but = choix.but ? moi.buts.find((b) => b.id === choix.but.id) : null;
+  if (choix.ecart) await noter('CORRIGER', { but_id: but?.id, action: 'priorite', correction: choix.ecart });
 
   // Garde de faisabilité : catalogue fermé, nombre plafonné. Garde de souveraineté : aucun secret.
   const brutes = Array.isArray(p.sous_taches) ? p.sous_taches.slice(0, SOUS_TACHES_MAX) : [];
@@ -334,7 +350,7 @@ DONNÉES : ${JSON.stringify(sortie.donnees).slice(0, 1400)}`,
     bilans.push({ action: t.action, ...e, resultat: sortie.resume });
 
     await noter('EVALUER', { but_id: but?.id, action: t.action, attendu: t.attendu, resultat: sortie.resume,
-      ecart: e.ecart, cause: e.cause, cout_usd: ev.meta?.costUsd || 0 });
+      arguments: { reussie: e.reussie === true }, ecart: e.ecart, cause: e.cause, cout_usd: ev.meta?.costUsd || 0 });
 
     if (e.type_correction && e.type_correction !== 'aucune') {
       await noter('CORRIGER', { but_id: but?.id, action: t.action,
@@ -368,6 +384,14 @@ DONNÉES : ${JSON.stringify(sortie.donnees).slice(0, 1400)}`,
       AND ecart IS NOT NULL AND ecart !~* '^(aucun|néant|rien|0)'
     GROUP BY action HAVING count(*) >= 2 ORDER BY fois DESC LIMIT 5`)).rows;
 
+  // La justesse de ses annonces (score de Brier sur 30 jours) : la probabilité d'échec dite AVANT
+  // d'agir, comparée au résultat. C'est ce qui dit s'il devient prédictif, ou s'il le croit seulement.
+  const paires = (await brain.query(`SELECT x.probabilite_echec AS p, v.arguments->>'reussie' AS r
+    FROM etats x JOIN etats v ON v.cycle_id = x.cycle_id AND v.rang = x.rang + 1 AND v.type = 'EVALUER'
+    WHERE x.type = 'EXECUTER' AND x.probabilite_echec IS NOT NULL AND v.arguments ? 'reussie'
+      AND x.cree_le > now() - interval '30 days'`)).rows;
+  const juste = justesse(paires.map((x) => ({ p: Number(x.p), echec: x.r === 'false' })));
+
   const meta = await askJson({
     task: 'raisonnement',
     system: `Tu fais ta méta-réflexion de fin de cycle. Tu révises tes croyances à la lumière de ce qui vient
@@ -378,6 +402,9 @@ Réponds en JSON : {"synthese":"deux phrases","croyances":[{"sujet":"...","enonc
 "croyances_douteuses":["sujet"],"questions":[{"question":"...","pourquoi":"...","bloquant":false}]}`,
     user: `CE CYCLE :
 ${lignes.filter((l) => l.type !== 'PROPOSER').map((l) => `- ${l.type} ${l.action || ''} → ${l.resultat || l.correction || l.ecart || ''}`.slice(0, 300)).join('\n')}
+
+JUSTESSE DE MES ANNONCES SUR 30 JOURS (score de Brier, 0 = parfait, 0,25 = hasard) :
+${juste.brier === null ? '- aucune prédiction notée encore' : `- ${juste.brier} sur ${juste.n} annonce(s) : ${juste.lecture}`}
 
 ÉCARTS QUI REVIENNENT SUR 7 JOURS (mesurés par le code) :
 ${persistants.length ? persistants.map((x) => `- ${x.action} : ${x.fois} fois — dernier : ${x.dernier_ecart}`).join('\n') : '- aucun'}
@@ -412,7 +439,7 @@ ${moi.reponses.length ? moi.reponses.map((r) => `- ${r.question} → ${r.reponse
     revisees.push(`${sujet} (${c.confiance})`);
   }
   await noter('METAFLECHIR', { but_id: but?.id, action: 'revision',
-    arguments: { revisees, douteuses: m.croyances_douteuses || [], persistants: persistants.map((x) => x.action) },
+    arguments: { revisees, douteuses: m.croyances_douteuses || [], persistants: persistants.map((x) => x.action), justesse: juste },
     resultat: m.synthese || null, cout_usd: meta.meta?.costUsd || 0 });
 
   const questions = [];
