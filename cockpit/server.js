@@ -471,6 +471,7 @@ async function relayer() {
       + `Une application web se livre construite et prête à ouvrir : demande-${c.id}/app/index.html (fichiers statiques, chemins relatifs) ; elle sera visible à https://cockpit.raime.fr/livrables/demande-${c.id}/app/index.html. `
       + `Le code du cerveau lui-même est en lecture seule dans /cerveau. Pour l'améliorer : copie-le dans demande-${c.id}/cerveau (sans node_modules), puis git init, git add -A, git commit AVANT toute modification ; modifie ; ajoute un test tests/cas_figes_<sujet>.mjs qui prouve le changement ; lance les tests ; puis git diff > ../changement.diff et écris ../changement.md dont la première ligne est un titre court. L'applicateur le met en service seul si tous les cas figés passent (la Constitution, la livraison, le cockpit et les briques restent hors de portée) ; ne livre un changement.diff que pour une amélioration du cerveau. `
       + `EXIGENCE PREMIUM, sur chaque tâche, de A à Z : un travail fini, pas une ébauche. Charte rAIme : fond noir #000, texte blanc, rose #ff7eb0 pour les seuls mots-clés, police Inter, mode jour possible (fond #ededed, rose #db4f8b) ; retenue, espace, trois tailles de titres au plus, aucune fenêtre grise ; français impeccable, sans anglicisme. Avant de rendre, vérifie tout et corrige : le code s'exécute sans erreur (serveur et navigateur), les tests passent, le HTML est valide, l'affichage tient sur ordinateur et sur téléphone (375 px), les contrastes sont lisibles, aucune donnée ni aucun prix inventé. Recommence la vérification tant qu'elle trouve quelque chose. Écris dans ton compte rendu ce que tu as vérifié. `
+      + `Tes skills sont dans /home/node/.dsh/skills (dont charte-raime) : sers-t'en. N'en installe pas de nouveaux toi-même. `
       + `N'écris jamais une clé ou un mot de passe dans un fichier ni dans ta réponse. Ce que tu ne peux pas faire : publier, envoyer à des personnes, payer. `
       + `Termine par un compte rendu en français, trois phrases au plus : ce que tu as fait, où est le résultat (avec l'adresse), ce qui reste.\n\nDemande de Basile : ${c.texte}`;
     try {
@@ -483,6 +484,7 @@ async function relayer() {
   } finally { relaisOccupe = false; }
 }
 setInterval(() => { relayer().catch(() => {}); }, 30_000);
+
 
 // Les livrables de l'exécutant, en lecture seule : /livrables et /livrables/demande-12/fichier.md
 const LIVRABLES = process.env.LIVRABLES_DIR || '/travail';
