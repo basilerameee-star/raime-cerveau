@@ -39,9 +39,16 @@ for dir in "$T"/demande-*/; do
     rm -rf "$R/demande-$n"; echo "trop lourd ($sz Mo sans les dépendances) : non déposé" > "$dir/.depose-refuse"
     touch "$dir/.depose"; echo "$(date -Is) demande $n NON déposée ($sz Mo)"; continue
   fi
-  if grep -rIlE "$SECRET" "$R/demande-$n" >/dev/null 2>&1; then
-    rm -rf "$R/demande-$n"; echo "secret détecté : non déposé" > "$dir/.depose-refuse"
-    echo "$(date -Is) demande $n NON déposée (secret détecté)"; continue
+  # Un fichier qui ressemble à une clé (souvent une fausse clé d'exemple dans une documentation
+  # publique : cas de gpt-engineer le 25/09) est retiré SEUL ; le reste de la réalisation est déposé
+  # et une note liste ce qui a été retenu sur le serveur. Rien de suspect ne part sur GitHub.
+  suspects=$(grep -rIlE "$SECRET" "$R/demande-$n" 2>/dev/null)
+  if [ -n "$suspects" ]; then
+    echo "$suspects" | while IFS= read -r x; do rm -f -- "$x"; done
+    { echo "# Fichiers retenus sur le serveur"; echo
+      echo "Ils contiennent une chaîne qui ressemble à une clé (souvent un exemple de documentation) : ils ne sont pas déposés sur GitHub."; echo
+      echo "$suspects" | sed "s#^$R/demande-$n/#- #"; } > "$R/demande-$n/FICHIERS-RETENUS.md"
+    grep -rIlE "$SECRET" "$R/demande-$n" >/dev/null 2>&1 && { rm -rf "$R/demande-$n"; echo "$(date -Is) demande $n NON déposée"; continue; }
   fi
   git add -A "demande-$n"
   if ! git diff --cached --quiet; then
