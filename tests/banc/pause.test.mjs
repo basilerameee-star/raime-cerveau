@@ -1,4 +1,5 @@
-// La prospection est en pause : ni la boucle ni le cron ne lancent le héraut.
+// La prospection reprend le 25/09/2026 sur le message dicté par Basile, en BROUILLONS seulement :
+// le cron ne lance jamais le héraut, et le héraut ne valide ni n'envoie rien lui-même.
 import './outils.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -11,6 +12,9 @@ test('le cron ne lance pas le héraut', () => {
   assert.ok(!actives(lire('cron.raime')).some((l) => /heraut\.js/.test(l)));
 });
 
-test('la boucle ne lance pas le héraut', () => {
-  assert.ok(!actives(lire('agents/boucle.js')).some((l) => /nom:\s*'heraut'/.test(l)));
+test('le héraut ne rédige que des brouillons : il ne valide ni n’envoie jamais lui-même', () => {
+  const h = actives(lire('agents/heraut.js')).join('\n');
+  assert.ok(/'brouillon'/.test(h), 'le héraut doit écrire des brouillons');
+  assert.ok(!/status\s*=\s*'(valide|envoye)'|'(valide|envoye)'\s*:/.test(h), 'le héraut ne doit jamais valider ni marquer envoyé');
+  assert.ok(!/sendMail|smtp|resend\.com|\/emails/i.test(h), 'le héraut ne doit contenir aucun envoi');
 });

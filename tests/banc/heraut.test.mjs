@@ -5,19 +5,28 @@ import './outils.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-const { valider } = await import('../../agents/heraut.js');
+const { valider, APPEL, SIGNATURE } = await import('../../agents/heraut.js');
 
-const OBJET = 'Formation IA des équipes : ce que demande l’AI Act';
+// L'étalon suit le message dicté par Basile le 25/09/2026 (héraut v3).
+const OBJET = 'Vos tâches administratives chronophages';
 const CORPS = `Madame, Monsieur,
 
-Depuis le 2 août, l’article 4 de l’AI Act demande aux entreprises de former les personnes qui utilisent l’intelligence artificielle, et de pouvoir le montrer.
+Je me permets de vous contacter car j'accompagne les organisations dans l'identification et l'automatisation de leurs tâches grâce à l'IA.
 
-Pour Transports Vallet, cela touche surtout le transport routier et la planification des tournées : là où les outils arrivent déjà dans les équipes.
+De plus en plus d'entreprises utilisent l'intelligence artificielle au quotidien, et beaucoup perdent encore du temps sur des tâches qui ne sont pas le cœur de leur mission. Pour Transports Vallet, dans le transport routier, par exemple :
+- la saisie des lettres de voiture
+- le suivi des temps de conduite
+- les relances des factures clients
+- la préparation des tournées
+- la gestion des documents des véhicules
 
-Un premier regard sous 48 heures permet de situer vos usages et de chiffrer une formation adaptée. Souhaitez-vous le recevoir ?
+Certaines de ces tâches peuvent aujourd'hui être automatisées presque intégralement grâce à des workflows, des agents IA et des connexions à vos outils existants. L'objectif : vous faire gagner du temps et de l'argent, en identifiant ce qui est réellement faisable.
 
-Basile Ramé
-rAIme — raime.fr`;
+Chez rAIme, j'interviens notamment sur l'analyse, l'identification, la conception, l'intégration, la mise en place et le suivi des gains.
+
+${APPEL}
+
+${SIGNATURE}`;
 
 const ORGA = 'Transports Vallet';
 const avec = (motif, remplacement) => CORPS.replace(motif, remplacement);
@@ -36,18 +45,20 @@ test('un nom d’organisation malmené est refusé', () => {
 });
 
 const REFUS = [
-  ['le CPF', avec('Un premier regard', 'Le CPF finance tout. Un premier regard'), /CPF/],
-  ['un prix', avec('Un premier regard', 'Tarif : 900 € la journée. Un premier regard'), /prix annoncé/],
+  ['le CPF', avec('Chez rAIme', 'Le CPF finance tout. Chez rAIme'), /CPF/],
+  ['un prix', avec('Chez rAIme', 'Tarif : 900 € la journée. Chez rAIme'), /prix annoncé/],
   ['un lien', avec('raime.fr', 'raime.fr https://raime.fr'), /lien cliquable/],
-  ['deux questions', avec('Souhaitez-vous', 'Est-ce utile ? Souhaitez-vous'), /plusieurs questions/],
+  ['deux questions', avec('Si vous avez', 'Est-ce utile ? Et pour vous ? Si vous avez'), /plusieurs questions/],
   ['une civilité devinée', avec('Madame, Monsieur,', 'Monsieur,'), /civilité genrée/],
-  ['l’audit gratuit', avec('Un premier regard sous 48 heures', 'Un audit gratuit puis un premier regard sous 48 heures'), /audit gratuit/],
-  ['Qualiopi', avec('Un premier regard', 'Organisme Qualiopi. Un premier regard'), /Qualiopi/],
-  ['l’OPCO', avec('Un premier regard', 'Votre OPCO finance. Un premier regard'), /OPCO/],
+  ['l’audit gratuit', avec('Chez rAIme', 'Un audit gratuit vous attend. Chez rAIme'), /audit gratuit/],
+  ['Qualiopi', avec('Chez rAIme', 'Organisme Qualiopi. Chez rAIme'), /Qualiopi/],
+  ['l’OPCO', avec('Chez rAIme', 'Votre OPCO finance. Chez rAIme'), /OPCO/],
   ['la signature absente', avec('Basile Ramé\n', ''), /signature/],
-  ['l’offre du premier regard absente', avec('Un premier regard sous 48 heures permet', 'Un échange permet'), /premier regard absente/],
-  ['un émoji', avec('Souhaitez-vous', '🚀 Souhaitez-vous'), /formulation interdite/],
-  ['un message trop long', CORPS + '\n' + 'Détail supplémentaire. '.repeat(60), /trop long/],
+  ['la phrase d’appel de Basile absente', avec(APPEL, 'Répondez-moi.'), /phrase d'appel/],
+  ['moins de cinq tâches', avec('- la préparation des tournées\n- la gestion des documents des véhicules\n', ''), /cinq tâches/],
+  ['un chiffre sans source', avec('De plus en plus d', '42 % d'), /chiffre/],
+  ['un émoji', avec('Si vous avez', '🚀 Si vous avez'), /formulation interdite/],
+  ['un message trop long', CORPS + '\n' + 'Détail supplémentaire. '.repeat(90), /trop long/],
 ];
 for (const [nom, corps, attendu] of REFUS) {
   // Le CPF et l'OPCO échappaient au contrôle : un caractère invisible (retour arrière,
