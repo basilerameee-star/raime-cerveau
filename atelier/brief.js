@@ -4,9 +4,10 @@
 // qui n'y figure pas en chiffres disparaît, une identité de vendeur qui n'y figure pas
 // mot pour mot disparaît. Règle 4 : rien ne s'invente. Ce qui manque devient une question.
 import { askJson } from '../agents/lib.js';
-
-export const RESERVES = new Set(['www', 'raime', 'n8n', 'cockpit', 'voyage', 'metabase', 'docuseal',
-  'postgres', 'caddy', 'boucle', 'porte', 'api', 'mail']);
+// Le slug (le sous-domaine .raime.fr du service) vit dans atelier/slug.js : une seule logique,
+// testée par cas figés. Ici on n'en garde que l'usage, jamais une deuxième copie du motif.
+import { RESERVES, sousDomaine } from './slug.js';
+export { RESERVES, sousDomaine } from './slug.js';
 
 const SYSTEME = `Tu es l'atelier de rAIme. On te donne UNE phrase qui demande un site pour vendre quelque chose.
 Extrais seulement ce que la phrase dit, sans rien ajouter. Réponds en JSON :
@@ -28,10 +29,8 @@ export function assainir(brut, phrase) {
   const questions = [];
   const b = brut || {};
 
-  let nom = String(b.nom || b.produit || 'service').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30).replace(/-+$/, '');
-  if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(nom) || nom.length < 2) nom = 'service';
-  if (RESERVES.has(nom)) nom = `${nom}-boutique`;
+  // Le nom du service devient un sous-domaine court, sans accents, jamais réservé.
+  const nom = sousDomaine(b.nom || b.produit || 'service');
 
   let prix = null;
   const m = Number(b.prix?.montant);
