@@ -1,13 +1,13 @@
 // L'EXÉCUTANT — DeepSeek Harness au service du cerveau rAIme (25/09/2026).
 //
 // Reçoit une tâche par HTTP sur le réseau Docker interne (jamais exposé), la confie à
-// `dsh --profile headless` et rend la réponse finale. Une tâche à la fois, quinze minutes au plus.
+// `dsh --profile headless` et rend la réponse finale. Une tâche à la fois, quarante-cinq minutes au plus.
 // Il ne voit que son dossier /travail et les clés de modèles : aucun accès à la base, au site ni
 // au reste du serveur. C'est le cockpit qui lui passe les commandes de Jarvis et note le résultat.
 import http from 'node:http';
 import { spawn } from 'node:child_process';
 
-const MAX_MS = 15 * 60_000;
+const MAX_MS = 45 * 60_000; // cloner, installer, construire : 45 minutes au plus
 let occupe = false;
 
 function executer(tache) {
