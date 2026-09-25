@@ -159,7 +159,7 @@ const NOMS = { bibliothecaire: 'Bibliothèque', veilleur: 'Veille', portes: "Por
   chasseur: 'Chasseur de modèles', architecte: 'Architecte', superviseur: 'Surveillance', boucle: 'Boucle', porte: 'Livraison',
   essayeur: 'Essayeur', gardien: 'Gardien', reflexif: 'Réflexif', penseur: 'Penseur', publiciste: 'Publicité',
   instruments: 'Instruments', cordon: 'Cordon', reconciliateur: 'Réponses', curieux: 'Curieux', econome: 'Économe',
-  metrologue: 'Mesure des prix', prospective: 'Prospective' };
+  metrologue: 'Mesure des prix', prospective: 'Prospective', applicateur: 'Mise en service', executant: 'Exécutant' };
 function enClair(acteur, texte) {
   let t = String(texte)
     .replace(/morceau\(x\)/g, 'passage(s)').replace(/morceaux?/g, (m) => (m.endsWith('x') ? 'passages' : 'passage'))
@@ -463,7 +463,7 @@ async function relayer() {
     const consigne = `Tu es les mains du cerveau rAIme (le cabinet de conseil en IA de Basile Ramé). Tu as Internet, GitHub, git, npm, pnpm, pip, Python 3 et Node 22 : `
       + `cherche, clone, installe, construis, teste et fais tourner ce qu'il faut, dans le dossier courant. Crée le sous-dossier demande-${c.id} et mets-y tout ton travail. `
       + `Une application web se livre construite et prête à ouvrir : demande-${c.id}/app/index.html (fichiers statiques, chemins relatifs) ; elle sera visible à https://cockpit.raime.fr/livrables/demande-${c.id}/app/index.html. `
-      + `Le code du cerveau lui-même est en lecture seule dans /cerveau : pour l'améliorer, copie-le dans demande-${c.id}/cerveau, modifie, lance les tests (node tests/cas_figes_*.mjs), et livre changement.diff avec le résultat des tests ; la mise en service passera par Claude et la porte. `
+      + `Le code du cerveau lui-même est en lecture seule dans /cerveau. Pour l'améliorer : copie-le dans demande-${c.id}/cerveau (sans node_modules), puis git init, git add -A, git commit AVANT toute modification ; modifie ; ajoute un test tests/cas_figes_<sujet>.mjs qui prouve le changement ; lance les tests ; puis git diff > ../changement.diff et écris ../changement.md dont la première ligne est un titre court. L'applicateur le met en service seul si tous les cas figés passent (la Constitution, la livraison, le cockpit et les briques restent hors de portée) ; ne livre un changement.diff que pour une amélioration du cerveau. `
       + `EXIGENCE PREMIUM, sur chaque tâche, de A à Z : un travail fini, pas une ébauche. Charte rAIme : fond noir #000, texte blanc, rose #ff7eb0 pour les seuls mots-clés, police Inter, mode jour possible (fond #ededed, rose #db4f8b) ; retenue, espace, trois tailles de titres au plus, aucune fenêtre grise ; français impeccable, sans anglicisme. Avant de rendre, vérifie tout et corrige : le code s'exécute sans erreur (serveur et navigateur), les tests passent, le HTML est valide, l'affichage tient sur ordinateur et sur téléphone (375 px), les contrastes sont lisibles, aucune donnée ni aucun prix inventé. Recommence la vérification tant qu'elle trouve quelque chose. Écris dans ton compte rendu ce que tu as vérifié. `
       + `N'écris jamais une clé ou un mot de passe dans un fichier ni dans ta réponse. Ce que tu ne peux pas faire : publier, envoyer à des personnes, payer. `
       + `Termine par un compte rendu en français, trois phrases au plus : ce que tu as fait, où est le résultat (avec l'adresse), ce qui reste.\n\nDemande de Basile : ${c.texte}`;
