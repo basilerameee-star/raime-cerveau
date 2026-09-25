@@ -13,6 +13,8 @@ const pool = new Pool({
 });
 
 const HTML = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+// Jarvis (25/09/2026) : l'interface unique voulue par Basile — la boule, la voix, l'essentiel sur les côtés.
+const JARVIS = fs.existsSync(path.join(__dirname, 'jarvis.html')) ? fs.readFileSync(path.join(__dirname, 'jarvis.html'), 'utf8') : null;
 
 // La bibliothèque du cerveau vit dans la base raime_brain, sur le même serveur Postgres.
 const cerveau = new Pool({
@@ -334,6 +336,27 @@ const server = http.createServer(async (req, res) => {
     const data = await kpi();
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
     res.end(JSON.stringify(data));
+    return;
+  }
+  if (req.url === '/jarvis' && JARVIS) {
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+    res.end(JARVIS);
+    return;
+  }
+  if (req.url === '/api/jarvis') {
+    // L'essentiel, lu dans la base du cerveau. Une table absente rend une liste vide, jamais une erreur.
+    const lire = async (sql) => { try { return (await cerveau.query(sql)).rows; } catch (e) { return []; } };
+    const pensee = await lire("SELECT titre, proposition FROM pensees WHERE nuit = (SELECT max(nuit) FROM pensees) ORDER BY rang LIMIT 3");
+    const attente = await lire("SELECT question FROM demandes WHERE etat = 'ouverte' ORDER BY cree_le DESC LIMIT 6");
+    const journal = await lire("SELECT acteur, left(changement, 140) AS changement FROM journal ORDER BY created_at DESC LIMIT 6");
+    const depense = await lire("SELECT coalesce(sum(cost_usd), 0)::float AS d FROM agent_runs WHERE created_at >= date_trunc('month', now())");
+    const veille = await lire("SELECT count(*)::int AS n FROM veille WHERE vu_le > now() - interval '24 hours'");
+    const agents = await lire("SELECT count(DISTINCT agent)::int AS n FROM agent_runs WHERE created_at > now() - interval '24 hours'");
+    const nbQuestions = await lire("SELECT count(*)::int AS n FROM demandes WHERE etat = 'ouverte'");
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+    res.end(JSON.stringify({ pensee, attente, journal,
+      depense: depense[0] ? depense[0].d : null, veille24h: veille[0] ? veille[0].n : null,
+      agents: agents[0] ? agents[0].n : null, questions: nbQuestions[0] ? nbQuestions[0].n : null }));
     return;
   }
   if (req.url === '/healthz') { res.writeHead(200); res.end('ok'); return; }

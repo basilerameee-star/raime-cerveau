@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>rAIme — cerveau</title>
+<style>
+:root{--noir:#000;--blanc:#fff;--gris:#8a8a8a;--trait:rgba(255,255,255,.1);--rose:#ff7eb0;
+  --police:Inter,-apple-system,"Segoe UI",sans-serif;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--noir);color:var(--blanc);font-family:var(--police);-webkit-font-smoothing:antialiased;overflow:hidden}
+canvas#boule{position:fixed;inset:0;width:100vw;height:100vh;display:block}
+.etiquette{font:11px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--gris)}
+.etiquette::before{content:"/// ";opacity:.45}
+header{position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:22px 32px;z-index:2}
+header b{font-weight:600;letter-spacing:-.02em;font-size:18px}
+header .etat{display:flex;align-items:center;gap:10px}
+header .etat i{width:7px;height:7px;border-radius:50%;background:var(--rose);box-shadow:0 0 12px var(--rose)}
+aside{position:fixed;top:92px;bottom:150px;width:min(300px,24vw);display:flex;flex-direction:column;gap:26px;z-index:2;overflow:hidden}
+aside.gauche{left:32px} aside.droite{right:32px}
+.bloc{border-top:1px solid var(--trait);padding-top:12px}
+.bloc h3{margin-bottom:10px}
+.bloc p,.bloc li{font-size:13.5px;line-height:1.55;color:#d6d6d6}
+.bloc li{list-style:none;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.bloc li:last-child{border-bottom:0}
+.bloc em{font-style:normal;color:var(--rose);font-family:var(--mono);font-size:12px}
+.chiffres{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.chiffres b{display:block;font-size:24px;font-weight:600;letter-spacing:-.03em}
+.chiffres span{font-size:12px;color:var(--gris)}
+#echange{position:fixed;left:50%;transform:translateX(-50%);bottom:112px;width:min(720px,90vw);text-align:center;z-index:2;min-height:48px}
+#echange .toi{color:var(--gris);font-size:14px;margin-bottom:6px}
+#echange .lui{font-size:17px;line-height:1.55;max-height:30vh;overflow:auto}
+form{position:fixed;left:50%;transform:translateX(-50%);bottom:34px;width:min(640px,90vw);display:flex;gap:10px;z-index:2}
+form input{flex:1;height:52px;padding:0 20px;background:rgba(10,10,10,.8);border:1px solid var(--trait);border-radius:999px;color:var(--blanc);font:15px var(--police);outline:none}
+form input:focus{border-color:rgba(255,126,176,.6)}
+form button{width:52px;height:52px;border-radius:50%;border:1px solid var(--trait);background:rgba(10,10,10,.8);color:var(--blanc);cursor:pointer;display:grid;place-items:center}
+form button.actif{border-color:var(--rose);box-shadow:0 0 22px rgba(255,126,176,.45)}
+form button svg{width:20px;height:20px}
+.demo{position:fixed;left:32px;bottom:14px;z-index:2}
+@media (max-width:900px){aside{display:none}#echange{bottom:100px}}
+@media (prefers-reduced-motion:reduce){header .etat i{box-shadow:none}}
+</style>
+</head>
+<body data-etat="repos">
+<canvas id="boule" aria-hidden="true"></canvas>
+
+<header>
+  <b>rAIme</b>
+  <div class="etat"><i></i><span class="etiquette" id="etat-texte">au repos</span></div>
+</header>
+
+<aside class="gauche">
+  <section class="bloc"><h3 class="etiquette">La pensée de la nuit</h3><div id="pensee"><p>…</p></div></section>
+  <section class="bloc"><h3 class="etiquette">Ce qui a changé</h3><ul id="journal"></ul></section>
+</aside>
+
+<aside class="droite">
+  <section class="bloc"><h3 class="etiquette">Ce qui attend ta décision</h3><ul id="attente"></ul></section>
+  <section class="bloc"><h3 class="etiquette">L'état</h3>
+    <div class="chiffres">
+      <div><b id="c-depense">—</b><span>dépensés ce mois</span></div>
+      <div><b id="c-veille">—</b><span>lectures en 24 h</span></div>
+      <div><b id="c-agents">—</b><span>agents en service</span></div>
+      <div><b id="c-questions">—</b><span>questions pour toi</span></div>
+    </div>
+  </section>
+</aside>
+
+<div id="echange" aria-live="polite"><div class="toi" id="toi"></div><div class="lui" id="lui"></div></div>
+
+<form id="formulaire" autocomplete="off">
+  <input id="texte" placeholder="Parle-moi, ou écris…" aria-label="Ta demande">
+  <button type="button" id="micro" aria-label="Parler"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+</form>
+<p class="etiquette demo" id="demo" hidden>données d'exemple : le cockpit n'est pas joignable</p>
+
+<script>
+(function () {
+  // ── La boule : des particules blanches sur une sphère, aux reflets roses du côté de la lumière ──
+  var c = document.getElementById('boule'), x = c.getContext('2d'), D = Math.min(window.devicePixelRatio || 1, 2);
+  var N = 4200, P = [], or = Math.PI * (3 - Math.sqrt(5));
+  for (var i = 0; i < N; i++) { var y = 1 - (i / (N - 1)) * 2, r = Math.sqrt(1 - y * y), t = or * i; P.push([Math.cos(t) * r, y, Math.sin(t) * r, Math.random()]); }
+  var L = [-.55, -.45, .7], ln = Math.hypot(L[0], L[1], L[2]); L = L.map(function (v) { return v / ln; });
+  var ETATS = { repos: { a: .018, f: 2.2, v: .06 }, ecoute: { a: .05, f: 3, v: .1 }, reflexion: { a: .035, f: 7, v: .22 }, parole: { a: .06, f: 4, v: .12 } };
+  var etat = 'repos', niveau = 0, rot = 0, W, H, t0 = performance.now();
+  var calme = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function taille() { W = innerWidth; H = innerHeight; c.width = W * D; c.height = H * D; x.setTransform(D, 0, 0, D, 0, 0); }
+  addEventListener('resize', taille); taille();
+  function image(now) {
+    var s = ETATS[etat], t = (now - t0) / 1000;
+    rot += calme ? 0 : s.v * 0.016;
+    x.clearRect(0, 0, W, H);
+    var R = Math.min(W, H) * (W < 900 ? .3 : .26), cx = W / 2, cy = H * .45;
+    var ca = Math.cos(rot), sa = Math.sin(rot), inc = .35, ci = Math.cos(inc), si = Math.sin(inc);
+    var amp = s.a + niveau * .12;
+    // le halo : un souffle rose très léger derrière la boule, qui respire avec elle
+    var h = x.createRadialGradient(cx, cy, R * .2, cx, cy, R * 1.5);
+    h.addColorStop(0, 'rgba(255,126,176,' + (.05 + niveau * .08).toFixed(3) + ')');
+    h.addColorStop(.55, 'rgba(255,126,176,.018)');
+    h.addColorStop(1, 'rgba(0,0,0,0)');
+    x.fillStyle = h; x.fillRect(0, 0, W, H);
+    x.globalCompositeOperation = 'lighter';
+    for (var i = 0; i < N; i++) {
+      var p = P[i];
+      var onde = 1 + amp * Math.sin(p[1] * s.f * 2 + t * 1.3 + p[3] * 6) * Math.cos(p[0] * s.f + t * .9);
+      var X = p[0] * ca - p[2] * sa, Z = p[0] * sa + p[2] * ca, Y = p[1];
+      var Y2 = Y * ci - Z * si, Z2 = Y * si + Z * ci;
+      var k = 2.6 / (2.6 + Z2), px = cx + X * R * onde * k, py = cy + Y2 * R * onde * k;
+      var face = Z2 < 0 ? 1 : .35;
+      var lum = Math.max(0, X * L[0] + Y2 * L[1] + (-Z2) * L[2]);
+      var rose = Math.max(lum > .66 ? (lum - .66) / .34 : 0, p[3] > .955 ? .6 : 0);
+      var a = (.14 + .56 * face) * (.5 + .5 * lum);
+      x.fillStyle = 'rgba(255,' + Math.round(255 - 129 * rose) + ',' + Math.round(255 - 79 * rose) + ',' + a.toFixed(3) + ')';
+      var sz = (.6 + 1.25 * face) * k * (rose > .5 ? 1.25 : 1);
+      x.fillRect(px, py, sz, sz);
+    }
+    x.globalCompositeOperation = 'source-over';
+    niveau *= .9;
+    requestAnimationFrame(image);
+  }
+  requestAnimationFrame(image);
+  function changer(e, texte) { etat = e; document.body.dataset.etat = e; document.getElementById('etat-texte').textContent = texte; }
+
+  // ── Les informations des côtés, en direct depuis le cockpit (sinon, un exemple signalé) ──
+  var EXEMPLE = { pensee: [{ titre: 'Créer une offre d’audit des traces d’agents IA', proposition: 'Une page d’offre illustrée par trois publications de la semaine.' }],
+    journal: [{ acteur: 'essayeur', changement: 'slugify retenu, 25 tests réussis sans réseau' }, { acteur: 'porte', changement: 'livraison acceptée, code 0' }],
+    attente: [{ question: 'Les 30 % de l’automatisation : 12 mensualités ?' }], depense: 0.46, veille24h: 42, agents: 17, questions: 3 };
+  function li(liste, champ) { return liste.map(function (e) { var d = document.createElement('li'); d.textContent = champ(e); return d; }); }
+  function remplir(d) {
+    var pe = document.getElementById('pensee'); pe.innerHTML = '';
+    (d.pensee && d.pensee.length ? d.pensee : [{ titre: 'Rien encore cette nuit', proposition: '' }]).slice(0, 2).forEach(function (p) {
+      var e = document.createElement('p'); e.innerHTML = '<em>→</em> '; e.appendChild(document.createTextNode(p.titre + (p.proposition ? ' — ' + p.proposition : ''))); pe.appendChild(e);
+    });
+    var j = document.getElementById('journal'); j.innerHTML = '';
+    li((d.journal || []).slice(0, 5), function (e) { return e.acteur + ' · ' + e.changement; }).forEach(function (n) { j.appendChild(n); });
+    var at = document.getElementById('attente'); at.innerHTML = '';
+    li((d.attente || []).slice(0, 4), function (e) { return e.question; }).forEach(function (n) { at.appendChild(n); });
+    if (!(d.attente || []).length) at.innerHTML = '<li>Rien : tout avance.</li>';
+    document.getElementById('c-depense').textContent = d.depense == null ? '—' : d.depense.toFixed(2).replace('.', ',') + ' $';
+    document.getElementById('c-veille').textContent = d.veille24h ?? '—';
+    document.getElementById('c-agents').textContent = d.agents ?? '—';
+    document.getElementById('c-questions').textContent = d.questions ?? '—';
+  }
+  function charger() {
+    fetch('/api/jarvis', { cache: 'no-store' }).then(function (r) { if (!r.ok) throw 0; return r.json(); })
+      .then(function (d) { document.getElementById('demo').hidden = true; remplir(d); })
+      .catch(function () { document.getElementById('demo').hidden = false; remplir(EXEMPLE); });
+  }
+  charger(); setInterval(charger, 60000);
+
+  // ── Parler : par écrit ou à la voix ; il répond à l'écrit et à voix haute ──
+  var toi = document.getElementById('toi'), lui = document.getElementById('lui');
+  function dire(texte) {
+    if (!('speechSynthesis' in window)) { changer('repos', 'au repos'); return; }
+    var u = new SpeechSynthesisUtterance(texte.replace(/\[[^\]]*\]/g, '').slice(0, 900)); u.lang = 'fr-FR'; u.rate = 1.02;
+    var v = speechSynthesis.getVoices().filter(function (v) { return /^fr/i.test(v.lang); })[0]; if (v) u.voice = v;
+    u.onstart = function () { changer('parole', 'parle'); };
+    u.onboundary = function () { niveau = Math.min(1, niveau + .35); };
+    u.onend = function () { changer('repos', 'au repos'); };
+    speechSynthesis.cancel(); speechSynthesis.speak(u);
+  }
+  function demander(message) {
+    if (!message.trim()) return;
+    toi.textContent = message; lui.textContent = ''; changer('reflexion', 'réfléchit');
+    fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: message }) })
+      .then(function (r) { return r.json(); })
+      .then(function (d) { var rep = d.reply || '(pas de réponse)'; lui.textContent = rep; dire(rep); charger(); })
+      .catch(function () { lui.textContent = 'Le cockpit n’est pas joignable d’ici : ouvre cette page depuis cockpit.raime.fr/jarvis.'; changer('repos', 'au repos'); });
+  }
+  document.getElementById('formulaire').addEventListener('submit', function (e) { e.preventDefault(); var i = document.getElementById('texte'); demander(i.value); i.value = ''; });
+
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition, micro = document.getElementById('micro'), ecoute = null;
+  micro.addEventListener('click', function () {
+    if (!SR) { lui.textContent = 'Ce navigateur ne transcrit pas la voix lui-même (c’est le cas de Brave) : la transcription se fera sur ton serveur, à l’étape suivante. Écris en attendant.'; return; }
+    if (ecoute) { ecoute.stop(); return; }
+    ecoute = new SR(); ecoute.lang = 'fr-FR'; ecoute.interimResults = true;
+    ecoute.onstart = function () { micro.classList.add('actif'); changer('ecoute', 'écoute'); };
+    ecoute.onresult = function (e) { var r = e.results[e.results.length - 1]; toi.textContent = r[0].transcript; niveau = Math.min(1, niveau + .2); if (r.isFinal) demander(r[0].transcript); };
+    ecoute.onend = function () { micro.classList.remove('actif'); ecoute = null; if (etat === 'ecoute') changer('repos', 'au repos'); };
+    ecoute.start();
+  });
+})();
+</script>
+</body>
+</html>
