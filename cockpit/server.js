@@ -147,7 +147,9 @@ const MODELE_JARVIS = 'deepseek/deepseek-v4-flash-0731';
 const MODELE_PROFOND = 'deepseek/deepseek-v4-pro-0813'; // « réfléchis à fond », « en profondeur »
 const PROFOND = /réfléchis (à fond|bien|en profondeur)|en profondeur|analyse approfondie|prends ton temps/i;
 // Gemini gratuit en premier (mesure du 25/09 : 3.8 Flash réfléchit, 6 s ; 3.5 Flash Lite, 0,9 s).
-const GEMINI_JARVIS = ['gemini-3.8-flash', 'gemini-3.5-flash-lite'];
+// 25/09 soir : Basile trouve la latence trop forte → d'abord 3.1 Flash Lite (1,6 s, sans réflexion, français propre),
+// 3.8 Flash (qui réfléchit) seulement en relais ; « réfléchis à fond » garde les modèles qui réfléchissent.
+const GEMINI_JARVIS = ['gemini-3.1-flash-lite', 'gemini-3.8-flash'];
 const GEMINI_PROFOND = ['gemini-3.1-pro-preview', 'gemini-3.8-flash'];
 async function regimeActuel() {
   try { return ((await cerveau.query("SELECT mode FROM regime_budget ORDER BY le DESC LIMIT 1")).rows[0] || {}).mode || 'normal'; }

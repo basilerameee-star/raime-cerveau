@@ -113,7 +113,7 @@ canvas#boule{cursor:pointer}
     x.clearRect(0, 0, W, H);
     var R = Math.min(W, H) * (W < 900 ? .25 : .2), cx = W / 2, cy = H * .42;
     centre = { x: cx, y: cy, r: R };
-    if (source) niveau = Math.max(niveau, Math.min(1, rms(source) * 7));
+    if (source) niveau += (Math.min(1, rms(source) * 7) - niveau) * .22; // suit la voix en douceur, sans à-coups
     var ca = Math.cos(rot), sa = Math.sin(rot), inc = .35, ci = Math.cos(inc), si = Math.sin(inc);
     var amp = s.a + niveau * .12;
     // le halo : un souffle rose très léger derrière la boule, qui respire avec elle
@@ -138,7 +138,7 @@ canvas#boule{cursor:pointer}
       x.fillRect(px, py, sz, sz);
     }
     x.globalCompositeOperation = 'source-over';
-    niveau *= .9;
+    niveau *= .95;
     requestAnimationFrame(image);
   }
   requestAnimationFrame(image);
