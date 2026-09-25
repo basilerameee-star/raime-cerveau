@@ -161,7 +161,8 @@ export function enteteRoutage(email, dirigeantBrut, raisonSociale) {
   const nom = nomExploitable(dirigeantBrut, raisonSociale);
   return nom
     ? `À l'attention de ${nom}, direction — merci de lui transmettre ce message.`
-    : `À l'attention de la direction — merci de transmettre : il s'agit d'une obligation de formation qui engage personnellement le dirigeant.`;
+    // Message v3 (25/09/2026) : plus d'« obligation de formation » — c'était l'angle AI Act, abandonné.
+    : `À l'attention de la direction — merci de lui transmettre ce message.`;
 }
 
 export async function rediger({ prospect, playbook, brain, n8n }) {
