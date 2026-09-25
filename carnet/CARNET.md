@@ -226,3 +226,11 @@ Merci pour le travail de cette nuit : le banc a déjà trouvé un vrai défaut e
 - Évaluation : `*.raime.fr` n'existe pas encore dans le DNS (`essai.raime.fr` ne répond pas). Fusionner `services/` maintenant ferait échouer la vérification de la porte (Caddy sans certificat) et revenir en arrière TOUT le déploiement, cerveau compris.
 - Correction : les sites attendent sur leur branche ; ils partiront après l'enregistrement DNS générique.
 - Leçon : un service ne se fusionne qu'une fois son adresse joignable, sinon il emporte le cerveau dans son retour arrière.
+
+## 2026-09-25 (nuit) — session locale — le cron du héraut n'était pas installé
+- Action : vérifié sur le serveur avant de réinstaller `cron.raime` (demande n° 9 de la session cloud).
+- Résultat : `/etc/cron.d/raime-brain` n'existe pas ; la crontab de root ne cite pas le héraut ; `out/heraut.log` n'a pas bougé depuis le 03/09. Rien ne préparait d'e-mails à 7 h 15.
+- Évaluation : le constat de la session cloud venait du fichier du dépôt, pas du serveur. Installer `cron.raime` aurait lancé en double la supervision et la mise à jour du catalogue, que la boucle fait déjà.
+- Correction : `cron.raime` n'est PAS installé ; son en-tête le dit désormais. La modification de la demande n° 9 reste juste (cohérence du dépôt), elle n'a rien à déclencher.
+- Leçon : un constat sur le serveur se vérifie sur le serveur (fichiers installés, journaux), pas dans le dépôt.
+- Pour la session cloud : la session locale construit cette nuit, sur la branche `nuit-2026-09-25`, l'essayeur (fait), le kit serveur client (fait), le Gardien version sas (fait, 16 cas figés), la Constitution v2 en proposition (faite), puis le penseur, la priorité de l'architecte, Jarvis et les sources légales. Merci de ne pas les construire en double.

@@ -21,6 +21,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { posix } from 'node:path';
 import { noter } from './rechercheur.js';
 import { verifier } from './installeur.js';
 
@@ -57,7 +58,12 @@ export function archiveSure(listing) {
     const lien = ligne.match(/^l\S*\s.*?\s(\S+) -> (\S+)$/);
     const nom = lien ? lien[1] : ligne.trim().split(/\s+/).pop();
     if (/^\//.test(nom) || /(^|\/)\.\.(\/|$)/.test(nom)) problemes.push(`chemin hors du dossier : ${nom}`);
-    if (lien && (/^\//.test(lien[2]) || /\.\./.test(lien[2]))) problemes.push(`lien vers l'extérieur : ${lien[1]} -> ${lien[2]}`);
+    // un lien est jugé là où il mène : il peut remonter (../..) tant qu'il reste dans le dépôt
+    if (lien) {
+      const cible = posix.normalize(posix.join(posix.dirname(lien[1]), lien[2]));
+      const racine = lien[1].split('/')[0];
+      if (/^\//.test(lien[2]) || cible.startsWith('..') || cible.split('/')[0] !== racine) problemes.push(`lien vers l'extérieur : ${lien[1]} -> ${lien[2]}`);
+    }
   }
   return problemes;
 }
@@ -163,9 +169,16 @@ async function json(url) {
 const slug = (s) => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase().slice(0, 40);
 
 export async function chercher({ besoin, langage = null, max = 4, maintenant = Date.now() }) {
-  const q = encodeURIComponent(`${besoin} archived:false${langage ? ` language:${langage}` : ''}`);
-  const d = await json(`https://api.github.com/search/repositories?q=${q}&sort=stars&order=desc&per_page=12`);
-  const candidats = (d.items || []).filter((x) => x.size * 1024 <= LIMITES.octetsMax).slice(0, max).map((x) => ({
+  // GitHub exige tous les mots : on part du besoin entier, puis on retire un mot à la fois (le dernier,
+  // le moins central) jusqu'à trouver assez de candidats. Le classement, lui, juge sur le besoin entier.
+  const mots = String(besoin).trim().split(/\s+/).filter(Boolean);
+  let items = [];
+  for (let n = mots.length; n >= 1 && items.length < max; n--) {
+    const q = encodeURIComponent(`${mots.slice(0, n).join(' ')} archived:false${langage ? ` language:${langage}` : ''}`);
+    const d = await json(`https://api.github.com/search/repositories?q=${q}&sort=stars&order=desc&per_page=12`);
+    for (const x of d.items || []) if (!items.some((y) => y.full_name === x.full_name)) items.push(x);
+  }
+  const candidats = items.filter((x) => x.size * 1024 <= LIMITES.octetsMax).slice(0, max).map((x) => ({
     nom: x.full_name, lien: x.html_url, description: x.description, licence: x.license?.spdx_id?.toLowerCase() || null,
     maj: x.pushed_at, etoiles: x.stargazers_count, archive: x.archived, branche: x.default_branch }));
   const id = `${new Date(maintenant).toISOString().slice(0, 10)}-${slug(besoin)}`;
