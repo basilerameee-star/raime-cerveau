@@ -58,6 +58,9 @@ Le cycle PROPOSER → EXECUTER → EVALUER → CORRIGER → MEMORISER → METAFL
 ### La mémoire et la veille
 - `agents/bibliothecaire.js` : la bibliothèque (`kb_chunks`), recherche plein texte en français, le titre pèse triple.
 - `agents/encyclopediste.js` : le savoir général (Wikipédia en français, CC BY-SA).
+- `agents/chiffres_ia.js` : le répertoire des chiffres officiels (Insee, Eurostat) sur l'usage de l'IA par les
+  entreprises. Règle : un pourcentage d'adoption ne se cite jamais de mémoire, il se tire d'ici — phrase exacte,
+  millésime, source, collection, date et lien figés ; `verifierIntegrite()` écarte toute entrée tronquée.
 - `agents/veilleur.js`, `radar.js`, `chasseur.js`, `sas.js`, `metrologue.js` : veille, mesure des modèles (batterie
   `metrologie/taches.js` notée par du code), porte d'entrée des nouveautés.
 

@@ -32,6 +32,7 @@ Cette phrase gouverne tout le reste : le choix des modèles, la réécriture des
 | `cordon` · `garde_audit` | les garde-fous de ce qui part vers l'extérieur |
 | `architecte` | l'agent réflexif : buts, croyances, cycle complet ; cherche ses solutions (`rechercheur`) et ouvre des chantiers |
 | `encyclopediste` | le savoir général, depuis Wikipédia en français |
+| `chiffres_ia` | le répertoire des chiffres officiels (Insee, Eurostat) sur l'usage de l'IA par les entreprises : phrase exacte, source et lien figés pour ne jamais citer un pourcentage de mémoire |
 | `publiciste` | neuf brouillons de publication par semaine — jamais publiés par lui |
 | `portes` | cartographie les CCI et organismes de formation, pèse chaque porte, présente un lot à Basile |
 
