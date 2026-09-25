@@ -18,6 +18,7 @@ const JOUR = 24 * 60 * 60 * 1000;
 
 // Ce que la maison cherche. Un mot pèse : le score décide de l'entrée en bibliothèque.
 const INTERETS = [
+  ['text-generation', 2], ['code', 2], ['coder', 2], ['swe-bench', 3], ['hermes', 3], ['harness', 3],
   ['prompt', 3], ['agent', 3], ['rag', 3], ['retrieval', 2], ['fine-tun', 2], ['benchmark', 3],
   ['evaluation', 2], ['router', 2], ['cost', 2], ['pricing', 3], ['cheap', 2], ['open-source', 2],
   ['self-host', 3], ['sovereign', 3], ['audit', 3], ['automation', 2], ['n8n', 3], ['workflow', 2],
@@ -86,6 +87,27 @@ async function huggingface() {
   }));
 }
 
+// ── ③ bis Hugging Face : ce que la communauté adopte vraiment (tendances), hors des grands noms ──
+// Voulu par Basile le 25/09/2026 : être « sur le devant de la scène », pas seulement sur l'archi-grand public.
+async function hf_tendances() {
+  const d = await json('https://huggingface.co/api/models?sort=trendingScore&limit=30');
+  return (d || []).filter((m) => !/uncensored|abliterat|nsfw/i.test(m.id || '')).map((m) => ({
+    source: 'hf_tendances', titre: m.id || m.modelId, lien: `https://huggingface.co/${m.id || m.modelId}`,
+    detail: `tendance ${m.trendingScore || 0} · ${m.likes || 0} j'aime · ${(m.tags || []).slice(0, 4).join(', ')}`,
+    corps: `${m.id || m.modelId} — ${(m.tags || []).join(' ')} ${m.pipeline_tag || ''}`,
+  }));
+}
+
+// ── ③ ter Hugging Face Papers : les publications du jour retenues par la communauté ──
+async function hf_papers() {
+  const d = await json('https://huggingface.co/api/daily_papers?limit=30');
+  return (d || []).filter((x) => x.paper && x.paper.id).map((x) => ({
+    source: 'hf_papers', titre: x.paper.title || x.title || x.paper.id, lien: `https://huggingface.co/papers/${x.paper.id}`,
+    detail: `${x.paper.upvotes ?? 0} votes`,
+    corps: `${x.paper.title || ''} ${String(x.paper.summary || '').slice(0, 600)}`,
+  }));
+}
+
 // ── ④ arXiv : les travaux récents ────────────────────────────────────────────
 async function arxiv() {
   const x = await texte('http://export.arxiv.org/api/query?search_query=cat:cs.AI+OR+cat:cs.CL&sortBy=submittedDate&sortOrder=descending&max_results=25');
@@ -140,7 +162,7 @@ async function personnalites() {
   return sortie;
 }
 
-const SOURCES = { hackernews, github, huggingface, arxiv, personnalites };
+const SOURCES = { hackernews, github, huggingface, hf_tendances, hf_papers, arxiv, personnalites };
 
 async function schema(brain) {
   await brain.query(`
@@ -211,7 +233,8 @@ export async function veiller({ brain, sources = Object.keys(SOURCES) }) {
       const items = await SOURCES[nom]();
       for (const it of items) {
         // Pour les figures de l'IA, c'est le nom qui fait la pertinence, pas les mots du titre.
-        const s = note(`${it.titre} ${it.corps}`) + (it.source === 'personnalites' ? 4 : 0);
+        // Une tendance Hugging Face est un signal (adoption réelle) : bonus de 2, il faut aussi toucher nos sujets.
+        const s = note(`${it.titre} ${it.corps}`) + (it.source === 'personnalites' ? 4 : it.source === 'hf_tendances' ? 2 : 0);
         if (s < SEUIL || !it.lien) continue;
         const r = await brain.query(
           `INSERT INTO veille(source, titre, lien, detail, score) VALUES($1,$2,$3,$4,$5)
