@@ -18,9 +18,10 @@ P=$(docker ps -qf name=postgres | head -1)
 INTERDIT='^(plugin-cerveau/CONSTITUTION|\.github/|deploy\.sh|run\.sh|porte/|briques/|cockpit/)'
 SECRET='sk-[A-Za-z0-9_-]{16}|BEGIN [A-Z ]*PRIVATE KEY|ghp_[A-Za-z0-9]{20}|github_pat_|AIza[0-9A-Za-z_-]{30}|xox[bp]-'
 
-journal() { # $1 changement, $2 motif
+journal() { # $1 changement, $2 motif — textes venus de l'exécutant : on retire « $ » (fin de citation SQL)
+  local a=${1//\$/} b=${2//\$/}
   docker exec -i "$P" psql -U n8n -d raime_brain -q -v ON_ERROR_STOP=1 \
-    -c "INSERT INTO journal(acteur, changement, motif) VALUES ('applicateur', \$q\$$1\$q\$, \$q\$$2\$q\$)" >/dev/null 2>&1
+    -c "INSERT INTO journal(acteur, changement, motif) VALUES ('applicateur', \$q\$$a\$q\$, \$q\$$b\$q\$)" >/dev/null 2>&1
 }
 refuser() { # $1 dossier, $2 n, $3 raison
   echo "$3" > "$1/.refuse"; journal "Amélioration n°$2 refusée" "$3"
@@ -31,12 +32,22 @@ cd "$D" || exit 0
 for f in "$T"/demande-*/changement.diff; do
   [ -f "$f" ] || continue
   dir=$(dirname "$f"); n=${dir##*demande-}
+  [[ "$n" =~ ^[0-9]+$ ]] || continue   # le nom du dossier vient de l'exécutant : un numéro, rien d'autre
   { [ -e "$dir/.applique" ] || [ -e "$dir/.refuse" ]; } && continue
   fichiers=$(grep -E '^\+\+\+ b/' "$f" | sed 's#^+++ b/##')
   [ -z "$fichiers" ] && { refuser "$dir" "$n" "changement vide ou illisible (format git diff attendu)"; continue; }
   zone=$(echo "$fichiers" | grep -E "$INTERDIT" | head -3 | tr '\n' ' ')
   [ -n "$zone" ] && { refuser "$dir" "$n" "touche une zone protégée : $zone"; continue; }
   grep -E '^\+' "$f" | grep -Eq "$SECRET" && { refuser "$dir" "$n" "contient ce qui ressemble à un secret"; continue; }
+  # Le code mis en service tourne dans la boucle, qui a la base et les clés. Ce qui lance des
+  # commandes, évalue du code, lit les clés ou appelle le réseau n'entre pas seul : Claude relit
+  # d'abord (l'exécutant lit Internet ; une page piégée ne doit pas pouvoir s'installer ainsi).
+  sensible=$(grep -E '^\+' "$f" | grep -vE '^\+\+\+' | grep -oE "child_process|execSync|exec\(|spawn\(|\beval\(|new Function|process\.env|fetch\(|https?\.request|require\(['\"](net|dgram|http|https)['\"]\)|from ['\"]node:(net|dgram|http|https|child_process)['\"]" | sort -u | head -5 | tr '\n' ' ')
+  if [ -n "$sensible" ]; then
+    refuser "$dir" "$n" "à relire par Claude avant mise en service (motifs sensibles : $sensible)"
+    docker exec -i "$P" psql -U n8n -d raime_brain -q -c "UPDATE commandes SET pour = 'claude', reponse = coalesce(reponse, '') || ' [Applicateur : amélioration à relire par Claude avant mise en service]' WHERE id = $n" >/dev/null 2>&1
+    continue
+  fi
 
   git fetch -q origin main && git reset -q --hard origin/main && git clean -qfd -e node_modules
   if ! git apply --index "$f" 2>"$dir/.application.log"; then

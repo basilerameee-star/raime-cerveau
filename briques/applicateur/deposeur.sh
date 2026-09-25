@@ -27,6 +27,7 @@ cd "$R" && git fetch -q origin realisations && git reset -q --hard origin/realis
 
 for dir in "$T"/demande-*/; do
   dir=${dir%/}; n=${dir##*demande-}
+  [[ "$n" =~ ^[0-9]+$ ]] || continue   # le nom du dossier vient de l'exécutant : un numéro, rien d'autre
   [ -f "$dir/.resultat.json" ] || [ -f "$dir/.applique" ] || continue      # seulement ce qui est terminé
   [ -f "$dir/.depose" ] && [ ! "$dir" -nt "$dir/.depose" ] && continue       # déjà déposé, rien de neuf
   rsync -a --delete --max-size=20m \
