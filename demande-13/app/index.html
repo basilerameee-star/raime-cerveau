@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Créateur d'images — rAIme</title>
+<meta name="description" content="Le créateur d'images de rAIme : des visuels de publication aux couleurs de la maison, sans service payant.">
+<link rel="icon" href="logos/logo-mark-blanc.png">
+<style>
+  @font-face{font-family:Inter;font-style:normal;font-weight:100 900;font-display:swap;src:url(polices/InterVariable.woff2) format("woff2")}
+  @font-face{font-family:Inter;font-style:italic;font-weight:400;font-display:swap;src:url(polices/Inter-Italic-400.woff2) format("woff2")}
+
+  :root{
+    --fond:#000000;
+    --texte:#ffffff;
+    --gris:#9e9e9e;
+    --mot-cle:#ff7eb0;
+    --trait:rgba(255,126,176,.28);
+    --surface:#111114;
+  }
+  [data-theme="jour"]{
+    --fond:#ededed;
+    --texte:#1b1b1f;
+    --gris:#5e6167;
+    --mot-cle:#db4f8b;
+    --trait:rgba(219,79,139,.32);
+    --surface:#ffffff;
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:Inter,system-ui,sans-serif;
+    background:var(--fond);
+    color:var(--texte);
+    line-height:1.6;
+    min-height:100vh;
+    transition:background .2s ease, color .2s ease;
+  }
+  a{color:var(--mot-cle)}
+
+  .barre{
+    display:flex;align-items:center;justify-content:space-between;gap:16px;
+    max-width:1080px;margin:0 auto;padding:24px clamp(16px,4vw,32px) 0;
+  }
+  .marque{display:flex;align-items:center;gap:12px;text-decoration:none}
+  .marque img{height:36px;width:auto;display:block}
+  .marque span{font-weight:600;color:var(--texte);font-size:15px;letter-spacing:.02em}
+
+  .themes{display:flex;gap:6px}
+  .themes button{
+    font:inherit;font-size:13px;font-weight:500;color:var(--texte);
+    background:transparent;border:1px solid var(--trait);border-radius:999px;
+    padding:6px 14px;cursor:pointer;
+  }
+  .themes button[aria-pressed="true"]{background:var(--mot-cle);color:var(--fond);border-color:var(--mot-cle)}
+
+  main{max-width:1080px;margin:0 auto;padding:0 clamp(16px,4vw,32px) 64px}
+
+  header.intro{margin:32px 0 8px}
+  .etiq{font-size:12px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;color:var(--gris);margin:0 0 12px}
+  h1{font-size:clamp(30px,6vw,52px);line-height:1.08;letter-spacing:-.03em;font-weight:600;color:var(--texte);max-width:20ch}
+  h1 .mot-cle{font-style:italic;font-weight:400;color:var(--mot-cle)}
+  header.intro p{font-size:clamp(15px,1.5vw,18px);color:var(--gris);margin-top:14px;max-width:60ch}
+
+  .grille{display:grid;grid-template-columns:minmax(260px,380px) 1fr;gap:32px;margin-top:32px;align-items:start}
+
+  form{display:grid;gap:16px}
+  .champ{display:grid;gap:6px}
+  .champ label{font-size:13px;font-weight:500;color:var(--gris)}
+  input[type="text"],textarea{
+    font:inherit;font-size:15px;color:var(--texte);
+    background:var(--surface);border:1px solid var(--trait);border-radius:10px;
+    padding:12px 14px;width:100%;
+  }
+  textarea{resize:vertical;min-height:72px}
+  input:focus,textarea:focus{outline:2px solid var(--mot-cle);outline-offset:1px}
+
+  .rangee{display:flex;gap:10px;flex-wrap:wrap}
+  .puce{
+    flex:1;min-width:120px;text-align:center;
+    font:inherit;font-size:14px;font-weight:500;color:var(--texte);
+    background:var(--surface);border:1px solid var(--trait);border-radius:10px;
+    padding:10px 12px;cursor:pointer;
+  }
+  .puce[aria-pressed="true"]{border-color:var(--mot-cle);box-shadow:inset 0 0 0 1px var(--mot-cle)}
+
+  .astuce{font-size:12.5px;color:var(--gris);line-height:1.5}
+
+  .apercu{display:flex;flex-direction:column;align-items:center;gap:16px}
+  .cadre{
+    width:100%;max-width:430px;aspect-ratio:1;
+    border-radius:14px;overflow:hidden;border:1px solid var(--trait);
+    background:var(--surface);
+  }
+  .cadre canvas{width:100%;height:100%;display:block}
+  .cadre.portrait{aspect-ratio:4/5}
+
+  .bouton{
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    height:52px;padding:0 28px;border-radius:999px;border:0;cursor:pointer;
+    background:var(--mot-cle);color:var(--fond);
+    font:inherit;font-size:16px;font-weight:600;
+  }
+  .bouton.secondaire{background:transparent;color:var(--texte);border:1px solid var(--trait)}
+
+  h2{font-size:clamp(20px,2.5vw,26px);font-weight:600;color:var(--texte);letter-spacing:-.02em;margin:48px 0 16px}
+
+  .galerie{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+  .carte{border:1px solid var(--trait);border-radius:14px;overflow:hidden;background:var(--surface)}
+  .carte img{width:100%;display:block;aspect-ratio:4/5;object-fit:cover}
+  .carte.fb img{aspect-ratio:1}
+  .carte figcaption{font-size:13px;color:var(--gris);padding:12px 14px}
+
+  .note{font-size:14px;color:var(--gris);margin-top:24px;max-width:70ch}
+  .note code{font-family:inherit;color:var(--mot-cle)}
+
+  footer{
+    max-width:1080px;margin:0 auto;padding:24px clamp(16px,4vw,32px) 48px;
+    border-top:1px solid var(--trait);font-size:13px;color:var(--gris);
+    display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  }
+
+  @media (max-width:720px){
+    .grille{grid-template-columns:1fr}
+    .barre{flex-wrap:wrap}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="barre">
+  <a class="marque" href="index.html" aria-label="rAIme">
+    <img src="logos/logo-mark-blanc.png" alt="rAIme" id="logo-marque">
+    <span>Créateur d'images</span>
+  </a>
+  <div class="themes" role="group" aria-label="Thème">
+    <button type="button" data-valeur="nuit" aria-pressed="true">Nuit</button>
+    <button type="button" data-valeur="jour" aria-pressed="false">Jour</button>
+  </div>
+</div>
+
+<main>
+  <header class="intro">
+    <p class="etiq">Atelier rAIme · visuels de publication</p>
+    <h1>Un visuel aux couleurs de la maison, <span class="mot-cle">prêt</span> à publier.</h1>
+    <p>Le créateur fabrique des images pour Facebook (1080×1080) et Instagram (1080×1350).
+    Fond noir, texte blanc, le <span class="mot-cle">rose</span> pour les seuls mots-clés. Aucun service payant.</p>
+  </header>
+
+  <div class="grille">
+    <form id="formulaire" autocomplete="off">
+      <div class="champ">
+        <label for="surtitre">Surtitre</label>
+        <input type="text" id="surtitre" value="rAIme · conseil IA" maxlength="40">
+      </div>
+      <div class="champ">
+        <label for="titre">Titre — entourez le mot-clé d'astérisques *mot*</label>
+        <input type="text" id="titre" value="L'IA qui *travaille*" maxlength="120">
+      </div>
+      <div class="champ">
+        <label for="appui">Texte d'appui</label>
+        <textarea id="appui" maxlength="200">Des agents qui tournent jour et nuit pour votre activité.</textarea>
+      </div>
+      <div class="champ">
+        <span class="etiq" style="margin:0">Format</span>
+        <div class="rangee" role="group" aria-label="Format">
+          <button type="button" class="puce" data-valeur="facebook" aria-pressed="true">Facebook · carré</button>
+          <button type="button" class="puce" data-valeur="instagram" aria-pressed="false">Instagram · 4:5</button>
+        </div>
+      </div>
+      <p class="astuce">Le rose ne colore que les mots entre astérisques. Un mot-clé par ligne, en première ligne.</p>
+      <button type="submit" class="bouton">Télécharger le visuel</button>
+    </form>
+
+    <section class="apercu" aria-label="Aperçu">
+      <div class="cadre" id="cadre">
+        <canvas id="toile" width="1080" height="1080" aria-label="Aperçu du visuel"></canvas>
+      </div>
+      <p class="astuce">Aperçu fidèle au rendu du module atelier/images.js</p>
+    </section>
+  </div>
+
+  <h2>Trois visuels d'exemple</h2>
+  <div class="galerie">
+    <figure class="carte fb">
+      <img src="visuels/exemple-facebook-1.png" alt="Visuel carré rAIme : L'IA qui travaille" loading="lazy">
+      <figcaption>Facebook · 1080×1080 · nuit</figcaption>
+    </figure>
+    <figure class="carte">
+      <img src="visuels/exemple-instagram-1.png" alt="Visuel portrait rAIme : des visuels prêts à publier" loading="lazy">
+      <figcaption>Instagram · 1080×1350 · nuit</figcaption>
+    </figure>
+    <figure class="carte">
+      <img src="visuels/exemple-instagram-2.png" alt="Visuel portrait rAIme : votre outil sur mesure" loading="lazy">
+      <figcaption>Instagram · 1080×1350 · jour</figcaption>
+    </figure>
+  </div>
+
+  <p class="note">Ces images naissent dans le cerveau de rAIme, par le module <code>atelier/images.js</code> :
+  la police Inter, le logo et les couleurs de la maison, dessinés en pur code. Rien à payer, rien qui dépend
+  d'un service extérieur.</p>
+</main>
+
+<footer>
+  <span>Fait par rAIme</span>
+  <a href="https://raime.fr">raime.fr</a>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  // Les mêmes réglages que le module atelier/images.js du cerveau.
+  var CORPS = { surtitre: 34, titre: 96, appui: 46, signature: 30 };
+  var FORMATS = { facebook: { largeur: 1080, hauteur: 1080 }, instagram: { largeur: 1080, hauteur: 1350 } };
+  var THEMES = {
+    nuit: { fond: "#000000", texte: "#ffffff", gris: "#9e9e9e", motCle: "#ff7eb0" },
+    jour: { fond: "#ededed", texte: "#1b1b1f", gris: "#5e6167", motCle: "#db4f8b" }
+  };
+
+  var etat = { format: "facebook", theme: "nuit" };
+
+  // Les deux logos préchargés une fois, pour un dessin synchrone et fiable.
+  var logos = { nuit: null, jour: null };
+  function prechargerLogos() {
+    ["nuit", "jour"].forEach(function (t) {
+      var src = t === "jour" ? "logos/logo-mark.png" : "logos/logo-mark-blanc.png";
+      var im = new Image();
+      im.onload = function () { logos[t] = im; };
+      im.src = src;
+    });
+  }
+
+  // Le découpage des mots-clés : ce qui est entre astérisques.
+  function separer(texte) {
+    var cles = [];
+    var propre = String(texte || "").replace(/\*([^*\n]+)\*/g, function (tout, mot) {
+      var m = mot.trim();
+      if (m && cles.indexOf(m) < 0) cles.push(m);
+      return mot;
+    });
+    return { texte: propre, cles: cles };
+  }
+
+  // Le titre en lignes qui tiennent dans la largeur (même règle que le module).
+  function decouper(texte, largeur, corps, marge) {
+    var maxLettres = Math.max(12, Math.floor((largeur - 2 * marge) / (corps * 0.58)));
+    var mots = String(texte || "").trim().split(/\s+/).filter(Boolean);
+    var lignes = [], ligne = "";
+    for (var i = 0; i < mots.length; i++) {
+      var essai = ligne ? ligne + " " + mots[i] : mots[i];
+      if (essai.length <= maxLettres) ligne = essai;
+      else { if (ligne) lignes.push(ligne); ligne = mots[i]; }
+    }
+    if (ligne) lignes.push(ligne);
+    return lignes;
+  }
+
+  function segments(lignes, cles) {
+    var tous = [];
+    for (var k = 0; k < lignes.length; k++) {
+      var ligne = lignes[k], segs = [], positions = [];
+      for (var c = 0; c < cles.length; c++) {
+        var cle = cles[c], bas = ligne.toLowerCase(), mc = cle.toLowerCase();
+        var i = bas.indexOf(mc);
+        while (i >= 0) { positions.push({ debut: i, fin: i + cle.length }); i = bas.indexOf(mc, i + 1); }
+      }
+      if (!positions.length) { segs.push({ texte: ligne, cle: false }); }
+      else {
+        positions.sort(function (a, b) { return a.debut - b.debut; });
+        var curseur = 0;
+        for (var p = 0; p < positions.length; p++) {
+          if (positions[p].debut > curseur) segs.push({ texte: ligne.slice(curseur, positions[p].debut), cle: false });
+          segs.push({ texte: ligne.slice(positions[p].debut, positions[p].fin), cle: true });
+          curseur = Math.max(curseur, positions[p].fin);
+        }
+        if (curseur < ligne.length) segs.push({ texte: ligne.slice(curseur), cle: false });
+      }
+      tous.push(segs);
+    }
+    return tous;
+  }
+
+  function dessiner() {
+    var dim = FORMATS[etat.format];
+    var couleurs = THEMES[etat.theme];
+    var marge = Math.round(dim.largeur * 0.10);
+
+    var surtitre = document.getElementById("surtitre").value;
+    var titreBrut = document.getElementById("titre").value;
+    var appui = document.getElementById("appui").value;
+
+    var separe = separer(titreBrut);
+    var cles = separe.cles;
+    var titre = separe.texte;
+    var lignesTitre = decouper(titre, dim.largeur, CORPS.titre, marge);
+    var segsTitre = segments(lignesTitre, cles);
+
+    var ySurtitre = Math.round(dim.hauteur * 0.12);
+    var yTitre = ySurtitre + (surtitre ? CORPS.surtitre + 28 : 0);
+    var interligne = Math.round(CORPS.titre * 1.18);
+    var yAppui = yTitre + lignesTitre.length * interligne + 40;
+    var pied = Math.round(dim.hauteur * 0.88);
+
+    var cnv = document.getElementById("toile");
+    cnv.width = dim.largeur; cnv.height = dim.hauteur;
+    var g = cnv.getContext("2d");
+
+    g.fillStyle = couleurs.fond;
+    g.fillRect(0, 0, dim.largeur, dim.hauteur);
+
+    g.textBaseline = "alphabetic";
+    if (surtitre) {
+      g.fillStyle = couleurs.gris;
+      g.font = "500 " + CORPS.surtitre + "px Inter";
+      g.fillText(surtitre.toUpperCase(), marge, ySurtitre + CORPS.surtitre);
+    }
+
+    var y = yTitre;
+    for (var k = 0; k < segsTitre.length; k++) {
+      var x = marge;
+      for (var s = 0; s < segsTitre[k].length; s++) {
+        var sg = segsTitre[k][s];
+        g.font = (sg.cle ? "italic 400 " : "600 ") + CORPS.titre + "px Inter";
+        g.fillStyle = sg.cle ? couleurs.motCle : couleurs.texte;
+        if (sg.texte) {
+          g.fillText(sg.texte, x, y);
+          x += g.measureText(sg.texte).width + Math.round(CORPS.titre * 0.18);
+        }
+      }
+      y += interligne;
+    }
+
+    if (appui) {
+      g.fillStyle = couleurs.texte;
+      g.font = "400 " + CORPS.appui + "px Inter";
+      g.fillText(appui, marge, yAppui + CORPS.appui);
+    }
+
+    var imgLogo = logos[etat.theme];
+    var taille = Math.round(dim.largeur * 0.11);
+    if (imgLogo) {
+      var ratio = imgLogo.naturalHeight / imgLogo.naturalWidth;
+      g.drawImage(imgLogo, marge, pied, taille, Math.round(taille * ratio));
+      g.fillStyle = couleurs.gris;
+      g.font = "500 " + CORPS.signature + "px Inter";
+      g.fillText("rAIme", marge + taille + 24, pied + Math.round(taille * ratio * 0.62));
+    }
+  }
+
+  function appliquerTheme(theme) {
+    etat.theme = theme;
+    document.documentElement.setAttribute("data-theme", theme);
+    var boutons = document.querySelectorAll(".themes button");
+    for (var i = 0; i < boutons.length; i++) {
+      boutons[i].setAttribute("aria-pressed", boutons[i].dataset.valeur === theme ? "true" : "false");
+    }
+    document.getElementById("logo-marque").src = theme === "jour" ? "logos/logo-mark.png" : "logos/logo-mark-blanc.png";
+    dessiner();
+  }
+
+  function appliquerFormat(format) {
+    etat.format = format;
+    var cadre = document.getElementById("cadre");
+    cadre.className = "cadre" + (format === "instagram" ? " portrait" : "");
+    var puces = document.querySelectorAll(".puce");
+    for (var i = 0; i < puces.length; i++) {
+      puces[i].setAttribute("aria-pressed", puces[i].dataset.valeur === format ? "true" : "false");
+    }
+    dessiner();
+  }
+
+  // Les boutons de thème
+  var btnThemes = document.querySelectorAll(".themes button");
+  for (var i = 0; i < btnThemes.length; i++) {
+    btnThemes[i].addEventListener("click", function () { appliquerTheme(this.dataset.valeur); });
+  }
+  // Les boutons de format
+  var btnFormats = document.querySelectorAll(".puce");
+  for (var j = 0; j < btnFormats.length; j++) {
+    btnFormats[j].addEventListener("click", function () { appliquerFormat(this.dataset.valeur); });
+  }
+
+  // Redessiner à chaque saisie
+  var champs = ["surtitre", "titre", "appui"];
+  for (var c = 0; c < champs.length; c++) {
+    document.getElementById(champs[c]).addEventListener("input", dessiner);
+  }
+
+  // Le téléchargement : la toile devient un fichier PNG, dans la poche du visiteur.
+  document.getElementById("formulaire").addEventListener("submit", function (e) {
+    e.preventDefault();
+    // Attendre un tour pour que le logo (asynchrone) soit bien dessiné.
+    setTimeout(function () {
+      var cnv = document.getElementById("toile");
+      var nom = (etat.format === "instagram" ? "instagram" : "facebook") + "-raime.png";
+      cnv.toBlob(function (blob) {
+        var a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = nom;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+      }, "image/png");
+    }, 120);
+  });
+
+  // Premier rendu
+  prechargerLogos();
+  dessiner();
+  // Charger explicitement Inter (droit et italique) pour le dessin, puis redessiner.
+  if (document.fonts) {
+    Promise.all([
+      document.fonts.load("600 96px Inter"),
+      document.fonts.load("italic 400 96px Inter"),
+      document.fonts.load("500 34px Inter"),
+      document.fonts.load("400 46px Inter")
+    ]).then(function () { dessiner(); }).catch(function () {});
+  }
+  window.addEventListener("load", function () { dessiner(); });
+})();
+</script>
+</body>
+</html>

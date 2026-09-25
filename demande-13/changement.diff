@@ -1,0 +1,660 @@
+diff --git a/atelier/images.js b/atelier/images.js
+new file mode 100644
+index 0000000..8332104
+--- /dev/null
++++ b/atelier/images.js
+@@ -0,0 +1,256 @@
++// L'ATELIER DES IMAGES — des visuels PNG pour les publications.
++//
++// Un texte de la maison devient une image prête à publier : Facebook (1080 × 1080)
++// et Instagram (1080 × 1350). Aucun service payant : le module dessine lui-même,
++// en pur code, avec la police Inter et le logo de la maison. Le texte est blanc,
++// les mots-clés roses, le fond noir — la charte noire validée par Basile.
++//
++// Deux mondes cohabitent :
++//   · composer()  calcule tout ce qui doit être dessiné (dimensions, couleurs, lignes,
++//     mots-clés). Déterministe, sans dépendance : les cas figés la vérifient.
++//   · rendrePng()  dessine vraiment les pixels. Elle s'appuie sur @napi-rs/canvas,
++//     la librairie de dessin libre de Skia. Sans elle, composer() reste utile.
++//
++// Les couleurs viennent de la charte (briques/charte/tokens.json), déclinaison noire :
++// fond #000000, texte #ffffff, rose #ff7eb0 pour les seuls mots-clés ; jour #ededed,
++// rose #db4f8b. Une seule police, Inter (briques/charte/polices/InterVariable.woff2),
++// un seul logo, en deux encres : blanc sur fond noir, noir sur fond clair.
++
++import fs from 'node:fs';
++import path from 'node:path';
++
++// Les chemins des briques, résolus depuis ce fichier (atelier/), jamais en dur.
++const RACINE = new URL('..', import.meta.url);
++const POLICE = new URL('briques/charte/polices/InterVariable.woff2', RACINE);
++// Le « r. » de la maison, décliné : blanc pour les fonds noirs, noir pour les fonds clairs.
++// C'est le même logo, deux encres — la charte (briques/charte/) fournit les deux fichiers.
++const LOGO_BLANC = new URL('briques/charte/logos/logo-mark-blanc.png', RACINE);
++const LOGO_NOIR = new URL('briques/charte/logos/logo-mark.png', RACINE);
++
++// ── Les formats ────────────────────────────────────────────────────────────
++// Facebook : carré. Instagram : portrait 4:5. Deux seuls formats, deux tailles.
++export const FORMATS = {
++  facebook: { largeur: 1080, hauteur: 1080, nom: 'Facebook' },
++  instagram: { largeur: 1080, hauteur: 1350, nom: 'Instagram' },
++};
++
++// ── Les thèmes (déclinaison noire de la charte) ────────────────────────────
++// nuit : fond noir, texte blanc, rose #ff7eb0. jour : fond #ededed, rose #db4f8b.
++// Le rose ne sert qu'aux mots-clés, jamais au reste du texte.
++export const THEMES = {
++  nuit: { fond: '#000000', texte: '#ffffff', gris: '#9e9e9e', motCle: '#ff7eb0', trait: 'rgba(255,126,176,.28)' },
++  jour: { fond: '#ededed', texte: '#1b1b1f', gris: '#5e6167', motCle: '#db4f8b', trait: 'rgba(219,79,139,.32)' },
++};
++
++// ── Le texte et les mots-clés ──────────────────────────────────────────────
++// Un titre, un surtitre court, un texte d'appui. Les mots-clés (marqués *ici* ou
++// donnés en liste) passent seuls en rose. Règle de la maison : un mot-clé par
++// ligne de titre, en première ligne ; retenue, trois tailles de titres au plus.
++export function separerMotCle(texte) {
++  const t = String(texte || '').trim();
++  const lignes = t.split('\n').map((l) => l.trim()).filter(Boolean);
++  const motCles = [];
++  for (const m of t.matchAll(/\*([^*\n]+)\*/g)) {
++    const mot = m[1].trim();
++    if (mot && !motCles.includes(mot)) motCles.push(mot);
++  }
++  const propre = t.replace(/\*([^*\n]+)\*/g, '$1');
++  return { texte: propre, motCles, lignes: propre.split('\n').map((l) => l.trim()).filter(Boolean) };
++}
++
++// La couleur d'un texte : rose seulement si c'est un mot-clé exact, sinon blanc.
++export function couleurTexte(mot, motCles, theme) {
++  const t = THEMES[theme] || THEMES.nuit;
++  const estCle = (motCles || []).some((m) => String(m).toLowerCase() === String(mot).toLowerCase());
++  return estCle ? t.motCle : t.texte;
++}
++
++// ── La composition des lignes ──────────────────────────────────────────────
++// Le titre se découpe en lignes qui tiennent dans la largeur, à la main : ni mesure
++// de police, ni service. Largeur en pixels, corps en points, marge latérale incluse.
++const LARGEUR_GLYPHES = 0.58; // rapport largeur/corps moyen de l'Inter titrée
++
++export function decouperLignes(texte, { largeur, corps, marge }) {
++  const dispo = largeur - 2 * marge;
++  const largeurLettre = corps * LARGEUR_GLYPHES;
++  const maxLettres = Math.max(12, Math.floor(dispo / largeurLettre));
++  const mots = String(texte || '').trim().split(/\s+/).filter(Boolean);
++  const lignes = [];
++  let ligne = '';
++  for (const mot of mots) {
++    const essai = ligne ? `${ligne} ${mot}` : mot;
++    if (essai.length <= maxLettres) ligne = essai;
++    else { if (ligne) lignes.push(ligne); ligne = mot; }
++  }
++  if (ligne) lignes.push(ligne);
++  return lignes;
++}
++
++// Les deux masques du titre : le texte plein (pour la lecture) et les portions
++// roses (pour le dessin). Chaque ligne devient un tableau de segments.
++export function segmentsTitre(lignes, motCles) {
++  const tous = [];
++  for (const ligne of lignes) {
++    const segments = [];
++    // On cherche chaque mot-clé dans la ligne, en respectant la casse.
++    const positions = [];
++    for (const cle of motCles) {
++      let i = ligne.toLowerCase().indexOf(cle.toLowerCase());
++      while (i >= 0) {
++        positions.push({ debut: i, fin: i + cle.length });
++        i = ligne.toLowerCase().indexOf(cle.toLowerCase(), i + 1);
++      }
++    }
++    if (!positions.length) { segments.push({ texte: ligne, cle: false }); }
++    else {
++      positions.sort((a, b) => a.debut - b.debut);
++      let curseur = 0;
++      for (const p of positions) {
++        if (p.debut > curseur) segments.push({ texte: ligne.slice(curseur, p.debut), cle: false });
++        segments.push({ texte: ligne.slice(p.debut, p.fin), cle: true });
++        curseur = Math.max(curseur, p.fin);
++      }
++      if (curseur < ligne.length) segments.push({ texte: ligne.slice(curseur), cle: false });
++    }
++    tous.push(segments);
++  }
++  return tous;
++}
++
++// ── Les règles du visuel ───────────────────────────────────────────────────
++// Trois tailles de titres, pas une de plus. Ici : surtitre (petit), titre (grand),
++// appui (moyen). Le tout espacé sur deux repères : 16 (titre près du contenu) et 40 (groupes).
++export const CORPS = { surtitre: 34, titre: 96, appui: 46, signature: 30 };
++
++// Les dimensions de travail : marge latérale fixe, titres calés en haut, logo et
++// signature en bas. Rien ne déborde, rien ne se chevauche.
++export function composer({ surtitre = '', titre = '', appui = '', signature = 'rAIme',
++  format = 'facebook', theme = 'nuit', motCles } = {}) {
++  const dim = FORMATS[format] || FORMATS.facebook;
++  const couleurs = THEMES[theme] || THEMES.nuit;
++  const marge = Math.round(dim.largeur * 0.10);
++
++  const separe = separerMotCle(titre);
++  // Les mots-clés : la liste fournie d'abord, sinon ceux marqués *dans le titre*.
++  const cles = motCles ? [...motCles] : separe.motCles;
++  // Le titre affiché est le titre sans les astérisques de marquage.
++  const titrePropre = separe.texte;
++
++  // Le titre, découpé en lignes qui tiennent dans la largeur.
++  const lignesTitre = decouperLignes(titrePropre, { largeur: dim.largeur, corps: CORPS.titre, marge });
++
++  // Les blocs verticaux : surtitre, titre, appui, puis signature et logo en pied.
++  const ySurtitre = Math.round(dim.hauteur * 0.12);
++  const yTitre = ySurtitre + (surtitre ? CORPS.surtitre + 28 : 0);
++  const interligneTitre = Math.round(CORPS.titre * 1.18);
++  const yAppui = yTitre + lignesTitre.length * interligneTitre + 40;
++  const pied = Math.round(dim.hauteur * 0.88);
++
++  return {
++    format, theme, dim, couleurs, marge, surtitre, titre: titrePropre, appui, signature,
++    motCles: cles, lignesTitre, segments: segmentsTitre(lignesTitre, cles),
++    ySurtitre, yTitre, interligneTitre, yAppui, pied,
++  };
++}
++
++// ── Le dessin ──────────────────────────────────────────────────────────────
++let CANVAS = null;
++async function canvasMod() {
++  if (!CANVAS) CANVAS = await import('@napi-rs/canvas');
++  return CANVAS;
++}
++
++// Le rendu PNG : un fichier par visuel. La police et le logo viennent des briques.
++// Le rose ne colore que les segments marqués cle : true.
++export async function rendrePng(plan, dossier) {
++  const { createCanvas, GlobalFonts, loadImage } = await canvasMod();
++  const famille = 'InterMaison';
++  GlobalFonts.registerFromPath(POLICE.pathname, famille);
++
++  const { dim, couleurs, marge } = plan;
++  const cnv = createCanvas(dim.largeur, dim.hauteur);
++  const g = cnv.getContext('2d');
++
++  // Le fond
++  g.fillStyle = couleurs.fond;
++  g.fillRect(0, 0, dim.largeur, dim.hauteur);
++
++  // Le surtitre (gris, petites capitales espacées)
++  g.textBaseline = 'alphabetic';
++  if (plan.surtitre) {
++    g.fillStyle = couleurs.gris;
++    g.font = `500 ${CORPS.surtitre}px "${famille}"`;
++    g.letterSpacing = '2px';
++    g.fillText(plan.surtitre.toUpperCase(), marge, plan.ySurtitre + CORPS.surtitre);
++    g.letterSpacing = '0px';
++  }
++
++  // Le titre : blanc, gras ; les mots-clés en rose, italique.
++  let y = plan.yTitre;
++  for (const segments of plan.segments) {
++    g.font = `600 ${CORPS.titre}px "${famille}"`;
++    let x = marge;
++    for (const s of segments) {
++      const style = s.cle ? `italic 400 ${CORPS.titre}px "${famille}"` : `600 ${CORPS.titre}px "${famille}"`;
++      g.font = style;
++      g.fillStyle = s.cle ? couleurs.motCle : couleurs.texte;
++      if (s.texte) {
++        g.fillText(s.texte, x, y);
++        x += g.measureText(s.texte).width + Math.round(CORPS.titre * 0.18);
++      }
++    }
++    y += plan.interligneTitre;
++  }
++
++  // Le texte d'appui (moyen, gris clair)
++  if (plan.appui) {
++    g.fillStyle = couleurs.texte;
++    g.font = `400 ${CORPS.appui}px "${famille}"`;
++    g.fillText(plan.appui, marge, plan.yAppui + CORPS.appui);
++  }
++
++  // Le pied : le logo, puis la signature. Blanc sur fond noir, noir sur fond clair.
++  const logoChemin = plan.theme === 'jour' ? LOGO_NOIR : LOGO_BLANC;
++  const logo = await loadImage(logoChemin.pathname);
++  const tailleLogo = Math.round(dim.largeur * 0.11);
++  const ry = plan.pied;
++  const ratio = logo.height / logo.width;
++  g.drawImage(logo, marge, ry, tailleLogo, Math.round(tailleLogo * ratio));
++
++  g.fillStyle = couleurs.gris;
++  g.font = `500 ${CORPS.signature}px "${famille}"`;
++  g.fillText(plan.signature, marge + tailleLogo + 24, ry + Math.round(tailleLogo * ratio * 0.62));
++
++  const png = cnv.toBuffer('image/png');
++  if (dossier) {
++    fs.mkdirSync(dossier, { recursive: true });
++    fs.writeFileSync(path.join(dossier, `${plan.format}.png`), png);
++  }
++  return png;
++}
++
++// ── L'API de la maison ─────────────────────────────────────────────────────
++// fabriquerVisuel : tout en un. Retourne le plan (déterministe) et le PNG.
++export async function fabriquerVisuel(options) {
++  const plan = composer(options);
++  const png = await rendrePng(plan, options?.dossier);
++  return { plan, png };
++}
++
++// ── Ligne de commande ──────────────────────────────────────────────────────
++// node atelier/images.js --format facebook --theme nuit --titre "*Des* visuels" --appui "…"
++// Écrit le PNG dans le dossier courant, puis affiche son chemin.
++if (import.meta.url === `file://${process.argv[1]}`) {
++  const args = process.argv.slice(2);
++  const option = (n) => { const i = args.indexOf(n); return i >= 0 ? args.splice(i, 2)[1] : null; };
++  const format = option('--format') || 'facebook';
++  const theme = option('--theme') || 'nuit';
++  const surtitre = option('--surtitre') || '';
++  const titre = option('--titre') || 'Un *visuel* de la maison';
++  const appui = option('--appui') || '';
++  const signature = option('--signature') || 'rAIme';
++  const dossier = option('--dossier') || '.';
++
++  const { plan, png } = await fabriquerVisuel({ surtitre, titre, appui, signature, format, theme, dossier });
++  console.log(`${plan.format} ${plan.dim.largeur}×${plan.dim.hauteur} : ${path.join(dossier, `${plan.format}.png`)} (${png.length} octets)`);
++}
+\ No newline at end of file
+diff --git a/deploy.sh b/deploy.sh
+index afad7c0..e6c3dac 100755
+--- a/deploy.sh
++++ b/deploy.sh
+@@ -29,7 +29,7 @@ ssh -o BatchMode=yes -i "$KEY" "$HOTE" "
+     [ -f \"\$f\" ] && cp \"\$f\" \".sauvegarde/\$f\"
+   done
+   cp -r .attente/* .
+-  if ./run.sh 'node --check agents/heraut.js && node tests/cas_figes.mjs && node tests/cas_figes_audit.mjs && node tests/cas_figes_score.mjs && node tests/cas_figes_score_v2.mjs && node tests/cas_figes_arbitrage.mjs && node tests/cas_figes_relecture.mjs && node tests/cas_figes_essayeur.mjs && node tests/cas_figes_econome.mjs && node tests/cas_figes_gardien.mjs && node tests/cas_figes_penseur.mjs && node tests/cas_figes_priorite.mjs'; then
++  if ./run.sh 'node --check agents/heraut.js && node tests/cas_figes.mjs && node tests/cas_figes_audit.mjs && node tests/cas_figes_score.mjs && node tests/cas_figes_score_v2.mjs && node tests/cas_figes_arbitrage.mjs && node tests/cas_figes_relecture.mjs && node tests/cas_figes_essayeur.mjs && node tests/cas_figes_econome.mjs && node tests/cas_figes_gardien.mjs && node tests/cas_figes_penseur.mjs && node tests/cas_figes_priorite.mjs && node tests/cas_figes_images.mjs'; then
+     echo '  verification passee'
+   else
+     echo '  ECHEC — retour a la version precedente'
+diff --git a/package-lock.json b/package-lock.json
+index a506427..e9122e2 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -8,9 +8,259 @@
+       "name": "raime-brain",
+       "version": "0.1.0",
+       "dependencies": {
++        "@napi-rs/canvas": "^0.1.65",
+         "pg": "^8.13.1"
+       }
+     },
++    "node_modules/@napi-rs/canvas": {
++      "version": "0.1.100",
++      "resolved": "https://registry.npmjs.org/@napi-rs/canvas/-/canvas-0.1.100.tgz",
++      "integrity": "sha512-xglYA6q3XO5P3BNJYxVZ1IV7DLVjp1Py6nwag88YntrS+3vKHyYcMqXVS4ZztJmwz2uGvz1FWhI/4LgbR5uQDA==",
++      "license": "MIT",
++      "workspaces": [
++        "e2e/*"
++      ],
++      "engines": {
++        "node": ">= 10"
++      },
++      "funding": {
++        "type": "github",
++        "url": "https://github.com/sponsors/Brooooooklyn"
++      },
++      "optionalDependencies": {
++        "@napi-rs/canvas-android-arm64": "0.1.100",
++        "@napi-rs/canvas-darwin-arm64": "0.1.100",
++        "@napi-rs/canvas-darwin-x64": "0.1.100",
++        "@napi-rs/canvas-linux-arm-gnueabihf": "0.1.100",
++        "@napi-rs/canvas-linux-arm64-gnu": "0.1.100",
++        "@napi-rs/canvas-linux-arm64-musl": "0.1.100",
++        "@napi-rs/canvas-linux-riscv64-gnu": "0.1.100",
++        "@napi-rs/canvas-linux-x64-gnu": "0.1.100",
++        "@napi-rs/canvas-linux-x64-musl": "0.1.100",
++        "@napi-rs/canvas-win32-arm64-msvc": "0.1.100",
++        "@napi-rs/canvas-win32-x64-msvc": "0.1.100"
++      }
++    },
++    "node_modules/@napi-rs/canvas-android-arm64": {
++      "version": "0.1.100",
++      "resolved": "https://registry.npmjs.org/@napi-rs/canvas-android-arm64/-/canvas-android-arm64-0.1.100.tgz",
++      "integrity": "sha512-hjhCKhntPv9+t4ckHymdx0phYNcVW+GKQR6Lzw2zE+pOVjOplSmtx9nNNknTjbEDLcuLZqA1y8ufKg1XfgftzQ==",
++      "cpu": [
++        "arm64"
++      ],
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "android"
++      ],
++      "engines": {
++        "node": ">= 10"
++      },
++      "funding": {
++        "type": "github",
++        "url": "https://github.com/sponsors/Brooooooklyn"
++      }
++    },
++    "node_modules/@napi-rs/canvas-darwin-arm64": {
++      "version": "0.1.100",
++      "resolved": "https://registry.npmjs.org/@napi-rs/canvas-darwin-arm64/-/canvas-darwin-arm64-0.1.100.tgz",
++      "integrity": "sha512-2PcswRaC7Ly645DGt88///zuFDhJxJYdKAs1uU3mfk1atYkXufgcgLfBpk6Tm12nCQBaNt1wpybuPZ4qOhTo8A==",
++      "cpu": [
++        "arm64"
++      ],
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "darwin"
++      ],
++      "engines": {
++        "node": ">= 10"
++      },
++      "funding": {
++        "type": "github",
++        "url": "https://github.com/sponsors/Brooooooklyn"
++      }
++    },
++    "node_modules/@napi-rs/canvas-darwin-x64": {
++      "version": "0.1.100",
++      "resolved": "https://registry.npmjs.org/@napi-rs/canvas-darwin-x64/-/canvas-darwin-x64-0.1.100.tgz",
++      "integrity": "sha512-ePNZtj7pNIva/siZMg+HmbeozkIjqUIYdoymH8HaA3qK7LfzFN4WMBM8G6HQ9ZC+H3+Dnn5pqtiXpgLykaPOhw==",
++      "cpu": [
++        "x64"
++      ],
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "darwin"
++      ],
++      "engines": {
++        "node": ">= 10"
++      },
++      "funding": {
++        "type": "github",
++        "url": "https://github.com/sponsors/Brooooooklyn"
++      }
++    },
++    "node_modules/@napi-rs/canvas-linux-arm-gnueabihf": {
++      "version": "0.1.100",
++      "resolved": "https://registry.npmjs.org/@napi-rs/canvas-linux-arm-gnueabihf/-/canvas-linux-arm-gnueabihf-0.1.100.tgz",
++      "integrity": "sha512-d5cDB48oWFGU8/XPhUOFAlySgb/VAu7D+s8fi55K1Pcfg8aPplHWqMgibhVLU8ky7Pyg/fuiVLz4Nf3JrSTuUA==",
++      "cpu": [
++        "arm"
++      ],
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": ">= 10"
++      },
++      "funding": {
++        "type": "github",
++        "url": "https://github.com/sponsors/Brooooooklyn"
++      }
++    },
++    "node_modules/@napi-rs/canvas-linux-arm64-gnu": {
++      "version": "0.1.100",
++      "resolved": "https://registry.npmjs.org/@napi-rs/canvas-linux-arm64-gnu/-/canvas-linux-arm64-gnu-0.1.100.tgz",
++      "integrity": "sha512-rDxgxRu69RvDlX/bh9o22DxLsGr8EqsNgotL9+RwQE1S0b0cqeatqsw6aW45mukm0B42DIAaAacKaYQ8cqS1nw==",
++      "cpu": [
++        "arm64"
++      ],
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": ">= 10"
++      },
++      "funding": {
++        "type": "github",
++        "url": "https://github.com/sponsors/Brooooooklyn"
++      }
++    },
++    "node_modules/@napi-rs/canvas-linux-arm64-musl": {
++      "version": "0.1.100",
++      "resolved": "https://registry.npmjs.org/@napi-rs/canvas-linux-arm64-musl/-/canvas-linux-arm64-musl-0.1.100.tgz",
++      "integrity": "sha512-K3mDW66N+xT2/V439u1alFANiBUjdEx2gLiNYnCmUsva5jZMxWTjafBYwTzYK+EMFMHrUoabuU+T1BIP5CgbYQ==",
++      "cpu": [
++        "arm64"
++      ],
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": ">= 10"
++      },
++      "funding": {
++        "type": "github",
++        "url": "https://github.com/sponsors/Brooooooklyn"
++      }
++    },
++    "node_modules/@napi-rs/canvas-linux-riscv64-gnu": {
++      "version": "0.1.100",
++      "resolved": "https://registry.npmjs.org/@napi-rs/canvas-linux-riscv64-gnu/-/canvas-linux-riscv64-gnu-0.1.100.tgz",
++      "integrity": "sha512-mooqUBTIsccZpnoQC4NgrC1v6C1vof39etLNMnBwCY+p0gajWJvAHLGQ6g/gGyS5YrpDW+GefSN4+Cvcr08UWw==",
++      "cpu": [
++        "riscv64"
++      ],
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": ">= 10"
++      },
++      "funding": {
++        "type": "github",
++        "url": "https://github.com/sponsors/Brooooooklyn"
++      }
++    },
++    "node_modules/@napi-rs/canvas-linux-x64-gnu": {
++      "version": "0.1.100",
++      "resolved": "https://registry.npmjs.org/@napi-rs/canvas-linux-x64-gnu/-/canvas-linux-x64-gnu-0.1.100.tgz",
++      "integrity": "sha512-1eCvkDCazm7FFhsT7DfGOdSaHgZVK3bt/dSBl5EWHOWmnz+I7j8tPseJqqD81NF+MH21jKUK4wQSDjN0mdhnTg==",
++      "cpu": [
++        "x64"
++      ],
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": ">= 10"
++      },
++      "funding": {
++        "type": "github",
++        "url": "https://github.com/sponsors/Brooooooklyn"
++      }
++    },
++    "node_modules/@napi-rs/canvas-linux-x64-musl": {
++      "version": "0.1.100",
++      "resolved": "https://registry.npmjs.org/@napi-rs/canvas-linux-x64-musl/-/canvas-linux-x64-musl-0.1.100.tgz",
++      "integrity": "sha512-20arT6lnI19S68qNlii73TSEDbECNgzMz2EpldC1V3mZFuRkeujXkcebRk0LRJe9SEUAooYiLokfMViY8IX7yA==",
++      "cpu": [
++        "x64"
++      ],
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "linux"
++      ],
++      "engines": {
++        "node": ">= 10"
++      },
++      "funding": {
++        "type": "github",
++        "url": "https://github.com/sponsors/Brooooooklyn"
++      }
++    },
++    "node_modules/@napi-rs/canvas-win32-arm64-msvc": {
++      "version": "0.1.100",
++      "resolved": "https://registry.npmjs.org/@napi-rs/canvas-win32-arm64-msvc/-/canvas-win32-arm64-msvc-0.1.100.tgz",
++      "integrity": "sha512-DZFFT1wIAg37LJw37yhMRFfjATd3vTQzjZ1Yki8u2vhO6Hi5VE6BVaGQ1aaDu7xb4iMErz+9EOwjpS7xcxFeBw==",
++      "cpu": [
++        "arm64"
++      ],
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "win32"
++      ],
++      "engines": {
++        "node": ">= 10"
++      },
++      "funding": {
++        "type": "github",
++        "url": "https://github.com/sponsors/Brooooooklyn"
++      }
++    },
++    "node_modules/@napi-rs/canvas-win32-x64-msvc": {
++      "version": "0.1.100",
++      "resolved": "https://registry.npmjs.org/@napi-rs/canvas-win32-x64-msvc/-/canvas-win32-x64-msvc-0.1.100.tgz",
++      "integrity": "sha512-MyT1j3mHC2+Lu4pBi9mKyMJhtP6U7k7EldY7sj/uS5gJA65gTXt8MefJQXLJo5d/vZbuWmfxzkEUNc/urV3pHA==",
++      "cpu": [
++        "x64"
++      ],
++      "license": "MIT",
++      "optional": true,
++      "os": [
++        "win32"
++      ],
++      "engines": {
++        "node": ">= 10"
++      },
++      "funding": {
++        "type": "github",
++        "url": "https://github.com/sponsors/Brooooooklyn"
++      }
++    },
+     "node_modules/pg": {
+       "version": "8.23.0",
+       "resolved": "https://registry.npmjs.org/pg/-/pg-8.23.0.tgz",
+diff --git a/package.json b/package.json
+index 2bfae6f..dbc48e4 100644
+--- a/package.json
++++ b/package.json
+@@ -11,6 +11,7 @@
+     "test": "node --test --test-concurrency=1 'tests/banc/*.test.mjs'"
+   },
+   "dependencies": {
++    "@napi-rs/canvas": "^0.1.65",
+     "pg": "^8.13.1"
+   }
+ }
+diff --git a/tests/cas_figes_images.mjs b/tests/cas_figes_images.mjs
+new file mode 100644
+index 0000000..41927f2
+--- /dev/null
++++ b/tests/cas_figes_images.mjs
+@@ -0,0 +1,101 @@
++// CAS FIGÉS — LE CRÉATEUR D'IMAGES DE L'ATELIER (les visuels de publication).
++//
++// Un texte de la maison devient un visuel PNG pour Facebook (1080 × 1080) et
++// Instagram (1080 × 1350). Ce fichier verrouille ce qui ne doit jamais régresser :
++// les dimensions, la charte noire (fond noir, texte blanc, rose pour les seuls
++// mots-clés, jour #ededed et rose #db4f8b), la police Inter, le logo de la maison,
++// et le rendu réel en PNG. Tout réglage doit re-tomber ici.
++import {
++  FORMATS, THEMES, CORPS,
++  separerMotCle, couleurTexte, decouperLignes, composer, rendrePng,
++} from '../atelier/images.js';
++
++let echecs = 0;
++const KO = (m) => { echecs++; console.log(`  ECHEC ${m}`); };
++
++// 1. Les formats : deux tailles exactes, jamais d'autres
++if (FORMATS.facebook.largeur !== 1080 || FORMATS.facebook.hauteur !== 1080) KO('format facebook');
++if (FORMATS.instagram.largeur !== 1080 || FORMATS.instagram.hauteur !== 1350) KO('format instagram');
++
++// 2. Les couleurs : le rose seulement pour les mots-clés, le reste blanc
++if (couleurTexte('voiture', [], 'nuit') !== '#ffffff') KO('texte blanc');
++if (couleurTexte('voiture', ['voiture'], 'nuit') !== '#ff7eb0') KO('mot-clé nuit');
++if (couleurTexte('voiture', ['autre'], 'nuit') !== '#ffffff') KO('non mot-clé reste blanc');
++if (couleurTexte('voiture', ['voiture'], 'jour') !== '#db4f8b') KO('mot-clé jour');
++if (THEMES.nuit.fond !== '#000000') KO('fond nuit');
++if (THEMES.jour.fond !== '#ededed') KO('fond jour');
++
++// 3. La séparation des mots-clés marqués *mot*
++if (separerMotCle('Un *visuel* sobre').motCles.join(',') !== 'visuel') KO('séparation simple');
++if (separerMotCle('Sans marquage').motCles.length !== 0) KO('aucun mot-clé');
++if (separerMotCle('Une *expression* puis *une autre*').motCles.join(',') !== 'expression,une autre') KO('deux mots-clés');
++if (separerMotCle('Un *visuel* sobre').texte !== 'Un visuel sobre') KO('retrait des astérisques');
++
++// 4. Le découpage des lignes tient dans la largeur (aucun débordement)
++const titreLong = 'Construisez le site qui vend pendant que vous dormez la nuit entière sans effort';
++const lignes = decouperLignes(titreLong, { largeur: 1080, corps: 96, marge: 108 });
++for (const l of lignes) {
++  if (l.length * 96 * 0.58 > 1080 - 2 * 108) KO(`ligne trop longue : « ${l} »`);
++}
++if (lignes.length < 2) KO('le titre long doit se couper en plusieurs lignes');
++if (decouperLignes('un titre court', { largeur: 1080, corps: 96, marge: 108 }).length !== 1) KO('titre court sur une ligne');
++
++// 5. Trois tailles de titres au plus (surtitre, titre, appui ; signature en pied)
++if (Object.keys(CORPS).length !== 4) KO(`tailles de corps : ${Object.keys(CORPS).join(',')}`);
++if (!(CORPS.surtitre < CORPS.appui && CORPS.appui < CORPS.titre)) KO('hiérarchie des corps');
++
++// 6. La composition complète
++const plan = composer({ surtitre: 'rAIme', titre: 'L IA qui *travaille*', appui: 'Un visuel de la maison', format: 'facebook', theme: 'nuit' });
++if (plan.dim.largeur !== 1080 || plan.dim.hauteur !== 1080) KO('dimension composition');
++if (plan.couleurs.fond !== '#000000') KO('thème composition');
++if (plan.motCles.join(',') !== 'travaille') KO(`mots-clés composition : ${plan.motCles.join(',')}`);
++const motCleSegment = plan.segments.flat().filter((s) => s.cle).map((s) => s.texte).join(',');
++if (motCleSegment !== 'travaille') KO(`segment mot-clé : ${motCleSegment}`);
++if (plan.titre.includes('*')) KO('astérisque restant dans le titre');
++
++// 7. Le rendu réel en PNG : dimensions, fond noir, pixels blancs et roses, logo.
++//    Deux visuels : nuit, puis jour (le rose devient #db4f8b, le fond #ededed).
++async function pixelsPng(png, largeur, hauteur) {
++  const { createCanvas, loadImage } = await import('@napi-rs/canvas');
++  const cnv = createCanvas(largeur, hauteur);
++  const g = cnv.getContext('2d');
++  const img = await loadImage(Buffer.from(png));
++  g.drawImage(img, 0, 0);
++  return g.getImageData(0, 0, largeur, hauteur).data;
++}
++
++try {
++  const pngNuit = await rendrePng(plan);
++  if (pngNuit.slice(0, 8).toString('hex') !== '89504e470d0a1a0a') KO('signature PNG nuit');
++  const dNuit = await pixelsPng(pngNuit, 1080, 1080);
++  let noir = 0, blanc = 0, rose = 0;
++  for (let i = 0; i < dNuit.length; i += 4) {
++    const r = dNuit[i], gg = dNuit[i + 1], b = dNuit[i + 2];
++    if (r === 0 && gg === 0 && b === 0) noir++;
++    else if (r === 255 && gg === 255 && b === 255) blanc++;
++    else if (r === 255 && gg === 126 && b === 176) rose++;
++  }
++  if (noir === 0) KO('aucun pixel noir (fond nuit)');
++  if (blanc === 0) KO('aucun pixel blanc (texte nuit)');
++  if (rose === 0) KO('aucun pixel rose #ff7eb0 (mot-clé nuit)');
++  console.log(`  rendu nuit : noir ${noir} px · blanc ${blanc} px · rose ${rose} px`);
++
++  // Le mode jour : fond #ededed, texte sombre, mot-clé rose #db4f8b, logo noir.
++  const planJour = composer({ surtitre: 'rAIme', titre: 'Votre *outil* sur mesure', appui: 'Un service en ligne', format: 'facebook', theme: 'jour' });
++  const pngJour = await rendrePng(planJour);
++  const dJour = await pixelsPng(pngJour, 1080, 1080);
++  let fondJour = 0, roseJour = 0;
++  for (let i = 0; i < dJour.length; i += 4) {
++    const r = dJour[i], gg = dJour[i + 1], b = dJour[i + 2];
++    if (r === 237 && gg === 237 && b === 237) fondJour++;
++    else if (r === 219 && gg === 79 && b === 139) roseJour++;
++  }
++  if (fondJour === 0) KO('aucun pixel #ededed (fond jour)');
++  if (roseJour === 0) KO('aucun pixel rose #db4f8b (mot-clé jour)');
++  console.log(`  rendu jour : fond #ededed ${fondJour} px · rose ${roseJour} px`);
++} catch (e) {
++  KO(`rendu PNG : ${e.message}`);
++}
++
++console.log(echecs === 0 ? 'cas figes images : OK (formats, charte, mots-clés, rendu)' : `cas figes images : ${echecs} ECHEC(S)`);
++process.exit(echecs === 0 ? 0 : 1);
+\ No newline at end of file
