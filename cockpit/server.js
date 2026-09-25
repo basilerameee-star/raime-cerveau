@@ -209,7 +209,9 @@ async function repondreCortex(message, oral, extra, question = false) {
     ? motsQuestion.filter((m) => lu.includes(m)).length / motsQuestion.length : 1;
   const precis = motsQuestion.filter((m) => /\d/.test(m) || m.length > 8);
   const manquePrecis = precis.some((m) => !lu.includes(m));
-  if (passages.length < 3 || couverture < 0.6 || manquePrecis) {
+  // À l'oral, la recherche web (plusieurs secondes) n'a lieu que si Basile la demande : latence d'abord (25/09).
+  const rechercheDemandee = /cherche|recherche|internet|actualit|sur le web|en ligne|derni[eè]res? nouvelles/i.test(message);
+  if ((!oral || rechercheDemandee) && (passages.length < 3 || couverture < 0.6 || manquePrecis)) {
     passages.push(...await savoirVivant(message, new Set(passages.map((p) => p.titre))));
   }
   const enAttente = await questionsOuvertes();
