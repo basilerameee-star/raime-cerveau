@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://raime.fr/sitemap-index.xml

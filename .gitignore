@@ -20,3 +20,6 @@ bibliotheque/
 # competences rapportees par l installeur : en quarantaine, jamais en service
 competences-candidates/
 __pycache__/
+# le site : les apercus ne partent jamais
+site/apercu-*/
+site/**/__pycache__/

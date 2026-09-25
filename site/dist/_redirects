@@ -1,0 +1,23 @@
+# Anciennes adresses du site -> sections de la nouvelle page (bascule du 2026-09-10)
+/nouveau / 301
+/nouveau.html / 301
+/a-propos /#approche 301
+/a-propos/ /#approche 301
+/contact /#contact 301
+/contact/ /#contact 301
+/services /#offres 301
+/services/ /#offres 301
+/formations /#formation 301
+/formations/ /#formation 301
+/faq /#offres 301
+/faq/ /#offres 301
+/realisations / 301
+/realisations/ / 301
+/product-building / 301
+/product-building/ / 301
+/cube / 301
+/cube/ / 301
+/nouveau/ / 301
+/en / 301
+/en/ / 301
+/en/* / 301

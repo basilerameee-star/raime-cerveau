@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="fr" data-theme="noir"><head><script id="raime-jour-avant">try{if(localStorage.getItem("pc-jour")==="1")document.documentElement.setAttribute("data-jour","")}catch(e){}</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Conditions Générales de Vente — rAIme</title>
+<meta name="description" content="Conditions générales de vente des prestations de conseil et de formation rAIme.">
+<link rel="canonical" href="https://raime.fr/cgv/">
+<link rel="icon" href="/favicon.png">
+<style>
+@font-face{font-family:Inter;font-style:normal;font-weight:100 900;font-display:swap;src:url(/fonts/InterVariable.woff2) format("woff2")}
+:root{--t1:clamp(40px,4.9vw,84px);--t2:clamp(32px,3.9vw,64px);--texte:#fff;--gris:#a6a6a6;--trait:rgba(255,255,255,.12)}
+*{box-sizing:border-box}
+html,body{margin:0;background:#000;color:var(--texte);font-family:Inter,-apple-system,"Segoe UI",sans-serif;font-size:18px;line-height:1.65;
+  -webkit-font-smoothing:antialiased}
+body{background:#000}
+.droite{display:flex;align-items:center;gap:14px}
+.jour{display:inline-grid;place-items:center;width:24px;height:24px;padding:0;border:1px solid rgba(255,255,255,.3);border-radius:999px;
+  background:none;color:#a6a6a6;cursor:pointer;transition:color .3s,border-color .3s}
+.jour:hover{color:#fff;border-color:#fff}
+.jour svg{width:12px;height:12px}
+a{color:#fff}
+.tete{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:20px;height:76px;
+  padding:0 clamp(20px,5vw,72px);background:linear-gradient(180deg,rgba(0,0,0,.94),rgba(0,0,0,.7) 70%,rgba(0,0,0,0))}
+.logo{display:flex;align-items:center;gap:12px;color:#fff;text-decoration:none;font-size:22px;font-weight:600;letter-spacing:-.03em}
+.logo img{height:38px;width:auto}
+.appel{display:inline-flex;align-items:center;height:36px;padding:0 18px;border-radius:999px;background:#fff;color:#000;
+  font-size:14px;font-weight:600;text-decoration:none}
+main{width:min(760px,100%);margin:0 auto;padding:clamp(40px,8vh,90px) clamp(20px,5vw,40px) 120px}
+.kick,.etiq{display:block;margin:0 0 16px;font:12px ui-monospace,"SF Mono",Menlo,Consolas,monospace;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--gris)}
+.kick::before,.etiq::before{content:"/// ";opacity:.45}
+h1{margin:0;font-size:var(--t2);line-height:1.02;letter-spacing:-.04em;font-weight:600;color:#fff}
+h1 em{display:block;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-style:normal;font-weight:500;letter-spacing:-.05em;
+  color:#ff7eb0}
+@keyframes reflet{0%{background-position:100% 0}60%,100%{background-position:0 0}}
+.sub{margin:18px 0 36px;font-size:14px;color:var(--gris)}
+h2{margin:40px 0 10px;padding-top:22px;border-top:1px solid var(--trait);font-size:18px;font-weight:600;letter-spacing:-.01em;color:#fff}
+p,li{margin:0 0 14px}
+ul{margin:0 0 14px;padding-left:1.1em}
+li::marker{color:var(--gris)}
+strong,b{color:#fff;font-weight:600}
+.bouton{display:inline-flex;align-items:center;gap:16px;height:50px;padding:0 26px 0 0;margin:8px 0 26px;background:#fff;color:#000;
+  font-size:15px;font-weight:500;text-decoration:none}
+.bouton i{width:50px;height:50px;border:1px solid #fff;background:radial-gradient(circle at 1px 1px,rgba(255,255,255,.65) 1px,transparent 0) 0 0/5px 5px,#000}
+.bouton svg{display:none}
+.lien{margin-left:18px;color:var(--gris)}
+.petit{font-size:14px;color:var(--gris)}
+.pied{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:space-between;gap:16px;height:44px;align-items:center;
+  padding:0 clamp(20px,5vw,72px);border-top:1px solid rgba(255,255,255,.08);background:rgba(0,0,0,.9);font-size:14px}
+.pied a{color:var(--gris);text-decoration:none}.pied a:hover{color:#fff}
+.pied span{display:flex;gap:20px}
+.pied a{white-space:nowrap}
+@media (max-width:560px){.pied{font-size:12px;gap:10px}.pied span{gap:11px}.appel{height:34px;padding:0 14px;font-size:12px}}
+@media (prefers-reduced-motion:reduce){h1 em{animation:none}}
+.rdv{position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:clamp(10px,3vw,40px);background:rgba(0,0,0,.74);
+  -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);opacity:0;visibility:hidden;transition:opacity .35s,visibility .35s}
+.rdv.ouvert{opacity:1;visibility:visible}
+.rdv-boite{width:min(1040px,100%);height:min(780px,100%);display:flex;flex-direction:column;background:#e8e8e8;border:1px solid rgba(255,255,255,.22)}
+.rdv-tete{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;padding:20px 24px 18px;background:#000;color:#fff}
+.rdv-tete .etiq{margin:0}.rdv-tete h2{margin:8px 0 0;padding:0;border:0}
+.rdv-fermer{flex:none;width:40px;height:40px;border:1px solid #fff;border-radius:50%;background:none;color:#fff;font-size:16px;cursor:pointer}
+.rdv iframe{flex:1;width:100%;border:0;background:#fff}
+</style>
+<style id="raime-jour">:root[data-jour]{--texte:#000000;--gris:#535353;--trait:rgba(0,0,0,.12)}
+html[data-jour],html[data-jour] body{background:#ededed;color:var(--texte)}
+html[data-jour] body{background:#ededed}
+html[data-jour] .jour{border:1px solid rgba(0,0,0,.3);background:none;color:#535353}
+html[data-jour] .jour:hover{color:#000000;border-color:#000000}
+html[data-jour] a{color:#000000}
+html[data-jour] .tete{background:linear-gradient(180deg,rgba(237,237,237,.94),rgba(237,237,237,.7) 70%,rgba(237,237,237,0))}
+html[data-jour] .logo{color:#000000;text-decoration:none}
+html[data-jour] .appel{background:#000000;color:#ededed;text-decoration:none}
+html[data-jour] .kick,html[data-jour] .etiq{color:var(--gris)}
+html[data-jour] h1{color:#000000}
+html[data-jour] h1 em{color:#db4f8b}
+html[data-jour] .sub{color:var(--gris)}
+html[data-jour] h2{border-top:1px solid var(--trait);color:#000000}
+html[data-jour] li::marker{color:var(--gris)}
+html[data-jour] strong,html[data-jour] b{color:#000000}
+html[data-jour] .bouton{background:#000000;color:#ededed;text-decoration:none}
+html[data-jour] .bouton i{border:1px solid #000000;background:radial-gradient(circle at 1px 1px,rgba(0,0,0,.65) 1px,transparent 0) 0 0/5px 5px,#ededed}
+html[data-jour] .lien{color:var(--gris)}
+html[data-jour] .petit{color:var(--gris)}
+html[data-jour] .pied{border-top:1px solid rgba(0,0,0,.08);background:rgba(237,237,237,.9)}
+html[data-jour] .pied a{color:var(--gris);text-decoration:none}
+html[data-jour] .pied a:hover{color:#000000}
+html[data-jour] .rdv{background:rgba(237,237,237,.74)}
+html[data-jour] .rdv-boite{background:#151515;border:1px solid rgba(0,0,0,.22)}
+html[data-jour] .rdv-tete{background:#ededed;color:#000000}
+html[data-jour] .rdv-tete h2{border:0}
+html[data-jour] .rdv-fermer{border:1px solid #000000;background:none;color:#000000}
+html[data-jour] .rdv iframe{border:0;background:#000000}
+html[data-jour]{color-scheme:light;background:#ededed}
+/* le fond est peint sur html, jamais sur body : un body colore passerait par-dessus le calque des particules */
+html[data-jour] body,html[data-theme="noir"][data-jour] body{background:transparent!important}
+html[data-jour] [fill="#fff"]{fill:#000}
+html[data-jour] img[src*="logo-mark-blanc"]{filter:invert(1)}
+</style>
+</head>
+<body>
+<header class="tete"><a class="logo" href="/" aria-label="rAIme, accueil"><img src="/logo-mark-blanc.png" alt="">rAIme</a>
+<span class="droite"><button class="jour" type="button" data-jour-bascule aria-label="Passer en version jour"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M8 1.8a6.2 6.2 0 0 1 0 12.4z" fill="currentColor"/></svg></button>
+<a class="appel" href="https://calendar.app.google/HdhqAt3BaQFWfx2g7" target="_blank" rel="noopener">Réserver un appel</a></span></header>
+<main><span class="kick">Cadre contractuel</span><h1>Conditions Générales de Vente</h1><p class="sub">Applicables aux prestations de formation, de conseil et d'accompagnement.</p><p><strong>Prestataire :</strong> Basile Ramé, entreprise individuelle (micro-entreprise) — SIRET 91113862600021 — 85.59A – Formation continue d&#39;adultes — contact@raime.fr.</p><h2>Article 1 — Objet et champ d'application</h2><p>Les présentes Conditions Générales de Vente (CGV) régissent l'ensemble des prestations de formation, de conseil et d'accompagnement (audit des postes, analyse des propositions, automatisation, suivi) proposées par Basile Ramé, ci-après « le Prestataire ». Toute commande implique l'acceptation sans réserve des présentes CGV par le client, ci-après « le Client ».</p><h2>Article 2 — Devis, commande et documents contractuels</h2><p>Chaque prestation fait l'objet d'un devis détaillé (objet, contenu, durée, modalités, prix). La commande est ferme à la signature du devis par le Client et, le cas échéant, au versement de l'acompte prévu. Pour les actions de formation, une convention ou un contrat de formation professionnelle ainsi qu'un programme détaillé sont remis au Client.</p><h2>Article 3 — Prix et modalités de paiement</h2><p>Les prix sont indiqués en euros. TVA non applicable, art. 293 B du CGI. Sauf mention contraire au devis, le règlement s'effectue par virement bancaire à réception de facture, sous 30 jours. Un acompte peut être demandé à la commande. Tout retard de paiement entraîne des pénalités au taux légal en vigueur, ainsi qu'une indemnité forfaitaire de recouvrement de 40 € (art. L441-10 du Code de commerce).</p><h2>Article 4 — Modalités d'exécution et obligations</h2><p>Le Prestataire s'engage à une obligation de moyens et met en œuvre son savoir-faire pour atteindre les objectifs définis. Le Client s'engage à fournir les informations et accès nécessaires au bon déroulement de la prestation, et à désigner un interlocuteur référent.</p><h2>Article 5 — Annulation, report et rétractation</h2><ul><li>Toute demande d'annulation ou de report doit être notifiée par écrit.</li><li>Annulation à moins de 7 jours ouvrés du démarrage : l'acompte peut être conservé à titre de dédommagement.</li><li>Pour les Clients consommateurs et la vente à distance, un droit de rétractation de 14 jours peut s'appliquer, sauf exécution de la prestation commencée avec accord exprès avant la fin de ce délai.</li></ul><h2>Article 6 — Propriété intellectuelle</h2><p>Les supports de formation, contenus, méthodes et livrables restent la propriété intellectuelle du Prestataire. Ils sont fournis au Client pour son usage interne et ne peuvent être reproduits, diffusés ou revendus sans accord écrit préalable.</p><h2>Article 7 — Confidentialité</h2><p>Chaque partie s'engage à préserver la confidentialité des informations et documents échangés dans le cadre de la prestation. Le traitement des données personnelles est détaillé dans la <a href="/confidentialite">Politique de confidentialité</a>.</p><h2>Article 8 — Responsabilité</h2><p>La responsabilité du Prestataire ne saurait être engagée pour les dommages indirects. En tout état de cause, elle est limitée au montant des sommes effectivement versées au titre de la prestation concernée.</p><h2>Article 9 — Droit applicable et litiges</h2><p>Les présentes CGV sont soumises au droit français. En cas de différend, les parties rechercheront une solution amiable. À défaut, et pour les litiges avec un consommateur, le Client peut recourir gratuitement à un médiateur de la consommation. À défaut d'accord, les tribunaux français seront compétents.</p><p class="sub">Contact : <a href="mailto:contact@raime.fr">contact@raime.fr</a></p></main>
+<div class="rdv" id="rdv" role="dialog" aria-modal="true" aria-hidden="true"><div class="rdv-boite"><div class="rdv-tete"><div><p class="etiq">Un appel d'une heure</p><h2>Choisissez votre créneau</h2></div><button class="rdv-fermer" data-fermer aria-label="Fermer">✕</button></div><iframe id="rdv-cadre" title="Agenda de réservation"></iframe></div></div>
+<script>(function(){var m=document.getElementById("rdv"),f=document.getElementById("rdv-cadre");function r(o){if(o&&!f.getAttribute("src"))f.setAttribute("src","https://calendar.google.com/calendar/appointments/schedules/AcZssZ1NsZX-UR_txvtIcaGo06kKAj-Q8YzeMIQC5A7fbAst5bN7Su43SJM_RvMYFP1-mP6pU4W2ngTI?gv=true");m.classList.toggle("ouvert",o);m.setAttribute("aria-hidden",o?"false":"true");document.documentElement.style.overflow=o?"hidden":"";}document.addEventListener("click",function(e){if(e.target.closest(".appel")){e.preventDefault();r(true);}else if(e.target.closest("[data-fermer]")||e.target===m){r(false);}});document.addEventListener("keydown",function(e){if(e.key==="Escape")r(false);});
+var d=document.documentElement,b=document.querySelector("[data-jour-bascule]");function et(){if(b)b.setAttribute("aria-label",d.hasAttribute("data-jour")?"Passer en version nuit":"Passer en version jour");}et();
+document.addEventListener("click",function(e){if(!e.target.closest("[data-jour-bascule]"))return;var j=!d.hasAttribute("data-jour");if(j)d.setAttribute("data-jour","");else d.removeAttribute("data-jour");try{localStorage.setItem("pc-jour",j?"1":"0");}catch(x){}et();});})();</script>
+<footer class="pied"><a href="mailto:contact@raime.fr">contact@raime.fr</a>
+<span><a href="/mentions-legales/">Mentions légales</a><a href="/cgv/">CGV</a><a href="/confidentialite/">Confidentialité</a></span></footer>
+</body></html>

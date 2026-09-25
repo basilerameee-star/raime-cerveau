@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="fr" data-theme="noir"><head><script id="raime-jour-avant">try{if(localStorage.getItem("pc-jour")==="1")document.documentElement.setAttribute("data-jour","")}catch(e){}</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mentions légales — rAIme</title>
+<meta name="description" content="Éditeur, hébergement, propriété intellectuelle et données personnelles du site rAIme.">
+<link rel="canonical" href="https://raime.fr/mentions-legales/">
+<link rel="icon" href="/favicon.png">
+<style>
+@font-face{font-family:Inter;font-style:normal;font-weight:100 900;font-display:swap;src:url(/fonts/InterVariable.woff2) format("woff2")}
+:root{--t1:clamp(40px,4.9vw,84px);--t2:clamp(32px,3.9vw,64px);--texte:#fff;--gris:#a6a6a6;--trait:rgba(255,255,255,.12)}
+*{box-sizing:border-box}
+html,body{margin:0;background:#000;color:var(--texte);font-family:Inter,-apple-system,"Segoe UI",sans-serif;font-size:18px;line-height:1.65;
+  -webkit-font-smoothing:antialiased}
+body{background:#000}
+.droite{display:flex;align-items:center;gap:14px}
+.jour{display:inline-grid;place-items:center;width:24px;height:24px;padding:0;border:1px solid rgba(255,255,255,.3);border-radius:999px;
+  background:none;color:#a6a6a6;cursor:pointer;transition:color .3s,border-color .3s}
+.jour:hover{color:#fff;border-color:#fff}
+.jour svg{width:12px;height:12px}
+a{color:#fff}
+.tete{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:20px;height:76px;
+  padding:0 clamp(20px,5vw,72px);background:linear-gradient(180deg,rgba(0,0,0,.94),rgba(0,0,0,.7) 70%,rgba(0,0,0,0))}
+.logo{display:flex;align-items:center;gap:12px;color:#fff;text-decoration:none;font-size:22px;font-weight:600;letter-spacing:-.03em}
+.logo img{height:38px;width:auto}
+.appel{display:inline-flex;align-items:center;height:36px;padding:0 18px;border-radius:999px;background:#fff;color:#000;
+  font-size:14px;font-weight:600;text-decoration:none}
+main{width:min(760px,100%);margin:0 auto;padding:clamp(40px,8vh,90px) clamp(20px,5vw,40px) 120px}
+.kick,.etiq{display:block;margin:0 0 16px;font:12px ui-monospace,"SF Mono",Menlo,Consolas,monospace;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--gris)}
+.kick::before,.etiq::before{content:"/// ";opacity:.45}
+h1{margin:0;font-size:var(--t2);line-height:1.02;letter-spacing:-.04em;font-weight:600;color:#fff}
+h1 em{display:block;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-style:normal;font-weight:500;letter-spacing:-.05em;
+  color:#ff7eb0}
+@keyframes reflet{0%{background-position:100% 0}60%,100%{background-position:0 0}}
+.sub{margin:18px 0 36px;font-size:14px;color:var(--gris)}
+h2{margin:40px 0 10px;padding-top:22px;border-top:1px solid var(--trait);font-size:18px;font-weight:600;letter-spacing:-.01em;color:#fff}
+p,li{margin:0 0 14px}
+ul{margin:0 0 14px;padding-left:1.1em}
+li::marker{color:var(--gris)}
+strong,b{color:#fff;font-weight:600}
+.bouton{display:inline-flex;align-items:center;gap:16px;height:50px;padding:0 26px 0 0;margin:8px 0 26px;background:#fff;color:#000;
+  font-size:15px;font-weight:500;text-decoration:none}
+.bouton i{width:50px;height:50px;border:1px solid #fff;background:radial-gradient(circle at 1px 1px,rgba(255,255,255,.65) 1px,transparent 0) 0 0/5px 5px,#000}
+.bouton svg{display:none}
+.lien{margin-left:18px;color:var(--gris)}
+.petit{font-size:14px;color:var(--gris)}
+.pied{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:space-between;gap:16px;height:44px;align-items:center;
+  padding:0 clamp(20px,5vw,72px);border-top:1px solid rgba(255,255,255,.08);background:rgba(0,0,0,.9);font-size:14px}
+.pied a{color:var(--gris);text-decoration:none}.pied a:hover{color:#fff}
+.pied span{display:flex;gap:20px}
+.pied a{white-space:nowrap}
+@media (max-width:560px){.pied{font-size:12px;gap:10px}.pied span{gap:11px}.appel{height:34px;padding:0 14px;font-size:12px}}
+@media (prefers-reduced-motion:reduce){h1 em{animation:none}}
+.rdv{position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:clamp(10px,3vw,40px);background:rgba(0,0,0,.74);
+  -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);opacity:0;visibility:hidden;transition:opacity .35s,visibility .35s}
+.rdv.ouvert{opacity:1;visibility:visible}
+.rdv-boite{width:min(1040px,100%);height:min(780px,100%);display:flex;flex-direction:column;background:#e8e8e8;border:1px solid rgba(255,255,255,.22)}
+.rdv-tete{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;padding:20px 24px 18px;background:#000;color:#fff}
+.rdv-tete .etiq{margin:0}.rdv-tete h2{margin:8px 0 0;padding:0;border:0}
+.rdv-fermer{flex:none;width:40px;height:40px;border:1px solid #fff;border-radius:50%;background:none;color:#fff;font-size:16px;cursor:pointer}
+.rdv iframe{flex:1;width:100%;border:0;background:#fff}
+</style>
+<style id="raime-jour">:root[data-jour]{--texte:#000000;--gris:#535353;--trait:rgba(0,0,0,.12)}
+html[data-jour],html[data-jour] body{background:#ededed;color:var(--texte)}
+html[data-jour] body{background:#ededed}
+html[data-jour] .jour{border:1px solid rgba(0,0,0,.3);background:none;color:#535353}
+html[data-jour] .jour:hover{color:#000000;border-color:#000000}
+html[data-jour] a{color:#000000}
+html[data-jour] .tete{background:linear-gradient(180deg,rgba(237,237,237,.94),rgba(237,237,237,.7) 70%,rgba(237,237,237,0))}
+html[data-jour] .logo{color:#000000;text-decoration:none}
+html[data-jour] .appel{background:#000000;color:#ededed;text-decoration:none}
+html[data-jour] .kick,html[data-jour] .etiq{color:var(--gris)}
+html[data-jour] h1{color:#000000}
+html[data-jour] h1 em{color:#db4f8b}
+html[data-jour] .sub{color:var(--gris)}
+html[data-jour] h2{border-top:1px solid var(--trait);color:#000000}
+html[data-jour] li::marker{color:var(--gris)}
+html[data-jour] strong,html[data-jour] b{color:#000000}
+html[data-jour] .bouton{background:#000000;color:#ededed;text-decoration:none}
+html[data-jour] .bouton i{border:1px solid #000000;background:radial-gradient(circle at 1px 1px,rgba(0,0,0,.65) 1px,transparent 0) 0 0/5px 5px,#ededed}
+html[data-jour] .lien{color:var(--gris)}
+html[data-jour] .petit{color:var(--gris)}
+html[data-jour] .pied{border-top:1px solid rgba(0,0,0,.08);background:rgba(237,237,237,.9)}
+html[data-jour] .pied a{color:var(--gris);text-decoration:none}
+html[data-jour] .pied a:hover{color:#000000}
+html[data-jour] .rdv{background:rgba(237,237,237,.74)}
+html[data-jour] .rdv-boite{background:#151515;border:1px solid rgba(0,0,0,.22)}
+html[data-jour] .rdv-tete{background:#ededed;color:#000000}
+html[data-jour] .rdv-tete h2{border:0}
+html[data-jour] .rdv-fermer{border:1px solid #000000;background:none;color:#000000}
+html[data-jour] .rdv iframe{border:0;background:#000000}
+html[data-jour]{color-scheme:light;background:#ededed}
+/* le fond est peint sur html, jamais sur body : un body colore passerait par-dessus le calque des particules */
+html[data-jour] body,html[data-theme="noir"][data-jour] body{background:transparent!important}
+html[data-jour] [fill="#fff"]{fill:#000}
+html[data-jour] img[src*="logo-mark-blanc"]{filter:invert(1)}
+</style>
+</head>
+<body>
+<header class="tete"><a class="logo" href="/" aria-label="rAIme, accueil"><img src="/logo-mark-blanc.png" alt="">rAIme</a>
+<span class="droite"><button class="jour" type="button" data-jour-bascule aria-label="Passer en version jour"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M8 1.8a6.2 6.2 0 0 1 0 12.4z" fill="currentColor"/></svg></button>
+<a class="appel" href="https://calendar.app.google/HdhqAt3BaQFWfx2g7" target="_blank" rel="noopener">Réserver un appel</a></span></header>
+<main><span class="kick">Informations légales</span><h1>Mentions légales</h1><p class="sub">Conformément aux articles 6-III et 19 de la loi n° 2004-575 du 21 juin 2004 pour la confiance dans l'économie numérique (LCEN).</p><h2>1. Éditeur du site</h2><p>Basile Ramé<br>Entreprise individuelle (micro-entreprise)<br>SIRET : 91113862600021<br>Code APE/NAF : 85.59A – Formation continue d&#39;adultes<br>TVA non applicable, art. 293 B du CGI<br>Ville-la-Grand (74) — adresse communiquée sur demande<br>Email : <a href="mailto:contact@raime.fr">contact@raime.fr</a><br>Téléphone : 06 07 65 61 70</p><h2>2. Directeur de la publication</h2><p>Basile Ramé</p><h2>3. Hébergement</h2><p><strong>Site web</strong> : Cloudflare Pages — Cloudflare, Inc., 101 Townsend Street, San Francisco, CA 94107, États-Unis.<br><strong>Traitements & automatisations</strong> : Hetzner Online GmbH, Industriestr. 25, 91710 Gunzenhausen, Allemagne (serveurs situés dans l'Union européenne).</p><h2>4. Propriété intellectuelle</h2><p>L'ensemble des éléments du site (structure, textes, visuels, logo, code) est protégé par le droit de la propriété intellectuelle. Toute reproduction, représentation ou diffusion, totale ou partielle, sans autorisation écrite préalable, est interdite et constitue une contrefaçon.</p><h2>5. Données personnelles</h2><p>Le traitement des données collectées via le site (message par e-mail, réservation d'un appel) est détaillé dans la <a href="/confidentialite">Politique de confidentialité</a>. Vous disposez d'un droit d'accès, de rectification et de suppression de vos données.</p><h2>6. Cookies et mesure d'audience</h2><p>Le site privilégie une mesure d'audience respectueuse de la vie privée, sans cookie de suivi publicitaire. Le cas échéant, un bandeau de consentement sera affiché conformément à la réglementation.</p><h2>7. Responsabilité</h2><p>L'éditeur s'efforce d'assurer l'exactitude des informations publiées mais ne saurait être tenu responsable des erreurs, omissions ou de l'indisponibilité temporaire du site.</p></main>
+<div class="rdv" id="rdv" role="dialog" aria-modal="true" aria-hidden="true"><div class="rdv-boite"><div class="rdv-tete"><div><p class="etiq">Un appel d'une heure</p><h2>Choisissez votre créneau</h2></div><button class="rdv-fermer" data-fermer aria-label="Fermer">✕</button></div><iframe id="rdv-cadre" title="Agenda de réservation"></iframe></div></div>
+<script>(function(){var m=document.getElementById("rdv"),f=document.getElementById("rdv-cadre");function r(o){if(o&&!f.getAttribute("src"))f.setAttribute("src","https://calendar.google.com/calendar/appointments/schedules/AcZssZ1NsZX-UR_txvtIcaGo06kKAj-Q8YzeMIQC5A7fbAst5bN7Su43SJM_RvMYFP1-mP6pU4W2ngTI?gv=true");m.classList.toggle("ouvert",o);m.setAttribute("aria-hidden",o?"false":"true");document.documentElement.style.overflow=o?"hidden":"";}document.addEventListener("click",function(e){if(e.target.closest(".appel")){e.preventDefault();r(true);}else if(e.target.closest("[data-fermer]")||e.target===m){r(false);}});document.addEventListener("keydown",function(e){if(e.key==="Escape")r(false);});
+var d=document.documentElement,b=document.querySelector("[data-jour-bascule]");function et(){if(b)b.setAttribute("aria-label",d.hasAttribute("data-jour")?"Passer en version nuit":"Passer en version jour");}et();
+document.addEventListener("click",function(e){if(!e.target.closest("[data-jour-bascule]"))return;var j=!d.hasAttribute("data-jour");if(j)d.setAttribute("data-jour","");else d.removeAttribute("data-jour");try{localStorage.setItem("pc-jour",j?"1":"0");}catch(x){}et();});})();</script>
+<footer class="pied"><a href="mailto:contact@raime.fr">contact@raime.fr</a>
+<span><a href="/mentions-legales/">Mentions légales</a><a href="/cgv/">CGV</a><a href="/confidentialite/">Confidentialité</a></span></footer>
+</body></html>
