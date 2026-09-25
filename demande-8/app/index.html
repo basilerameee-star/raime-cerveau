@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lovable &amp; l'Usine à services rAIme — Demande 8</title>
+<meta name="description" content="Enquête sur le code source de Lovable et démonstration fonctionnelle d'un générateur d'applications de services (l'atelier rAIme), sans clé externe.">
+<style>
+  :root{
+    --fond: linear-gradient(118deg,#6e5569 0%,#8c7187 38%,#ab8fa4 70%,#cfa9ba 100%);
+    --uni:#6f5669; --texte:#f2e8ee; --gris:#e2d0da; --titre:#fff;
+    --bouton:#f5d0d8; --boutonTexte:#3d2437; --carte:rgba(42,24,38,.28); --trait:rgba(255,255,255,.18);
+    --accent:#f6d3dc;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{min-height:100vh;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.6;color:var(--texte);
+    background:var(--fond);background-color:var(--uni)}
+  a{color:var(--titre)}
+  .wrap{max-width:1000px;margin:0 auto;padding:0 clamp(14px,4vw,40px)}
+  header{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:22px 0;flex-wrap:wrap}
+  .marque{font-weight:800;letter-spacing:.01em}
+  nav{display:flex;gap:6px 16px;flex-wrap:wrap;font-size:14.5px}
+  nav a{color:var(--titre);text-decoration:none;font-weight:600}
+  h1{margin:0 0 8px;font-size:clamp(26px,4.6vw,46px);line-height:1.08;color:var(--titre);letter-spacing:-.02em}
+  .sous{font-size:clamp(16px,2vw,19px);color:var(--gris);max-width:62ch}
+  section{background:rgba(20,14,30,.16);border:1px solid var(--trait);border-radius:18px;padding:22px 26px;margin:22px 0}
+  section h2{font-size:clamp(20px,2.6vw,26px);color:var(--titre);margin:0 0 6px}
+  section h2 .no{display:inline-block;width:28px;height:28px;line-height:28px;border-radius:50%;text-align:center;background:var(--bouton);color:var(--boutonTexte);font-weight:800;margin-right:10px}
+  p,li{max-width:70ch}
+  ul,ol{margin:.4em 0}
+  .cartes{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;padding:0;list-style:none}
+  .cartes li{background:rgba(255,255,255,.05);border:1px solid var(--trait);border-radius:12px;padding:16px 18px}
+  .badge{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:700;background:var(--bouton);color:var(--boutonTexte);margin-left:8px}
+  .ok{color:#b7e0c4}.warn{color:#f6d3a8}.ko{color:#f0b6b6}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px;background:rgba(0,0,0,.35);color:#efd9e8;padding:2px 7px;border-radius:6px}
+  label{display:grid;gap:6px;font-weight:600;font-size:13.5px}
+  input,textarea,select{font:inherit;padding:11px 13px;border-radius:10px;border:1px solid var(--trait);background:rgba(255,255,255,.06);color:var(--texte)}
+  button{font:inherit;cursor:pointer}
+  .bouton{display:inline-flex;align-items:center;height:46px;padding:0 24px;border-radius:999px;background:var(--bouton);color:var(--boutonTexte);font-weight:700;border:0}
+  .grille{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:760px){.grille{grid-template-columns:1fr}}
+  .cadre{background:#0f0c14;border:1px solid var(--trait);border-radius:12px}
+  iframe.preview{width:100%;min-height:480px;border:0;border-radius:12px;background:#fff}
+  .controles{display:grid;gap:14px}
+  .pille{display:inline-flex;align-items:center;gap:8px;margin:0 6px}
+  .pille button{border:1px solid var(--trait);border-radius:999px;padding:6px 12px;background:rgba(255,255,255,.06);color:var(--texte)}
+  .mini{font-size:12px;color:var(--gris)}
+  footer{border-top:1px solid var(--trait);padding:22px 0 40px;font-size:13.5px;color:var(--gris)}
+  .statut .ok,.statut .ko{font-weight:700}
+  .tbl{width:100%;border-collapse:collapse;font-size:14px}
+  .tbl th,.tbl td{border:1px solid var(--trait);padding:9px 12px;text-align:left;vertical-align:top}
+  .tbl th{color:var(--titre);font-weight:700}
+  details{background:rgba(255,255,255,.03);border:1px solid var(--trait);border-radius:10px;margin:8px 0;padding:10px 16px}
+  summary{cursor:pointer;font-weight:700;color:var(--titre)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <span class="marque">rAIme · Atelier</span>
+  <nav>
+    <a href="#constat">1 · Le constat</a>
+    <a href="#equivalents">2 · Les équivalents</a>
+    <a href="#fabrique">3 · La fabrique</a>
+    <a href="#statut">4 · Ce qui marche</a>
+  </nav>
+</header>
+
+<h1>Lovable, et l'Usine à services<br>de rAIme</h1>
+<p class="sous">Basile a demandé : aller chercher le code source de <strong>Lovable</strong>, l'installer et le faire tourner, pour créer des applications de services. Voici ce que dit l'enquête, ce qu'on a trouvé sur GitHub, et une fabrique qui <em>fonctionne ici, sans clé externe</em> : décrivez un service, elle génère une vraie page de vente dans le navigateur.</p>
+
+<section id="constat">
+<h2><span class="no">1</span>Le constat : Lovable n'a pas de code source public</h2>
+<p><strong>Lovable</strong> (lovable.dev) est un service <strong>propriétaire (fermé)</strong> : aucune entreprise ni auteur ne publie son code sur GitHub. On ne peut donc ni le « récupérer » ni l'« installer » tel quel. En revanche, son <strong>ancêtre open source</strong> existe et est public : il a été écrit par le fondateur de Lovable, Anton Osika.</p>
+<ul>
+  <li><span class="ok">Ancêtre officiel</span> — <span class="mono">AntonOsika/gpt-engineer</span> est explicitement annoncé comme « le précurseur de lovable.dev » dans son README. Licence MIT. Mais le dépôt est <strong>archivé</strong> et, pour générer réellement du code, il exige une clé OpenAI/Anthropic.</li>
+  <li><span class="ko">Le projet Lovable lui-même</span> n'a <em>aucun</em> dépôt public. Ce que l'on trouve sous « lovable » sur GitHub sont des cours, des prompts système « leakés », ou des clones non officiels.</li>
+</ul>
+</section>
+
+<section id="equivalents">
+<h2><span class="no">2</span>Les équivalents open source trouvés sur GitHub</h2>
+<p>Le plus fidèle est l'ancêtre officiel <span class="mono">gpt-engineer</span>. Les clones « style Lovable » les plus vivants sont :</p>
+<ul class="cartes">
+  <li><strong>gpt-engineer</strong> — l'ancêtre du fondateur, MIT, CLI Python.
+    <span class="badge">installé</span><br><span class="mini">n'appelle jamais d'API sans clé ; archivé.</span></li>
+  <li><strong>firecrawl/open-lovable</strong> — « recréez n'importe quel site en React », MIT, ~28 500 ★.
+    <span class="badge">cloné</span><br><span class="mini">exige clé Firecrawl + fournisseur IA + sandbox (Vercel/E2B).</span></li>
+  <li><strong>freestyle-sh/Adorable</strong> — « Open Source Lovable », Next.js + VMs Freestyle, MIT.
+    <span class="badge">cloné</span><br><span class="mini">exige clé Freestyle + clé IA pour fonctionner.</span></li>
+  <li><strong>lak7/devildev</strong> — « Lovable orienté specs, open source », TypeScript, Apache-2.0.
+    <span class="badge">repéré</span><br><span class="mini">candidat prometteur à évaluer plus tard.</span></li>
+</ul>
+<p class="mini">Point commun : aucun de ces outils ne produit quoi que ce soit sans <strong>clé d'API</strong> (OpenAI, Anthropic, Firecrawl, Freestyle…). Comme la consigne interdit d'en écrire une, la démonstration vivante ci-dessous fonctionne <strong>entièrement dans le navigateur</strong>, en réutilisant la logique réelle de l'atelier du cerveau de rAIme (&laquo;&nbsp;d'une phrase, un service vendable&nbsp;&raquo;).</p>
+</section>
+
+<section id="fabrique">
+<h2><span class="no">3</span>La fabrique — générez une page de service en direct</h2>
+<p>Écrivez une phrase de service. Le moteur (calqué sur <span class="mono">atelier/site.js</span> du cerveau) en déduit un nom de sous-domaine et une palette, puis rend une page de vente complète. Tout est local : rien ne part, aucune clé.</p>
+<div class="grille">
+  <div class="controles">
+    <label>La phrase de service
+      <textarea id="phrase" rows="3">Un audit IA pour PME à Annecy, 149 euros par accompagnement.</textarea>
+    </label>
+    <label>Palette
+      <select id="palette">
+        <option value="raime">rAIme (rose, maison)</option>
+        <option value="sobre">Sobre (client sans identité)</option>
+      </select>
+    </label>
+    <label>Produit affiché <input id="produit" value="Audit IA PME"></label>
+    <label>Accroche <input id="accroche" value="Un regard IA à votre office"></label>
+    <label>Siège <input id="ville" value="Annecy (74)"></label>
+    <div class="pille">
+      <span>Génération auto du nom&nbsp;:</span>
+    </div>
+    <p id="slug" class="mini"></p>
+    <button class="bouton" id="generer" type="button">Générer / rafraîchir la page</button>
+  </div>
+  <div class="cadre">
+    <iframe class="preview" id="apercu" title="Aperçu de la page de service"></iframe>
+  </div>
+</div>
+</section>
+
+<section id="statut">
+<h2><span class="no">4</span>Ce qui marche, et ce qui reste</h2>
+<table class="tbl">
+  <thead><tr><th>Élément</th><th>État</th><th>Note</th></tr></thead>
+  <tbody>
+    <tr><td>Code source de <strong>Lovable</strong> récupéré et installé</td><td class="ko">Impossible</td><td>Propriétaire, sans dépôt public. Rien à installer.</td></tr>
+    <tr><td>Ancêtre officiel <span class="mono">gpt-engineer</span> installé</td><td class="ok">Marche</td><td>CLI <span class="mono">gpte</span> opérationnelle ; génération réelle en attente d'une clé.</td></tr>
+    <tr><td>Clones <span class="mono">open-lovable</span> &amp; <span class="mono">Adorable</span> clonés</td><td class="warn">Installables</td><td>Complies ensuite <em>en ligne</em> ; exigent des clés pour produire.</td></tr>
+    <tr><td>Fabrique de services <em>locale</em> (démo)</td><td class="ok">Marche</td><td>Génère une page de vente dans le navigateur, sans clé.</td></tr>
+    <tr><td>Atelier du cerveau rAIme livré + testé</td><td class="ok">Marche</td><td><span class="mono">tests/cas_figes_*.mjs</span> : voir <span class="mono">changement.diff</span>.</td></tr>
+  </tbody>
+</table>
+</section>
+
+<footer>
+  <p>Livrable <strong>demande-8</strong> — enquête Lovable + fabrique de services rAIme. Voir aussi <span class="mono">sources/</span> (dépôts clonés) et <span class="mono">cerveau/</span> (code du cerveau copié, modifié, testé).</p>
+  <p>Aucune clé ni mot de passe ne figure dans ce livrable.</p>
+</footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ── Réglages : la même logique que atelier/site.js (palettes du cerveau) ──
+  var PALETTES = {
+    raime: { fond: "linear-gradient(118deg,#6e5569 0%,#8c7187 38%,#ab8fa4 70%,#cfa9ba 100%)", uni: "#6f5669",
+      texte: "#f2e8ee", gris: "#e2d0da", titre: "#fff", it: "#f6d3dc", bouton: "#f5d0d8", bt: "#3d2437",
+      carte: "rgba(42,24,38,.28)", trait: "rgba(255,255,255,.18)" },
+    sobre: { fond: "#f6f5f2", uni: "#f6f5f2", texte: "#2b2b2e", gris: "#5d5d63", titre: "#141416", it: "#3b5b7a",
+      bouton: "#141416", bt: "#ffffff", carte: "#ffffff", trait: "rgba(20,20,22,.12)" }
+  };
+
+  // ── Slugify : le nom du sous-domaine, accents enlevés, minuscules, tirets ──
+  function slugify(s) {
+    var n = String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 30).replace(/-+$/g, "");
+    return (/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(n) && n.length >= 2) ? n : "service";
+  }
+  var RESERVES = ["www", "raime", "n8n", "cockpit", "voyage", "metabase", "docuseal", "postgres", "caddy",
+    "boucle", "porte", "api", "mail"].reduce(function (m, k) { m[k] = 1; return m; }, {});
+
+  function nomSousDomaine(phrase, produit) {
+    var base = slugify(produit || extraire(nombre(phrase)) || "service");
+    return RESERVES[base] ? (base + "-boutique") : base;
+  }
+  // extraction simplifiée : premier segment de la phrase après la préposition
+  function nombre(phrase) { return String(phrase || ""); }
+  function extraire(s) {
+    var m = s.match(/(?:pour\s+)?([a-zà-ÿ]+(?:\s+[a-zà-ÿ]+){0,2})/i);
+    return m ? m[0].trim() : null;
+  }
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  function echapper(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function euros(m) { try { return Number(m).toLocaleString("fr-FR", { minimumFractionDigits: 0 }) + " €"; } catch (e) { return m + " €"; } }
+
+  // Prix lus dans la phrase (mêmes règles que atelier/brief.js)
+  function montantDans(phrase) {
+    var m = String(phrase || "").match(/(\d{1,3}(?:[\s  .]\d{3})*(?:,\d{1,2})?|\d+(?:[.,]\d{1,2})?)\s*(?:€|euros?\b|EUR\b)/i);
+    if (!m) return null;
+    return Number(m[1].replace(",", "."));
+  }
+
+  function css(p) {
+    return "html,body{margin:0}body{min-height:100vh;font-family:Inter,system-ui,sans-serif;color:" + p.texte +
+      ";background:" + p.fond + ";background-color:" + p.uni + ";line-height:1.6}header,main,footer{max-width:920px;margin:0 auto;padding:0 28px}" +
+      "header{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:26px 0}nav{font-size:15px}" +
+      ".etiq{margin:30px 0 10px;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:" + p.gris + "}" +
+      "h1{margin:0;font-size:44px;line-height:1.05;color:" + p.titre + "}h1 em{display:block;color:" + p.it + "}" +
+      "h2{margin:42px 0 12px;font-size:24px;color:" + p.titre + "}p,li{font-size:17px;max-width:62ch}" +
+      ".cartes{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;padding:0;list-style:none}" +
+      ".cartes li{background:" + p.carte + ";border:1px solid " + p.trait + ";border-radius:14px;padding:16px 18px}" +
+      ".bouton{display:inline-flex;align-items:center;height:50px;padding:0 26px;border-radius:999px;background:" + p.bouton +
+      ";color:" + p.bt + ";font-weight:700;border:0;text-decoration:none;cursor:pointer;font-size:16px;margin:18px 0}" +
+      "form{display:grid;gap:14px;max-width:520px}label{display:grid;gap:6px;font-weight:600}" +
+      "input,textarea{font:inherit;padding:11px 13px;border-radius:10px;border:1px solid " + p.trait + ";background:" + p.carte + ";color:" + p.texte + "}" +
+      "footer{border-top:1px solid " + p.trait + ";padding:24px 0 44px;font-size:14px;color:" + p.gris + "}a{color:" + p.titre + "}";
+  }
+
+  function rendre(slug, donnees, p) {
+    var prix = donnees.prix;
+    var appel = prix
+      ? '<a class="bouton" href="#payer">Acheter · ' + euros(prix) + '</a>'
+      : '<a class="bouton" href="#contact">Demander un devis</a>';
+    var html = '<!doctype html><html lang="fr"><head><meta charset="utf-8"><style>' + css(p) +
+      '</style></head><body><header><strong>' + echapper(donnees.produit) + '</strong><nav>' +
+      '<a href="#">L’offre</a><a href="#">Questions</a><a href="#contact">Contact</a></nav></header><main>' +
+      '<p class="etiq">' + echapper(donnees.produit) + ' · <span class="mini" style="color:' + p.gris + '">' +
+      echapper(slug) + '.raime.fr</span></p>' +
+      '<h1>' + echapper(donnees.accroche) + '<em>' + echapper(donnees.ville) + '</em></h1>' + appel +
+      '<h2>Pour qui</h2><ul class="cartes"><li>PME &amp; TPE de l’arc lémanique</li>' +
+      '<li>Directions sans expert IA interne</li><li>Équipes pressées par le papier</li></ul>' +
+      '<h2>Ce que vous recevez</h2><ul class="cartes"><li>Audit de vos process</li>' +
+      '<li>Plan d’IA à 3 mois</li><li>Un prix clair, sans surprise</li></ul>' +
+      '<h2>Parlons de votre besoin</h2><form id="contact"><label>Votre nom<input placeholder="Prénom Nom"></label>' +
+      '<label>Votre e-mail<input type="email" placeholder="vous@entreprise.fr"></label>' +
+      '<label>Votre besoin<textarea rows="3" placeholder="Décrivez votre situation..."></textarea></label>' +
+      '<button class="bouton" type="button">Envoyer la demande</button></form>' + appel +
+      '</main><footer><span>' + echapper(donnees.produit) + '</span><span>Site réalisé par rAIme</span></footer></body></html>';
+    return html;
+  }
+
+  function generer() {
+    var phrase = $("phrase").value;
+    var palette = $("palette").value;
+    var produit = $("produit").value.trim();
+    var accroche = $("accroche").value.trim();
+    var ville = $("ville").value.trim();
+    var slug = nomSousDomaine(phrase, produit);
+    $("slug").textContent = "Nom proposé du sous-domaine : " + slug + ".raime.fr  ·  prix lu dans la phrase : " +
+      (montantDans(phrase) ? euros(montantDans(phrase)) : "aucun (bouton « demander un devis »)");
+    var donnees = {
+      produit: produit || "Service",
+      accroche: accroche || "Un accompagnement fait pour vous.",
+      ville: ville || "France",
+      prix: montantDans(phrase)
+    };
+    var html = rendre(slug, donnees, PALETTES[palette]);
+    var sandbox = $("apercu");
+    sandbox.srcdoc = html;
+  }
+
+  $("generer").addEventListener("click", generer);
+  ["phrase", "palette", "produit", "accroche", "ville"].forEach(function (id) {
+    $(id).addEventListener("change", generer);
+    $(id).addEventListener("input", generer);
+  });
+  generer();
+})();
+</script>
+</body>
+</html>
