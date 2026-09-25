@@ -91,7 +91,7 @@ canvas#boule{cursor:pointer}
 </form>
 <p id="alerte" hidden></p>
 <p class="etiquette aide">touche la boule ou la barre d'espace pour parler · le micro pour arrêter</p>
-<p class="etiquette demo" id="demo" hidden>le serveur ne répond pas : nouvel essai dans 10 s</p>
+<p class="etiquette demo" id="demo" hidden>reconnexion au serveur…</p>
 
 <script>
 (function () {
@@ -179,12 +179,16 @@ canvas#boule{cursor:pointer}
     var al = document.getElementById('alerte'); al.textContent = d.alerte || ''; al.hidden = !d.alerte; alerte = d.alerte || '';
   }
   var alerte = '';
-  var essai = null;
+  // Une coupure de quelques secondes (un redémarrage du cockpit) doit rester invisible : les dernières
+  // informations restent affichées, la page réessaie en silence (2 s, 4 s, 6 s…) et ne signale un
+  // souci qu'après 4 échecs d'affilée (plus de 20 s). Jamais de faux chiffres.
+  var essai = null, echecs = 0;
   function charger() {
     fetch('/api/jarvis', { cache: 'no-store' }).then(function (r) { if (!r.ok) throw 0; return r.json(); })
-      .then(function (d) { document.getElementById('demo').hidden = true; remplir(d); })
-      .catch(function () { // jamais de faux chiffres : on le dit, et on réessaie dans 10 s
-        document.getElementById('demo').hidden = false; clearTimeout(essai); essai = setTimeout(charger, 10000);
+      .then(function (d) { echecs = 0; document.getElementById('demo').hidden = true; remplir(d); })
+      .catch(function () {
+        echecs++; clearTimeout(essai); essai = setTimeout(charger, Math.min(10000, 2000 * echecs));
+        if (echecs >= 4) document.getElementById('demo').hidden = false;
       });
   }
   charger(); setInterval(charger, 15000);
@@ -229,13 +233,16 @@ canvas#boule{cursor:pointer}
         speechSynthesis.cancel(); speechSynthesis.speak(u);
       });
   }
-  function demander(message) {
+  function demander(message, essai) {
     if (!message.trim()) return;
-    toi.textContent = message; lui.textContent = ''; changer('reflexion', 'réfléchit');
+    essai = essai || 0;
+    toi.textContent = message; if (!essai) lui.textContent = ''; changer('reflexion', 'réfléchit');
     fetch('/api/jarvis/dire', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: message }) })
-      .then(function (r) { return r.json(); })
+      .then(function (r) { if (!r.ok) throw 0; return r.json(); })
       .then(function (d) { var rep = d.reply || '(pas de réponse)'; lui.textContent = rep; charger(); parler(rep, ecouter); })
-      .catch(function () { lui.textContent = 'Le cockpit n’est pas joignable d’ici : ouvre cette page depuis cockpit.raime.fr/jarvis.'; finir(); });
+      .catch(function () { // une coupure brève (redémarrage) : on renvoie la même question, en silence, jusqu'à 3 fois
+        if (essai < 3) return setTimeout(function () { demander(message, essai + 1); }, 2500 * (essai + 1));
+        lui.textContent = 'Le serveur est injoignable depuis un moment. Réessaie dans une minute.'; finir(); });
   }
   function transcrire(blob) {
     changer('reflexion', 'transcrit');
