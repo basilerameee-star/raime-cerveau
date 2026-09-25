@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="fr" data-theme="noir-rose">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Étude de marché — rAIme</title>
+<meta name="description" content="Étude de marché des quatre offres de rAIme : formation, audit, arbitrage et automatisation. Chiffres sourcés, aucune donnée inventée.">
+<style>
+@font-face{font-family:Inter;font-style:normal;font-weight:100 900;font-display:swap;src:url(InterVariable.woff2) format("woff2")}
+@font-face{font-family:Inter;font-style:italic;font-weight:400;font-display:swap;src:url(Inter-Italic-400.woff2) format("woff2")}
+
+:root{
+  --police:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --t-accueil:64px; --t-titre:34px; --t-texte:18px; --t-interface:15px; --t-petit:14px; --t-etiquette:12px;
+  --e1:8px; --e2:16px; --e3:24px; --e4:40px;
+  --r-fenetre:14px;
+}
+
+/* Déclinaison noir + rose (demande) */
+[data-theme="noir-rose"]{
+  --fond:#000000;
+  --encre:#ffffff;
+  --texte:#f2f2f2;
+  --gris:#9a9a9a;
+  --trait:rgba(255,255,255,.14);
+  --accent:#ff7eb0;
+  --mc:var(--accent);
+  --verre:rgba(255,255,255,.025);
+}
+[data-theme="jour"]{
+  --fond:#ededed;
+  --encre:#0a0a0a;
+  --texte:#1a1a1a;
+  --gris:#555555;
+  --trait:rgba(0,0,0,.14);
+  --accent:#db4f8b;
+  --mc:#b83469;
+  --verre:rgba(0,0,0,.02);
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:var(--police);
+  background:var(--fond);
+  color:var(--texte);
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+
+/* la couleur d'accent n'habille que les mots-clés */
+.mc{color:var(--mc);font-style:italic;font-weight:500}
+
+.entete{
+  position:sticky;top:0;z-index:10;
+  background:var(--fond);
+  border-bottom:1px solid var(--trait);
+  backdrop-filter:blur(10px);
+}
+.entete-inner{
+  max-width:1080px;margin:0 auto;padding:14px 24px;
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+}
+.marque{font-family:var(--police);font-size:20px;font-weight:700;color:var(--encre);letter-spacing:-.02em}
+.marque .mc{font-style:normal;font-weight:700}
+.bascule{
+  border:1px solid var(--trait);background:transparent;color:var(--texte);
+  font-family:var(--police);font-size:var(--t-interface);
+  padding:8px 16px;border-radius:999px;cursor:pointer;
+  transition:border-color .2s,color .2s;
+}
+.bascule:hover{border-color:var(--accent)}
+
+.contenu{max-width:1080px;margin:0 auto;padding:0 24px}
+
+.hero{padding:72px 0 40px}
+.etiquette{font-size:var(--t-etiquette);font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--gris);margin-bottom:12px}
+h1{font-size:var(--t-accueil);font-weight:700;line-height:1.08;letter-spacing:-.03em;color:var(--encre)}
+.hero p{font-size:var(--t-texte);color:var(--texte);max-width:720px;margin-top:20px}
+
+section{margin:64px 0}
+h2{font-size:var(--t-titre);font-weight:700;line-height:1.15;letter-spacing:-.02em;color:var(--encre);margin-bottom:8px}
+h3{font-size:22px;font-weight:600;color:var(--encre);margin:0 0 6px}
+.lead{font-size:var(--t-texte);color:var(--gris);margin-bottom:28px;max-width:720px}
+
+.offre{
+  border-top:1px solid var(--trait);
+  padding:32px 0;
+  display:grid;grid-template-columns:1fr;gap:20px;
+}
+.offre:first-of-type{border-top:none}
+.offre .numero{font-family:var(--police);font-size:var(--t-etiquette);letter-spacing:.16em;text-transform:uppercase;color:var(--gris)}
+.bloc-desc{display:grid;grid-template-columns:repeat(4,1fr);gap:24px;margin-top:8px}
+.sous h4{font-size:14px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--gris);margin-bottom:8px}
+.sous p,.sous li{font-size:var(--t-petit);line-height:1.55;color:var(--texte)}
+.sous ul{list-style:none}
+.sous li{padding-left:14px;position:relative;margin-bottom:6px}
+.sous li::before{content:"";position:absolute;left:0;top:.62em;width:5px;height:5px;border-radius:50%;background:var(--accent)}
+
+table{width:100%;border-collapse:collapse;margin-top:8px;font-size:var(--t-petit)}
+caption{text-align:left;font-size:var(--t-petit);color:var(--gris);margin-bottom:8px}
+th{font-weight:600;color:var(--encre);text-align:left;padding:8px 10px;border-bottom:1px solid var(--trait);font-size:13px;letter-spacing:.02em}
+td{padding:8px 10px;border-bottom:1px solid var(--trait);color:var(--texte);vertical-align:top}
+td a{color:var(--texte);text-decoration:underline;text-underline-offset:3px;overflow-wrap:anywhere}
+td a:hover{color:var(--accent)}
+tr:last-child td{border-bottom:none}
+
+.vignette{
+  border:1px solid var(--trait);border-radius:var(--r-fenetre);
+  padding:24px;background:var(--verre);margin-bottom:16px;
+}
+.vignette p{font-size:var(--t-interface);color:var(--texte)}
+.vignette .message{font-style:italic;color:var(--encre);margin:12px 0 16px;font-size:16px}
+.vignette ol{margin-left:20px;font-size:var(--t-petit)}
+.vignette ol li{margin-bottom:6px;color:var(--texte)}
+
+.pied{margin-top:72px;padding:32px 0;border-top:1px solid var(--trait);color:var(--gris);font-size:var(--t-petit)}
+.pied .contenu{display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between}
+
+@media (min-width:760px){
+  .bloc-desc{grid-template-columns:repeat(4,1fr)}
+}
+
+@media (max-width:759px){
+  :root{--t-accueil:38px;--t-titre:26px}
+  .bloc-desc{grid-template-columns:1fr;gap:18px}
+  .contenu{padding:0 18px}
+  .entete-inner{padding:12px 18px}
+  .hero{padding:48px 0 24px}
+  section{margin:44px 0}
+}
+
+@media (max-width:375px){
+  :root{--t-accueil:31px;--t-titre:23px}
+  .contenu{padding:0 16px}
+  .entete-inner{padding:12px 16px}
+  table{font-size:12px}
+  th,td{padding:7px 6px}
+}
+</style>
+</head>
+<body>
+
+<header class="entete">
+  <div class="entete-inner">
+    <span class="marque">r<span class="mc">AI</span>me</span>
+    <button class="bascule" id="bascule" type="button" aria-label="Basculer entre le mode jour et le mode nuit">Mode jour</button>
+  </div>
+</header>
+
+<main class="contenu">
+
+  <div class="hero">
+    <p class="etiquette">Étude de marché · 25 septembre 2026</p>
+    <h1>Les quatre offres de <span class="mc">rAIme</span> face à leur marché</h1>
+    <p>Chaque chiffre porte sa source, lue le 25 septembre 2026. Rien n'a été inventé : une valeur absente des sources est signalée comme telle.</p>
+  </div>
+
+  <section>
+    <h2>Le marché d'un coup d'œil</h2>
+    <p class="lead">Quatre repères publics encadrent les quatre offres.</p>
+    <div class="bloc-desc">
+      <div class="sous">
+        <h4>Adoption</h4>
+        <p>10 % des entreprises de dix salariés et plus utilisent une technologie d'intelligence artificielle en 2024, contre 6 % en 2023. L'adoption croît avec la taille : 9 % (10–49 salariés), 15 % (50–249), 33 % (250 et plus).</p>
+      </div>
+      <div class="sous">
+        <h4>TPE-PME</h4>
+        <p>26 % des TPE-PME utilisent l'intelligence artificielle en 2025, le double de 2024 (13 %).</p>
+      </div>
+      <div class="sous">
+        <h4>Formation</h4>
+        <p>56,6 milliards d'euros de dépense de formation professionnelle et d'apprentissage en 2024, dont 16,4 milliards engagés par les entreprises.</p>
+      </div>
+      <div class="sous">
+        <h4>Conseil</h4>
+        <p>Environ 20 milliards d'euros de chiffre d'affaires, 15 000 entreprises, +7 % en 2024.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Offre 1 — Formation à l'intelligence artificielle</h2>
+    <p class="lead">Dirigeants, comités de direction et équipes : comprendre, mesurer, appliquer.</p>
+    <div class="bloc-desc">
+      <div class="sous">
+        <h4>Cibles</h4>
+        <ul>
+          <li>Chefs d'entreprise et directions générales</li>
+          <li>Comités de direction</li>
+          <li>Équipes et employés</li>
+        </ul>
+      </div>
+      <div class="sous">
+        <h4>Besoins</h4>
+        <p>Comprendre quoi faire de l'intelligence artificielle, en mesurer le gain, puis l'appliquer au métier.</p>
+      </div>
+      <div class="sous">
+        <h4>Concurrents</h4>
+        <ul>
+          <li>ORSYS, Cegos (prix publics)</li>
+          <li>Polytechnique Executive Education</li>
+          <li>Cabinets de proximité</li>
+        </ul>
+      </div>
+      <div class="sous">
+        <h4>Canaux</h4>
+        <ul>
+          <li>Organismes de financement</li>
+          <li>Cercles de dirigeants</li>
+          <li>Démarchage et rendez-vous</li>
+        </ul>
+      </div>
+    </div>
+    <table>
+      <caption>Prix publics relevés — formation à l'intelligence artificielle</caption>
+      <thead><tr><th>Formation</th><th>Prix public</th><th>Source</th></tr></thead>
+      <tbody>
+        <tr><td>Vision IA 360 pour dirigeants, 1 jour</td><td>1 100 € HT par personne</td><td><a href="https://www.orsys.fr/formation/formation-vision-ia-360-transformations-decision">orsys.fr</a></td></tr>
+        <tr><td>Manager à l'ère de l'IA, 2 jours</td><td>1 620 € HT par personne</td><td><a href="https://www.orsys.fr/formation/formation-manager-intelligence-artificielle-ia">orsys.fr</a></td></tr>
+        <tr><td>L'IA pour les dirigeants, 2 jours</td><td>1 650 € HT par personne</td><td><a href="https://www.orsys.fr/formation/formation-ia-dirigeants-deploiement">orsys.fr</a></td></tr>
+        <tr><td>Piloter l'IA au niveau du comité exécutif, 2 jours</td><td>1 720 € HT par personne</td><td><a href="https://www.orsys.fr/formation/formation-pilotage-ia-comex">orsys.fr</a></td></tr>
+        <tr><td>Règlement IA pour dirigeants, 3 h 30</td><td>640 € HT par personne</td><td><a href="https://www.orsys.fr/formation/formation-ia-ai-act-dirigeants-strategie-gouvernance">orsys.fr</a></td></tr>
+        <tr><td>Intra-entreprise, par groupe et par jour</td><td>1 500 à 2 000 € HT</td><td><a href="https://tensoria.fr/blog/prix-formation-ia-entreprise">tensoria.fr</a></td></tr>
+        <tr><td>Inter-entreprises, par personne et par jour</td><td>795 à 1 010 € HT</td><td><a href="https://tensoria.fr/blog/prix-formation-ia-entreprise">tensoria.fr</a></td></tr>
+        <tr><td>Executive Certificat — diriger avec la donnée et l'IA, 18 h</td><td>7 200 € TTC</td><td><a href="https://exed.polytechnique.edu/formations/data/IA/executive-certificat-diriger-data-intelligence-artificielle">exed.polytechnique.edu</a></td></tr>
+        <tr><td>Formation pratique par personne</td><td>490 € HT ou 1 490 € HT jusqu'à 5 personnes</td><td><a href="https://www.expert-ia-entreprise.fr/tarifs">expert-ia-entreprise.fr</a></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Offre 2 — Audit des usages de l'intelligence artificielle</h2>
+    <p class="lead">Savoir où l'intelligence artificielle rapporte, avant d'investir.</p>
+    <div class="bloc-desc">
+      <div class="sous">
+        <h4>Cibles</h4>
+        <ul>
+          <li>Organisations à partir de dix salariés</li>
+          <li>Directions générales de PME et d'ETI</li>
+          <li>Comités de transformation</li>
+        </ul>
+      </div>
+      <div class="sous">
+        <h4>Besoins</h4>
+        <p>Cartographier les pratiques existantes et repérer les trois à cinq cas où l'intelligence artificielle rapporte.</p>
+      </div>
+      <div class="sous">
+        <h4>Concurrents</h4>
+        <ul>
+          <li>Wavestone, Sia Partners</li>
+          <li>Sopra Steria, Capgemini, EY</li>
+          <li>Colombus, Lecko</li>
+        </ul>
+      </div>
+      <div class="sous">
+        <h4>Canaux</h4>
+        <ul>
+          <li>Relation directe</li>
+          <li>Présentations sectorielles</li>
+          <li>Associations professionnelles</li>
+        </ul>
+      </div>
+    </div>
+    <table>
+      <caption>Prix publics relevés — audit des usages de l'intelligence artificielle</caption>
+      <thead><tr><th>Prestation</th><th>Prix public</th><th>Source</th></tr></thead>
+      <tbody>
+        <tr><td>Audit d'entrée (analyse, recommandations, estimation de retour)</td><td>500 à 1 000 €</td><td><a href="https://www.expert-ia-entreprise.fr/tarifs">expert-ia-entreprise.fr</a></td></tr>
+        <tr><td>Audit rapide, 2 à 3 jours</td><td>1 500 à 3 000 €</td><td><a href="https://juwa.co/blog/outils-comparatifs-ia/prix-audit-ia-pme/">juwa.co</a></td></tr>
+        <tr><td>Audit complet, 2 à 4 semaines</td><td>5 000 à 15 000 €</td><td><a href="https://juwa.co/blog/outils-comparatifs-ia/prix-audit-ia-pme/">juwa.co</a></td></tr>
+        <tr><td>Diagnostic stratégique complet</td><td>10 000 à 25 000 €</td><td><a href="https://juwa.co/blog/outils-comparatifs-ia/prix-audit-ia-pme/">juwa.co</a></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Offre 3 — Arbitrage d'une proposition commerciale</h2>
+    <p class="lead">Juger une offre reçue, la confronter aux chiffres, décider d'acheter ou d'attendre.</p>
+    <div class="bloc-desc">
+      <div class="sous">
+        <h4>Cibles</h4>
+        <ul>
+          <li>Directions générales</li>
+          <li>Directions d'achat et financières</li>
+          <li>Directions des systèmes d'information</li>
+        </ul>
+      </div>
+      <div class="sous">
+        <h4>Besoins</h4>
+        <p>Une analyse factuelle et indépendante, en tiers de confiance, au moment où la proposition arrive.</p>
+      </div>
+      <div class="sous">
+        <h4>Concurrents</h4>
+        <ul>
+          <li>Cabinets d'acquisition</li>
+          <li>EY et maisons intermédiaires</li>
+          <li>Aide à l'achat public</li>
+        </ul>
+      </div>
+      <div class="sous">
+        <h4>Canaux</h4>
+        <ul>
+          <li>Contact au moment de l'offre</li>
+          <li>Structures d'accompagnement</li>
+          <li>Comités d'investissement</li>
+        </ul>
+      </div>
+    </div>
+    <table>
+      <caption>Montants réels relevés — missions publiques comparables (données de la commande publique)</caption>
+      <thead><tr><th>Nature de prestation</th><th>Fourchette</th><th>Source</th></tr></thead>
+      <tbody>
+        <tr><td>Assistance à la maîtrise d'ouvrage de systèmes d'information</td><td>9 150 à 500 000 €</td><td><a href="https://www.data.gouv.fr/fr/datasets/decp-v3-marches-valides/">data.gouv.fr</a></td></tr>
+        <tr><td>Audits de systèmes d'information et de sécurité</td><td>12 900 à 400 000 €</td><td><a href="https://www.data.gouv.fr/fr/datasets/decp-v3-marches-valides/">data.gouv.fr</a></td></tr>
+      </tbody>
+    </table>
+    <p class="lead">Aucun prestataire n'affiche de prix pour l'arbitrage lui-même ; ces montants publics servent de repère de valeur.</p>
+  </section>
+
+  <section>
+    <h2>Offre 4 — Automatisation des tâches administratives</h2>
+    <p class="lead">Rendre du temps sur les tâches répétées : quand ceci arrive, fais cela.</p>
+    <div class="bloc-desc">
+      <div class="sous">
+        <h4>Cibles</h4>
+        <ul>
+          <li>Équipes administratives</li>
+          <li>Facturation et recopie de données</li>
+          <li>TPE-PME en priorité</li>
+        </ul>
+      </div>
+      <div class="sous">
+        <h4>Besoins</h4>
+        <p>Réduire les heures de travail répétitif ; une heure rendue se valorise au minimum légal de 9,74 € net.</p>
+      </div>
+      <div class="sous">
+        <h4>Concurrents</h4>
+        <ul>
+          <li>Microsoft Power Automate</li>
+          <li>n8n (licence Starter)</li>
+          <li>Éditeurs de plateformes</li>
+        </ul>
+      </div>
+      <div class="sous">
+        <h4>Canaux</h4>
+        <ul>
+          <li>Résultat et heures rendues</li>
+          <li>Structures TPE-PME</li>
+          <li>Bouche-à-oreille</li>
+        </ul>
+      </div>
+    </div>
+    <table>
+      <caption>Prix publics relevés — licences d'outils d'automatisation</caption>
+      <thead><tr><th>Outil</th><th>Prix public</th><th>Source</th></tr></thead>
+      <tbody>
+        <tr><td>Power Automate — plan Premium</td><td>13,00 € HT / utilisateur / mois</td><td><a href="https://www.microsoft.com/fr-fr/power-platform/products/power-automate/pricing">microsoft.com</a></td></tr>
+        <tr><td>Power Automate — plan Process</td><td>130,00 € HT / robot / mois</td><td><a href="https://www.microsoft.com/fr-fr/power-platform/products/power-automate/pricing">microsoft.com</a></td></tr>
+        <tr><td>Power Automate — Process hébergé</td><td>186,30 € HT / robot / mois</td><td><a href="https://www.microsoft.com/fr-fr/power-platform/products/power-automate/pricing">microsoft.com</a></td></tr>
+        <tr><td>n8n Cloud — forfait Starter</td><td>20 € / mois</td><td><a href="https://n8n.io/pricing/">n8n.io</a></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Les trois publics à toucher d'abord sur Facebook et Instagram</h2>
+    <p class="lead">Pour chacun : un message et trois questions de qualification, posées au premier contact.</p>
+
+    <div class="vignette">
+      <h3>La directrice ou le directeur d'une PME</h3>
+      <p class="message">« Vous entendez parler d'intelligence artificielle chaque jour, et rien ne vous dit ce qu'elle vaut pour votre entreprise. Un diagnostic des postes où elle rapporte réellement, avec la méthode pour un premier pas mesurable. »</p>
+      <ol>
+        <li>Combien de personnes travaillent avec vous, et combien de temps consacrent-elles chaque mois à des tâches répétées ?</li>
+        <li>Avez-vous déjà reçu une offre d'intelligence artificielle, et l'avez-vous signée ?</li>
+        <li>À partir de quel montant formeriez-vous un premier pas concret ?</li>
+      </ol>
+    </div>
+
+    <div class="vignette">
+      <h3>La responsable des ressources humaines d'une structure de 20 à 200 personnes</h3>
+      <p class="message">« La formation à l'intelligence artificielle de vos équipes se finance en partie par votre OPCO ; encore faut-il que chaque journée serve réellement. Une formation appliquée, montée sur vos cas de métier, se construit en une journée. »</p>
+      <ol>
+        <li>Vos équipes ont-elles déjà accès à une formation à l'intelligence artificielle ?</li>
+        <li>Quelle enveloppe de formation a été votée cette année ?</li>
+        <li>Combien de personnes faut-il former, et avec quel financement ?</li>
+      </ol>
+    </div>
+
+    <div class="vignette">
+      <h3>L'adjoint administratif ou la secrétaire de direction</h3>
+      <p class="message">« Si vous répétez chaque semaine la même transmission de données d'un logiciel à un autre, une automatisation peut la faire en continu et sans erreur. Récupérez du temps pour le travail qui compte. »</p>
+      <ol>
+        <li>Quelle tâche répétée vous prend le plus de temps, avec quel volume de données ?</li>
+        <li>Combien d'heures par semaine y passez-vous, précisément ?</li>
+        <li>Disposez-vous des accès pour relier les logiciels, et combien faudrait-il en connecter ?</li>
+      </ol>
+    </div>
+  </section>
+
+</main>
+
+<footer class="pied">
+  <div class="contenu">
+    <span>rAIme · étude de marché</span>
+    <span>Sources consultées le 25 septembre 2026</span>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var btn = document.getElementById('bascule');
+  var theme = 'noir-rose';
+  function appliquer(){
+    document.documentElement.setAttribute('data-theme', theme);
+    btn.textContent = (theme === 'noir-rose') ? 'Mode jour' : 'Mode nuit';
+  }
+  btn.addEventListener('click', function(){
+    theme = (theme === 'noir-rose') ? 'jour' : 'noir-rose';
+    appliquer();
+  });
+  appliquer();
+})();
+</script>
+</body>
+</html>
