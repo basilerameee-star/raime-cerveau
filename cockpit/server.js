@@ -134,6 +134,9 @@ const CORTEX_SYS = "Tu es Cortex, la voix du cerveau de rAIme — le cabinet de 
   + "SAVOIR : pour toute question de connaissance, appuie-toi d'abord sur les PASSAGES fournis (bibliothèque, puis pages web trouvées en direct) et cite-les entre crochets [Titre], avec l'adresse pour une page web. Juge la fiabilité d'une page avant de la reprendre (site officiel, publication, presse sérieuse plutôt que forum ou page commerciale) et dis-le quand une source est faible. Complète avec tes connaissances générales en le signalant (« au-delà des sources… »). Tous les sujets sont bienvenus, y compris spiritualité, ésotérisme et métaphysique : expose les traditions et les idées fidèlement, et distingue ce qui relève du savoir établi, de la tradition ou de la croyance. "
   + "Réponds en français, direct, concret, chaleureux et HONNÊTE : si tu ne sais pas, ou si quelque chose n'est pas encore en place, dis-le clairement. Tu conseilles, fais le point, expliques, aides à décider. Tu n'exécutes pas d'actions toi-même : une action demandée part à l'exécutant du cerveau (DeepSeek Harness, sur le serveur, dans un dossier isolé) ; ce qu'il ne peut pas faire (publier, déployer, envoyer) revient à Claude. Basile n'a jamais à la faire lui-même. Les demandes faites et leur compte rendu figurent dans l'état du système. Les « Tâches en cours » sont À FAIRE, pas faites. N'invente aucun chiffre sur l'entreprise : ne t'appuie que sur ceux fournis.";
 const CORTEX_ORAL = " RÉPONSE ORALE (Jarvis la dit à voix haute) : deux à quatre phrases courtes, sans liste, sans titre, sans astérisque, sans adresse web ni crochet ; nomme une source en clair si besoin (« d'après l'INSEE »). Tutoie Basile. Parle un français soutenu, précis et vivant, sans anglicisme ni formule creuse, comme un bras droit brillant qui a suivi tout ce qui s'est passé. Seulement si Basile ORDONNE une action concrète à exécuter (créer, corriger, publier, lancer, modifier, envoyer…), commence ta réponse exactement par [[COMMANDE]] puis une seule phrase courte qui reformule l'ordre, et rien d'autre : le système la confie à l'exécutant. Une question, même sur tes capacités, n'est jamais une commande. Ne dis jamais qu'une action est faite ni notée toi-même.";
+// Pour une question, la consigne des ordres est retirée : le 25/09, Gemini a pris « pourquoi… ? »
+// pour un ordre et n'a rendu qu'une reformulation au lieu d'une réponse.
+const CORTEX_ORAL_QUESTION = CORTEX_ORAL.replace(/ Seulement si Basile ORDONNE[^]*?le système la confie à l'exécutant\. Une question, même sur tes capacités, n'est jamais une commande\./, ' Basile te pose une question : réponds-y directement, sans la reformuler.');
 
 // Le régime de dépense fixé par l'économe (agents/econome.js) ; « normal » si rien n'est lu.
 // Mesure du 25/09/2026 sur une vraie question de client (devis sur trois ans) : DeepSeek V4 Flash
@@ -142,6 +145,9 @@ const CORTEX_ORAL = " RÉPONSE ORALE (Jarvis la dit à voix haute) : deux à qua
 const MODELE_JARVIS = 'deepseek/deepseek-v4-flash-0731';
 const MODELE_PROFOND = 'deepseek/deepseek-v4-pro-0813'; // « réfléchis à fond », « en profondeur »
 const PROFOND = /réfléchis (à fond|bien|en profondeur)|en profondeur|analyse approfondie|prends ton temps/i;
+// Gemini gratuit en premier (mesure du 25/09 : 3.8 Flash réfléchit, 6 s ; 3.5 Flash Lite, 0,9 s).
+const GEMINI_JARVIS = ['gemini-3.8-flash', 'gemini-3.5-flash-lite'];
+const GEMINI_PROFOND = ['gemini-3.1-pro-preview', 'gemini-3.8-flash'];
 async function regimeActuel() {
   try { return ((await cerveau.query("SELECT mode FROM regime_budget ORDER BY le DESC LIMIT 1")).rows[0] || {}).mode || 'normal'; }
   catch (e) { return 'normal'; }
@@ -184,7 +190,7 @@ function journalEnClair(rows) {
 
 // La réponse de Cortex : bibliothèque d'abord, puis le web si elle ne couvre pas la question.
 // oral = la réponse sera dite à voix haute par Jarvis ; extra = ce que Jarvis sait de plus.
-async function repondreCortex(message, oral, extra) {
+async function repondreCortex(message, oral, extra, question = false) {
   await q("INSERT INTO cortex_chat (role, content) VALUES ('user', $1)", [message]);
   const ctx = await buildContext();
   const passages = await bibliotheque(message);
@@ -210,7 +216,7 @@ async function repondreCortex(message, oral, extra) {
     : "\n\nPASSAGES DE LA BIBLIOTHÈQUE : aucun passage pertinent — réponds avec tes connaissances générales et dis-le.";
   const questions = enAttente ? "\n\nQUESTIONS QUE L'ARCHITECTE ATTEND DE BASILE :\n" + enAttente : '';
   const hist = rowsOr(await q("SELECT role, content FROM cortex_chat ORDER BY id DESC LIMIT 12"), []).reverse();
-  const messages = [{ role: 'system', content: CORTEX_SYS + (oral ? CORTEX_ORAL : '') + "\n\nÉTAT LIVE DU SYSTÈME (maintenant) :\n" + ctx + (extra || '') + savoir + questions }]
+  const messages = [{ role: 'system', content: CORTEX_SYS + (oral ? (question ? CORTEX_ORAL_QUESTION : CORTEX_ORAL) : '') + "\n\nÉTAT LIVE DU SYSTÈME (maintenant) :\n" + ctx + (extra || '') + savoir + questions }]
     .concat(hist.map(h => ({ role: h.role === 'assistant' ? 'assistant' : 'user', content: h.content })));
   let reply = '';
   const mode = await regimeActuel();
@@ -222,7 +228,23 @@ async function repondreCortex(message, oral, extra) {
     // la version encore plus légère.
     const leger = mode === 'econome' || mode === 'reserve';
     const MODELE = !leger && PROFOND.test(message) ? MODELE_PROFOND : MODELE_JARVIS;
-    try {
+    // D'abord Gemini, sur le quota gratuit de la clé Google rangée dans le coffre (25/09/2026) :
+    // chaque modèle a son propre quota, on les épuise l'un après l'autre avant de payer DeepSeek.
+    const cleGemini = lireCoffre().GEMINI_API_KEY;
+    if (cleGemini) {
+      for (const g of PROFOND.test(message) ? GEMINI_PROFOND : GEMINI_JARVIS) {
+        try {
+          const r = await fetch('https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', { method: 'POST',
+            headers: { Authorization: 'Bearer ' + cleGemini, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model: g, messages, max_tokens: 4000 }), signal: AbortSignal.timeout(90000) });
+          if (!r.ok) continue; // quota du jour épuisé (429) ou modèle retiré : le suivant
+          const d = await r.json();
+          reply = (d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content) || '';
+          if (reply) break;
+        } catch (e) {}
+      }
+    }
+    if (!reply) try {
       const r = await fetch('https://openrouter.ai/api/v1/chat/completions', { method: 'POST',
         headers: { Authorization: 'Bearer ' + process.env.OPENROUTER_API_KEY, 'Content-Type': 'application/json' },
         // la réflexion compte dans max_tokens ; en régime économe, il répond sans réfléchir
@@ -323,6 +345,7 @@ function lignesBudget(b) {
 // Ce que le cerveau met en place : le régime de l'économe, et le rythme que Claude s'impose.
 function mesuresBudget(b) {
   const m = b.regime ? [...b.regime.mesures] : ["L'économe n'a pas encore rendu sa première lecture."];
+  if (lireCoffre().GEMINI_API_KEY) m.push("Jarvis répond d'abord avec le quota gratuit de Gemini ; DeepSeek, payant, seulement au-delà.");
   const sem = b.claude.find((x) => x.fenetre === 'semaine');
   if (sem) {
     const jours = Math.max(0.5, (new Date(sem.reinitialise_le) - Date.now()) / 86400e3);
@@ -450,7 +473,10 @@ async function jarvisDire(message) {
   }
   const b = await budget();
   const extra = (await etatDuCerveau()) + "\nBudget : " + phraseBudget(b);
-  const reply = await repondreCortex(message, true, extra);
+  const estQuestion = /\?\s*$/.test(message) || /^(qu'est-ce|est-ce que|comment|pourquoi|quel|quelle|combien|où|quand|qui|que |sais-tu|peux-tu me dire)/i.test(message.trim())
+    // faire le point, résumer, raconter : c'est Jarvis qui répond, il a l'état du cerveau sous les yeux
+    || /(fais(-| )(moi )?le point|point de situation|où (on en est|en est|en sommes)|quoi de neuf|résume|raconte|dis-moi|explique)/i.test(message);
+  const reply = await repondreCortex(message, true, extra, estQuestion);
   // Le modèle a reconnu une action que le tri rapide n'a pas vue : le serveur la note pour de vrai.
   // Une vraie commande est un ordre, jamais une question, et sa reformulation tient en une phrase.
   // Sinon le marqueur est retiré : pour une question, la ligne de reformulation part aussi.
