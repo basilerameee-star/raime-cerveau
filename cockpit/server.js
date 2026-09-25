@@ -130,9 +130,175 @@ async function questionsOuvertes() {
 }
 
 const CORTEX_SYS = "Tu es Cortex, la voix du cerveau de rAIme — le cabinet de conseil en intelligence artificielle de Basile Ramé (formation des particuliers et des professionnels : dirigeants, comités de direction, employés ; audit des postes et arbitrage pour les entreprises ; automatisation). Tu es son bras droit et son interface avec tout le système. "
-  + "Le cerveau : une boucle permanente d'agents sur le serveur — l'architecte (l'agent réflexif, qui tient les buts et se corrige), le réflexif, le veilleur (forums, dépôts de code, publications), le chasseur et le sas (le meilleur modèle au meilleur prix), le bibliothécaire et l'encyclopédiste (la bibliothèque de savoir : finance, droit, santé, sciences, physique quantique, philosophie, métaphysique, spiritualité, ésotérisme, religions, histoire, informatique, marketing, management…), et les agents de surveillance. La prospection par e-mail est en pause. "
+  + "Le cerveau : une boucle permanente d'agents sur le serveur — l'architecte (l'agent réflexif, qui tient les buts et se corrige), le réflexif, le veilleur (forums, dépôts de code, publications), le chasseur et le sas (le meilleur modèle au meilleur prix), le bibliothécaire et l'encyclopédiste (la bibliothèque de savoir : finance, droit, santé, sciences, physique quantique, philosophie, métaphysique, spiritualité, ésotérisme, religions, histoire, informatique, marketing, management…), et les agents de surveillance ; le penseur (la pensée de la nuit : il relit la veille, la bibliothèque et le journal, et propose au matin trois idées au plus, chacune sourcée, sans conseil de placement) ; l'essayeur (il cherche du code sur GitHub, le note selon des critères précis, l'essaie dans un bac à sable isolé du réseau, et propose de l'intégrer) ; le Gardien (deux faces : la vigie qui surveille le serveur toutes les 30 minutes, et le sas qui envoie toute action risquée au bac à sable avant de couper, et n'en garde que le positif) ; l'auditeur, la relecture et l'arbitrage (l'analyse d'une proposition commerciale et le Score rAIme sur 1000). Jarvis est l'interface vocale où Basile te parle. Si on t'interroge sur un agent que cette liste ne décrit pas, dis que tu ne sais pas. La prospection par e-mail est en pause. "
   + "SAVOIR : pour toute question de connaissance, appuie-toi d'abord sur les PASSAGES fournis (bibliothèque, puis pages web trouvées en direct) et cite-les entre crochets [Titre], avec l'adresse pour une page web. Juge la fiabilité d'une page avant de la reprendre (site officiel, publication, presse sérieuse plutôt que forum ou page commerciale) et dis-le quand une source est faible. Complète avec tes connaissances générales en le signalant (« au-delà des sources… »). Tous les sujets sont bienvenus, y compris spiritualité, ésotérisme et métaphysique : expose les traditions et les idées fidèlement, et distingue ce qui relève du savoir établi, de la tradition ou de la croyance. "
   + "Réponds en français, direct, concret, chaleureux et HONNÊTE : si tu ne sais pas, ou si quelque chose n'est pas encore en place, dis-le clairement. Tu conseilles, fais le point, expliques, aides à décider. Tu n'exécutes pas d'actions toi-même. Les « Tâches en cours » sont À FAIRE, pas faites. N'invente aucun chiffre sur l'entreprise : ne t'appuie que sur ceux fournis.";
+const CORTEX_ORAL = " RÉPONSE ORALE (Jarvis la dit à voix haute) : deux à quatre phrases courtes, sans liste, sans titre, sans astérisque, sans adresse web ni crochet ; nomme une source en clair si besoin (« d'après l'INSEE »). Tutoie Basile, parle comme un bras droit vivant et attentif, qui a suivi ce qui s'est passé. Si Basile te demande une ACTION à faire (créer, corriger, publier, lancer, modifier, envoyer…), commence ta réponse exactement par [[COMMANDE]] puis une seule phrase qui reformule la demande : le système la note pour Claude. Ne dis jamais qu'elle est faite ni notée toi-même.";
+
+// La réponse de Cortex : bibliothèque d'abord, puis le web si elle ne couvre pas la question.
+// oral = la réponse sera dite à voix haute par Jarvis ; extra = ce que Jarvis sait de plus.
+async function repondreCortex(message, oral, extra) {
+  await q("INSERT INTO cortex_chat (role, content) VALUES ('user', $1)", [message]);
+  const ctx = await buildContext();
+  const passages = await bibliotheque(message);
+  // D'abord la bibliothèque, puis le monde. LE DÉCLENCHEUR « JE NE SAIS PAS » : moins de
+  // trois passages, OU des passages qui ne couvrent pas les mots importants de la question
+  // (un nom, un code, un chiffre absents de ce que la bibliothèque a rendu). Le 25/09, trois
+  // passages vagues ont suffi à retenir la recherche, et Cortex a inventé le certificateur
+  // de la RS6776 : un nombre de passages ne dit pas qu'on sait.
+  const motsQuestion = message.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/)
+    .filter((m) => m.length > 3 || /\d/.test(m));
+  const lu = passages.map((p) => `${p.titre} ${p.extrait}`).join(' ').toLowerCase();
+  const couverture = motsQuestion.length
+    ? motsQuestion.filter((m) => lu.includes(m)).length / motsQuestion.length : 1;
+  const precis = motsQuestion.filter((m) => /\d/.test(m) || m.length > 8);
+  const manquePrecis = precis.some((m) => !lu.includes(m));
+  if (passages.length < 3 || couverture < 0.6 || manquePrecis) {
+    passages.push(...await savoirVivant(message, new Set(passages.map((p) => p.titre))));
+  }
+  const enAttente = await questionsOuvertes();
+  const savoir = passages.length
+    ? "\n\nPASSAGES DE LA BIBLIOTHÈQUE ET DU WEB (à citer entre crochets [Titre] ; pour une page web, donner aussi son adresse) :\n" + passages.map((p) =>
+        `[${p.titre}] (${p.domaine}${p.lien ? ' — ' + p.lien : ''}) ${String(p.extrait).replace(/\s+/g, ' ')}`).join('\n\n')
+    : "\n\nPASSAGES DE LA BIBLIOTHÈQUE : aucun passage pertinent — réponds avec tes connaissances générales et dis-le.";
+  const questions = enAttente ? "\n\nQUESTIONS QUE L'ARCHITECTE ATTEND DE BASILE :\n" + enAttente : '';
+  const hist = rowsOr(await q("SELECT role, content FROM cortex_chat ORDER BY id DESC LIMIT 12"), []).reverse();
+  const messages = [{ role: 'system', content: CORTEX_SYS + (oral ? CORTEX_ORAL : '') + "\n\nÉTAT LIVE DU SYSTÈME (maintenant) :\n" + ctx + (extra || '') + savoir + questions }]
+    .concat(hist.map(h => ({ role: h.role === 'assistant' ? 'assistant' : 'user', content: h.content })));
+  let reply = '';
+  try {
+    const r = await fetch('http://n8n:5678/webhook/cortex-chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages }) });
+    const d = await r.json();
+    reply = (d && d.reply) || '';
+  } catch (e) {}
+  if (!reply) reply = "(Cortex est indisponible à l'instant — réessaie dans un moment.)";
+  await q("INSERT INTO cortex_chat (role, content) VALUES ('assistant', $1)", [reply]);
+  return reply;
+}
+
+// ── JARVIS : la voix, le budget, le routeur (25/09/2026) ──────────────────────────────────────
+const VOIX = process.env.VOIX_URL || 'http://voix:9000';
+const PLAFOND_EUR = 16; // Constitution, principe 5 : le prix du serveur, tant que Basile ne le relève pas
+
+function corpsBrut(req, max) {
+  return new Promise((ok, ko) => {
+    const morceaux = []; let n = 0;
+    req.on('data', (c) => { n += c.length; if (n > max) { req.destroy(); ko(new Error('trop long')); } else morceaux.push(c); });
+    req.on('end', () => ok(Buffer.concat(morceaux)));
+    req.on('error', ko);
+  });
+}
+
+// Le taux de la BCE (sans clé), relu deux fois par jour : le plafond est en euros, les modèles en dollars.
+let taux = null;
+async function tauxUsdEur() {
+  if (taux && Date.now() - taux.t < 12 * 3600e3) return taux.v;
+  try {
+    const d = await (await fetch('https://api.frankfurter.app/latest?from=USD&to=EUR', { signal: AbortSignal.timeout(4000) })).json();
+    if (d && d.rates && d.rates.EUR) taux = { v: d.rates.EUR, t: Date.now() };
+  } catch (e) {}
+  return taux ? taux.v : null;
+}
+
+// Ce qui reste : crédits de modèles (lecture seule chez OpenRouter), dépense du mois face au
+// plafond, et la dernière jauge du forfait Claude déposée par Claude lui-même.
+async function budget() {
+  const b = { plafond_eur: PLAFOND_EUR, claude: [] };
+  const cle = process.env.OPENROUTER_API_KEY;
+  if (cle) {
+    const h = { Authorization: 'Bearer ' + cle };
+    try {
+      const d = ((await (await fetch('https://openrouter.ai/api/v1/credits', { headers: h, signal: AbortSignal.timeout(5000) })).json()) || {}).data || {};
+      if (d.total_credits != null) { b.credits_usd = +d.total_credits; b.credits_restants_usd = +(d.total_credits - d.total_usage).toFixed(2); }
+    } catch (e) {}
+    try {
+      const d = ((await (await fetch('https://openrouter.ai/api/v1/key', { headers: h, signal: AbortSignal.timeout(5000) })).json()) || {}).data || {};
+      if (d.usage_monthly != null) b.mois_usd = +d.usage_monthly;
+    } catch (e) {}
+  }
+  if (b.mois_usd == null) {
+    try { b.mois_usd = +(await cerveau.query("SELECT coalesce(sum(cost_usd), 0) AS d FROM agent_runs WHERE created_at >= date_trunc('month', now())")).rows[0].d; } catch (e) {}
+  }
+  const t = await tauxUsdEur();
+  if (b.mois_usd != null && t) { b.mois_eur = +(b.mois_usd * t).toFixed(2); b.pourcent_plafond = Math.round(100 * b.mois_eur / PLAFOND_EUR); }
+  try {
+    b.claude = (await cerveau.query(
+      "SELECT DISTINCT ON (fenetre) fenetre, pourcent, reinitialise_le, lu_le FROM claude_usage ORDER BY fenetre, lu_le DESC")).rows;
+  } catch (e) {}
+  return b;
+}
+
+const quand = (d) => new Date(d).toLocaleString('fr-FR', { timeZone: 'Europe/Paris', weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+const virgule = (n) => n.toFixed(2).replace('.', ',');
+
+// Ce qui mérite d'être dit sans qu'on le demande : un réservoir presque vide.
+function alerteBudget(b) {
+  const a = [];
+  if (b.credits_restants_usd != null && b.credits_restants_usd < 2) a.push(`plus que ${virgule(b.credits_restants_usd)} dollars de crédits de modèles`);
+  if (b.pourcent_plafond != null && b.pourcent_plafond >= 90) a.push(`${b.pourcent_plafond} % du plafond du mois dépensés`);
+  for (const c of b.claude) if (c.pourcent >= 90) a.push(`ton forfait Claude à ${c.pourcent} % sur la fenêtre « ${c.fenetre} »`);
+  return a.length ? 'Attention : ' + a.join(', ') + '.' : '';
+}
+
+function phraseBudget(b) {
+  const p = [];
+  const heure = (d) => new Date(d).toLocaleTimeString('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit' });
+  if (b.credits_restants_usd != null && b.credits_usd) {
+    p.push(`Crédits de modèles : ${virgule(b.credits_restants_usd)} dollars sur ${virgule(b.credits_usd)}, soit ${Math.round(100 * b.credits_restants_usd / b.credits_usd)} % restants.`);
+  }
+  if (b.mois_eur != null) p.push(`Ce mois-ci : ${virgule(b.mois_eur)} euros dépensés sur ${b.plafond_eur}, il reste ${100 - b.pourcent_plafond} % du plafond.`);
+  else if (b.mois_usd != null) p.push(`Ce mois-ci : ${virgule(b.mois_usd)} dollars dépensés.`);
+  const cinq = b.claude.find((c) => c.fenetre === '5 heures'), sem = b.claude.find((c) => c.fenetre === 'semaine');
+  if (cinq || sem) {
+    const r = [cinq && `${100 - cinq.pourcent} % sur 5 heures`, sem && `${100 - sem.pourcent} % sur la semaine`].filter(Boolean).join(' et ');
+    const lu = (sem || cinq).lu_le;
+    p.push(`Ton forfait Claude : il reste ${r}, relevé ${quand(lu).replace(/ à .*/, '')} à ${heure(lu)}${sem ? ` ; la semaine repart ${quand(sem.reinitialise_le)}` : ''}.`);
+  }
+  if (!p.length) p.push("Je n'arrive pas à lire le budget à l'instant.");
+  return p.join(' ');
+}
+
+// Le routeur. Le budget se dit avec les chiffres, sans modèle. Une action se note pour Claude
+// (Jarvis n'exécute rien lui-même). Tout le reste va à Cortex, avec ce que le cerveau sait.
+const INTENTION_BUDGET = /\b(budget|tokens?|jetons?|crédits?|credits?|pourcentage|forfait|combien (il )?(me |te |nous )?reste|reste-t-il|il reste combien|dépensé|limite)\b/i;
+const INTENTION_ACTION = /^(?:(?:jarvis|cortex)[, ]+)?(?:(?:est-ce que tu peux|est-ce que tu pourrais|peux-tu|tu peux|pourrais-tu|je veux que tu|il faut que tu|j'aimerais que tu|je voudrais que tu|note que tu dois)\s+)?(?:cré|construi|lanc|met|ajout|modifi|corrig|déploi|publi|envoi|envoy|install|supprim|chang|programm|développ|cod|génér|refai|refass|amélior|répar|automatis|intégr|prépar|fabriqu)[\p{L}]*/iu;
+
+async function etatDuCerveau() {
+  const lire = async (sql) => { try { return (await cerveau.query(sql)).rows; } catch (e) { return []; } };
+  const journal = await lire("SELECT acteur, left(changement, 160) AS c FROM journal WHERE created_at > now() - interval '48 hours' ORDER BY created_at DESC LIMIT 8");
+  const pensee = await lire("SELECT titre, proposition FROM pensees WHERE nuit = (SELECT max(nuit) FROM pensees) ORDER BY rang LIMIT 3");
+  const commandes = await lire("SELECT id, texte, etat FROM commandes WHERE etat IN ('a_faire','en_cours') ORDER BY cree_le LIMIT 6");
+  let t = '';
+  if (journal.length) t += "\nCe qui a changé (48 h) :\n" + journal.map((j) => `- ${j.acteur} : ${j.c}`).join('\n');
+  if (pensee.length) t += "\nLa pensée de la nuit :\n" + pensee.map((p) => `- ${p.titre} — ${p.proposition}`).join('\n');
+  if (commandes.length) t += "\nCommandes notées pour Claude, pas encore faites :\n" + commandes.map((c) => `- n°${c.id} ${c.texte}`).join('\n');
+  return t;
+}
+
+// Une action demandée : notée dans la table commandes, que Claude lit à chaque ouverture de session.
+async function noterCommande(message, reformulation) {
+  let id = null;
+  try { id = (await cerveau.query("INSERT INTO commandes (texte) VALUES ($1) RETURNING id", [message])).rows[0].id; } catch (e) {}
+  const reply = id
+    ? `C'est noté, commande numéro ${id}, pour Claude${reformulation ? ' : ' + reformulation.replace(/\s+$/, '').replace(/([^.!?…])$/, '$1.') : '.'} Il la prend à l'ouverture de sa prochaine session et te rend compte. Elle n'est pas encore faite.`
+    : "Je n'ai pas pu noter cette demande à l'instant. Redis-la-moi dans un moment.";
+  await q("INSERT INTO cortex_chat (role, content) VALUES ('assistant', $1)", [reply]);
+  return { voie: 'action', reply, commande: id };
+}
+
+async function jarvisDire(message) {
+  if (INTENTION_BUDGET.test(message)) return { voie: 'budget', reply: phraseBudget(await budget()) };
+  if (INTENTION_ACTION.test(message)) {
+    await q("INSERT INTO cortex_chat (role, content) VALUES ('user', $1)", [message]);
+    return noterCommande(message, '');
+  }
+  const b = await budget();
+  const extra = (await etatDuCerveau()) + "\nBudget : " + phraseBudget(b);
+  const reply = await repondreCortex(message, true, extra);
+  // Le modèle a reconnu une action que le tri rapide n'a pas vue : le serveur la note pour de vrai.
+  if (/^\s*\[\[COMMANDE\]\]/.test(reply)) return noterCommande(message, reply.replace(/^\s*\[\[COMMANDE\]\]\s*/, ''));
+  return { voie: 'cortex', reply };
+}
 
 async function buildContext() {
   const g = async (sql) => { const r = await q(sql); return (Array.isArray(r) && r[0]) ? Object.values(r[0])[0] : 0; };
@@ -286,41 +452,7 @@ const server = http.createServer(async (req, res) => {
       let message = '';
       try { message = String(JSON.parse(body).message || '').slice(0, 2000).trim(); } catch (e) {}
       if (!message) { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ reply: '' })); return; }
-      await q("INSERT INTO cortex_chat (role, content) VALUES ('user', $1)", [message]);
-      const ctx = await buildContext();
-      const passages = await bibliotheque(message);
-      // D'abord la bibliothèque, puis le monde. LE DÉCLENCHEUR « JE NE SAIS PAS » : moins de
-      // trois passages, OU des passages qui ne couvrent pas les mots importants de la question
-      // (un nom, un code, un chiffre absents de ce que la bibliothèque a rendu). Le 25/09, trois
-      // passages vagues ont suffi à retenir la recherche, et Cortex a inventé le certificateur
-      // de la RS6776 : un nombre de passages ne dit pas qu'on sait.
-      const motsQuestion = message.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/)
-        .filter((m) => m.length > 3 || /\d/.test(m));
-      const lu = passages.map((p) => `${p.titre} ${p.extrait}`).join(' ').toLowerCase();
-      const couverture = motsQuestion.length
-        ? motsQuestion.filter((m) => lu.includes(m)).length / motsQuestion.length : 1;
-      const precis = motsQuestion.filter((m) => /\d/.test(m) || m.length > 8);
-      const manquePrecis = precis.some((m) => !lu.includes(m));
-      if (passages.length < 3 || couverture < 0.6 || manquePrecis) {
-        passages.push(...await savoirVivant(message, new Set(passages.map((p) => p.titre))));
-      }
-      const enAttente = await questionsOuvertes();
-      const savoir = passages.length
-        ? "\n\nPASSAGES DE LA BIBLIOTHÈQUE ET DU WEB (à citer entre crochets [Titre] ; pour une page web, donner aussi son adresse) :\n" + passages.map((p) =>
-            `[${p.titre}] (${p.domaine}${p.lien ? ' — ' + p.lien : ''}) ${String(p.extrait).replace(/\s+/g, ' ')}`).join('\n\n')
-        : "\n\nPASSAGES DE LA BIBLIOTHÈQUE : aucun passage pertinent — réponds avec tes connaissances générales et dis-le.";
-      const questions = enAttente ? "\n\nQUESTIONS QUE L'ARCHITECTE ATTEND DE BASILE :\n" + enAttente : '';
-      const hist = rowsOr(await q("SELECT role, content FROM cortex_chat ORDER BY id DESC LIMIT 12"), []).reverse();
-      const messages = [{ role: 'system', content: CORTEX_SYS + "\n\nÉTAT LIVE DU SYSTÈME (maintenant) :\n" + ctx + savoir + questions }]
-        .concat(hist.map(h => ({ role: h.role === 'assistant' ? 'assistant' : 'user', content: h.content })));
-      let reply = '';
-      try {
-        const r = await fetch('http://n8n:5678/webhook/cortex-chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages }) });
-        const d = await r.json();
-        reply = (d && d.reply) || '';
-      } catch (e) {}
-      if (!reply) reply = "(Cortex est indisponible à l'instant — réessaie dans un moment.)";
-      await q("INSERT INTO cortex_chat (role, content) VALUES ('assistant', $1)", [reply]);
+      const reply = await repondreCortex(message, false, '');
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ reply }));
     });
@@ -343,6 +475,40 @@ const server = http.createServer(async (req, res) => {
     res.end(JARVIS);
     return;
   }
+  // La voix de Basile -> texte, par le service « voix » du serveur (rien ne sort d'ici).
+  if (req.method === 'POST' && req.url === '/api/jarvis/voix') {
+    try {
+      const audio = await corpsBrut(req, 8 * 1024 * 1024);
+      const r = await fetch(VOIX + '/transcrire', { method: 'POST', body: audio, signal: AbortSignal.timeout(60000) });
+      res.writeHead(r.status, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(await r.text());
+    } catch (e) {
+      res.writeHead(502, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ erreur: 'la voix du serveur ne répond pas' }));
+    }
+    return;
+  }
+  // Le texte -> la voix française de Jarvis.
+  if (req.method === 'POST' && req.url === '/api/jarvis/parler') {
+    try {
+      const corps = await corpsBrut(req, 20000);
+      const r = await fetch(VOIX + '/parler', { method: 'POST', body: corps, signal: AbortSignal.timeout(30000) });
+      if (!r.ok) throw new Error('voix');
+      const wav = Buffer.from(await r.arrayBuffer());
+      res.writeHead(200, { 'Content-Type': 'audio/wav', 'Content-Length': wav.length, 'Cache-Control': 'no-store' });
+      res.end(wav);
+    } catch (e) { res.writeHead(502); res.end(); }
+    return;
+  }
+  // Ce que Basile dit à Jarvis : le routeur choisit la voie (budget, action notée, Cortex).
+  if (req.method === 'POST' && req.url === '/api/jarvis/dire') {
+    let message = '';
+    try { message = String(JSON.parse((await corpsBrut(req, 1e5)).toString('utf8')).message || '').slice(0, 2000).trim(); } catch (e) {}
+    const r = message ? await jarvisDire(message) : { voie: 'vide', reply: '' };
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify(r));
+    return;
+  }
   if (req.url === '/api/jarvis') {
     // L'essentiel, lu dans la base du cerveau. Une table absente rend une liste vide, jamais une erreur.
     const lire = async (sql) => { try { return (await cerveau.query(sql)).rows; } catch (e) { return []; } };
@@ -353,10 +519,16 @@ const server = http.createServer(async (req, res) => {
     const veille = await lire("SELECT count(*)::int AS n FROM veille WHERE vu_le > now() - interval '24 hours'");
     const agents = await lire("SELECT count(DISTINCT agent)::int AS n FROM agent_runs WHERE created_at > now() - interval '24 hours'");
     const nbQuestions = await lire("SELECT count(*)::int AS n FROM demandes WHERE etat = 'ouverte'");
+    const commandes = await lire("SELECT id, texte FROM commandes WHERE etat IN ('a_faire','en_cours') ORDER BY cree_le LIMIT 4");
+    const b = await budget();
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
-    res.end(JSON.stringify({ pensee, attente, journal,
+    res.end(JSON.stringify({ pensee, attente, journal, commandes,
       depense: depense[0] ? depense[0].d : null, veille24h: veille[0] ? veille[0].n : null,
-      agents: agents[0] ? agents[0].n : null, questions: nbQuestions[0] ? nbQuestions[0].n : null }));
+      agents: agents[0] ? agents[0].n : null, questions: nbQuestions[0] ? nbQuestions[0].n : null,
+      budget: { credits_restants_usd: b.credits_restants_usd ?? null, credits_usd: b.credits_usd ?? null,
+        mois_eur: b.mois_eur ?? null, pourcent_plafond: b.pourcent_plafond ?? null, plafond_eur: b.plafond_eur,
+        claude: b.claude.map((c) => ({ fenetre: c.fenetre, reste: 100 - c.pourcent, lu_le: c.lu_le })) },
+      alerte: alerteBudget(b) }));
     return;
   }
   if (req.url === '/healthz') { res.writeHead(200); res.end('ok'); return; }

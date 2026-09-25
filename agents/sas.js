@@ -199,9 +199,12 @@ export async function soumettre(brain, c) {
      JSON.stringify(c.donnees || {}), nature, verdict, motif,
      mesure ? JSON.stringify(mesure) : null]);
 
+  // Un fait (un prix) « appliqué » n'est qu'une ligne du catalogue : le journal le dit en clair,
+  // sinon un lecteur (Cortex, le penseur) comprend qu'un modèle a été mis en service.
+  const dit = verdict === 'applique' && nature === 'fait' ? 'noté au catalogue, rien mis en service' : verdict;
   await brain.query(
     `INSERT INTO journal(acteur, changement, motif) VALUES($1,$2,$3)`,
-    ['sas', `Candidat « ${c.identifiant} » (${c.domaine}) → ${verdict}`, motif.slice(0, 500)]);
+    ['sas', `Candidat « ${c.identifiant} » (${c.domaine}) → ${dit}`, motif.slice(0, 500)]);
 
   return { id: rows[0].id, nature, verdict, motif, mesure };
 }

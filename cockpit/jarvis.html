@@ -23,6 +23,7 @@ aside.gauche{left:32px} aside.droite{right:32px}
 .bloc p,.bloc li{font-size:13.5px;line-height:1.55;color:#d6d6d6}
 .bloc li{list-style:none;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05)}
 .bloc li:last-child{border-bottom:0}
+.bloc li{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .bloc em{font-style:normal;color:var(--rose);font-family:var(--mono);font-size:12px}
 .chiffres{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .chiffres b{display:block;font-size:24px;font-weight:600;letter-spacing:-.03em}
@@ -37,7 +38,10 @@ form button{width:52px;height:52px;border-radius:50%;border:1px solid var(--trai
 form button.actif{border-color:var(--rose);box-shadow:0 0 22px rgba(255,126,176,.45)}
 form button svg{width:20px;height:20px}
 .demo{position:fixed;left:32px;bottom:14px;z-index:2}
-@media (max-width:900px){aside{display:none}#echange{bottom:100px}}
+#alerte{position:fixed;top:60px;right:32px;z-index:2;color:var(--rose);font-size:13px;max-width:420px;text-align:right}
+.aide{position:fixed;left:50%;transform:translateX(-50%);bottom:12px;z-index:2;white-space:nowrap}
+canvas#boule{cursor:pointer}
+@media (max-width:900px){aside{display:none}#echange{bottom:100px}.aide{display:none}}
 @media (prefers-reduced-motion:reduce){header .etat i{box-shadow:none}}
 </style>
 </head>
@@ -52,18 +56,21 @@ form button svg{width:20px;height:20px}
 <aside class="gauche">
   <section class="bloc"><h3 class="etiquette">La pensée de la nuit</h3><div id="pensee"><p>…</p></div></section>
   <section class="bloc"><h3 class="etiquette">Ce qui a changé</h3><ul id="journal"></ul></section>
+  <section class="bloc"><h3 class="etiquette">Noté pour Claude</h3><ul id="commandes"></ul></section>
 </aside>
 
 <aside class="droite">
-  <section class="bloc"><h3 class="etiquette">Ce qui attend ta décision</h3><ul id="attente"></ul></section>
   <section class="bloc"><h3 class="etiquette">L'état</h3>
     <div class="chiffres">
-      <div><b id="c-depense">—</b><span>dépensés ce mois</span></div>
+      <div><b id="c-depense">—</b><span id="c-depense-l">dépensés ce mois</span></div>
       <div><b id="c-veille">—</b><span>lectures en 24 h</span></div>
       <div><b id="c-agents">—</b><span>agents en service</span></div>
       <div><b id="c-questions">—</b><span>questions pour toi</span></div>
+      <div><b id="c-credits">—</b><span>crédits modèles restants</span></div>
+      <div><b id="c-claude">—</b><span>forfait Claude restant (semaine)</span></div>
     </div>
   </section>
+  <section class="bloc"><h3 class="etiquette">Ce qui attend ta décision</h3><ul id="attente"></ul></section>
 </aside>
 
 <div id="echange" aria-live="polite"><div class="toi" id="toi"></div><div class="lui" id="lui"></div></div>
@@ -72,6 +79,8 @@ form button svg{width:20px;height:20px}
   <input id="texte" placeholder="Parle-moi, ou écris…" aria-label="Ta demande">
   <button type="button" id="micro" aria-label="Parler"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
 </form>
+<p id="alerte" hidden></p>
+<p class="etiquette aide">touche la boule ou la barre d'espace pour parler · dis « stop » pour finir</p>
 <p class="etiquette demo" id="demo" hidden>données d'exemple : le cockpit n'est pas joignable</p>
 
 <script>
@@ -83,6 +92,8 @@ form button svg{width:20px;height:20px}
   var L = [-.55, -.45, .7], ln = Math.hypot(L[0], L[1], L[2]); L = L.map(function (v) { return v / ln; });
   var ETATS = { repos: { a: .018, f: 2.2, v: .06 }, ecoute: { a: .05, f: 3, v: .1 }, reflexion: { a: .035, f: 7, v: .22 }, parole: { a: .06, f: 4, v: .12 } };
   var etat = 'repos', niveau = 0, rot = 0, W, H, t0 = performance.now();
+  var centre = { x: 0, y: 0, r: 0 }, source = null; // source = ce que la boule écoute (ta voix ou la sienne)
+  function rms(an) { var b = new Uint8Array(an.fftSize), s = 0; an.getByteTimeDomainData(b); for (var i = 0; i < b.length; i++) { var v = (b[i] - 128) / 128; s += v * v; } return Math.sqrt(s / b.length); }
   var calme = matchMedia('(prefers-reduced-motion: reduce)').matches;
   function taille() { W = innerWidth; H = innerHeight; c.width = W * D; c.height = H * D; x.setTransform(D, 0, 0, D, 0, 0); }
   addEventListener('resize', taille); taille();
@@ -91,6 +102,8 @@ form button svg{width:20px;height:20px}
     rot += calme ? 0 : s.v * 0.016;
     x.clearRect(0, 0, W, H);
     var R = Math.min(W, H) * (W < 900 ? .3 : .26), cx = W / 2, cy = H * .45;
+    centre = { x: cx, y: cy, r: R };
+    if (source) niveau = Math.max(niveau, Math.min(1, rms(source) * 7));
     var ca = Math.cos(rot), sa = Math.sin(rot), inc = .35, ci = Math.cos(inc), si = Math.sin(inc);
     var amp = s.a + niveau * .12;
     // le halo : un souffle rose très léger derrière la boule, qui respire avec elle
@@ -124,7 +137,9 @@ form button svg{width:20px;height:20px}
   // ── Les informations des côtés, en direct depuis le cockpit (sinon, un exemple signalé) ──
   var EXEMPLE = { pensee: [{ titre: 'Créer une offre d’audit des traces d’agents IA', proposition: 'Une page d’offre illustrée par trois publications de la semaine.' }],
     journal: [{ acteur: 'essayeur', changement: 'slugify retenu, 25 tests réussis sans réseau' }, { acteur: 'porte', changement: 'livraison acceptée, code 0' }],
-    attente: [{ question: 'Les 30 % de l’automatisation : 12 mensualités ?' }], depense: 0.46, veille24h: 42, agents: 17, questions: 3 };
+    attente: [{ question: 'Les 30 % de l’automatisation : 12 mensualités ?' }], depense: 0.46, veille24h: 42, agents: 17, questions: 3,
+    commandes: [{ id: 1, texte: 'Crée une page pour la formation des particuliers' }],
+    budget: { credits_restants_usd: 8.2, credits_usd: 10, claude: [{ fenetre: 'semaine', reste: 18 }] }, alerte: '' };
   function li(liste, champ) { return liste.map(function (e) { var d = document.createElement('li'); d.textContent = champ(e); return d; }); }
   function remplir(d) {
     var pe = document.getElementById('pensee'); pe.innerHTML = '';
@@ -134,13 +149,25 @@ form button svg{width:20px;height:20px}
     var j = document.getElementById('journal'); j.innerHTML = '';
     li((d.journal || []).slice(0, 5), function (e) { return e.acteur + ' · ' + e.changement; }).forEach(function (n) { j.appendChild(n); });
     var at = document.getElementById('attente'); at.innerHTML = '';
-    li((d.attente || []).slice(0, 4), function (e) { return e.question; }).forEach(function (n) { at.appendChild(n); });
+    li((d.attente || []).slice(0, 3), function (e) { return e.question; }).forEach(function (n) { at.appendChild(n); });
     if (!(d.attente || []).length) at.innerHTML = '<li>Rien : tout avance.</li>';
     document.getElementById('c-depense').textContent = d.depense == null ? '—' : d.depense.toFixed(2).replace('.', ',') + ' $';
     document.getElementById('c-veille').textContent = d.veille24h ?? '—';
     document.getElementById('c-agents').textContent = d.agents ?? '—';
     document.getElementById('c-questions').textContent = d.questions ?? '—';
+    var b = d.budget || {}, cl = (b.claude || []).filter(function (c) { return c.fenetre === 'semaine'; })[0];
+    if (b.mois_eur != null) { // la dépense complète du mois (tous les modèles), face au plafond
+      document.getElementById('c-depense').textContent = b.mois_eur.toFixed(2).replace('.', ',') + ' €';
+      document.getElementById('c-depense-l').textContent = 'dépensés ce mois, sur ' + b.plafond_eur + ' €';
+    }
+    document.getElementById('c-credits').textContent = b.credits_restants_usd == null ? '—' : b.credits_restants_usd.toFixed(2).replace('.', ',') + ' $';
+    document.getElementById('c-claude').textContent = cl ? cl.reste + ' %' : '—';
+    var co = document.getElementById('commandes'); co.innerHTML = '';
+    li((d.commandes || []).slice(0, 3), function (e) { return 'n°' + e.id + ' · ' + e.texte; }).forEach(function (n) { co.appendChild(n); });
+    if (!(d.commandes || []).length) co.innerHTML = '<li>Rien en attente.</li>';
+    var al = document.getElementById('alerte'); al.textContent = d.alerte || ''; al.hidden = !d.alerte; alerte = d.alerte || '';
   }
+  var alerte = '';
   function charger() {
     fetch('/api/jarvis', { cache: 'no-store' }).then(function (r) { if (!r.ok) throw 0; return r.json(); })
       .then(function (d) { document.getElementById('demo').hidden = true; remplir(d); })
@@ -148,36 +175,123 @@ form button svg{width:20px;height:20px}
   }
   charger(); setInterval(charger, 60000);
 
-  // ── Parler : par écrit ou à la voix ; il répond à l'écrit et à voix haute ──
-  var toi = document.getElementById('toi'), lui = document.getElementById('lui');
-  function dire(texte) {
-    if (!('speechSynthesis' in window)) { changer('repos', 'au repos'); return; }
-    var u = new SpeechSynthesisUtterance(texte.replace(/\[[^\]]*\]/g, '').slice(0, 900)); u.lang = 'fr-FR'; u.rate = 1.02;
-    var v = speechSynthesis.getVoices().filter(function (v) { return /^fr/i.test(v.lang); })[0]; if (v) u.voice = v;
-    u.onstart = function () { changer('parole', 'parle'); };
-    u.onboundary = function () { niveau = Math.min(1, niveau + .35); };
-    u.onend = function () { changer('repos', 'au repos'); };
-    speechSynthesis.cancel(); speechSynthesis.speak(u);
+  // ── La conversation : il t'écoute, sent quand tu as fini, répond à voix haute, puis t'écoute de nouveau ──
+  // La transcription et la voix viennent du serveur (faster-whisper et Piper) : rien ne part ailleurs,
+  // et cela marche dans Brave, qui ne transcrit pas la voix lui-même.
+  var toi = document.getElementById('toi'), lui = document.getElementById('lui'), micro = document.getElementById('micro');
+  var ctxA = null, anaMic = null, anaVoix = null, flux = null, enreg = null, conversation = false, rates = 0, premier = true;
+  var son = new Audio();
+  var FIN = /^(stop|arr[êe]te|merci (jarvis|cortex|c'est tout|beaucoup c'est tout)|c'est tout|au revoir|[çc]a ira|bonne nuit|fin de la conversation)\b/i;
+
+  function audio() {
+    if (!ctxA) {
+      ctxA = new (window.AudioContext || window.webkitAudioContext)();
+      var s = ctxA.createMediaElementSource(son); anaVoix = ctxA.createAnalyser(); anaVoix.fftSize = 1024;
+      s.connect(anaVoix); anaVoix.connect(ctxA.destination);
+    }
+    if (ctxA.state === 'suspended') ctxA.resume();
+  }
+  function pourLaVoix(t) {
+    return t.replace(/https?:\/\/\S+/g, '').replace(/\[[^\]]*\]/g, '').replace(/[*_#>`|]/g, '')
+      .replace(/\s*\n+\s*/g, '. ').replace(/\.\s*\./g, '.').replace(/\s{2,}/g, ' ').trim().slice(0, 1400);
+  }
+  function apres(suite) { source = null; if (conversation && suite) suite(); else if (!conversation) changer('repos', 'au repos'); }
+  function parler(texte, suite) {
+    var t = pourLaVoix(texte); if (!t) return apres(suite);
+    fetch('/api/jarvis/parler', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ texte: t }) })
+      .then(function (r) { if (!r.ok) throw 0; return r.blob(); })
+      .then(function (b) {
+        audio(); var u = URL.createObjectURL(b); son.src = u; source = anaVoix; changer('parole', 'parle');
+        son.onended = function () { URL.revokeObjectURL(u); apres(suite); };
+        return son.play();
+      })
+      .catch(function () { // sans la voix du serveur : la voix du navigateur, si elle existe
+        if (!('speechSynthesis' in window)) return apres(suite);
+        var u = new SpeechSynthesisUtterance(t); u.lang = 'fr-FR';
+        u.onstart = function () { changer('parole', 'parle'); };
+        u.onboundary = function () { niveau = Math.min(1, niveau + .35); };
+        u.onend = function () { apres(suite); };
+        speechSynthesis.cancel(); speechSynthesis.speak(u);
+      });
   }
   function demander(message) {
     if (!message.trim()) return;
     toi.textContent = message; lui.textContent = ''; changer('reflexion', 'réfléchit');
-    fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: message }) })
+    fetch('/api/jarvis/dire', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: message }) })
       .then(function (r) { return r.json(); })
-      .then(function (d) { var rep = d.reply || '(pas de réponse)'; lui.textContent = rep; dire(rep); charger(); })
-      .catch(function () { lui.textContent = 'Le cockpit n’est pas joignable d’ici : ouvre cette page depuis cockpit.raime.fr/jarvis.'; changer('repos', 'au repos'); });
+      .then(function (d) { var rep = d.reply || '(pas de réponse)'; lui.textContent = rep; charger(); parler(rep, ecouter); })
+      .catch(function () { lui.textContent = 'Le cockpit n’est pas joignable d’ici : ouvre cette page depuis cockpit.raime.fr/jarvis.'; finir(); });
   }
-  document.getElementById('formulaire').addEventListener('submit', function (e) { e.preventDefault(); var i = document.getElementById('texte'); demander(i.value); i.value = ''; });
-
-  var SR = window.SpeechRecognition || window.webkitSpeechRecognition, micro = document.getElementById('micro'), ecoute = null;
-  micro.addEventListener('click', function () {
-    if (!SR) { lui.textContent = 'Ce navigateur ne transcrit pas la voix lui-même (c’est le cas de Brave) : la transcription se fera sur ton serveur, à l’étape suivante. Écris en attendant.'; return; }
-    if (ecoute) { ecoute.stop(); return; }
-    ecoute = new SR(); ecoute.lang = 'fr-FR'; ecoute.interimResults = true;
-    ecoute.onstart = function () { micro.classList.add('actif'); changer('ecoute', 'écoute'); };
-    ecoute.onresult = function (e) { var r = e.results[e.results.length - 1]; toi.textContent = r[0].transcript; niveau = Math.min(1, niveau + .2); if (r.isFinal) demander(r[0].transcript); };
-    ecoute.onend = function () { micro.classList.remove('actif'); ecoute = null; if (etat === 'ecoute') changer('repos', 'au repos'); };
-    ecoute.start();
+  function transcrire(blob) {
+    changer('reflexion', 'transcrit');
+    fetch('/api/jarvis/voix', { method: 'POST', body: blob })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        var t = (d.texte || '').trim();
+        if (!t) { if (++rates >= 2) { lui.textContent = 'Je n’ai rien entendu. Touche la boule pour reprendre.'; return finir(); } return parler('Je n’ai pas saisi, redis-moi ?', ecouter); }
+        rates = 0;
+        if (FIN.test(t.replace(/[.,!?…]/g, ' ').trim())) { toi.textContent = t; lui.textContent = 'À tout à l’heure.'; conversation = false; return parler('À tout à l’heure.', null); }
+        demander(t);
+      })
+      .catch(function () { lui.textContent = 'La voix du serveur ne répond pas. Écris-moi en attendant.'; finir(); });
+  }
+  function ecouter() {
+    if (!conversation) return;
+    audio();
+    var go = function () {
+      var type = window.MediaRecorder && MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : '';
+      var morceaux = [], aParle = false, annule = false, debut = performance.now(), fond = 0.01, dernier = 0, veille = null;
+      enreg = new MediaRecorder(flux, type ? { mimeType: type } : undefined);
+      enreg.annuler = function () { annule = true; if (enreg.state === 'recording') enreg.stop(); };
+      enreg.envoyer = function () { if (enreg.state === 'recording') { aParle = true; enreg.stop(); } };
+      enreg.ondataavailable = function (e) { if (e.data.size) morceaux.push(e.data); };
+      enreg.onstop = function () {
+        clearInterval(veille); source = null; micro.classList.remove('actif');
+        if (annule) return;
+        if (!aParle) { lui.textContent = 'Je reste là. Touche la boule pour reparler.'; return finir(); }
+        transcrire(new Blob(morceaux, { type: enreg.mimeType || 'audio/webm' }));
+      };
+      source = anaMic; micro.classList.add('actif'); changer('ecoute', 'écoute');
+      enreg.start(250);
+      // tu as fini de parler quand le silence dure 1,2 s après ta voix
+      veille = setInterval(function () {
+        if (!enreg || enreg.state !== 'recording') return clearInterval(veille);
+        var v = rms(anaMic), t = performance.now() - debut;
+        if (t < 350) fond = Math.min(.05, Math.max(fond, v));
+        else if (v > Math.max(.025, fond * 2.5)) { aParle = true; dernier = performance.now(); }
+        if ((aParle && performance.now() - dernier > 1200) || (!aParle && t > 9000) || t > 30000) enreg.stop();
+      }, 60);
+    };
+    if (flux) return go();
+    navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } })
+      .then(function (f) { flux = f; var s = ctxA.createMediaStreamSource(f); anaMic = ctxA.createAnalyser(); anaMic.fftSize = 1024; s.connect(anaMic); go(); })
+      .catch(function () { lui.textContent = 'Le micro est refusé : clique sur le cadenas à gauche de l’adresse, autorise le micro, puis touche la boule.'; finir(); });
+  }
+  function finir() {
+    conversation = false; source = null; micro.classList.remove('actif');
+    if (enreg && enreg.state === 'recording') enreg.annuler();
+    if (flux) { flux.getTracks().forEach(function (t) { t.stop(); }); flux = null; anaMic = null; }
+    changer('repos', 'au repos');
+  }
+  // Un seul geste pour tout : commencer, lui couper la parole, dire « j'ai fini ».
+  function basculer() {
+    if (!conversation) {
+      conversation = true; rates = 0; audio();
+      var accueil = premier && alerte ? alerte + ' Je t’écoute.' : 'Je t’écoute.'; premier = false;
+      lui.textContent = accueil; toi.textContent = '';
+      return parler(accueil, ecouter);
+    }
+    if (etat === 'parole') { son.pause(); if (window.speechSynthesis) speechSynthesis.cancel(); source = null; return ecouter(); }
+    if (etat === 'ecoute' && enreg) return enreg.envoyer();
+  }
+  micro.addEventListener('click', basculer);
+  c.addEventListener('click', function (e) { if (Math.hypot(e.clientX - centre.x, e.clientY - centre.y) < centre.r * 1.15) basculer(); });
+  addEventListener('keydown', function (e) {
+    if (e.code === 'Space' && document.activeElement !== document.getElementById('texte')) { e.preventDefault(); basculer(); }
+    if (e.code === 'Escape') { son.pause(); finir(); }
+  });
+  document.getElementById('formulaire').addEventListener('submit', function (e) {
+    e.preventDefault(); var i = document.getElementById('texte'); audio(); demander(i.value); i.value = '';
   });
 })();
 </script>
