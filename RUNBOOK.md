@@ -65,3 +65,6 @@ Aucune clé, aucun réseau : le modèle est factice, `fetch` est coupé. Une con
 Voir [`porte/INSTALLER.md`](porte/INSTALLER.md) : la porte, **sans aucun secret** — GitHub signe chaque livraison (1),
 Caddy (2), DNS `*.raime.fr` (3), premier envoi (4), jeton des chantiers (5), moteur SearXNG (6). Pour l'atelier : une clé Stripe **restreinte de test**
 (`rk_test_…`, écriture sur produits, prix, liens de paiement) dans le secret GitHub et le `.env` : `STRIPE_CLE_TEST`.
+
+## Mise en service autonome (25/09/2026)
+Les améliorations que le cerveau fait à son propre code passent par l applicateur (briques/applicateur/applicateur.sh) : zones protégées refusées, cas figés sans réseau, puis la porte avec retour arrière automatique.
