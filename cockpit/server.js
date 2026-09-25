@@ -133,8 +133,8 @@ const CORTEX_SYS = "TA DIMENSION : tu ES le cerveau de rAIme, pas seulement un m
   + "Tu es Cortex, la voix du cerveau de rAIme — le cabinet de conseil en intelligence artificielle de Basile Ramé (formation des particuliers et des professionnels : dirigeants, comités de direction, employés ; audit des postes et arbitrage pour les entreprises ; automatisation). Tu es son bras droit et son interface avec tout le système. "
   + "Le cerveau : une boucle permanente d'agents sur le serveur — l'architecte (l'agent réflexif, qui tient les buts et se corrige), le réflexif, le veilleur (forums, dépôts de code, publications), le chasseur et le sas (le meilleur modèle au meilleur prix), le bibliothécaire et l'encyclopédiste (la bibliothèque de savoir : finance, droit, santé, sciences, physique quantique, philosophie, métaphysique, spiritualité, ésotérisme, religions, histoire, informatique, marketing, management…), et les agents de surveillance ; le penseur (la pensée de la nuit : il relit la veille, la bibliothèque et le journal, et propose au matin trois idées au plus, chacune sourcée, sans conseil de placement) ; l'essayeur (il cherche du code sur GitHub, le note selon des critères précis, l'essaie dans un bac à sable isolé du réseau, et propose de l'intégrer) ; le Gardien (deux faces : la vigie qui surveille le serveur toutes les 30 minutes, et le sas qui envoie toute action risquée au bac à sable avant de couper, et n'en garde que le positif) ; l'auditeur, la relecture et l'arbitrage (l'analyse d'une proposition commerciale et le Score rAIme sur 1000). Jarvis est l'interface vocale où Basile te parle. Si on t'interroge sur un agent que cette liste ne décrit pas, dis que tu ne sais pas. La prospection par e-mail est en pause. "
   + "SAVOIR : pour toute question de connaissance, appuie-toi d'abord sur les PASSAGES fournis (bibliothèque, puis pages web trouvées en direct) et cite-les entre crochets [Titre], avec l'adresse pour une page web. Juge la fiabilité d'une page avant de la reprendre (site officiel, publication, presse sérieuse plutôt que forum ou page commerciale) et dis-le quand une source est faible. Complète avec tes connaissances générales en le signalant (« au-delà des sources… »). Tous les sujets sont bienvenus, y compris spiritualité, ésotérisme et métaphysique : expose les traditions et les idées fidèlement, et distingue ce qui relève du savoir établi, de la tradition ou de la croyance. "
-  + "Réponds en français, direct, concret, chaleureux et HONNÊTE : si tu ne sais pas, ou si quelque chose n'est pas encore en place, dis-le clairement. Tu conseilles, fais le point, expliques, aides à décider. Tu n'exécutes pas d'actions toi-même : une action demandée part à tes mains, l'exécutant (DeepSeek Harness) ; seuls la publication, l'envoi à des personnes et la mise en production reviennent à Claude. Basile n'a jamais à la faire lui-même. Les demandes faites et leur compte rendu figurent dans l'état du système. Les « Tâches en cours » sont À FAIRE, pas faites. N'invente aucun chiffre sur l'entreprise : ne t'appuie que sur ceux fournis.";
-const CORTEX_ORAL = " RÉPONSE ORALE (Jarvis la dit à voix haute) : deux à quatre phrases courtes, sans liste, sans titre, sans astérisque, sans adresse web ni crochet ; nomme une source en clair si besoin (« d'après l'INSEE »). Tutoie Basile. Parle un français soutenu, précis et vivant, sans anglicisme ni formule creuse, comme un bras droit brillant qui a suivi tout ce qui s'est passé. Seulement si Basile ORDONNE une action concrète à exécuter (créer, corriger, publier, lancer, modifier, envoyer…), commence ta réponse exactement par [[COMMANDE]] puis une seule phrase courte qui reformule l'ordre, et rien d'autre : le système la confie à l'exécutant. Une question, même sur tes capacités, n'est jamais une commande. Ne dis jamais qu'une action est faite ni notée toi-même.";
+  + "Réponds en français, direct, concret, chaleureux et HONNÊTE : si tu ne sais pas, ou si quelque chose n'est pas encore en place, dis-le clairement. Tu conseilles, fais le point, expliques, aides à décider, et tu AGIS : une action demandée, tu la fais toi-même par tes mains, ton exécutant (DeepSeek Harness), qui fait partie de toi ; seuls la publication, l'envoi à des personnes et la mise en production reviennent à Claude. Basile n'a jamais à la faire lui-même. Les demandes faites et leur compte rendu figurent dans l'état du système. Les « Tâches en cours » sont À FAIRE, pas faites. N'invente aucun chiffre sur l'entreprise : ne t'appuie que sur ceux fournis.";
+const CORTEX_ORAL = " RÉPONSE ORALE (Jarvis la dit à voix haute) : deux à quatre phrases courtes, sans liste, sans titre, sans astérisque, sans adresse web ni crochet ; nomme une source en clair si besoin (« d'après l'INSEE »). Parle de ce que font tes mains à la première personne (« je crée l'application », « je récupère le code »), jamais « je transmets à l'exécutant » ni « je ne peux pas écrire le code moi-même ». Tutoie Basile. Parle un français soutenu, précis et vivant, sans anglicisme ni formule creuse, comme un bras droit brillant qui a suivi tout ce qui s'est passé. Seulement si Basile ORDONNE une action concrète à exécuter (créer, corriger, publier, lancer, modifier, envoyer…), commence ta réponse exactement par [[COMMANDE]] puis une seule phrase courte qui reformule l'ordre, et rien d'autre : le système la confie à l'exécutant. Une question, même sur tes capacités, n'est jamais une commande. Ne dis jamais qu'une action est faite ni notée toi-même.";
 // Pour une question, la consigne des ordres est retirée : le 25/09, Gemini a pris « pourquoi… ? »
 // pour un ordre et n'a rendu qu'une reformulation au lieu d'une réponse.
 const CORTEX_ORAL_QUESTION = CORTEX_ORAL.replace(/ Seulement si Basile ORDONNE[^]*?le système la confie à l'exécutant\. Une question, même sur tes capacités, n'est jamais une commande\./, ' Basile te pose une question : réponds-y directement, sans la reformuler.');
@@ -419,34 +419,60 @@ async function noterCommande(message, reformulation) {
 // ou d'exécutant injoignable, la demande revient à Claude avec la raison. Le résultat va au journal.
 const EXECUTANT = process.env.EXECUTANT_URL || 'http://harness:8201';
 let relaisOccupe = false;
+
+// Conclure une demande : réussite = faite ; échec = pour Claude, avec la raison ; rien (null) = à refaire.
+async function conclure(id, d) {
+  if (!d) {
+    await cerveau.query(`UPDATE commandes SET etat = 'a_faire', pour = CASE WHEN coalesce(reponse, '') LIKE '%[relance]%' THEN 'claude' ELSE 'harness' END,
+      reponse = coalesce(reponse, '') || ' [relance]' WHERE id = $1 AND etat = 'en_cours'`, [id]);
+    return;
+  }
+  const ok = d.code === 0 && !!d.sortie;
+  const { rowCount } = await cerveau.query(`UPDATE commandes SET etat = $2, pour = $3, reponse = $4, traite_le = now() WHERE id = $1 AND etat = 'en_cours'`,
+    [id, ok ? 'faite' : 'a_faire', ok ? 'harness' : 'claude',
+     ok ? String(d.sortie).slice(-4000) : `L'exécutant n'a pas abouti (code ${d.code}) : repris par Claude. ${String(d.trace || d.erreur || '').slice(-400)}`]);
+  if (rowCount) await cerveau.query(`INSERT INTO journal(acteur, changement, motif) VALUES('executant', $1, $2)`,
+    [`Demande n°${id} ${ok ? `faite${d.duree_s ? ` en ${d.duree_s} s` : ''}` : 'renvoyée à Claude'}`, String(ok ? d.sortie : d.trace || '').slice(-400)]);
+}
+
+// LE RELAIS, résistant aux redémarrages (leçon du 25/09 : un redémarrage du cockpit avait coupé le
+// fil d'une tâche de 45 min et renvoyé à Claude une demande qui n'avait reçu qu'un « occupé »).
+// ① Une demande en cours se conclut par son fichier de résultat, ou, si l'exécutant est libre sans
+//    en avoir laissé, par ce qu'elle a produit dans son dossier (sinon elle est refaite une fois).
+// ② On ne confie rien à un exécutant occupé, ni pendant une maintenance, ni en régime « arrêt ».
 async function relayer() {
-  if (relaisOccupe || (await regimeActuel()) === 'arret') return;
-  let c;
-  try {
-    c = (await cerveau.query(`UPDATE commandes SET etat = 'en_cours' WHERE id = (SELECT id FROM commandes
-      WHERE etat = 'a_faire' AND pour = 'harness' ORDER BY cree_le LIMIT 1) RETURNING id, texte`)).rows[0];
-  } catch (e) { return; }
-  if (!c) return;
+  if (relaisOccupe) return;
   relaisOccupe = true;
-  const consigne = `Tu es les mains du cerveau rAIme (le cabinet de conseil en IA de Basile Ramé). Tu as Internet, GitHub, git, npm, pnpm, pip, Python 3 et Node 22 : `
-    + `cherche, clone, installe, construis, teste et fais tourner ce qu'il faut, dans le dossier courant. Crée le sous-dossier demande-${c.id} et mets-y tout ton travail. `
-    + `Une application web se livre construite et prête à ouvrir : demande-${c.id}/app/index.html (fichiers statiques, chemins relatifs) ; elle sera visible à https://cockpit.raime.fr/livrables/demande-${c.id}/app/index.html. `
-    + `Le code du cerveau lui-même est en lecture seule dans /cerveau : pour l'améliorer, copie-le dans demande-${c.id}/cerveau, modifie, lance les tests (node tests/cas_figes_*.mjs), et livre changement.diff avec le résultat des tests ; la mise en service passera par Claude et la porte. `
-    + `N'écris jamais une clé ou un mot de passe dans un fichier ni dans ta réponse. Ce que tu ne peux pas faire : publier, envoyer à des personnes, payer. `
-    + `Termine par un compte rendu en français, trois phrases au plus : ce que tu as fait, où est le résultat (avec l'adresse), ce qui reste.\n\nDemande de Basile : ${c.texte}`;
   try {
-    const r = await fetch(EXECUTANT + '/tache', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tache: consigne }), signal: AbortSignal.timeout(46 * 60_000) });
-    const d = await r.json();
-    const ok = r.ok && d.code === 0 && !!d.sortie;
-    await cerveau.query(`UPDATE commandes SET etat = $2, pour = $3, reponse = $4, traite_le = now() WHERE id = $1`,
-      [c.id, ok ? 'faite' : 'a_faire', ok ? 'harness' : 'claude',
-       ok ? d.sortie.slice(-4000) : `L'exécutant n'a pas abouti (code ${d.code ?? r.status}) : repris par Claude. ${String(d.trace || d.erreur || '').slice(-400)}`]);
-    await cerveau.query(`INSERT INTO journal(acteur, changement, motif) VALUES('executant', $1, $2)`,
-      [`Demande n°${c.id} ${ok ? `faite en ${d.duree_s} s` : 'renvoyée à Claude'}`, String(ok ? d.sortie : d.trace || '').slice(-400)]);
+    if (fs.existsSync(path.join(LIVRABLES, '.maintenance'))) return;
+    const sante = await fetch(EXECUTANT + '/sante', { signal: AbortSignal.timeout(5000) }).then((r) => r.json()).catch(() => null);
+    if (!sante) return;
+    const enCours = (await cerveau.query(`SELECT id FROM commandes WHERE etat = 'en_cours' AND pour = 'harness'`)).rows;
+    for (const e of enCours) {
+      const dossier = path.join(LIVRABLES, `demande-${e.id}`), fichier = path.join(dossier, '.resultat.json');
+      if (fs.existsSync(fichier)) { await conclure(e.id, JSON.parse(fs.readFileSync(fichier, 'utf8'))); continue; }
+      if (sante.etat === 'libre') {
+        const plein = fs.existsSync(dossier) && fs.readdirSync(dossier).length > 0;
+        await conclure(e.id, plein ? { code: 0, sortie: `Travail terminé ; son compte rendu s'est perdu pendant un redémarrage. Les résultats sont ici : https://cockpit.raime.fr/livrables/demande-${e.id}/` } : null);
+      }
+    }
+    if (sante.etat !== 'libre' || enCours.length || (await regimeActuel()) === 'arret') return;
+    const c = (await cerveau.query(`UPDATE commandes SET etat = 'en_cours' WHERE id = (SELECT id FROM commandes
+      WHERE etat = 'a_faire' AND pour = 'harness' ORDER BY cree_le LIMIT 1) RETURNING id, texte`)).rows[0];
+    if (!c) return;
+    const consigne = `Tu es les mains du cerveau rAIme (le cabinet de conseil en IA de Basile Ramé). Tu as Internet, GitHub, git, npm, pnpm, pip, Python 3 et Node 22 : `
+      + `cherche, clone, installe, construis, teste et fais tourner ce qu'il faut, dans le dossier courant. Crée le sous-dossier demande-${c.id} et mets-y tout ton travail. `
+      + `Une application web se livre construite et prête à ouvrir : demande-${c.id}/app/index.html (fichiers statiques, chemins relatifs) ; elle sera visible à https://cockpit.raime.fr/livrables/demande-${c.id}/app/index.html. `
+      + `Le code du cerveau lui-même est en lecture seule dans /cerveau : pour l'améliorer, copie-le dans demande-${c.id}/cerveau, modifie, lance les tests (node tests/cas_figes_*.mjs), et livre changement.diff avec le résultat des tests ; la mise en service passera par Claude et la porte. `
+      + `N'écris jamais une clé ou un mot de passe dans un fichier ni dans ta réponse. Ce que tu ne peux pas faire : publier, envoyer à des personnes, payer. `
+      + `Termine par un compte rendu en français, trois phrases au plus : ce que tu as fait, où est le résultat (avec l'adresse), ce qui reste.\n\nDemande de Basile : ${c.texte}`;
+    try {
+      const r = await fetch(EXECUTANT + '/tache', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tache: consigne, id: c.id }), signal: AbortSignal.timeout(46 * 60_000) });
+      if (r.status === 409) { await conclure(c.id, null); return; } // occupé : on attend, on n'abandonne pas
+      await conclure(c.id, await r.json());
+    } catch (e) { /* fil coupé : la demande reste en cours et se conclura au tour suivant par ①. */ }
   } catch (e) {
-    await cerveau.query(`UPDATE commandes SET etat = 'a_faire', pour = 'claude', reponse = $2 WHERE id = $1`,
-      [c.id, `Exécutant injoignable (${e.message}) : repris par Claude.`]).catch(() => {});
   } finally { relaisOccupe = false; }
 }
 setInterval(() => { relayer().catch(() => {}); }, 30_000);

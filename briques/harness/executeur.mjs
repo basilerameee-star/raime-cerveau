@@ -6,6 +6,7 @@
 // au reste du serveur. C'est le cockpit qui lui passe les commandes de Jarvis et note le résultat.
 import http from 'node:http';
 import { spawn } from 'node:child_process';
+import fs from 'node:fs';
 
 const MAX_MS = 45 * 60_000; // cloner, installer, construire : 45 minutes au plus
 let occupe = false;
@@ -34,10 +35,18 @@ http.createServer((req, res) => {
   let corps = '';
   req.on('data', (c) => { corps += c; if (corps.length > 20_000) req.destroy(); });
   req.on('end', async () => {
-    let tache = '';
-    try { tache = String(JSON.parse(corps).tache || '').trim(); } catch {}
+    let tache = '', id = null;
+    try { const j = JSON.parse(corps); tache = String(j.tache || '').trim(); id = Number.isInteger(j.id) ? j.id : null; } catch {}
     if (!tache) return repondre(400, { erreur: 'tâche vide' });
     occupe = true;
-    try { repondre(200, await executer(tache)); } finally { occupe = false; }
+    try {
+      const r = await executer(tache);
+      // Le résultat est aussi déposé dans le dossier de la demande : si le cockpit a redémarré
+      // pendant la tâche, il le retrouve là au lieu de le perdre (leçon du 25/09).
+      if (id) {
+        try { fs.mkdirSync(`/travail/demande-${id}`, { recursive: true }); fs.writeFileSync(`/travail/demande-${id}/.resultat.json`, JSON.stringify(r)); } catch {}
+      }
+      repondre(200, r);
+    } finally { occupe = false; }
   });
 }).listen(8201, () => console.log('exécutant prêt sur :8201'));
