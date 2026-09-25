@@ -136,8 +136,12 @@ const CORTEX_SYS = "Tu es Cortex, la voix du cerveau de rAIme — le cabinet de 
 const CORTEX_ORAL = " RÉPONSE ORALE (Jarvis la dit à voix haute) : deux à quatre phrases courtes, sans liste, sans titre, sans astérisque, sans adresse web ni crochet ; nomme une source en clair si besoin (« d'après l'INSEE »). Tutoie Basile. Parle un français soutenu, précis et vivant, sans anglicisme ni formule creuse, comme un bras droit brillant qui a suivi tout ce qui s'est passé. Seulement si Basile ORDONNE une action concrète à exécuter (créer, corriger, publier, lancer, modifier, envoyer…), commence ta réponse exactement par [[COMMANDE]] puis une seule phrase courte qui reformule l'ordre, et rien d'autre : le système la note pour Claude. Une question, même sur tes capacités, n'est jamais une commande. Ne dis jamais qu'une action est faite ni notée toi-même.";
 
 // Le régime de dépense fixé par l'économe (agents/econome.js) ; « normal » si rien n'est lu.
-const MODELE_JARVIS = 'google/gemini-3.1-flash-lite';
-const MODELE_LEGER = 'google/gemini-2.5-flash-lite';
+// Mesure du 25/09/2026 sur une vraie question de client (devis sur trois ans) : DeepSeek V4 Flash
+// avec réflexion, juste et le moins cher de tous (0,00012 $, 6 s) ; V4 Pro plus fouillé (0,00095 $) ;
+// Gemini 3.8 Flash le plus riche mais onze fois plus cher. Basile préfère attendre un peu pour mieux.
+const MODELE_JARVIS = 'deepseek/deepseek-v4-flash-0731';
+const MODELE_PROFOND = 'deepseek/deepseek-v4-pro-0813'; // « réfléchis à fond », « en profondeur »
+const PROFOND = /réfléchis (à fond|bien|en profondeur)|en profondeur|analyse approfondie|prends ton temps/i;
 async function regimeActuel() {
   try { return ((await cerveau.query("SELECT mode FROM regime_budget ORDER BY le DESC LIMIT 1")).rows[0] || {}).mode || 'normal'; }
   catch (e) { return 'normal'; }
@@ -216,11 +220,13 @@ async function repondreCortex(message, oral, extra) {
     // Gemini, appelé directement (mesure du 25/09/2026 : 1,6 s, 0,00024 $ la réponse courte,
     // six fois moins cher que gpt-4.1 et un français plus soutenu). Le régime économe prend
     // la version encore plus légère.
-    const MODELE = mode === 'econome' || mode === 'reserve' ? MODELE_LEGER : MODELE_JARVIS;
+    const leger = mode === 'econome' || mode === 'reserve';
+    const MODELE = !leger && PROFOND.test(message) ? MODELE_PROFOND : MODELE_JARVIS;
     try {
       const r = await fetch('https://openrouter.ai/api/v1/chat/completions', { method: 'POST',
         headers: { Authorization: 'Bearer ' + process.env.OPENROUTER_API_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: MODELE, messages, max_tokens: 700 }), signal: AbortSignal.timeout(60000) });
+        // la réflexion compte dans max_tokens ; en régime économe, il répond sans réfléchir
+        body: JSON.stringify({ model: MODELE, messages, max_tokens: 2500, reasoning: { enabled: !leger } }), signal: AbortSignal.timeout(90000) });
       const d = await r.json();
       reply = (d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content) || '';
     } catch (e) {}
@@ -232,6 +238,7 @@ async function repondreCortex(message, oral, extra) {
       reply = (d && d.reply) || '';
     } catch (e) {}
   }
+  reply = (reply || "").trim();
   if (!reply) reply = "(Cortex est indisponible à l'instant — réessaie dans un moment.)";
   await q("INSERT INTO cortex_chat (role, content) VALUES ('assistant', $1)", [reply]);
   return reply;
