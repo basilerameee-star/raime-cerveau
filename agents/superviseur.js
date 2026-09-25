@@ -194,6 +194,26 @@ ${anos.length ? anos.map(a => `- [${a.gravite}] ${a.constat}`).join('\n') : '- a
 
 Décide.`;
 
+  // RIEN DE NEUF, RIEN À PAYER (25/09/2026 : la surveillance faisait 78 % de la dépense des agents,
+  // six jugements par jour d'un modèle fort, souvent sur la même situation). Mêmes anomalies (chiffres
+  // mis à part) et mêmes changements qu'au dernier jugement de moins de 24 h : on le reprend tel quel.
+  const signature = (as, chg) => JSON.stringify([
+    (as || []).map((a) => `${a.gravite}:${String(a.constat).replace(/\d+([.,]\d+)?/g, '#')}`).sort(),
+    (chg || []).map((c) => c.changement)]);
+  try {
+    const { rows } = await brain.query(
+      `SELECT etat, resume, anomalies, decisions, faits->'changements_recents' AS chg, created_at
+       FROM supervision WHERE modele IS NOT NULL ORDER BY created_at DESC LIMIT 1`);
+    const p = rows[0];
+    if (p && Date.now() - new Date(p.created_at).getTime() < 24 * 3600e3
+        && signature(p.anomalies, p.chg) === signature(anos, faits.changements_recents)) {
+      await logRun(brain, { agent: 'superviseur', task: 'inchange', model: null, tokensIn: 0, tokensOut: 0,
+        costUsd: 0, ms: 0, status: 'inchange', promptVersion: PROMPT_VERSION });
+      return { faits, anomalies: anos, rapport: { etat_general: p.etat, resume: p.resume, ...(p.decisions || {}) },
+        meta: { model: null, cout: money(0), ms: 0, inchange: true } };
+    }
+  } catch { /* sans historique lisible, on juge : mieux vaut payer une fois que rater une alerte */ }
+
   const res = await askJson({ task: 'raisonnement', system: SYSTEM, user, maxTokens: 9000, temperature: 0.2 });
   const r = res.meta;
   const d = res.data || { etat_general: 'vigilance', resume: 'Analyse indisponible', decisions: [], initiatives: [] };

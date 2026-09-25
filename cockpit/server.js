@@ -231,11 +231,13 @@ async function repondreCortex(message, oral, extra) {
       reply = (d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content) || '';
     } catch (e) {}
   }
-  if (!reply && mode !== 'arret') { // repli : l'ancien chemin par n8n
+  if (!reply && mode !== 'arret') { // repli : une seconde chance sur V4 Pro (l'ancien chemin par n8n et gpt-4.1 coûtait dix fois plus)
     try {
-      const r = await fetch('http://n8n:5678/webhook/cortex-chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages }) });
+      const r = await fetch('https://openrouter.ai/api/v1/chat/completions', { method: 'POST',
+        headers: { Authorization: 'Bearer ' + process.env.OPENROUTER_API_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: MODELE_PROFOND, messages, max_tokens: 2500 }), signal: AbortSignal.timeout(90000) });
       const d = await r.json();
-      reply = (d && d.reply) || '';
+      reply = (d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content) || '';
     } catch (e) {}
   }
   reply = (reply || "").trim();

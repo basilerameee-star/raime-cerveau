@@ -60,11 +60,15 @@ const RYTHMES = [
   // TikTok), texte et image fixe, relus par le code. Rien n'est publié : aucun compte n'existe.
   { nom: 'publiciste',   module: './publiciste.js',  fn: 'preparerSemaine', toutes: 7 * 24 * H, besoinN8n: false },
   // La courbe de prix se construit un releve a la fois. C'est le temps l'ingredient.
+  // Le penseur : la pensée de la nuit (au plus trois idées sourcées, sans conseil de placement),
+  // relue par Jarvis au matin. Entre 2 h et 5 h, heure de Paris, une fois par nuit.
+  { nom: 'penseur',      module: './penseur.js',     fn: 'penser',      toutes: 20 * H, besoinN8n: false, args: { garder: true }, heures: [2, 5] },
   { nom: 'metrologue', module: './metrologue.js', fn: 'mesurer', toutes: 7 * 24 * H, besoinN8n: false,
     args: { modeles: ['upstage/solar-pro4', 'deepseek/deepseek-v4-flash-0731', 'nex-agi/nex-n2-mini'] } },
 ];
 
-const dernier = {};   // mémoire en RAM ; au démarrage on lit la base pour ne pas tout relancer
+const dernier = {};
+const heureParis = () => +new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', hourCycle: 'h23' }).format(new Date());   // mémoire en RAM ; au démarrage on lit la base pour ne pas tout relancer
 
 // Chaque passage est noté par la boucle elle-même. Avant le 2026-09-24, seuls les agents qui
 // écrivaient dans agent_runs laissaient une trace : les autres (chasseur, veilleur, sas,
@@ -146,6 +150,7 @@ async function main() {
     try { r = await econome.evaluer({ brain }); } catch (e) { console.error(`[econome] lecture impossible : ${e.message}`); }
     for (const t of RYTHMES) {
       if (r.pauses.includes(t.nom)) continue;
+      if (t.heures && (heureParis() < t.heures[0] || heureParis() >= t.heures[1])) continue;
       const toutes = t.toutes * (econome.PAYANTS.has(t.nom) ? r.facteur : 1);
       if (Date.now() - (dernier[t.nom] || 0) >= toutes) {
         dernier[t.nom] = Date.now();
