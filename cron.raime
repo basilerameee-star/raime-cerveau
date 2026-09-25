@@ -1,5 +1,9 @@
 # rAIme — execution continue des agents
-# INSTALLATION (une seule commande, a lancer par Basile) :
+# ETAT AU 25/09/2026 (verifie sur le serveur) : CE FICHIER N'EST PAS INSTALLE, et il ne doit pas l'etre.
+# /etc/cron.d/raime-brain n'existe pas ; la boucle (agents/boucle.js) fait deja la supervision (4 h) et
+# la mise a jour du catalogue (12 h) ; le heraut ne tourne plus depuis le 03/09 (out/heraut.log).
+# L'installer lancerait ces deux taches en double. Il reste ici comme memoire de l'ancien rythme.
+# INSTALLATION (ancienne commande, a ne plus lancer) :
 #   ssh -i ~/.ssh/raime_vps root@2.29.6.94 'cp /opt/raime/raime-brain/cron.raime /etc/cron.d/raime-brain && chmod 0644 /etc/cron.d/raime-brain && service cron restart'
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin

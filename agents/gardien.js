@@ -13,6 +13,10 @@
 //                mitigé → on garde SEULEMENT les parties saines qui apportent un gain ;
 //                sain → l'action suit sa zone de la Constitution.
 //
+// LE GARDIEN A DEUX FACES. La vigie existe et tourne sur l'hôte toutes les 30 minutes
+// (/opt/raime/scripts/gardien.py) : elle compare l'état du système aux limites (budget, etc.) et
+// alerte. Ce module est le SAS : il juge une action AVANT qu'elle parte. Les deux se complètent.
+//
 // PAS ENCORE EN SERVICE : module pur, essayé par tests/cas_figes_gardien.mjs. Il se branche sur la
 // porte et sur la boucle après l'accord de Basile.
 
