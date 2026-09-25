@@ -813,6 +813,28 @@ const server = http.createServer(async (req, res) => {
     res.end(JSON.stringify(r));
     return;
   }
+  // Le résumé du cerveau pour le rapport du matin (workflow n8n « Héraut · Rapport quotidien »,
+  // 7 h 30) : des faits, en français clair, groupés par partie. Rien n'est inventé ni reformulé.
+  if (req.url === '/api/rapport') {
+    const lire = async (sql) => { try { return (await cerveau.query(sql)).rows; } catch (e) { return []; } };
+    const court = (x, n) => { const t = String(x || '').replace(/\s+/g, ' ').trim(); return t.length > n ? t.slice(0, n - 1) + '…' : t; };
+    const sections = [];
+    const pensee = await lire("SELECT titre, proposition FROM pensees WHERE nuit = (SELECT max(nuit) FROM pensees) AND nuit >= current_date - 1 ORDER BY rang LIMIT 3");
+    sections.push({ titre: 'Le cerveau cette nuit : sa pensée', lignes: pensee.length ? pensee.map((p) => `${p.titre} — ${court(p.proposition, 220)}`) : ['Pas de pensée cette nuit.'] });
+    const faites = await lire("SELECT id, texte, reponse FROM commandes WHERE etat = 'faite' AND traite_le > now() - interval '24 hours' ORDER BY id");
+    sections.push({ titre: 'Tes demandes faites (24 h)', lignes: faites.length ? faites.map((c) => `n°${c.id} — ${court(c.texte, 90)} → ${court(c.reponse, 200)}`) : ['Aucune.'] });
+    const mep = await lire("SELECT changement FROM journal WHERE acteur = 'applicateur' AND changement LIKE '%mise en service%' AND created_at > now() - interval '24 hours' ORDER BY created_at");
+    sections.push({ titre: 'Améliorations qu’il a mises en service seul (24 h)', lignes: mep.length ? mep.map((j) => court(j.changement, 160)) : ['Aucune.'] });
+    const b = await budget();
+    // Le forfait Claude n'y figure pas : sa dernière lecture peut dater de la veille (Jarvis l'affiche en direct).
+    sections.push({ titre: 'Budget', lignes: [...lignesBudget(b).filter((l) => !l.nom.startsWith('Claude')).map((l) => `${l.nom} : ${l.reste} % restants (${l.valeur})`), ...mesuresBudget(b).filter((m) => !m.startsWith('Claude')).slice(0, 2)] });
+    const br = rowsOr(await q("SELECT count(*)::int AS n FROM outreach WHERE status = 'brouillon'"), [{ n: 0 }])[0].n;
+    const qs = await lire("SELECT question FROM demandes WHERE etat = 'ouverte' ORDER BY bloquant DESC, cree_le DESC LIMIT 3");
+    sections.push({ titre: 'Ce qui attend ta décision', lignes: [`${br} brouillons d’e-mails à valider dans le Cockpit.`, ...qs.map((x) => court(x.question, 200))] });
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+    res.end(JSON.stringify({ sections }));
+    return;
+  }
   if (req.url === '/api/jarvis') {
     // L'essentiel, lu dans la base du cerveau. Une table absente rend une liste vide, jamais une erreur.
     const lire = async (sql) => { try { return (await cerveau.query(sql)).rows; } catch (e) { return []; } };
