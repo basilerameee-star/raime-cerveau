@@ -90,7 +90,7 @@ canvas#boule{cursor:pointer}
   <button type="button" id="micro" aria-label="Parler"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
 </form>
 <p id="alerte" hidden></p>
-<p class="etiquette aide">touche la boule ou la barre d'espace pour parler · dis « stop » pour finir</p>
+<p class="etiquette aide">touche la boule ou la barre d'espace pour parler · le micro pour arrêter</p>
 <p class="etiquette demo" id="demo" hidden>le serveur ne répond pas : nouvel essai dans 10 s</p>
 
 <script>
@@ -186,7 +186,7 @@ canvas#boule{cursor:pointer}
         document.getElementById('demo').hidden = false; clearTimeout(essai); essai = setTimeout(charger, 10000);
       });
   }
-  charger(); setInterval(charger, 60000);
+  charger(); setInterval(charger, 15000);
 
   // ── La conversation : il t'écoute, sent quand tu as fini, répond à voix haute, puis t'écoute de nouveau ──
   // La transcription et la voix viennent du serveur (faster-whisper et Piper) : rien ne part ailleurs,
@@ -208,7 +208,7 @@ canvas#boule{cursor:pointer}
     return t.replace(/https?:\/\/\S+/g, '').replace(/\[[^\]]*\]/g, '').replace(/[*_#>`|]/g, '')
       .replace(/\s*\n+\s*/g, '. ').replace(/\.\s*\./g, '.').replace(/\s{2,}/g, ' ').trim().slice(0, 1400);
   }
-  function apres(suite) { source = null; if (conversation && suite) suite(); else if (!conversation) changer('repos', 'au repos'); }
+  function apres(suite) { source = null; if (conversation && suite) setTimeout(suite, 350); else if (!conversation) changer('repos', 'au repos'); }
   function parler(texte, suite) {
     var t = pourLaVoix(texte); if (!t) return apres(suite);
     fetch('/api/jarvis/parler', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ texte: t }) })
@@ -271,9 +271,10 @@ canvas#boule{cursor:pointer}
       veille = setInterval(function () {
         if (!enreg || enreg.state !== 'recording') return clearInterval(veille);
         var v = rms(anaMic), t = performance.now() - debut;
-        if (t < 350) fond = Math.min(.05, Math.max(fond, v));
-        else if (v > Math.max(.025, fond * 2.5)) { aParle = true; dernier = performance.now(); }
-        if ((aParle && performance.now() - dernier > 1200) || (!aParle && t > 9000) || t > 30000) enreg.stop();
+        if (t < 300) { fond = Math.min(.06, Math.max(fond, v)); return; }
+        if (v > Math.max(.02, fond * 3)) { aParle = true; dernier = performance.now(); }
+        else if (!aParle) fond = Math.min(.06, fond * .97 + v * .03); // le bruit de la pièce, suivi en continu
+        if ((aParle && performance.now() - dernier > 1100) || (!aParle && t > 8000) || t > 25000) enreg.stop();
       }, 60);
     };
     if (flux) return go();
@@ -298,7 +299,7 @@ canvas#boule{cursor:pointer}
     if (etat === 'parole') { son.pause(); if (window.speechSynthesis) speechSynthesis.cancel(); source = null; return ecouter(); }
     if (etat === 'ecoute' && enreg) return enreg.envoyer();
   }
-  micro.addEventListener('click', basculer);
+  micro.addEventListener('click', function () { if (conversation) { son.pause(); if (window.speechSynthesis) speechSynthesis.cancel(); finir(); lui.textContent = 'Conversation arrêtée.'; } else basculer(); });
   c.addEventListener('click', function (e) { if (Math.hypot(e.clientX - centre.x, e.clientY - centre.y) < centre.r * 1.15) basculer(); });
   addEventListener('keydown', function (e) {
     if (e.code === 'Space' && document.activeElement !== document.getElementById('texte')) { e.preventDefault(); basculer(); }

@@ -132,11 +132,12 @@ async function questionsOuvertes() {
 const CORTEX_SYS = "Tu es Cortex, la voix du cerveau de rAIme — le cabinet de conseil en intelligence artificielle de Basile Ramé (formation des particuliers et des professionnels : dirigeants, comités de direction, employés ; audit des postes et arbitrage pour les entreprises ; automatisation). Tu es son bras droit et son interface avec tout le système. "
   + "Le cerveau : une boucle permanente d'agents sur le serveur — l'architecte (l'agent réflexif, qui tient les buts et se corrige), le réflexif, le veilleur (forums, dépôts de code, publications), le chasseur et le sas (le meilleur modèle au meilleur prix), le bibliothécaire et l'encyclopédiste (la bibliothèque de savoir : finance, droit, santé, sciences, physique quantique, philosophie, métaphysique, spiritualité, ésotérisme, religions, histoire, informatique, marketing, management…), et les agents de surveillance ; le penseur (la pensée de la nuit : il relit la veille, la bibliothèque et le journal, et propose au matin trois idées au plus, chacune sourcée, sans conseil de placement) ; l'essayeur (il cherche du code sur GitHub, le note selon des critères précis, l'essaie dans un bac à sable isolé du réseau, et propose de l'intégrer) ; le Gardien (deux faces : la vigie qui surveille le serveur toutes les 30 minutes, et le sas qui envoie toute action risquée au bac à sable avant de couper, et n'en garde que le positif) ; l'auditeur, la relecture et l'arbitrage (l'analyse d'une proposition commerciale et le Score rAIme sur 1000). Jarvis est l'interface vocale où Basile te parle. Si on t'interroge sur un agent que cette liste ne décrit pas, dis que tu ne sais pas. La prospection par e-mail est en pause. "
   + "SAVOIR : pour toute question de connaissance, appuie-toi d'abord sur les PASSAGES fournis (bibliothèque, puis pages web trouvées en direct) et cite-les entre crochets [Titre], avec l'adresse pour une page web. Juge la fiabilité d'une page avant de la reprendre (site officiel, publication, presse sérieuse plutôt que forum ou page commerciale) et dis-le quand une source est faible. Complète avec tes connaissances générales en le signalant (« au-delà des sources… »). Tous les sujets sont bienvenus, y compris spiritualité, ésotérisme et métaphysique : expose les traditions et les idées fidèlement, et distingue ce qui relève du savoir établi, de la tradition ou de la croyance. "
-  + "Réponds en français, direct, concret, chaleureux et HONNÊTE : si tu ne sais pas, ou si quelque chose n'est pas encore en place, dis-le clairement. Tu conseilles, fais le point, expliques, aides à décider. Tu n'exécutes pas d'actions toi-même. Les « Tâches en cours » sont À FAIRE, pas faites. N'invente aucun chiffre sur l'entreprise : ne t'appuie que sur ceux fournis.";
-const CORTEX_ORAL = " RÉPONSE ORALE (Jarvis la dit à voix haute) : deux à quatre phrases courtes, sans liste, sans titre, sans astérisque, sans adresse web ni crochet ; nomme une source en clair si besoin (« d'après l'INSEE »). Tutoie Basile, parle comme un bras droit vivant et attentif, qui a suivi ce qui s'est passé. Si Basile te demande une ACTION à faire (créer, corriger, publier, lancer, modifier, envoyer…), commence ta réponse exactement par [[COMMANDE]] puis une seule phrase qui reformule la demande : le système la note pour Claude. Ne dis jamais qu'elle est faite ni notée toi-même.";
+  + "Réponds en français, direct, concret, chaleureux et HONNÊTE : si tu ne sais pas, ou si quelque chose n'est pas encore en place, dis-le clairement. Tu conseilles, fais le point, expliques, aides à décider. Tu n'exécutes pas d'actions toi-même : une action demandée est notée pour Claude, qui l'exécute sur le serveur, le site et le code ; Basile n'a jamais à la faire lui-même. Les « Tâches en cours » sont À FAIRE, pas faites. N'invente aucun chiffre sur l'entreprise : ne t'appuie que sur ceux fournis.";
+const CORTEX_ORAL = " RÉPONSE ORALE (Jarvis la dit à voix haute) : deux à quatre phrases courtes, sans liste, sans titre, sans astérisque, sans adresse web ni crochet ; nomme une source en clair si besoin (« d'après l'INSEE »). Tutoie Basile. Parle un français soutenu, précis et vivant, sans anglicisme ni formule creuse, comme un bras droit brillant qui a suivi tout ce qui s'est passé. Seulement si Basile ORDONNE une action concrète à exécuter (créer, corriger, publier, lancer, modifier, envoyer…), commence ta réponse exactement par [[COMMANDE]] puis une seule phrase courte qui reformule l'ordre, et rien d'autre : le système la note pour Claude. Une question, même sur tes capacités, n'est jamais une commande. Ne dis jamais qu'une action est faite ni notée toi-même.";
 
 // Le régime de dépense fixé par l'économe (agents/econome.js) ; « normal » si rien n'est lu.
-const MODELE_LEGER = 'deepseek/deepseek-v4-flash-0731';
+const MODELE_JARVIS = 'google/gemini-3.1-flash-lite';
+const MODELE_LEGER = 'google/gemini-2.5-flash-lite';
 async function regimeActuel() {
   try { return ((await cerveau.query("SELECT mode FROM regime_budget ORDER BY le DESC LIMIT 1")).rows[0] || {}).mode || 'normal'; }
   catch (e) { return 'normal'; }
@@ -211,16 +212,20 @@ async function repondreCortex(message, oral, extra) {
   const mode = await regimeActuel();
   if (mode === 'arret') {
     reply = "Le budget de modèles du mois est épuisé : je ne réponds plus qu'au budget, et je note tes demandes pour Claude jusqu'au 1er du mois ou jusqu'à une recharge.";
-  } else if (mode === 'econome' || mode === 'reserve') {
-    // Régime économe : un modèle léger, appelé directement, environ trente fois moins cher.
+  } else {
+    // Gemini, appelé directement (mesure du 25/09/2026 : 1,6 s, 0,00024 $ la réponse courte,
+    // six fois moins cher que gpt-4.1 et un français plus soutenu). Le régime économe prend
+    // la version encore plus légère.
+    const MODELE = mode === 'econome' || mode === 'reserve' ? MODELE_LEGER : MODELE_JARVIS;
     try {
       const r = await fetch('https://openrouter.ai/api/v1/chat/completions', { method: 'POST',
         headers: { Authorization: 'Bearer ' + process.env.OPENROUTER_API_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: MODELE_LEGER, messages, max_tokens: 700, reasoning: { enabled: false } }), signal: AbortSignal.timeout(60000) });
+        body: JSON.stringify({ model: MODELE, messages, max_tokens: 700 }), signal: AbortSignal.timeout(60000) });
       const d = await r.json();
       reply = (d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content) || '';
     } catch (e) {}
-  } else {
+  }
+  if (!reply && mode !== 'arret') { // repli : l'ancien chemin par n8n
     try {
       const r = await fetch('http://n8n:5678/webhook/cortex-chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages }) });
       const d = await r.json();
@@ -258,7 +263,14 @@ async function tauxUsdEur() {
 
 // Ce qui reste : crédits de modèles (lecture seule chez OpenRouter), dépense du mois face au
 // plafond, et la dernière jauge du forfait Claude déposée par Claude lui-même.
+let budgetCache = null;
 async function budget() {
+  if (budgetCache && Date.now() - budgetCache.t < 60000) return budgetCache.b;
+  const b = await lireBudget();
+  budgetCache = { t: Date.now(), b };
+  return b;
+}
+async function lireBudget() {
   const b = { plafond_eur: PLAFOND_EUR, claude: [] };
   const cle = process.env.OPENROUTER_API_KEY;
   if (cle) {
@@ -380,7 +392,14 @@ async function jarvisDire(message) {
   const extra = (await etatDuCerveau()) + "\nBudget : " + phraseBudget(b);
   const reply = await repondreCortex(message, true, extra);
   // Le modèle a reconnu une action que le tri rapide n'a pas vue : le serveur la note pour de vrai.
-  if (/^\s*\[\[COMMANDE\]\]/.test(reply)) return noterCommande(message, reply.replace(/^\s*\[\[COMMANDE\]\]\s*/, ''));
+  // Une vraie commande est un ordre, jamais une question, et sa reformulation tient en une phrase.
+  // Sinon le marqueur est retiré : pour une question, la ligne de reformulation part aussi.
+  if (/^\s*\[\[COMMANDE\]\]/.test(reply)) {
+    const reste = reply.replace(/^\s*\[\[COMMANDE\]\]\s*/, '');
+    const question = /\?\s*$/.test(message) || /^(qu'est-ce|est-ce que|comment|pourquoi|quel|quelle|combien|où|quand|qui|que |sais-tu|peux-tu me dire)/i.test(message.trim());
+    if (!question && reste.length < 260 && !/\n/.test(reste.trim())) return noterCommande(message, reste);
+    return { voie: 'cortex', reply: question ? reste.replace(/^[^\n]*\n+/, '') : reste };
+  }
   return { voie: 'cortex', reply };
 }
 

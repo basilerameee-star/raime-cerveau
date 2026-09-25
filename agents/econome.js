@@ -19,12 +19,15 @@ export const ESSENTIELS = new Set(['superviseur', 'architecte']);
 const euros = (n) => n.toFixed(2).replace('.', ',') + ' €';
 
 // Le cœur, pur et testé : des chiffres en entrée, un régime et des phrases claires en sortie.
-export function regime({ plafondEur = PLAFOND_EUR, depenseMoisEur, rythmeJourEur, creditsRestantsEur = null, joursRestants }) {
+// rythmeCreditsEur : la baisse réelle des crédits du COMPTE (Clio et les autres clés comprises) ;
+// à défaut, le rythme du cerveau seul.
+export function regime({ plafondEur = PLAFOND_EUR, depenseMoisEur, rythmeJourEur, creditsRestantsEur = null, joursRestants, rythmeCreditsEur = null }) {
   const reste = plafondEur - depenseMoisEur;
   const jours = Math.max(joursRestants, 0.5);
   const permis = Math.max(reste, 0) / jours;
   const ratio = permis > 0 ? rythmeJourEur / permis : Infinity;
-  const joursCredits = creditsRestantsEur == null ? null : (rythmeJourEur > 0 ? creditsRestantsEur / rythmeJourEur : Infinity);
+  const rc = Math.max(rythmeJourEur, rythmeCreditsEur || 0);
+  const joursCredits = creditsRestantsEur == null ? null : (rc > 0 ? creditsRestantsEur / rc : Infinity);
   const finMois = depenseMoisEur + rythmeJourEur * joursRestants;
   const chiffres = { plafond_eur: plafondEur, depense_mois_eur: +depenseMoisEur.toFixed(2), reste_eur: +reste.toFixed(2),
     rythme_jour_eur: +rythmeJourEur.toFixed(3), permis_jour_eur: +permis.toFixed(3), fin_mois_eur: +finMois.toFixed(2),
@@ -91,8 +94,19 @@ export async function evaluer({ brain, maintenant = new Date() }) {
     const d = await (await fetch('https://api.frankfurter.app/latest?from=USD&to=EUR', { signal: AbortSignal.timeout(5000) })).json();
     if (d?.rates?.EUR) { taux = d.rates.EUR; tauxNote = `taux BCE du ${d.date}`; }
   } catch {}
+  // La baisse des crédits du compte entier sur 24 h au moins (d'après nos propres relevés).
+  let rythmeCreditsUsd = null;
+  try {
+    const { rows: h } = await brain.query(`SELECT (chiffres->>'credits_restants_usd')::float AS c, le FROM regime_budget
+      WHERE chiffres ? 'credits_restants_usd' AND le < now() - interval '24 hours' ORDER BY le DESC LIMIT 1`);
+    if (h[0] && h[0].c != null && creditsUsd != null) {
+      const jours = (Date.now() - new Date(h[0].le).getTime()) / 86400e3;
+      rythmeCreditsUsd = Math.max(0, (h[0].c - creditsUsd) / jours);
+    }
+  } catch {}
   const r = regime({ depenseMoisEur: moisUsd * taux, rythmeJourEur: (semaineUsd / 7) * taux,
-    creditsRestantsEur: creditsUsd == null ? null : creditsUsd * taux, joursRestants: joursRestantsDuMois(maintenant) });
+    creditsRestantsEur: creditsUsd == null ? null : creditsUsd * taux, joursRestants: joursRestantsDuMois(maintenant),
+    rythmeCreditsEur: rythmeCreditsUsd == null ? null : rythmeCreditsUsd * taux });
   r.chiffres.credits_restants_usd = creditsUsd == null ? null : +creditsUsd.toFixed(2);
   r.chiffres.taux = tauxNote;
 

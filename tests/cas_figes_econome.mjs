@@ -29,6 +29,8 @@ verifie('crédits pour 5 jours : économe et recharge annoncée', r.mode === 'ec
 r = regime({ depenseMoisEur: 0, rythmeJourEur: 0, joursRestants: 30 });
 verifie('rien dépensé : normal, sans division par zéro', r.mode === 'normal' && r.chiffres.jours_credits === null);
 
+r = regime({ depenseMoisEur: 3, rythmeJourEur: 0.1, creditsRestantsEur: 2.9, joursRestants: 5.5, rythmeCreditsEur: 0.5 });
+verifie('Clio puise aussi : les crédits comptent au rythme du compte (5 jours → économe)', r.chiffres.jours_credits === 5 && r.mode === 'econome');
 verifie('jours restants au 25/09 12:00 Paris ≈ 5,5', Math.abs(joursRestantsDuMois(new Date('2026-09-25T10:00:00Z')) - 5.5) < 0.01);
 verifie('dernier jour du mois à 23:00 : presque zéro', joursRestantsDuMois(new Date('2026-09-30T21:00:00Z')) < 0.05);
 
