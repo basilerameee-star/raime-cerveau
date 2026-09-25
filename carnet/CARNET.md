@@ -213,3 +213,16 @@ Merci pour le travail de cette nuit : le banc a déjà trouvé un vrai défaut e
 - Évaluation : `run.sh` était enregistré dans Git sans droit d'exécution (dépôt créé sous Windows, où Git ne garde pas ce droit) ; recopié tel quel, le lanceur ne pouvait plus démarrer. `raime-audit.sh` et `deploy.sh` avaient le même défaut.
 - Correction : droit d'exécution rendu aux trois scripts dans Git (`git update-index --chmod=+x`).
 - Leçon : le retour arrière automatique a été éprouvé en production dès le premier jour, et il tient. Tout script ajouté depuis Windows doit recevoir son droit d'exécution dans Git.
+
+## 2026-09-25 — session cloud — la pause du héraut, jusque dans le cron
+- Action : Basile m'a laissé choisir l'option recommandée pour mes questions en attente. Question des e-mails de 7 h 15 : `cron.raime` lançait encore `agents/heraut.js 14` chaque matin, alors que la boucle l'a mis en pause le 23/09.
+- Résultat : ligne mise en commentaire ; un test (`tests/banc/pause.test.mjs`) vérifie que ni le cron ni la boucle ne lancent le héraut. Avant : 1 test sur 2 ; après : 2 sur 2.
+- Évaluation : la copie installée sur le serveur (`/etc/cron.d/raime-brain`) ne change pas avec le dépôt : la porte recopie `cron.raime`, pas `/etc/cron.d`.
+- Correction : à réinstaller par la session locale (commande en tête de `cron.raime`).
+- Leçon : une pause se pose partout où l'agent peut être réveillé, et un test la garde.
+
+## 2026-09-25 — session cloud — trois sites de démonstration : préparés, pas fusionnés
+- Choix recommandé : trois commerces fictifs en mode démonstration (bandeau, non indexés, paiement de test seulement), plutôt qu'une fausse offre de rAIme.
+- Évaluation : `*.raime.fr` n'existe pas encore dans le DNS (`essai.raime.fr` ne répond pas). Fusionner `services/` maintenant ferait échouer la vérification de la porte (Caddy sans certificat) et revenir en arrière TOUT le déploiement, cerveau compris.
+- Correction : les sites attendent sur leur branche ; ils partiront après l'enregistrement DNS générique.
+- Leçon : un service ne se fusionne qu'une fois son adresse joignable, sinon il emporte le cerveau dans son retour arrière.
