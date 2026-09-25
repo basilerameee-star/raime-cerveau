@@ -30,14 +30,23 @@ aside.gauche{left:32px} aside.droite{right:32px}
 .chiffres span{font-size:12px;color:var(--gris)}
 #echange{position:fixed;left:50%;transform:translateX(-50%);bottom:112px;width:min(720px,90vw);text-align:center;z-index:2;min-height:48px}
 #echange .toi{color:var(--gris);font-size:14px;margin-bottom:6px}
-#echange .lui{font-size:17px;line-height:1.55;max-height:30vh;overflow:auto}
+#echange .lui{font-size:15px;line-height:1.55;max-height:22vh;overflow:auto;color:#e8e8e8}
 form{position:fixed;left:50%;transform:translateX(-50%);bottom:34px;width:min(640px,90vw);display:flex;gap:10px;z-index:2}
 form input{flex:1;height:52px;padding:0 20px;background:rgba(10,10,10,.8);border:1px solid var(--trait);border-radius:999px;color:var(--blanc);font:15px var(--police);outline:none}
 form input:focus{border-color:rgba(255,126,176,.6)}
 form button{width:52px;height:52px;border-radius:50%;border:1px solid var(--trait);background:rgba(10,10,10,.8);color:var(--blanc);cursor:pointer;display:grid;place-items:center}
 form button.actif{border-color:var(--rose);box-shadow:0 0 22px rgba(255,126,176,.45)}
 form button svg{width:20px;height:20px}
-.demo{position:fixed;left:32px;bottom:14px;z-index:2}
+.demo{position:fixed;top:26px;left:50%;transform:translateX(-50%);z-index:3;color:var(--rose)}
+.budget li{display:block;-webkit-line-clamp:unset;padding:7px 0 8px}
+.budget .ligne{display:flex;justify-content:space-between;gap:10px;font-size:13px;color:#d6d6d6}
+.budget .ligne b{font-weight:600;color:var(--blanc)}
+.budget .val{font-size:12px;color:var(--gris);margin-top:2px}
+.budget .jauge{height:2px;background:rgba(255,255,255,.08);margin-top:6px}
+.budget .jauge i{display:block;height:100%;background:var(--blanc)}
+.budget .jauge i.bas{background:var(--rose)}
+.mesures p{font-size:12.5px;line-height:1.5;color:#bdbdbd;margin-bottom:6px}
+.mesures p:first-child{color:#e8e8e8}
 #alerte{position:fixed;top:60px;right:32px;z-index:2;color:var(--rose);font-size:13px;max-width:420px;text-align:right}
 .aide{position:fixed;left:50%;transform:translateX(-50%);bottom:12px;z-index:2;white-space:nowrap}
 canvas#boule{cursor:pointer}
@@ -57,20 +66,20 @@ canvas#boule{cursor:pointer}
   <section class="bloc"><h3 class="etiquette">La pensée de la nuit</h3><div id="pensee"><p>…</p></div></section>
   <section class="bloc"><h3 class="etiquette">Ce qui a changé</h3><ul id="journal"></ul></section>
   <section class="bloc"><h3 class="etiquette">Noté pour Claude</h3><ul id="commandes"></ul></section>
+  <section class="bloc"><h3 class="etiquette">Ce qui attend ta décision</h3><ul id="attente"></ul></section>
 </aside>
 
 <aside class="droite">
+  <section class="bloc budget"><h3 class="etiquette">Budget · ce qui reste</h3><ul id="budget"></ul></section>
+  <section class="bloc mesures"><h3 class="etiquette" id="regime">Ce qu'il met en place</h3><div id="mesures"></div></section>
   <section class="bloc"><h3 class="etiquette">L'état</h3>
     <div class="chiffres">
-      <div><b id="c-depense">—</b><span id="c-depense-l">dépensés ce mois</span></div>
-      <div><b id="c-veille">—</b><span>lectures en 24 h</span></div>
-      <div><b id="c-agents">—</b><span>agents en service</span></div>
+      <div><b id="c-agents">—</b><span>agents au travail (24 h)</span></div>
+      <div><b id="c-veille">—</b><span>lectures de veille (24 h)</span></div>
+      <div><b id="c-biblio">—</b><span>passages en bibliothèque</span></div>
       <div><b id="c-questions">—</b><span>questions pour toi</span></div>
-      <div><b id="c-credits">—</b><span>crédits modèles restants</span></div>
-      <div><b id="c-claude">—</b><span>forfait Claude restant (semaine)</span></div>
     </div>
   </section>
-  <section class="bloc"><h3 class="etiquette">Ce qui attend ta décision</h3><ul id="attente"></ul></section>
 </aside>
 
 <div id="echange" aria-live="polite"><div class="toi" id="toi"></div><div class="lui" id="lui"></div></div>
@@ -81,7 +90,7 @@ canvas#boule{cursor:pointer}
 </form>
 <p id="alerte" hidden></p>
 <p class="etiquette aide">touche la boule ou la barre d'espace pour parler · dis « stop » pour finir</p>
-<p class="etiquette demo" id="demo" hidden>données d'exemple : le cockpit n'est pas joignable</p>
+<p class="etiquette demo" id="demo" hidden>le serveur ne répond pas : nouvel essai dans 10 s</p>
 
 <script>
 (function () {
@@ -101,7 +110,7 @@ canvas#boule{cursor:pointer}
     var s = ETATS[etat], t = (now - t0) / 1000;
     rot += calme ? 0 : s.v * 0.016;
     x.clearRect(0, 0, W, H);
-    var R = Math.min(W, H) * (W < 900 ? .3 : .26), cx = W / 2, cy = H * .45;
+    var R = Math.min(W, H) * (W < 900 ? .25 : .2), cx = W / 2, cy = H * .42;
     centre = { x: cx, y: cy, r: R };
     if (source) niveau = Math.max(niveau, Math.min(1, rms(source) * 7));
     var ca = Math.cos(rot), sa = Math.sin(rot), inc = .35, ci = Math.cos(inc), si = Math.sin(inc);
@@ -135,43 +144,46 @@ canvas#boule{cursor:pointer}
   function changer(e, texte) { etat = e; document.body.dataset.etat = e; document.getElementById('etat-texte').textContent = texte; }
 
   // ── Les informations des côtés, en direct depuis le cockpit (sinon, un exemple signalé) ──
-  var EXEMPLE = { pensee: [{ titre: 'Créer une offre d’audit des traces d’agents IA', proposition: 'Une page d’offre illustrée par trois publications de la semaine.' }],
-    journal: [{ acteur: 'essayeur', changement: 'slugify retenu, 25 tests réussis sans réseau' }, { acteur: 'porte', changement: 'livraison acceptée, code 0' }],
-    attente: [{ question: 'Les 30 % de l’automatisation : 12 mensualités ?' }], depense: 0.46, veille24h: 42, agents: 17, questions: 3,
-    commandes: [{ id: 1, texte: 'Crée une page pour la formation des particuliers' }],
-    budget: { credits_restants_usd: 8.2, credits_usd: 10, claude: [{ fenetre: 'semaine', reste: 18 }] }, alerte: '' };
   function li(liste, champ) { return liste.map(function (e) { var d = document.createElement('li'); d.textContent = champ(e); return d; }); }
   function remplir(d) {
     var pe = document.getElementById('pensee'); pe.innerHTML = '';
-    (d.pensee && d.pensee.length ? d.pensee : [{ titre: 'Rien encore cette nuit', proposition: '' }]).slice(0, 2).forEach(function (p) {
+    if (d.pensee && d.pensee.length) d.pensee.slice(0, 2).forEach(function (p) {
       var e = document.createElement('p'); e.innerHTML = '<em>→</em> '; e.appendChild(document.createTextNode(p.titre + (p.proposition ? ' — ' + p.proposition : ''))); pe.appendChild(e);
     });
+    else pe.innerHTML = '<p>' + (d.penseur === false ? 'Le penseur n’est pas encore programmé : sa première pensée viendra la nuit où il tournera.' : 'Rien d’assez solide cette nuit.') + '</p>';
     var j = document.getElementById('journal'); j.innerHTML = '';
-    li((d.journal || []).slice(0, 5), function (e) { return e.acteur + ' · ' + e.changement; }).forEach(function (n) { j.appendChild(n); });
-    var at = document.getElementById('attente'); at.innerHTML = '';
-    li((d.attente || []).slice(0, 3), function (e) { return e.question; }).forEach(function (n) { at.appendChild(n); });
-    if (!(d.attente || []).length) at.innerHTML = '<li>Rien : tout avance.</li>';
-    document.getElementById('c-depense').textContent = d.depense == null ? '—' : d.depense.toFixed(2).replace('.', ',') + ' $';
-    document.getElementById('c-veille').textContent = d.veille24h ?? '—';
-    document.getElementById('c-agents').textContent = d.agents ?? '—';
-    document.getElementById('c-questions').textContent = d.questions ?? '—';
-    var b = d.budget || {}, cl = (b.claude || []).filter(function (c) { return c.fenetre === 'semaine'; })[0];
-    if (b.mois_eur != null) { // la dépense complète du mois (tous les modèles), face au plafond
-      document.getElementById('c-depense').textContent = b.mois_eur.toFixed(2).replace('.', ',') + ' €';
-      document.getElementById('c-depense-l').textContent = 'dépensés ce mois, sur ' + b.plafond_eur + ' €';
-    }
-    document.getElementById('c-credits').textContent = b.credits_restants_usd == null ? '—' : b.credits_restants_usd.toFixed(2).replace('.', ',') + ' $';
-    document.getElementById('c-claude').textContent = cl ? cl.reste + ' %' : '—';
+    (d.journal || []).forEach(function (e) { var x = document.createElement('li'); x.innerHTML = '<em>' + e.heure + '</em> '; x.appendChild(document.createTextNode(e.qui + ' · ' + e.quoi)); j.appendChild(x); });
+    if (!(d.journal || []).length) j.innerHTML = '<li>Rien de nouveau en 48 h.</li>';
     var co = document.getElementById('commandes'); co.innerHTML = '';
-    li((d.commandes || []).slice(0, 3), function (e) { return 'n°' + e.id + ' · ' + e.texte; }).forEach(function (n) { co.appendChild(n); });
+    li((d.commandes || []).slice(0, 2), function (e) { return 'n°' + e.id + ' · ' + e.texte; }).forEach(function (n) { co.appendChild(n); });
     if (!(d.commandes || []).length) co.innerHTML = '<li>Rien en attente.</li>';
+    var at = document.getElementById('attente'); at.innerHTML = '';
+    li((d.attente || []).slice(0, 2), function (e) { return e.question; }).forEach(function (n) { at.appendChild(n); });
+    if (!(d.attente || []).length) at.innerHTML = '<li>Rien : tout avance.</li>';
+    var bu = document.getElementById('budget'); bu.innerHTML = '';
+    (d.budget_lignes || []).forEach(function (l) {
+      var x = document.createElement('li'), r = Math.max(0, Math.min(100, l.reste));
+      x.innerHTML = '<div class="ligne"><span></span><b>' + r + ' %</b></div><div class="val"></div><div class="jauge"><i' + (r < 20 ? ' class="bas"' : '') + ' style="width:' + r + '%"></i></div>';
+      x.querySelector('span').textContent = l.nom; x.querySelector('.val').textContent = l.valeur; bu.appendChild(x);
+    });
+    if (!(d.budget_lignes || []).length) bu.innerHTML = '<li>Budget illisible à l’instant.</li>';
+    document.getElementById('regime').textContent = 'Ce qu’il met en place' + (d.regime ? ' · ' + d.regime : '');
+    var me = document.getElementById('mesures'); me.innerHTML = '';
+    (d.budget_mesures || []).forEach(function (t) { var x = document.createElement('p'); x.textContent = t; me.appendChild(x); });
+    document.getElementById('c-agents').textContent = d.agents ?? '—';
+    document.getElementById('c-veille').textContent = d.veille24h ?? '—';
+    document.getElementById('c-biblio').textContent = d.bibliotheque == null ? '—' : d.bibliotheque.toLocaleString('fr-FR');
+    document.getElementById('c-questions').textContent = d.questions ?? '—';
     var al = document.getElementById('alerte'); al.textContent = d.alerte || ''; al.hidden = !d.alerte; alerte = d.alerte || '';
   }
   var alerte = '';
+  var essai = null;
   function charger() {
     fetch('/api/jarvis', { cache: 'no-store' }).then(function (r) { if (!r.ok) throw 0; return r.json(); })
       .then(function (d) { document.getElementById('demo').hidden = true; remplir(d); })
-      .catch(function () { document.getElementById('demo').hidden = false; remplir(EXEMPLE); });
+      .catch(function () { // jamais de faux chiffres : on le dit, et on réessaie dans 10 s
+        document.getElementById('demo').hidden = false; clearTimeout(essai); essai = setTimeout(charger, 10000);
+      });
   }
   charger(); setInterval(charger, 60000);
 
@@ -205,9 +217,10 @@ canvas#boule{cursor:pointer}
         son.onended = function () { URL.revokeObjectURL(u); apres(suite); };
         return son.play();
       })
-      .catch(function () { // sans la voix du serveur : la voix du navigateur, si elle existe
-        if (!('speechSynthesis' in window)) return apres(suite);
-        var u = new SpeechSynthesisUtterance(t); u.lang = 'fr-FR';
+      .catch(function () { // sans la voix du serveur : une voix française du navigateur, sinon le texte seul
+        var fr = 'speechSynthesis' in window && speechSynthesis.getVoices().filter(function (v) { return /^fr/i.test(v.lang); })[0];
+        if (!fr) return apres(suite);
+        var u = new SpeechSynthesisUtterance(t); u.lang = 'fr-FR'; u.voice = fr;
         u.onstart = function () { changer('parole', 'parle'); };
         u.onboundary = function () { niveau = Math.min(1, niveau + .35); };
         u.onend = function () { apres(suite); };
@@ -265,7 +278,7 @@ canvas#boule{cursor:pointer}
     if (flux) return go();
     navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } })
       .then(function (f) { flux = f; var s = ctxA.createMediaStreamSource(f); anaMic = ctxA.createAnalyser(); anaMic.fftSize = 1024; s.connect(anaMic); go(); })
-      .catch(function () { lui.textContent = 'Le micro est refusé : clique sur le cadenas à gauche de l’adresse, autorise le micro, puis touche la boule.'; finir(); });
+      .catch(function () { lui.textContent = 'Le micro est bloqué ici. Ouvre cockpit.raime.fr/jarvis dans Brave ; s’il le refuse encore, clique sur le cadenas à gauche de l’adresse et autorise le micro.'; finir(); });
   }
   function finir() {
     conversation = false; source = null; micro.classList.remove('actif');

@@ -29,7 +29,7 @@ ssh -o BatchMode=yes -i "$KEY" "$HOTE" "
     [ -f \"\$f\" ] && cp \"\$f\" \".sauvegarde/\$f\"
   done
   cp -r .attente/* .
-  if ./run.sh 'node --check agents/heraut.js && node tests/cas_figes.mjs && node tests/cas_figes_audit.mjs && node tests/cas_figes_score.mjs && node tests/cas_figes_score_v2.mjs && node tests/cas_figes_arbitrage.mjs && node tests/cas_figes_relecture.mjs && node tests/cas_figes_essayeur.mjs'; then
+  if ./run.sh 'node --check agents/heraut.js && node tests/cas_figes.mjs && node tests/cas_figes_audit.mjs && node tests/cas_figes_score.mjs && node tests/cas_figes_score_v2.mjs && node tests/cas_figes_arbitrage.mjs && node tests/cas_figes_relecture.mjs && node tests/cas_figes_essayeur.mjs && node tests/cas_figes_econome.mjs && node tests/cas_figes_gardien.mjs && node tests/cas_figes_penseur.mjs && node tests/cas_figes_priorite.mjs'; then
     echo '  verification passee'
   else
     echo '  ECHEC — retour a la version precedente'

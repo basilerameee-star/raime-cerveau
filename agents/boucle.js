@@ -4,6 +4,7 @@
 import { db } from './lib.js';
 import pg from 'pg';
 import * as experience from './experience.js';
+import * as econome from './econome.js';
 
 const MIN = 60_000, H = 60 * MIN;
 
@@ -138,10 +139,15 @@ async function main() {
     console.log(`  ${t.nom.padEnd(13)} toutes les ${(t.toutes / H).toFixed(0)}h — prochaine dans ${(dans / H).toFixed(1)}h`);
   }
 
-  // Boucle infinie : on vérifie toutes les 5 minutes qui doit tourner.
+  // Boucle infinie : on vérifie toutes les 5 minutes qui doit tourner. L'économe fixe d'abord
+  // le régime de dépense : les agents payants ralentissent ou attendent si le mois dérape.
   for (;;) {
+    let r = { mode: 'normal', facteur: 1, pauses: [] };
+    try { r = await econome.evaluer({ brain }); } catch (e) { console.error(`[econome] lecture impossible : ${e.message}`); }
     for (const t of RYTHMES) {
-      if (Date.now() - (dernier[t.nom] || 0) >= t.toutes) {
+      if (r.pauses.includes(t.nom)) continue;
+      const toutes = t.toutes * (econome.PAYANTS.has(t.nom) ? r.facteur : 1);
+      if (Date.now() - (dernier[t.nom] || 0) >= toutes) {
         dernier[t.nom] = Date.now();
         await executer(t, brain, n8n);
       }

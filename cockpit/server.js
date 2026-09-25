@@ -135,6 +135,48 @@ const CORTEX_SYS = "Tu es Cortex, la voix du cerveau de rAIme — le cabinet de 
   + "Réponds en français, direct, concret, chaleureux et HONNÊTE : si tu ne sais pas, ou si quelque chose n'est pas encore en place, dis-le clairement. Tu conseilles, fais le point, expliques, aides à décider. Tu n'exécutes pas d'actions toi-même. Les « Tâches en cours » sont À FAIRE, pas faites. N'invente aucun chiffre sur l'entreprise : ne t'appuie que sur ceux fournis.";
 const CORTEX_ORAL = " RÉPONSE ORALE (Jarvis la dit à voix haute) : deux à quatre phrases courtes, sans liste, sans titre, sans astérisque, sans adresse web ni crochet ; nomme une source en clair si besoin (« d'après l'INSEE »). Tutoie Basile, parle comme un bras droit vivant et attentif, qui a suivi ce qui s'est passé. Si Basile te demande une ACTION à faire (créer, corriger, publier, lancer, modifier, envoyer…), commence ta réponse exactement par [[COMMANDE]] puis une seule phrase qui reformule la demande : le système la note pour Claude. Ne dis jamais qu'elle est faite ni notée toi-même.";
 
+// Le régime de dépense fixé par l'économe (agents/econome.js) ; « normal » si rien n'est lu.
+const MODELE_LEGER = 'deepseek/deepseek-v4-flash-0731';
+async function regimeActuel() {
+  try { return ((await cerveau.query("SELECT mode FROM regime_budget ORDER BY le DESC LIMIT 1")).rows[0] || {}).mode || 'normal'; }
+  catch (e) { return 'normal'; }
+}
+
+// Le journal en français clair : noms d'agents lisibles, pluriels accordés, lignes à zéro écartées.
+const NOMS = { bibliothecaire: 'Bibliothèque', veilleur: 'Veille', portes: "Portes d'entrée (CCI, formation)", sas: 'Sas des modèles',
+  chasseur: 'Chasseur de modèles', architecte: 'Architecte', superviseur: 'Surveillance', boucle: 'Boucle', porte: 'Livraison',
+  essayeur: 'Essayeur', gardien: 'Gardien', reflexif: 'Réflexif', penseur: 'Penseur', publiciste: 'Publicité',
+  instruments: 'Instruments', cordon: 'Cordon', reconciliateur: 'Réponses', curieux: 'Curieux', econome: 'Économe',
+  metrologue: 'Mesure des prix', prospective: 'Prospective' };
+function enClair(acteur, texte) {
+  let t = String(texte)
+    .replace(/morceau\(x\)/g, 'passage(s)').replace(/morceaux?/g, (m) => (m.endsWith('x') ? 'passages' : 'passage'))
+    .replace(/(\d+)\s+([\p{L}’']+)\(s\)((?:\s+[\p{L}’']+\(s\))*)/gu, (_, n, mot, suite) => {
+      const s = +n > 1 ? 's' : '';
+      return `${n} ${mot}${s}${suite.replace(/\(s\)/g, s)}`;
+    })
+    .replace(/\(s\)/g, 's');
+  let m = t.match(/^Candidat « (.+?)(?:-\d{4}-\d{2}-\d{2})? » \(prix\) → noté au catalogue.*$/);
+  if (m) t = `prix de ${m[1]} noté au catalogue`;
+  m = t.match(/^Candidat « (.+?)(?:-\d{4}-\d{2}-\d{2})? » \((\w+)\) → (\w+)$/);
+  if (m && m[2] === 'prix') t = `prix de ${m[1]} noté au catalogue`;
+  else if (m) t = `${m[1]} : ${{ promu: 'retenu après mesure', refuse: 'écarté après mesure', non_evaluable: 'pas assez mesuré', applique: 'appliqué' }[m[3]] || m[3]}`;
+  t = t.replace(/(\d{4,})/g, (n) => Number(n).toLocaleString('fr-FR'));
+  return { qui: NOMS[acteur] || acteur, quoi: t };
+}
+function journalEnClair(rows) {
+  const vus = new Set(), out = [];
+  for (const r of rows) {
+    if (/(^|\s)0 (passage|trouvaille|morceau|porte|candidat)/.test(r.changement)) continue; // rien de neuf : rien à dire
+    const e = enClair(r.acteur, r.changement);
+    const cle = e.qui + e.quoi.replace(/[\d\s.,]/g, '');
+    if (vus.has(cle)) continue; vus.add(cle);
+    out.push({ ...e, heure: new Date(r.created_at).toLocaleTimeString('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit' }) });
+    if (out.length >= 4) break;
+  }
+  return out;
+}
+
 // La réponse de Cortex : bibliothèque d'abord, puis le web si elle ne couvre pas la question.
 // oral = la réponse sera dite à voix haute par Jarvis ; extra = ce que Jarvis sait de plus.
 async function repondreCortex(message, oral, extra) {
@@ -166,11 +208,25 @@ async function repondreCortex(message, oral, extra) {
   const messages = [{ role: 'system', content: CORTEX_SYS + (oral ? CORTEX_ORAL : '') + "\n\nÉTAT LIVE DU SYSTÈME (maintenant) :\n" + ctx + (extra || '') + savoir + questions }]
     .concat(hist.map(h => ({ role: h.role === 'assistant' ? 'assistant' : 'user', content: h.content })));
   let reply = '';
-  try {
-    const r = await fetch('http://n8n:5678/webhook/cortex-chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages }) });
-    const d = await r.json();
-    reply = (d && d.reply) || '';
-  } catch (e) {}
+  const mode = await regimeActuel();
+  if (mode === 'arret') {
+    reply = "Le budget de modèles du mois est épuisé : je ne réponds plus qu'au budget, et je note tes demandes pour Claude jusqu'au 1er du mois ou jusqu'à une recharge.";
+  } else if (mode === 'econome' || mode === 'reserve') {
+    // Régime économe : un modèle léger, appelé directement, environ trente fois moins cher.
+    try {
+      const r = await fetch('https://openrouter.ai/api/v1/chat/completions', { method: 'POST',
+        headers: { Authorization: 'Bearer ' + process.env.OPENROUTER_API_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: MODELE_LEGER, messages, max_tokens: 700, reasoning: { enabled: false } }), signal: AbortSignal.timeout(60000) });
+      const d = await r.json();
+      reply = (d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content) || '';
+    } catch (e) {}
+  } else {
+    try {
+      const r = await fetch('http://n8n:5678/webhook/cortex-chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages }) });
+      const d = await r.json();
+      reply = (d && d.reply) || '';
+    } catch (e) {}
+  }
   if (!reply) reply = "(Cortex est indisponible à l'instant — réessaie dans un moment.)";
   await q("INSERT INTO cortex_chat (role, content) VALUES ('assistant', $1)", [reply]);
   return reply;
@@ -225,7 +281,34 @@ async function budget() {
     b.claude = (await cerveau.query(
       "SELECT DISTINCT ON (fenetre) fenetre, pourcent, reinitialise_le, lu_le FROM claude_usage ORDER BY fenetre, lu_le DESC")).rows;
   } catch (e) {}
+  try { b.regime = (await cerveau.query("SELECT mode, mesures, chiffres, le FROM regime_budget ORDER BY le DESC LIMIT 1")).rows[0] || null; } catch (e) { b.regime = null; }
   return b;
+}
+
+// Le bloc « Budget » de Jarvis : pour chaque réserve, son nom, ce qui reste en %, la valeur réelle.
+const REGIMES = { normal: 'Rythme normal', econome: 'Rythme économe', reserve: 'Réserve', arret: 'Arrêt des dépenses' };
+function lignesBudget(b) {
+  const l = [];
+  if (b.mois_eur != null) l.push({ nom: 'Plafond du mois', reste: Math.max(0, 100 - b.pourcent_plafond), valeur: `${virgule(Math.max(0, b.plafond_eur - b.mois_eur))} € sur ${b.plafond_eur} €` });
+  if (b.credits_restants_usd != null && b.credits_usd) l.push({ nom: 'Crédits de modèles', reste: Math.round(100 * b.credits_restants_usd / b.credits_usd), valeur: `${virgule(b.credits_restants_usd)} $ sur ${virgule(b.credits_usd).replace(',00', '')} $` });
+  const court = (d) => new Date(d).toLocaleString('fr-FR', { timeZone: 'Europe/Paris', weekday: 'short', hour: '2-digit', minute: '2-digit' });
+  for (const f of ['semaine', '5 heures']) {
+    const c = b.claude.find((x) => x.fenetre === f);
+    if (c) l.push({ nom: `Claude · ${f}`, reste: 100 - c.pourcent, valeur: `repart ${court(c.reinitialise_le)}` });
+  }
+  return l;
+}
+
+// Ce que le cerveau met en place : le régime de l'économe, et le rythme que Claude s'impose.
+function mesuresBudget(b) {
+  const m = b.regime ? [...b.regime.mesures] : ["L'économe n'a pas encore rendu sa première lecture."];
+  const sem = b.claude.find((x) => x.fenetre === 'semaine');
+  if (sem) {
+    const jours = Math.max(0.5, (new Date(sem.reinitialise_le) - Date.now()) / 86400e3);
+    const parJour = (100 - sem.pourcent) / jours;
+    if (parJour < 100 / 7) m.push(`Claude : ${100 - sem.pourcent} % pour ${Math.round(jours)} jours, environ ${Math.max(1, Math.round(parJour))} % par jour ; il travaille au plus court et laisse les tâches répétitives au cerveau.`);
+  }
+  return m;
 }
 
 const quand = (d) => new Date(d).toLocaleString('fr-FR', { timeZone: 'Europe/Paris', weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
@@ -255,6 +338,7 @@ function phraseBudget(b) {
     p.push(`Ton forfait Claude : il reste ${r}, relevé ${quand(lu).replace(/ à .*/, '')} à ${heure(lu)}${sem ? ` ; la semaine repart ${quand(sem.reinitialise_le)}` : ''}.`);
   }
   if (!p.length) p.push("Je n'arrive pas à lire le budget à l'instant.");
+  p.push(...mesuresBudget(b));
   return p.join(' ');
 }
 
@@ -513,16 +597,20 @@ const server = http.createServer(async (req, res) => {
     // L'essentiel, lu dans la base du cerveau. Une table absente rend une liste vide, jamais une erreur.
     const lire = async (sql) => { try { return (await cerveau.query(sql)).rows; } catch (e) { return []; } };
     const pensee = await lire("SELECT titre, proposition FROM pensees WHERE nuit = (SELECT max(nuit) FROM pensees) ORDER BY rang LIMIT 3");
-    const attente = await lire("SELECT question FROM demandes WHERE etat = 'ouverte' ORDER BY cree_le DESC LIMIT 6");
-    const journal = await lire("SELECT acteur, left(changement, 140) AS changement FROM journal ORDER BY created_at DESC LIMIT 6");
+    const attente = await lire("SELECT question FROM demandes WHERE etat = 'ouverte' ORDER BY bloquant DESC, cree_le DESC LIMIT 3");
+    const journal = journalEnClair(await lire("SELECT acteur, left(changement, 200) AS changement, created_at FROM journal WHERE created_at > now() - interval '48 hours' ORDER BY created_at DESC LIMIT 40"));
+    const penseurActif = (await lire("SELECT count(*)::int AS n FROM pensees"))[0];
+    const bibliotheque = await lire("SELECT count(*)::int AS n FROM kb_chunks");
     const depense = await lire("SELECT coalesce(sum(cost_usd), 0)::float AS d FROM agent_runs WHERE created_at >= date_trunc('month', now())");
     const veille = await lire("SELECT count(*)::int AS n FROM veille WHERE vu_le > now() - interval '24 hours'");
-    const agents = await lire("SELECT count(DISTINCT agent)::int AS n FROM agent_runs WHERE created_at > now() - interval '24 hours'");
+    const agents = await lire("SELECT count(DISTINCT agent)::int AS n FROM boucle_passages WHERE fin_le > now() - interval '24 hours' AND statut = 'ok'");
     const nbQuestions = await lire("SELECT count(*)::int AS n FROM demandes WHERE etat = 'ouverte'");
     const commandes = await lire("SELECT id, texte FROM commandes WHERE etat IN ('a_faire','en_cours') ORDER BY cree_le LIMIT 4");
     const b = await budget();
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
-    res.end(JSON.stringify({ pensee, attente, journal, commandes,
+    res.end(JSON.stringify({ pensee, attente, journal, commandes, penseur: !!(penseurActif && penseurActif.n),
+      bibliotheque: bibliotheque[0] ? bibliotheque[0].n : null,
+      budget_lignes: lignesBudget(b), budget_mesures: mesuresBudget(b), regime: b.regime ? REGIMES[b.regime.mode] || b.regime.mode : null,
       depense: depense[0] ? depense[0].d : null, veille24h: veille[0] ? veille[0].n : null,
       agents: agents[0] ? agents[0].n : null, questions: nbQuestions[0] ? nbQuestions[0].n : null,
       budget: { credits_restants_usd: b.credits_restants_usd ?? null, credits_usd: b.credits_usd ?? null,
