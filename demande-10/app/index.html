@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>L'IA dans les entreprises en France — chiffres officiels</title>
+<meta name="description" content="Le chiffre officiel le plus récent (Insee, enquête TIC) de l'usage de l'intelligence artificielle par les entreprises en France, par taille et par secteur, et la comparaison avec l'Union européenne.">
+<link rel="stylesheet" href="polices/inter.css">
+<style>
+
+  :root{
+    --fond:#000; --encre:#fff; --souris:#c9c9c9; --rose:#ff7eb0;
+    --rose-solide:#ff7eb0; /* rose des petits textes : assombri en mode jour pour rester lisible */
+    --ligne:rgba(255,255,255,.16); --carte:rgba(255,255,255,.045);
+    --ok:#7fd9a8;
+  }
+  html[data-mode="jour"]{
+    --fond:#ededed; --encre:#232323; --souris:#555; --rose:#db4f8b;
+    --rose-solide:#b83579;
+    --ligne:rgba(0,0,0,.16); --carte:rgba(0,0,0,.045);
+    --ok:#0f7a52;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    min-height:100vh;background:var(--fond);color:var(--encre);
+    font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    line-height:1.65;font-size:17px;
+  }
+  .pli{max-width:980px;margin:0 auto;padding:0 clamp(14px,4vw,40px)}
+
+  header{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:20px 0;flex-wrap:wrap}
+  .marque{font-weight:800;letter-spacing:.01em;font-size:15px}
+  nav{display:flex;gap:6px 14px;flex-wrap:wrap;font-size:14px}
+  nav a{color:var(--rose-solide);text-decoration:none;font-weight:600}
+  #bascule{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--souris)}
+  #bascule button{font:inherit;cursor:pointer;border:1px solid var(--ligne);border-radius:999px;
+    padding:5px 12px;background:var(--carte);color:var(--encre)}
+
+  h1{margin:0 0 10px;font-size:clamp(28px,4.6vw,46px);line-height:1.1;letter-spacing:-.02em}
+  .sous{font-size:clamp(16px,2vw,19px);color:var(--souris);max-width:64ch}
+
+  main > section{padding:26px 0 50px}
+  h2{font-size:clamp(20px,2.6vw,26px);margin:0 0 14px}
+  h3{font-size:clamp(16px,1.9vw,19px);margin:18px 0 4px}
+  p,li{max-width:72ch}
+
+  .chiffre{border:1px solid var(--ligne);border-radius:18px;background:var(--carte);padding:26px 30px}
+  .chiffre .grand{font-size:clamp(64px,12vw,118px);line-height:1;color:var(--rose);font-weight:800}
+  .chiffre .unite{font-size:clamp(16px,2vw,21px);color:var(--encre);font-weight:700}
+  .chiffre p{color:var(--encre)}
+  .chiffre strong{color:var(--rose-solide)}
+  .source{font-size:13.5px;color:var(--souris)}
+
+  table{width:100%;border-collapse:collapse;font-size:15px}
+  th,td{border:1px solid var(--ligne);padding:9px 12px;text-align:left;vertical-align:top}
+  th{color:var(--encre);font-weight:700}
+  td{border-color:var(--ligne);color:var(--encre)}
+  td .pc{color:var(--rose-solide);font-weight:700}
+
+  .barre{display:grid;gap:8px;margin:6px 0}
+  .barre .ligne{display:grid;grid-template-columns:minmax(0,1fr) 2.4fr auto;gap:10px;align-items:center;font-size:14.5px}
+  .barre .ligne .nom{color:var(--encre);overflow-wrap:anywhere;min-width:0}
+  .barre .ligne .jauge{height:13px;border-radius:7px;background:var(--rose);display:block}
+  .barre .ligne .pc{color:var(--rose-solide);font-weight:700}
+  .leges{font-size:13px;color:var(--souris)}
+
+  .note{border:1px solid var(--ligne);border-radius:14px;background:var(--carte);padding:16px 20px;font-size:14.5px}
+  .note strong{color:var(--rose-solide)}
+
+  a{color:var(--rose-solide);word-break:break-all}
+  code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;background:none;
+    border:1px solid var(--ligne);color:var(--encre);padding:1px 6px;border-radius:6px}
+
+  footer{border-top:1px solid var(--ligne);padding:20px 0 46px;font-size:13.5px;color:var(--souris)}
+
+  @media(max-width:600px){
+    .chiffre .grand{font-size:56px}
+    th,td{padding:7px 9px;overflow-wrap:anywhere}
+    .pli{padding:0 14px}
+  }
+</style>
+</head>
+<body>
+<div class="pli">
+<header>
+  <span class="marque">rAIme · Veille chiffrée</span>
+  <nav>
+    <a href="#chiffre">Le chiffre</a>
+    <a href="#par-taille">Par taille</a>
+    <a href="#par-secteur">Par secteur</a>
+    <a href="#evolution">Évolution</a>
+    <a href="#sources">Sources</a>
+  </nav>
+  <span id="bascule">
+    <span>jour</span>
+    <button id="bouton-jour" type="button" aria-label="Basculer jour et nuit">jour/nuit</button>
+  </span>
+</header>
+
+<h1>L'usage de l'IA par les entreprises en France</h1>
+<p class="sous">Le chiffre officiel le plus récent, ténu de la statistique publique
+(Insee, enquête TIC ; Eurostat). Aucune valeur approchée : chaque nombre est la phrase
+exacte d'une publication, datée et liée. Audité le 26 septembre 2026.</p>
+
+<main>
+
+<section id="chiffre">
+  <h2>Le chiffre officiel le plus récent</h2>
+  <div class="chiffre">
+    <div><span class="grand">18&nbsp;%</span>
+      <span class="unite">des entreprises de 10 salariés ou plus</span></div>
+    <p>En 2025, 18&nbsp;% des entreprises françaises de 10 salariés ou plus déclarent
+    utiliser au moins une technologie d'intelligence artificielle, 8 points de plus
+    qu'en 2024 et 12 points de plus qu'en 2023. Le taux d'usage a ainsi été
+    <strong>multiplié par trois depuis 2023</strong>.</p>
+    <p class="source">Année des données : 2025 · Source : Insee, enquête
+    TIC entreprises 2025, Insee Première n°&nbsp;2120, paru le 21/07/2026 ·
+    <a href="https://www.insee.fr/fr/statistiques/9025878">insee.fr/fr/statistiques/9025878</a></p>
+  </div>
+</section>
+
+<section id="par-taille">
+  <h2>Par taille d'entreprise (données 2025)</h2>
+  <table>
+    <thead><tr><th>Taille de l'entreprise</th><th>Part utilisant l'IA</th></tr></thead>
+    <tbody>
+      <tr><td>De 10 à 49 salariés</td><td><span class="pc">15&nbsp;%</span></td></tr>
+      <tr><td>De 50 à 249 salariés</td><td><span class="pc">31&nbsp;%</span></td></tr>
+      <tr><td>250 salariés ou plus</td><td><span class="pc">58&nbsp;%</span></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="par-secteur">
+  <h2>Par secteur d'activité (données 2025)</h2>
+  <div class="barre">
+    <div class="ligne"><span class="nom">Information-communication</span><span class="jauge" style="width:100%"></span><span class="pc">59&nbsp;%</span></div>
+    <div class="ligne"><span class="nom">Activités spécialisées, scientifiques et techniques</span><span class="jauge" style="width:56%"></span><span class="pc">33&nbsp;%</span></div>
+    <div class="ligne"><span class="nom">Activités immobilières</span><span class="jauge" style="width:44%"></span><span class="pc">26&nbsp;%</span></div>
+    <div class="ligne"><span class="nom">Énergie, eau, gestion des déchets, dépollution</span><span class="jauge" style="width:32%"></span><span class="pc">19&nbsp;%</span></div>
+    <div class="ligne"><span class="nom">Services administratifs et de soutien</span><span class="jauge" style="width:32%"></span><span class="pc">19&nbsp;%</span></div>
+    <div class="ligne"><span class="nom">Industrie manufacturière</span><span class="jauge" style="width:29%"></span><span class="pc">17&nbsp;%</span></div>
+    <div class="ligne"><span class="nom">Commerce</span><span class="jauge" style="width:22%"></span><span class="pc">13&nbsp;%</span></div>
+    <div class="ligne"><span class="nom">Hébergement et restauration</span><span class="jauge" style="width:20%"></span><span class="pc">12&nbsp;%</span></div>
+    <div class="ligne"><span class="nom">Construction</span><span class="jauge" style="width:17%"></span><span class="pc">10&nbsp;%</span></div>
+    <div class="ligne"><span class="nom">Transports et entreposage</span><span class="jauge" style="width:15%"></span><span class="pc">9&nbsp;%</span></div>
+  </div>
+  <p class="leges">Échelle relative au secteur le plus utilisé (information-communication, 59&nbsp;%).</p>
+</section>
+
+<section id="evolution">
+  <h2>L'évolution officielle, 2023 à 2025</h2>
+  <table>
+    <thead><tr><th>Année des données</th><th>Part des entreprises (France)</th><th>Union européenne</th></tr></thead>
+    <tbody>
+      <tr><td>2023</td><td><span class="pc">6&nbsp;%</span></td><td>8&nbsp;%</td></tr>
+      <tr><td>2024</td><td><span class="pc">10&nbsp;%</span></td><td>13&nbsp;%</td></tr>
+      <tr><td>2025</td><td><span class="pc">18&nbsp;%</span></td><td>20&nbsp;%</td></tr>
+    </tbody>
+  </table>
+  <p>Le recours à l'IA reste un peu moins fréquent en France que dans l'ensemble de
+  l'Union européenne, où 20&nbsp;% des entreprises en déclarent l'usage en 2025.
+  Le taux français a été multiplié par trois entre 2023 et 2025.</p>
+</section>
+
+<section id="sources">
+  <h2>Sources</h2>
+  <ol>
+    <li><strong>Insee Première n°&nbsp;2120</strong> — « Les technologies de l'information et de la communication dans les entreprises en 2025 », paru le 21/07/2026.
+      <br><a href="https://www.insee.fr/fr/statistiques/9025878">https://www.insee.fr/fr/statistiques/9025878</a></li>
+    <li><strong>Insee Première n°&nbsp;2061</strong> — « Les TIC dans les entreprises en 2024 », paru le 01/07/2025.
+      <br><a href="https://www.insee.fr/fr/statistiques/8604126">https://www.insee.fr/fr/statistiques/8604126</a></li>
+    <li><strong>Insee Références</strong> — « Économie et société à l'ère du numérique », édition 2025, chapitre « Intelligence artificielle dans les entreprises », paru le 14/10/2025.
+      <br><a href="https://www.insee.fr/fr/statistiques/8616837?sommaire=8616883">https://www.insee.fr/fr/statistiques/8616837?sommaire=8616883</a></li>
+  </ol>
+  <div class="note">
+    <p><strong>Ce qui est absent, à dessein.</strong> Aucun chiffre grand public hors
+    statistique publique n'est repris ici (ex. baromètres de TPE/PME) : leur champ diffère.
+    Aucune publication Insee portant sur les données 2026 n'existait au 26/09/2026 :
+    le millésime le plus récent est donc 2025.</p>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  rAIme · demande n°&nbsp;10 — fichier d'appui : <code>chiffres-ia.md</code>.
+  Chiffres audités et liés à leur publication d'origine ; aucun prix ni donnée inventée.
+</footer>
+</div>
+
+<script>
+(function(){
+  var racine = document.documentElement;
+  var bouton = document.getElementById('bouton-jour');
+  function mode(m){ racine.setAttribute('data-mode', m); try{ localStorage.setItem('raime-mode', m); }catch(e){} }
+  bouton.addEventListener('click', function(){
+    mode(racine.getAttribute('data-mode') === 'jour' ? 'nuit' : 'jour');
+  });
+  try{ if(localStorage.getItem('raime-mode') === 'jour') mode('jour'); }catch(e){}
+})();
+</script>
+</body>
+</html>
