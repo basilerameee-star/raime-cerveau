@@ -19,6 +19,8 @@ verifie('archive saine', archiveSure('-rw-r--r-- 0/0 12 2026-01-01 00:00 depot-a
 verifie('chemin qui remonte refusé', archiveSure('-rw-r--r-- 0/0 12 2026-01-01 00:00 depot/../../etc/cron.d/x').length === 1);
 verifie('chemin absolu refusé', archiveSure('-rw-r--r-- 0/0 12 2026-01-01 00:00 /etc/passwd').length === 1);
 verifie('lien vers l’extérieur refusé', archiveSure('lrwxrwxrwx 0/0 0 2026-01-01 00:00 depot/cle -> /root/.ssh/id_rsa').length === 1);
+verifie('lien qui remonte hors du dépôt refusé', archiveSure('lrwxrwxrwx 0/0 0 2026-01-01 00:00 depot/a/cle -> ../../../etc').length === 1);
+verifie('lien interne accepté (../.. dans le dépôt)', archiveSure('lrwxrwxrwx 0/0 0 2026-01-01 00:00 depot-abc/example/packages/slugify -> ../..').length === 0);
 
 // 2. l'inspection, sur un faux dépôt
 const d = fs.mkdtempSync(path.join(os.tmpdir(), 'essai-'));
