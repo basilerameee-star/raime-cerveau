@@ -139,7 +139,9 @@ export async function soumettre(brain, c) {
     // Un fait ne se discute pas : il s'applique et se trace. C'est ce qui a manqué
     // le jour où le prix du modèle de raisonnement a monté de 69 % sans que rien ne bouge.
     verdict = 'applique';
-    motif = 'Fait vérifiable : appliqué directement, sans évaluation.';
+    // Libellé sans ambiguïté (25/09/2026) : le penseur avait lu « appliqué sans évaluation » comme une
+    // mise en service de modèle. Un fait met à jour le catalogue ; il ne change jamais le routage.
+    motif = `Fait vérifiable (${c.domaine}) : enregistré au catalogue sans évaluation. Aucun modèle n'est mis en service par ce geste ; le routage passe par la mesure.`;
 
   } else {
     // Le routage de modèle a son propre instrument : la métrologie.
