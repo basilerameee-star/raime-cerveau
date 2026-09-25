@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mes courses — rAIme (notes vocales)</title>
+<meta name="description" content="Enregistrez vos séances de sport en dictant une phrase, sans ouvrir l'application. Votre carnet de courses reste dans votre navigateur.">
+<meta name="theme-color" content="#5b3a52">
+<style>
+  :root{
+    --fond:linear-gradient(120deg,#5b3a52 0%,#7a5673 38%,#9c7894 72%,#c2a3b5 100%);
+    --uni:#683f5f; --texte:#f0e6ee; --gris:#dccdd8; --titre:#fff;
+    --bouton:#f2cdd8; --boutonTexte:#46283f; --carte:rgba(250,247,252,.94);
+    --trait:rgba(255,255,255,.2); --accent:#f4d3dd; --coque:#fdfafc;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{min-height:100vh;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5;color:var(--texte);
+    background:var(--fond);background-color:var(--uni)}
+  a{color:var(--titre)}
+  .wrap{max-width:1040px;margin:0 auto;padding:0 clamp(12px,4vw,36px)}
+  header{display:flex;align-items:center;gap:12px;padding:20px 0;flex-wrap:wrap}
+  .logo{width:38px;height:38px;border-radius:12px;background:var(--bouton);color:var(--boutonTexte);display:grid;place-items:center;font-weight:900;font-size:20px}
+  .marque{font-weight:800;letter-spacing:.01em}
+  nav{display:flex;gap:6px 16px;flex-wrap:wrap;font-size:14.5px;margin-left:auto}
+  nav a{color:var(--titre);text-decoration:none;font-weight:600}
+  h1{margin:0 0 6px;font-size:clamp(26px,4.4vw,44px);line-height:1.1;color:var(--titre);letter-spacing:-.02em}
+  .sous{font-size:clamp(15px,2vw,18px);color:var(--gris);max-width:64ch}
+  section{background:var(--coque);border:1px solid #d9c9d9;border-radius:18px;padding:20px 26px;margin:20px 0;color:#3a2433}
+  section h2{font-size:clamp(19px,2.5vw,25px);color:#33202d;margin:4px 0 4px}
+  section h2 .no{display:inline-block;width:28px;height:28px;line-height:28px;border-radius:50%;text-align:center;background:var(--bouton);color:var(--boutonTexte);font-weight:800;margin-right:10px}
+  p,li{max-width:72ch}
+  label{display:grid;gap:5px;font-weight:600;font-size:13px;color:#3d2a38}
+  input,textarea,select,button{font:inherit}
+  input,textarea,select{padding:10px 12px;border-radius:10px;border:1px solid #d2c2d4;background:#fff;color:#2e2430}
+  .champ{display:grid;gap:6px}
+  .dict{display:grid;gap:8px}
+  textarea{min-height:96px;resize:vertical;line-height:1.45;font-size:15px}
+  .bouton{display:inline-flex;align-items:center;height:44px;padding:0 22px;border-radius:999px;background:var(--bouton);color:var(--boutonTexte);font-weight:700;border:0;cursor:pointer}
+  .bouton:disabled{opacity:.5;cursor:not-allowed}
+  .secondaire{display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 16px;border-radius:999px;border:1px solid #d2c2d4;background:#fff;color:#4a3450;font-weight:600;cursor:pointer}
+  .micro{height:44px;width:44px;border-radius:50%;background:#c0362e;color:#fff;font-size:20px;border:0;cursor:pointer}
+  .micro.actif{animation:pulse 1s infinite}
+  @keyframes pulse{50%{box-shadow:0 0 0 10px rgba(192,54,46,.35)}}
+  .rang{display:grid;gap:16px;grid-template-columns:1fr;margin-top:10px}
+  .grille{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+  .apercu{background:#f4ecf4;border:1px solid #e1d3e3;border-radius:12px;padding:12px 16px;margin-top:12px;color:#33202d}
+  .apercu .titre{font-weight:800;font-size:15px;margin:0 0 2px}
+  .tuiles{display:flex;gap:8px;flex-wrap:wrap}
+  .pille{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:999px;border:1px solid #cfc0d2;background:#fff;color:#4a3450;font-weight:600;cursor:pointer}
+  .pille.sel{background:var(--bouton);color:var(--boutonTexte);font-weight:700}
+  .stat{font-size:12.5px;color:#6a5472}
+  .tbl{width:100%;border-collapse:collapse;font-size:13.5px;background:#fff}
+  .tbl th,.tbl td{border:1px solid #ddd0df;padding:8px 10px;text-align:left;vertical-align:top}
+  .tbl th{background:#f2e9f2;font-weight:700;color:#3d2a38}
+  .tbl tr:nth-child(even) td{background:#faf5fa}
+  .total{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-top:10px}
+  .total .c{background:#f4ecf4;border:1px solid #e1d3e3;border-radius:12px;padding:12px 16px;text-align:center;color:#33202d}
+  .total .c b{display:block;font-size:19px;color:#5b2450}
+  .note{font-size:12.5px;color:#6a5472;margin-top:4px}
+  .vide{background:#f4ecf4;border:1px dashed #cfc0d2;border-radius:12px;padding:16px;text-align:center;color:#5b4a5b}
+  .ok2{color:#2e7d32;font-weight:700}.ko2{color:#c62828;font-weight:700}
+  footer{border-top:none;border-top:1px dashed #d9c9d9;padding:18px 0 40px;font-size:13px;color:var(--gris)}
+  .etoile{cursor:pointer;font-size:21px;letter-spacing:1px;color:#c9a227}
+  .etoile.gris{color:#cfc0d2}
+  .bulle{position:fixed;right:18px;bottom:18px;z-index:9;background:#7a5673;color:#fff;border-radius:12px;padding:12px 16px;font-size:13px;box-shadow:0 6px 18px rgba(0,0,0,.25);opacity:0;transition:opacity .3s}
+  .bulle.on{opacity:1}
+  .lst{display:grid;gap:6px}
+  details{background:#f4ecf4;border:1px solid #e1d3e3;border-radius:10px;margin:8px 0;padding:10px 16px}
+  summary{cursor:pointer;font-weight:700;color:#3d2a38}
+  code, .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;background:#efe5f0;color:#5b2450;padding:2px 7px;border-radius:6px}
+  @media(max-width:560px){nav{display:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <span class="logo">☚</span>
+  <span class="marque">rAIme · Mes courses</span>
+  <nav>
+    <a href="#saisie">1 · Enregistrer</a>
+    <a href="#dossier">2 · Dossier</a>
+    <a href="#usage">3 · Au quotidien</a>
+  </nav>
+</header>
+
+<h1>Mes courses,<br>dictées à voix haute</h1>
+<p class="sous">Dites votre séance comme vous la raconteriez — <em>« j'ai couru 10 km en 54 minutes ce matin, super, note 8 »</em> — et elle est enregistrée. Le micro, votre raccourci d'écran d'accueil, et votre carnet reste dans votre navigateur.</p>
+
+<section id="saisie">
+<h2><span class="no">1</span>Enregistrer une course</h2>
+<div class="dict">
+  <label>Dictez ou écrivez votre séance
+    <textarea id="dict" rows="3" placeholder="Ex. : j'ai couru 8 km en 50 minutes hier soir, dur&#10;Ex. : vélo 45 km en 1 h 30, hier soir&#10;Ex. : natation 1500 m, ce matin, note 9"></textarea>
+  </label>
+  <div class="rang">
+    <button class="micro" id="micro" title="Écouter ma voix (dictée vocale du navigateur)">🎤</button>
+    <button class="bouton" id="analyser">Analyser la phrase</button>
+  </div>
+  <p class="note" id="statutMicro">Sur un smartphone, appuyez sur ce bouton et parlez ; le navigateur écrit ce que vous dites. Sinon, tapez la phrase ci-dessus.</p>
+</div>
+
+<div class="apercu" id="apercu" hidden>
+  <p class="titre">Ce que je comprends de votre phrase</p>
+  <div class="grille">
+    <label class="champ">Type
+      <div class="tuiles" id="typeChoix">
+        <button class="pille" data-t="course a pied">🏃 Course à pied</button>
+        <button class="pille" data-t="velo">🚲 Vélo</button>
+        <button class="pille" data-t="natation">🏊 Natation</button>
+        <button class="pille" data-t="marche">🥾 Marche</button>
+      </div>
+    </label>
+    <label class="champ">Date
+      <input type="datetime-local" id="date">
+    </label>
+    <label class="champ">Distance
+      <input type="number" id="dist" min="0" step="0.1" inputmode="decimal" placeholder="10">
+    </label>
+    <label class="champ">Unité
+      <select id="unite"><option value="km">km</option><option value="m">m</option></select>
+    </label>
+    <label class="champ">Durée · minutes
+      <input type="number" id="duree" min="0" step="1" inputmode="numeric" placeholder="54">
+    </label>
+    <label class="champ">Ressenti
+      <select id="ressenti">
+        <option value="">—</option>
+        <option value="super">❤️ Super</option>
+        <option value="bien">🙂 Bien</option>
+        <option value="dur">😤 Dur</option>
+        <option value="epuise">🪫 Épuisé</option>
+      </select>
+    </label>
+    <label class="champ">Note (1–10)</label>
+    <label class="champ">Allure automatique
+      <input id="allure" disabled placeholder="min / km">
+    </label>
+  </div>
+  <div class="rang" style="grid-template-columns:auto auto;align-items:center;gap:10px">
+    <span id="note"></span>
+    <button class="bouton" id="enregistrer">💾 Enregistrer la course</button>
+  </div>
+</div>
+<div class="bulle" id="bulle">✓ Enregistré</div>
+</section>
+
+<section id="dossier">
+<h2><span class="no">2</span>Mon dossier de courses</h2>
+<div class="total" id="total"></div>
+<div id="liste"></div>
+</section>
+
+<section id="usage">
+<h2><span class="no">3</span>Comment l'utiliser au quotidien</h2>
+<p>Le but : <strong>un geste, sans ouvrir une application</strong>. Trois façons, dans l'ordre le plus simple :</p>
+<ol>
+  <li><strong>Ajoutez cette page à l'écran d'accueil de votre téléphone</strong> — sur mobile, ouvrez les points de menu du navigateur (⋯) puis <em>« Ajouter à l'écran d'accueil »</em> ou <em>« Installer l'application »</em>. Une icône « ☚ Mes courses » apparaît sur l'accueil : <strong>un appui</strong> ouvre directement la saisie ci-dessus. C'est « sans ouvrir l'application » : vous ne naviguez pas, vous dictez.</li>
+  <li><strong>Le micro du clavier ou le micro intégré</strong> — sur le téléphone, pressez le 🎤 ci-dessus (ou l'icône micro du clavier), parlez « huit km en cinquante minutes hier soir », et la phrase est écrite puis analysée en un geste.</li>
+  <li><strong>Un favori qui pré-remplit</strong> — ajoutez à vos favoris un raccourci avec des valeurs : <span class="mono">index.html?dist=10&duree=54&type=course%20a%20pied</span>. En un tap, un formulaire presque rempli n'attend que « Enregistrer ».</li>
+</ol>
+<p>Le plus utile : <strong>raccourci d'écran</strong> (façon 1). Pendant un effort, une fois rentré : un appui, une phrase parlée, <em>Enregistrer</em>. La donnée n'ira chez aucun serveur : elle vit dans le navigateur (localStorage) et s'exporte ci-dessus en CSV / JSON.</p>
+<details>
+  <summary>Pourquoi cela marche sans serveur ni application ?</summary>
+  <p>Cette page est un fichier statique qui vit sur <span class="mono">cockpit.raime.fr</span>. La dictée et l'extraction de la course se font <strong>dans votre navigateur</strong> : aucune clé, aucune base de données en ligne, aucune inscription. Vos courses restent chez vous ; vous pouvez les emporter avec l'export. Pour la dictée vocale, le navigateur utilise la boîte de reconnaissance de votre système (Chrome/Edge/Safari/Firefox modernes) ; si votre navigateur ne la propose pas, tapez la phrase — l'analyse est la même.</p>
+</details>
+</section>
+
+<footer>
+  rAIme · carnet de courses par note vocale — demande 9. Aucune donnée n'est envoyée ni stockée en ligne. <a href="#saisie">↑ Enregistrer</a>
+</footer>
+</div>
+
+<script>
+/* =====================================================================
+   MES COURSES — rAIme, demande 9
+   App 100 % statique : la dictée (Web Speech / micro du clavier) et
+   l'extraction de la course (parseCourse) tournent dans le navigateur.
+   Aucune clé, aucun serveur, aucune donnée envoyée en ligne.
+   parseCourse = spécification de atelier/course.js du cerveau rAIme,
+   verrouillée côté serveur par `tests/cas_figes_course.mjs` (41 cas).
+   ===================================================================== */
+
+/* ---------- utilitaires ---------- */
+const num = (s) => Number(String(s).replace(',', '.'));
+function fmtDuree(min){
+  const m = Math.round(min), hh = Math.floor(m / 60), r = m % 60;
+  return hh > 0 ? (r ? hh + ' h ' + r : hh + ' h') : r + ' min';
+}
+function allureHum(a){
+  if (a == null) return '';
+  const mm = Math.floor(a), ss = Math.round((a - mm) * 60);
+  return mm + ':' + String(ss).padStart(2, '0') + ' min/km';
+}
+
+/* ---------- extraction d'une course depuis une phrase (règle du cerveau) ---------- */
+function parseCourse(phrase, maintenant){
+  const p = String(phrase || '').trim();
+  const out = { phrase: p };
+
+  // distance : km porté sinon mètres (converti en km), seulement si km absent
+  const mKm = p.match(/(\d{1,4}(?:[.,]\d{1,2})?)\s*(?:km|kms|kilometres?|kilomètres?)\b/i);
+  const mM  = p.match(/(\d{1,4}(?:[.,]\d{1,2})?)\s*(?:m|mètres?|metres?)\b/i);
+  let distanceKm = null, unit = null;
+  if (mKm)       { distanceKm = num(mKm[1]); unit = 'km'; }
+  else if (mM)   { distanceKm = num(mM[1]) / 1000; unit = 'm'; }
+  out.distanceKm = distanceKm;
+  out.distanceTexte = distanceKm == null ? null : (unit === 'm' ? mM[1] + ' m' : distanceKm + ' km');
+
+  // durée : « 1 h 12 » prime sur « 54 min » ; sinon minutes seules
+  let dureeMin = null;
+  const h = p.match(/(\d{1,2})\s*(?:heures?\s*|h\s*)(?:(\d{1,2})\s*(?:min|minutes?)?)?/i);
+  if (h && h[1]) dureeMin = Number(h[1]) * 60 + (h[2] ? Number(h[2]) : 0);
+  else { const mi = p.match(/(\d{1,3}(?:[.,]\d{1,2})?)\s*(?:min|minutes?|mins?)\b/i); if (mi) dureeMin = num(mi[1]); }
+  out.dureeMin = (dureeMin && dureeMin > 0) ? dureeMin : null;
+  out.dureeTexte = out.dureeMin ? fmtDuree(out.dureeMin) : null;
+  out.allureMinKm = (out.distanceKm && out.dureeMin) ? out.dureeMin / out.distanceKm : null;
+
+  // type
+  const T = [
+    [/course\s*à\s*pied|footing|jogging|jog|\bcour[u]?[rs]?\b|\brun\b/i, 'course a pied'],
+    [/vélo|velo|bicyclette/i, 'velo'],
+    [/natation|nage|bain/i, 'natation'],
+    [/marche\b|randonnée|randomnée/i, 'marche'],
+  ];
+  let type = null;
+  for (const [rx, v] of T) if (p.match(rx)) { type = v; break; }
+  out.type = type;
+
+  // date : dite dans la phrase, sinon « maintenant »
+  let jour = new Date(maintenant), moment = null;
+  const RE_MOIS = { janvier:0, 'février':1, fevrier:1, mars:2, avril:3, mai:4, juin:5, juillet:6,
+    'août':7, aout:7, septembre:8, octobre:9, novembre:10, 'décembre':11, decembre:11 };
+  const dl = p.match(/(?:\ble\s+)?(\d{1,2})\s+(janvier|février|fevrier|mars|avril|mai|juin|juillet|août|aout|septembre|octobre|novembre|décembre|decembre)/i);
+  if (dl) {
+    const mi = RE_MOIS[dl[2].toLowerCase()];
+    jour = new Date(maintenant.getFullYear(), mi, num(dl[1]), 10, 0, 0);
+    if (jour > maintenant) jour = new Date(maintenant.getFullYear() - 1, mi, num(dl[1]), 10, 0, 0);
+  } else if (/\bavant[- ]hier\b/i.test(p)) jour.setDate(jour.getDate() - 2);
+  else if (/\bhier\b|\bla veille\b/i.test(p)) jour.setDate(jour.getDate() - 1);
+  if (/\b(?:ce\s+soir|hier\s+soir|ce\s+we\s*[- ]?end)\b/i.test(p)) moment = 'soir';
+  else if (/\b(?:ce\s+matin|au\s+matin|ce\s+midi)\b/i.test(p)) moment = 'matin';
+  if (moment) jour.setHours(moment === 'matin' ? 9 : 18, 0, 0, 0);
+  out.jour = jour; out.moment = moment;
+
+  // note sur 10, seulement si portée
+  const n = p.match(/(?:note|niveau)\s*[: ]*(\d{1,2})(?:\s*[/][\s]*10)?|\b(\d{1,2})\s*[/]\s*10\b/i);
+  let note = null;
+  if (n) { note = Number(n[1] || n[2]); if (note < 1 || note > 10) note = null; }
+  out.note = note;
+
+  // ressenti : premier adjectif dit
+  const R = [
+    [/super|excellent|génial|genial|facile|top\b/i, 'super'],
+    [/\bbien\b|bonne\b|agréable|agreable/i, 'bien'],
+    [/dur\b|difficile|pénible|penible|hard/i, 'dur'],
+    [/fatigué|fatigue|epuisé|épuisé|crevé|creve/i, 'epuise'],
+  ];
+  let ressenti = null;
+  for (const [rx, v] of R) if (p.match(rx)) { ressenti = v; break; }
+  out.ressenti = ressenti; out.commentaire = p;
+  return out;
+}
+
+/* ---------- persistance locale ---------- */
+const CLE = 'raime_courses_v1';
+const stock = JSON.parse(localStorage.getItem(CLE) || '[]');
+function sauver(){ localStorage.setItem(CLE, JSON.stringify(stock)); }
+function iso(d){ const z = n => String(n).padStart(2, '0'); return d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate()) + 'T' + z(d.getHours()) + ':' + z(d.getMinutes()); }
+function jourHum(d){ const j = new Date(d); return j.getDate() + '/' + (j.getMonth() + 1) + '/' + j.getFullYear(); }
+
+/* ---------- état du formulaire ---------- */
+const labelType = { 'course a pied': '🏃 Course à pied', 'velo': '🚲 Vélo', 'natation': '🏊 Natation', 'marche': '🥾 Marche' };
+const labelRessenti = { '': '—', 'super': '❤️ Super', 'bien': '🙂 Bien', 'dur': '😤 Dur', 'epuise': '🪫 Épuisé' };
+
+const $ = s => document.getElementById(s);
+const saisie = { type: null };
+let noteActuelle = 0;
+
+function majType(){ document.querySelectorAll('#typeChoix .pille').forEach(b => b.classList.toggle('sel', b.dataset.t === saisie.type)); }
+function majAllure(){
+  const e = $('dist'), du = $('duree'), u = $('unite');
+  const d = e.valueAsNumber, du2 = du.valueAsNumber;
+  $('allure').value = (d > 0 && du2 > 0) ? allureHum(du2 / (u.value === 'm' ? d / 1000 : d)) : '';
+}
+function dessinerNote(){
+  let h = 'Note &nbsp;';
+  for (let i = 1; i <= 10; i++) h += '<span class="etoile' + (i <= noteActuelle ? '' : ' gris') + '" data-n="' + i + '" style="cursor:pointer">★</span>';
+  h += ' <button class="secondaire" id="effNote" type="button" style="display:' + (noteActuelle ? 'inline-flex' : 'none') + '">✕ note</button>';
+  $('note').innerHTML = h;
+  document.querySelectorAll('#note .etoile').forEach(s => { s.onclick = () => { noteActuelle = Number(s.dataset.n); dessinerNote(); }; });
+  const e = $('effNote'); if (e) e.onclick = () => { noteActuelle = 0; dessinerNote(); };
+}
+function remplir(c){
+  saisie.type = c.type || null; majType();
+  if (c.jour) $('date').value = iso(c.jour);
+  const isM = c.distanceTexte && c.distanceTexte.endsWith(' m');
+  if (c.distanceKm != null) {
+    $('dist').value = isM ? String(c.distanceKm * 1000) : String(c.distanceKm);
+    $('unite').value = isM ? 'm' : 'km';
+  }
+  $('duree').value = c.dureeMin != null ? String(c.dureeMin) : '';
+  $('ressenti').value = c.ressenti || '';
+  noteActuelle = c.note || 0; dessinerNote();
+  majAllure();
+}
+function resetChamps(){ saisie.type = null; majType(); noteActuelle = 0; dessinerNote(); }
+
+/* ---------- analyse et enregistrement ---------- */
+$('analyser').onclick = () => {
+  const t = $('dict').value;
+  if (!t.trim()){ toast('✍️ Dictée ou écrivez une phrase d\'abord.'); return; }
+  const c = parseCourse(t, new Date());
+  $('apercu').hidden = false; remplir(c);
+  let msg = 'Analyse ▶ ' + (c.type ? labelType[c.type] : 'type non précisé');
+  if (c.distanceKm != null) msg += ', ' + c.distanceTexte;
+  if (c.dureeMin) msg += ', ' + c.dureeTexte;
+  if (!c.distanceKm && !c.type) msg = 'Je ne vois ni distance ni type portés. Ajoutez par ex. « 8 km ». Le formulaire reste modifiable.';
+  toast(msg);
+};
+$('enregistrer').onclick = () => {
+  const d = $('dist').valueAsNumber, u = $('unite').value, du = $('duree').valueAsNumber;
+  if (!saisie.type){ toast('Choisissez un type (🏃 vélo, natation, marche).'); return; }
+  if (!(d > 0)){ toast('Indiquez une distance.'); return; }
+  const distKm = u === 'm' ? d / 1000 : d;
+  if (!(distKm > 0)){ toast('Distance trop petite.'); return; }
+  const donnee = $('date').value || new Date().toISOString().slice(0, 16);
+  const cours = {
+    id: Date.now() + '-' + Math.round(Math.random() * 1e4),
+    type: saisie.type, date: new Date(donnee).toISOString(),
+    distanceKm: Math.round(distKm * 1000) / 1000,
+    dureeMin: du > 0 ? du : null,
+    allureMinKm: (distKm > 0 && du > 0) ? du / distKm : null,
+    ressenti: $('ressenti').value || null, note: noteActuelle || null,
+    commentaire: ($('dict').value || '').trim(),
+  };
+  stock.push(cours); sauver(); dessinerDossier();
+  toast('✓ ' + labelType[saisie.type] + ' enregistré (' + cours.distanceKm + ' km' + (cours.dureeMin ? ' en ' + fmtDuree(cours.dureeMin) : '') + ').');
+  $('dict').value = ''; $('apercu').hidden = true; resetChamps();
+};
+
+/* ---------- dossier ---------- */
+function dessinerDossier(){
+  stock.sort((a, b) => new Date(b.date) - new Date(a.date));
+  const km = stock.reduce((s, c) => s + c.distanceKm, 0);
+  const duree = stock.reduce((s, c) => s + (c.dureeMin || 0), 0);
+  const types = {}; stock.forEach(c => types[c.type] = (types[c.type] || 0) + 1);
+  const t = [
+    ['Courses', stock.length + ' séance' + (stock.length > 1 ? 's' : '')],
+    ['Total', round1(km) + ' km'],
+    ['Sous effort', duree ? fmtDuree(duree) : '—'],
+    ['Répartition', Object.entries(types).map(([k, v]) => labelType[k] + ' ×' + v).join(' · ') || '—'],
+  ];
+  $('total').innerHTML = t.map(x => '<div class="c"><b>' + x[0] + '</b>' + x[1] + '</div>').join('');
+  if (!stock.length){ $('liste').innerHTML = '<div class="vide">Aucune course pour l\'instant. Enregistrez votre première séance en haut →</div>'; return; }
+  let h = '<table class="tbl"><thead><tr><th>Date</th><th>Type</th><th>Distance</th><th>Durée</th><th>Allure</th><th>Ressenti</th><th>Note</th><th></th></tr></thead><tbody>';
+  stock.forEach(c => {
+    h += '<tr><td>' + jourHum(c.date) + '</td><td>' + (labelType[c.type] || c.type) + '</td><td>' + round1(c.distanceKm) + ' km</td>' +
+      '<td>' + (c.dureeMin ? fmtDuree(c.dureeMin) : '—') + '</td><td>' + (c.allureMinKm ? allureHum(c.allureMinKm) : '—') + '</td>' +
+      '<td>' + (c.ressenti ? labelRessenti[c.ressenti] : '—') + '</td><td>' + (c.note ? c.note + '/10' : '—') + '</td>' +
+      '<td><button class="secondaire" data-id="' + c.id + '" title="Supprimer">✕</button></td></tr>';
+  });
+  h += '</tbody></table>';
+  h += '<p class="note">Source : <span class="mono">localStorage</span>. Exportez régulièrement pour garder vos données.</p>';
+  h += '<p><button class="bouton" id="expCSV">⬇️ Exporter CSV</button> <button class="bouton" id="expJSON">⬇️ Exporter JSON</button> <button class="secondaire" id="effacerTout">Tout effacer</button></p>';
+  $('liste').innerHTML = h;
+  document.querySelectorAll('#liste [data-id]').forEach(btn => {
+    btn.onclick = () => {
+      const id = btn.dataset.id;
+      const i = stock.findIndex(c => c.id === id);
+      if (i >= 0) stock.splice(i, 1);
+      sauver(); dessinerDossier();
+    };
+  });
+  const eff = $('effacerTout');
+  if (eff) eff.onclick = () => { if (confirm('Effacer TOUTES les courses (n = ' + stock.length + ') ?')){ stock.length = 0; sauver(); dessinerDossier(); toast('Dossier vidé.'); } };
+  $('expCSV').onclick = exportCSV; $('expJSON').onclick = exportJSON;
+}
+function round1(x){ return Math.round(x * 10) / 10; }
+
+/* ---------- export ---------- */
+function telecharger(nom, contenu, type){
+  const b = new Blob([contenu], { type });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(b); a.download = nom; a.click(); URL.revokeObjectURL(a.href);
+}
+function echap(s){ s = String(s); return (/[\n;"]/.test(s)) ? '"' + s.replace(/"/g, '""') + '"' : s; }
+function exportCSV(){
+  const lignes = [['id', 'date', 'type', 'distance_km', 'duree_min', 'allure_min_km', 'ressenti', 'note', 'commentaire']];
+  stock.slice().sort((a, b) => new Date(a.date) - new Date(b.date)).forEach(c =>
+    lignes.push([c.id, new Date(c.date).toISOString(), c.type, c.distanceKm, c.dureeMin || '', c.allureMinKm ? Math.round(c.allureMinKm * 100) / 100 : '', c.ressenti || '', c.note || '', c.commentaire || '']));
+  telecharger('mes-courses.csv', '\ufeff' + lignes.map(r => r.map(echap).join(';')).join('\n'), 'text/csv;charset=utf-8');
+  toast('CSV exporté.');
+}
+function exportJSON(){
+  const sauvegarde = { outil: 'rAIme mes-courses', version: '9', exporte: new Date().toISOString(), courses: stock };
+  telecharger('mes-courses.json', JSON.stringify(sauvegarde, null, 2), 'application/json');
+  toast('JSON exporté.');
+}
+
+/* ---------- micro / dictée vocale ---------- */
+let microOn = false;
+$('micro').onclick = () => {
+  if (microOn){
+    microOn = false; $('micro').classList.remove('actif'); $('micro').textContent = '🎤';
+    $('statutMicro').textContent = 'Micro coupé : écrivez, ou réécoutez à nouveau.';
+    return;
+  }
+  microOn = true; $('micro').classList.add('actif'); $('micro').textContent = '🎙️…';
+  const ok = demanderMicro();
+  if (ok === false){
+    microOn = false; $('micro').classList.remove('actif'); $('micro').textContent = '🎤';
+    $('statutMicro').textContent = 'Dictée non disponible ici — activez le micro du clavier (mobiles) et tapez la phrase : mêmes résultats.';
+  } else {
+    $('statutMicro').textContent = 'Écoutez… parlez votre séance, puis relâchez 🎤 quand c\'est dit.';
+  }
+};
+function demanderMicro(){
+  // API Web Speech expérimentale (Chromium « SpeechRecognition » / WebKit)
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const SRE = window.SpeechRecognitionEvent || window.webkitSpeechRecognitionEvent;
+  if (SR && SRE){ lancerSpeechRecognition(SR); return true; }
+  // mobile : rendre la main au micro du clavier (iOS/Android) — la saisie reste la même
+  $('dict').focus();
+  return true;
+}
+function lancerSpeechRecognition(SR){
+  try{
+    const rec = new SR({ continuous: true, interimResults: true, lang: 'fr-FR' });
+    rec.onresult = (e) => {
+      const res = e.results; if (!res || !res.length) return;
+      let txt = '';
+      for (const r of res) txt += Array.from(r.alternatives || []).map(a => (a && a.transcript) || '').join(' ') + ' ';
+      $('dict').value = txt.trim();
+      tryAnalyserAuto();
+    };
+    rec.start();
+    setTimeout(() => { try { rec.stop(); } catch (x) {} }, 20000);
+  }catch(x){ /* le micro du clavier prend le relais */ }
+}
+function tryAnalyserAuto(){
+  const c = parseCourse($('dict').value, new Date());
+  if (c.distanceKm || c.type){ $('apercu').hidden = false; remplir(c); }
+}
+
+/* ---------- tuiles type & champs ---------- */
+document.querySelectorAll('#typeChoix .pille').forEach(b => { b.onclick = () => { saisie.type = b.dataset.t; majType(); }; });
+['dist', 'duree', 'unite'].forEach(id => $(id).addEventListener('input', majAllure));
+$('duree').addEventListener('change', majAllure);
+
+/* ---------- raccourcis URL : pré-remplir depuis les paramètres ---------- */
+function depuisURL(){
+  const q = new URLSearchParams(location.search);
+  const c = {};
+  if (q.get('type')) c.type = q.get('type');
+  if (q.get('dist')) c.distanceKm = num(q.get('dist'));
+  if (q.get('duree')){ c.dureeMin = num(q.get('duree')); c.dureeTexte = fmtDuree(c.dureeMin); }
+  if (c.type || c.distanceKm !== undefined){
+    c.jour = new Date(); $('apercu').hidden = false; remplir(c);
+    if (q.get('unite') === 'm'){ $('unite').value = 'm'; }
+    toast('Raccourci pré-rempli : vérifiez puis enregistrez.');
+  }
+}
+function toast(msg){
+  const b = $('bulle'); b.textContent = msg; b.classList.add('on');
+  clearTimeout(toast._t); toast._t = setTimeout(() => b.classList.remove('on'), 3800);
+}
+
+dessinerNote(); dessinerDossier(); depuisURL();
+</script>
+</body>
+</html>
