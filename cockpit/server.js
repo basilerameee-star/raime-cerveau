@@ -654,6 +654,8 @@ const RANGEMENTS = {
   GMAIL_ADRESSE: 'Ton adresse Gmail',
   GMAIL_MOT_DE_PASSE_APPLI: "Mot de passe d'application Gmail (16 lettres)",
   GROQ_API_KEY: 'Clé Groq',
+  META_ACCESS_TOKEN: 'Clé Meta (jeton de l’utilisateur système du portefeuille)',
+  AGENDA_LIEN: 'Lien de ta page de réservation Google Agenda',
 };
 const NOM_LIBRE = /^[A-Z][A-Z0-9_]{2,40}$/; // « autre clé » : un nom en MAJUSCULES, comme MISTRAL_API_KEY
 function lireCoffre() {
