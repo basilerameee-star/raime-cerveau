@@ -23,3 +23,5 @@ __pycache__/
 # le site : les apercus ne partent jamais
 site/apercu-*/
 site/**/__pycache__/
+# les essais de code rapatries par l essayeur : quarantaine, jamais versionnes
+essais/
