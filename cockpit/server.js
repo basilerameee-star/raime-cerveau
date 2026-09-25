@@ -471,7 +471,7 @@ async function relayer() {
       + `Une application web se livre construite et prête à ouvrir : demande-${c.id}/app/index.html (fichiers statiques, chemins relatifs) ; elle sera visible à https://cockpit.raime.fr/livrables/demande-${c.id}/app/index.html. `
       + `Le code du cerveau lui-même est en lecture seule dans /cerveau. Pour l'améliorer : copie-le dans demande-${c.id}/cerveau (sans node_modules), puis git init, git add -A, git commit AVANT toute modification ; modifie ; ajoute un test tests/cas_figes_<sujet>.mjs qui prouve le changement ; lance les tests ; puis git diff > ../changement.diff et écris ../changement.md dont la première ligne est un titre court. L'applicateur le met en service seul si tous les cas figés passent (la Constitution, la livraison, le cockpit et les briques restent hors de portée) ; ne livre un changement.diff que pour une amélioration du cerveau. `
       + `EXIGENCE PREMIUM, sur chaque tâche, de A à Z : un travail fini, pas une ébauche. Charte rAIme : fond noir #000, texte blanc, rose #ff7eb0 pour les seuls mots-clés, police Inter, mode jour possible (fond #ededed, rose #db4f8b) ; retenue, espace, trois tailles de titres au plus, aucune fenêtre grise ; français impeccable, sans anglicisme. Avant de rendre, vérifie tout et corrige : le code s'exécute sans erreur (serveur et navigateur), les tests passent, le HTML est valide, l'affichage tient sur ordinateur et sur téléphone (375 px), les contrastes sont lisibles, aucune donnée ni aucun prix inventé. Recommence la vérification tant qu'elle trouve quelque chose. Écris dans ton compte rendu ce que tu as vérifié. `
-      + `Tes skills sont dans /home/node/.dsh/skills (dont charte-raime) : sers-t'en. N'en installe pas de nouveaux toi-même. `
+      + `Tes skills sont dans /home/node/.dsh/skills (dont charte-raime) : sers-t'en. Pour en acquérir un nouveau (sur GitHub, dépôts reconnus), dépose-le en attente dans /travail/skills-candidats/<nom-en-minuscules>/ : SKILL.md (le texte) et SOURCE.md (lien GitHub, licence, étoiles) ; le contrôleur l'examine et l'installe s'il est sûr. Du texte seulement, jamais de script. `
       + `N'écris jamais une clé ou un mot de passe dans un fichier ni dans ta réponse. Ce que tu ne peux pas faire : publier, envoyer à des personnes, payer. `
       + `Termine par un compte rendu en français, trois phrases au plus : ce que tu as fait, où est le résultat (avec l'adresse), ce qui reste.\n\nDemande de Basile : ${c.texte}`;
     try {
@@ -484,6 +484,29 @@ async function relayer() {
   } finally { relaisOccupe = false; }
 }
 setInterval(() => { relayer().catch(() => {}); }, 30_000);
+
+// L'APPRENTISSAGE AUTOMATIQUE (voulu et autorisé par Basile le 25/09/2026) : quand la file est vide,
+// la nuit (1 h-6 h, Paris), une séance par jour au plus, en régime de dépense normal. Le cerveau cherche
+// sur GitHub des skills de code reconnus et les dépose EN ATTENTE ; le contrôleur du serveur
+// (scripts/installeur_skills.py) les examine (règles + relecture d'un modèle fort) et installe les sûrs.
+const APPRENTISSAGE = "Apprentissage (séance automatique de la nuit) : 1) relis tes skills dans /home/node/.dsh/skills ; "
+  + "2) cherche sur GitHub des skills ou guides de qualité pour ce que rAIme livre : applications web premium, HTML et CSS accessibles, tests, Node, Python, sécurité, rédaction en français ; "
+  + "dépôts reconnus seulement (organisation connue ou beaucoup d'étoiles, licence libre, mis à jour récemment) ; "
+  + "3) garde au plus trois des meilleurs, qui t'apportent quelque chose que tu n'as pas, adaptés à la charte rAIme ; "
+  + "4) dépose chacun en attente dans /travail/skills-candidats/<nom-en-minuscules>/ : SKILL.md (le texte du skill, en Markdown) et SOURCE.md (lien GitHub, licence, étoiles, date) — du texte seulement ; "
+  + "5) écris apprentissage.md : ce que tu as trouvé, ce que tu proposes, pourquoi.";
+async function apprendre() {
+  try {
+    const h = +new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Paris', hour: 'numeric', hourCycle: 'h23' }).format(new Date());
+    if (h < 1 || h >= 6 || (await regimeActuel()) !== 'normal') return;
+    const { rows } = await cerveau.query(`SELECT
+      (SELECT count(*) FROM commandes WHERE etat IN ('a_faire', 'en_cours'))::int AS file,
+      (SELECT count(*) FROM commandes WHERE texte LIKE 'Apprentissage (séance%' AND cree_le > now() - interval '20 hours')::int AS recente`);
+    if (rows[0].file || rows[0].recente) return;
+    await cerveau.query(`INSERT INTO commandes (texte, pour) VALUES ($1, 'harness')`, [APPRENTISSAGE]);
+  } catch (e) {}
+}
+setInterval(() => { apprendre().catch(() => {}); }, 10 * 60_000);
 
 
 // Les livrables de l'exécutant, en lecture seule : /livrables et /livrables/demande-12/fichier.md
