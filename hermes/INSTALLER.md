@@ -122,6 +122,27 @@ providers:
     transport: "codex_responses"
 ```
 
+## 6. La compétence vidéo (sur le PC, avec WanGP)
+
+Hermes du PC (`fcc-hermes`) pilote WanGP par son serveur MCP : « fais-moi une vidéo de… », et il rend
+le fichier. Modèle d'abord : Wan 2.2 (Apache 2.0). **MiniMax H3 est exclu** (sa licence exclut l'Union européenne).
+
+Une fois, dans PowerShell :
+
+```powershell
+cd C:\Users\Lenovo\Projets\rAIme\cerveau; git pull
+New-Item -ItemType Directory -Force "$HOME\.hermes\skills" | Out-Null
+Copy-Item -Recurse -Force hermes\competences\video-wangp "$HOME\.hermes\skills\"
+python hermes\competences\video-wangp\ajouter_wangp.py
+```
+
+Puis copier `lancer_wangp_hermes.bat` dans le dossier `scripts` de Wan2GP (à côté de `run.bat`).
+
+**Chaque fois** qu'Hermes doit faire des vidéos : double-cliquer `lancer_wangp_hermes.bat` (WanGP sans
+interface, joignable depuis ce PC seulement), puis relancer `fcc-hermes`. Pour retrouver l'interface
+habituelle : fermer cette fenêtre, puis `run.bat` comme avant. Une seule des deux à la fois : la carte
+graphique n'en porte pas deux.
+
 ## Ce qui reste fermé, et pourquoi
 
 - **Pas de port public, pas de tableau de bord ouvert** : le tableau de bord d'Hermes garde des clés.
