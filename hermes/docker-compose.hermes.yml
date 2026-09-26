@@ -25,14 +25,33 @@ services:
     restart: unless-stopped
     depends_on: [raime-mcp]
     volumes:
-      - /opt/raime/hermes-data:/opt/data             # config.yaml, SOUL.md, mémoire, compétences, atelier
-    env_file: /opt/raime/hermes.env                  # OPENROUTER_API_KEY, RAIME_MCP_JETON, jetons de messagerie
+      - /opt/raime/hermes-data:/opt/data             # config.yaml, SOUL.md, mémoire, compétences
+      - ${TRAVAIL_HOTE:-/opt/raime/hermes-data/atelier}:/travail   # le dossier de travail du Cockpit (livrables)
+      - /opt/raime/raime-brain:/cerveau:ro           # le code du cerveau, en lecture seule
+    env_file: /opt/raime/hermes.env                  # OPENROUTER_API_KEY, RAIME_MCP_JETON, API_SERVER_KEY, Telegram
     environment:
-      HERMES_UID: "10000"
-      HERMES_GID: "10000"
+      HERMES_UID: "${HERMES_UID:-10000}"             # le propriétaire de /travail, pour qu'Hermes puisse y écrire
+      HERMES_GID: "${HERMES_GID:-10000}"
+      API_SERVER_HOST: "0.0.0.0"                     # réseau interne seulement : aucun port publié
     mem_limit: 2g
     cpus: 2
     networks: [raime_default]
+
+  # Le relais : il prend le nom réseau « harness » de l'ancien exécutant ; le Cockpit ne change pas.
+  raime-executant:
+    image: node:20-alpine
+    container_name: raime-executant
+    restart: unless-stopped
+    depends_on: [hermes]
+    working_dir: /app
+    command: ["node", "hermes/executant.js"]
+    volumes:
+      - /opt/raime/raime-brain:/app:ro
+      - ${TRAVAIL_HOTE:-/opt/raime/hermes-data/atelier}:/travail
+    env_file: /opt/raime/executant.env               # API_SERVER_KEY
+    networks:
+      raime_default:
+        aliases: [harness]
 
 networks:
   raime_default:

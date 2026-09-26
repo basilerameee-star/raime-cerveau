@@ -258,3 +258,9 @@ Merci pour le travail de cette nuit : le banc a déjà trouvé un vrai défaut e
 - Évaluation : deux accrocs sans gravité : les avertissements « Nous Portal » (Hermes essaie son propre service avant OpenRouter), et PowerShell qui retire les guillemets des arguments (« 'questions' is not a hermes command »).
 - Correction : apostrophes doublées dans les commandes PowerShell ; notée dans la notice avec l'étape Telegram.
 - Leçon : une commande donnée à Basile se donne dans la syntaxe exacte de SON terminal (PowerShell), pas dans celle du serveur.
+
+## 2026-09-26 — session cloud — Hermes prend la place de l'exécutant du Cockpit
+- Action : un relais (`hermes/executant.js`) parle le langage de l'exécutant attendu par le Cockpit (`/sante`, `/tache`, `.resultat.json`) et prend son nom réseau `harness` ; Hermes reçoit `/travail` et le cerveau en lecture seule. `brancher.sh` bascule en une commande, `revenir.sh` rallume l'ancien.
+- Résultat : 7 tests du relais ; 152 tests sur 152.
+- Évaluation : le Cockpit reste identique ; l'ancien exécutant est arrêté, pas supprimé (sa politique de redémarrage est gardée pour le retour).
+- Leçon : remplacer un moteur derrière un contrat existant plutôt que modifier l'interface ; le retour arrière tient en une commande.

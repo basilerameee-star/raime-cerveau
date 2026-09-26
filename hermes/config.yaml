@@ -9,11 +9,12 @@ model:
   default: "deepseek/deepseek-v4-flash-0731"
   base_url: "https://openrouter.ai/api/v1"
 
-# Le terminal d'Hermes travaille dans SON conteneur, sur un dossier de travail à lui : jamais sur
-# le serveur, jamais sur le cerveau en service, jamais avec le socket Docker.
+# Le terminal d'Hermes travaille dans SON conteneur, dans /travail (le dossier des livrables du
+# Cockpit) : jamais sur le serveur, jamais sur le cerveau en service (lu dans /cerveau, lecture
+# seule), jamais avec le socket Docker.
 terminal:
   backend: "local"
-  cwd: "/opt/data/atelier"
+  cwd: "/travail"
 
 # Les consignes d'Hermes lui-même (SOUL.md…) ne changent qu'avec l'accord de Basile.
 approval:
