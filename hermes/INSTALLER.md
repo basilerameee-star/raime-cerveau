@@ -50,6 +50,9 @@ ssh $K root@2.29.6.94 'cd /opt/raime && docker compose -f docker-compose.hermes.
 
 Attendu dans le journal de `raime-mcp` : `à l'écoute sur 0.0.0.0:8766/mcp — 5 outils`.
 
+**Ne jamais lancer `docker compose … --remove-orphans`** ici : ce fichier vit dans `/opt/raime` à côté du
+compose principal ; Docker prendrait la base, Caddy, n8n et le Cockpit pour des restes et les supprimerait.
+
 ## 4. L'essai
 
 ```bash

@@ -119,6 +119,7 @@ test('la configuration d’Hermes pointe sur ce serveur, sans aucun secret écri
   assert.match(config, /Authorization: "Bearer \$\{RAIME_MCP_JETON\}"/);
   // Les commentaires expliquent ce qui est exclu : seules les lignes actives comptent.
   const compose = lire('docker-compose.hermes.yml').split('\n').filter((l) => !/^\s*#/.test(l)).map((l) => l.replace(/\s+#.*$/, '')).join('\n');
+  assert.match(compose, /command: \["gateway", "run"\]/, 'Hermes tourne en passerelle, sinon il redémarre en boucle');
   assert.doesNotMatch(compose, /network_mode:\s*host|docker\.sock|^\s*ports:/m, 'pas de réseau hôte, pas de socket Docker, aucun port publié');
   for (const f of ['config.yaml', 'SOUL.md', 'docker-compose.hermes.yml', 'INSTALLER.md']) {
     assert.doesNotMatch(lire(f), /\b(sk-or-v1-[A-Za-z0-9]{20,}|(sk|rk)_(live|test)_[A-Za-z0-9]{8,}|gh[pousr]_[A-Za-z0-9]{20,})\b/, `${f} porte un secret`);
