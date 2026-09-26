@@ -2,6 +2,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { Pool } = require('pg');
+const { repondreSansFrais } = require('./parole.js');
 
 const pool = new Pool({
   host: process.env.PGHOST || 'postgres',
@@ -151,11 +152,8 @@ const CORTEX_ORAL_QUESTION = CORTEX_ORAL.replace(/ Seulement si Basile ORDONNE[^
 const MODELE_JARVIS = 'deepseek/deepseek-v4-flash-0731';
 const MODELE_PROFOND = 'deepseek/deepseek-v4-pro-0813'; // « réfléchis à fond », « en profondeur »
 const PROFOND = /réfléchis (à fond|bien|en profondeur)|en profondeur|analyse approfondie|prends ton temps/i;
-// Gemini gratuit en premier (mesure du 25/09 : 3.8 Flash réfléchit, 6 s ; 3.5 Flash Lite, 0,9 s).
-// 25/09 soir : Basile trouve la latence trop forte → d'abord 3.1 Flash Lite (1,6 s, sans réflexion, français propre),
-// 3.8 Flash (qui réfléchit) seulement en relais ; « réfléchis à fond » garde les modèles qui réfléchissent.
-const GEMINI_JARVIS = ['gemini-3.1-flash-lite', 'gemini-3.8-flash'];
-const GEMINI_PROFOND = ['gemini-3.1-pro-preview', 'gemini-3.8-flash'];
+// Les modèles Gemini gratuits (mesures du 25/09 : 3.1 Flash Lite en 1,6 s d'abord, 3.8 Flash en relais) et
+// toute la chaîne gratuite vivent dans cockpit/parole.js.
 async function regimeActuel() {
   try { return ((await cerveau.query("SELECT mode FROM regime_budget ORDER BY le DESC LIMIT 1")).rows[0] || {}).mode || 'normal'; }
   catch (e) { return 'normal'; }
@@ -230,44 +228,20 @@ async function repondreCortex(message, oral, extra, question = false) {
     .concat(hist.map(h => ({ role: h.role === 'assistant' ? 'assistant' : 'user', content: h.content })));
   let reply = '';
   const mode = await regimeActuel();
-  if (mode === 'arret') {
-    reply = "Le budget de modèles du mois est épuisé : je ne réponds plus qu'au budget, et je note tes demandes pour Claude jusqu'au 1er du mois ou jusqu'à une recharge.";
-  } else {
-    // Gemini, appelé directement (mesure du 25/09/2026 : 1,6 s, 0,00024 $ la réponse courte,
-    // six fois moins cher que gpt-4.1 et un français plus soutenu). Le régime économe prend
-    // la version encore plus légère.
-    const leger = mode === 'econome' || mode === 'reserve';
-    const MODELE = !leger && PROFOND.test(message) ? MODELE_PROFOND : MODELE_JARVIS;
-    // D'abord Gemini, sur le quota gratuit de la clé Google rangée dans le coffre (25/09/2026) :
-    // chaque modèle a son propre quota, on les épuise l'un après l'autre avant de payer DeepSeek.
-    const cleGemini = lireCoffre().GEMINI_API_KEY;
-    if (cleGemini) {
-      for (const g of PROFOND.test(message) ? GEMINI_PROFOND : GEMINI_JARVIS) {
-        try {
-          const r = await fetch('https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', { method: 'POST',
-            headers: { Authorization: 'Bearer ' + cleGemini, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ model: g, messages, max_tokens: 4000 }), signal: AbortSignal.timeout(90000) });
-          if (!r.ok) continue; // quota du jour épuisé (429) ou modèle retiré : le suivant
-          const d = await r.json();
-          reply = (d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content) || '';
-          if (reply) break;
-        } catch (e) {}
-      }
-    }
-    if (!reply) try {
-      const r = await fetch('https://openrouter.ai/api/v1/chat/completions', { method: 'POST',
-        headers: { Authorization: 'Bearer ' + process.env.OPENROUTER_API_KEY, 'Content-Type': 'application/json' },
-        // la réflexion compte dans max_tokens ; en régime économe, il répond sans réfléchir
-        body: JSON.stringify({ model: MODELE, messages, max_tokens: 2500, reasoning: { enabled: !leger } }), signal: AbortSignal.timeout(90000) });
-      const d = await r.json();
-      reply = (d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content) || '';
-    } catch (e) {}
-  }
-  if (!reply && mode !== 'arret') { // repli : une seconde chance sur V4 Pro (l'ancien chemin par n8n et gpt-4.1 coûtait dix fois plus)
+  // LA PAROLE NE S'ARRÊTE JAMAIS (26/09/2026) : modèles gratuits seulement, le local du serveur en
+  // dernier (cockpit/parole.js). Le budget, même en « arrêt », ne fait plus taire Jarvis.
+  const parole = await repondreSansFrais({ messages, profond: PROFOND.test(message), coffre: lireCoffre() });
+  reply = parole.texte;
+  if (parole.source) console.log(`[cortex] réponse par ${parole.source}`);
+  // Le payant n'est plus sur le chemin de la parole. Il ne revient que si Basile le rallume
+  // (CORTEX_PAYANT=1), jamais en régime « arrêt ».
+  if (!reply && process.env.CORTEX_PAYANT === '1' && mode !== 'arret') {
     try {
+      const leger = mode === 'econome' || mode === 'reserve';
       const r = await fetch('https://openrouter.ai/api/v1/chat/completions', { method: 'POST',
         headers: { Authorization: 'Bearer ' + process.env.OPENROUTER_API_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: MODELE_PROFOND, messages, max_tokens: 2500 }), signal: AbortSignal.timeout(90000) });
+        body: JSON.stringify({ model: !leger && PROFOND.test(message) ? MODELE_PROFOND : MODELE_JARVIS, messages, max_tokens: 2500,
+          reasoning: { enabled: !leger } }), signal: AbortSignal.timeout(90000) });
       const d = await r.json();
       reply = (d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content) || '';
     } catch (e) {}
@@ -355,7 +329,7 @@ function lignesBudget(b) {
 // Ce que le cerveau met en place : le régime de l'économe, et le rythme que Claude s'impose.
 function mesuresBudget(b) {
   const m = b.regime ? [...b.regime.mesures] : ["L'économe n'a pas encore rendu sa première lecture."];
-  if (lireCoffre().GEMINI_API_KEY) m.push("Jarvis répond d'abord avec le quota gratuit de Gemini ; DeepSeek, payant, seulement au-delà.");
+  m.push("Jarvis répond toujours sans frais : modèles gratuits d'abord, puis le modèle local du serveur ; le budget ne peut plus l'interrompre.");
   const sem = b.claude.find((x) => x.fenetre === 'semaine');
   if (sem) {
     const jours = Math.max(0.5, (new Date(sem.reinitialise_le) - Date.now()) / 86400e3);
@@ -430,7 +404,7 @@ async function noterCommande(message, reformulation) {
   return { voie: 'action', reply, commande: id };
 }
 
-// ── LE RELAIS Jarvis → exécutant. Une demande à la fois ; rien en régime « arrêt » ; en cas d'échec
+// ── LE RELAIS Jarvis → exécutant. Une demande à la fois ; en régime « arrêt », modèles gratuits seulement ; en cas d'échec
 // ou d'exécutant injoignable, la demande revient à Claude avec la raison. Le résultat va au journal.
 const EXECUTANT = process.env.EXECUTANT_URL || 'http://harness:8201';
 let relaisOccupe = false;
@@ -454,7 +428,7 @@ async function conclure(id, d) {
 // fil d'une tâche de 45 min et renvoyé à Claude une demande qui n'avait reçu qu'un « occupé »).
 // ① Une demande en cours se conclut par son fichier de résultat, ou, si l'exécutant est libre sans
 //    en avoir laissé, par ce qu'elle a produit dans son dossier (sinon elle est refaite une fois).
-// ② On ne confie rien à un exécutant occupé, ni pendant une maintenance, ni en régime « arrêt ».
+// ② On ne confie rien à un exécutant occupé, ni pendant une maintenance ; en « arrêt », gratuit seulement.
 async function relayer() {
   if (relaisOccupe) return;
   relaisOccupe = true;
@@ -471,7 +445,10 @@ async function relayer() {
         await conclure(e.id, plein ? { code: 0, sortie: `Travail terminé ; son compte rendu s'est perdu pendant un redémarrage. Les résultats sont ici : https://cockpit.raime.fr/livrables/demande-${e.id}/` } : null);
       }
     }
-    if (sante.etat !== 'libre' || enCours.length || (await regimeActuel()) === 'arret') return;
+    if (sante.etat !== 'libre' || enCours.length) return;
+    // Les ordres ne s'arrêtent plus avec le budget (26/09/2026) : en « arrêt » ou en « réserve »,
+    // l'exécutant est prié de ne prendre que des modèles gratuits.
+    const gratuit = ['arret', 'reserve'].includes(await regimeActuel());
     const c = (await cerveau.query(`UPDATE commandes SET etat = 'en_cours' WHERE id = (SELECT id FROM commandes
       WHERE etat = 'a_faire' AND pour = 'harness' ORDER BY cree_le LIMIT 1) RETURNING id, texte`)).rows[0];
     if (!c) return;
@@ -485,7 +462,7 @@ async function relayer() {
       + `Ta réponse finale ne contient QUE le compte rendu, en français (aucun raisonnement, rien en anglais) : trois phrases au plus, ce que tu as fait, où est le résultat (avec l'adresse), ce qui reste.\n\nDemande de Basile : ${c.texte}`;
     try {
       const r = await fetch(EXECUTANT + '/tache', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tache: consigne, id: c.id }), signal: AbortSignal.timeout(46 * 60_000) });
+        body: JSON.stringify({ tache: consigne, id: c.id, gratuit }), signal: AbortSignal.timeout(46 * 60_000) });
       if (r.status === 409) { await conclure(c.id, null); return; } // occupé : on attend, on n'abandonne pas
       await conclure(c.id, await r.json());
     } catch (e) { /* fil coupé : la demande reste en cours et se conclura au tour suivant par ①. */ }

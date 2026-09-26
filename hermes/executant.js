@@ -20,6 +20,10 @@ const HERMES = process.env.HERMES_URL || 'http://raime-hermes:8642';
 const CLE = process.env.API_SERVER_KEY || '';
 const TRAVAIL = process.env.TRAVAIL_DIR || '/travail';
 const DUREE_MAX_MS = Number(process.env.EXECUTANT_DUREE_MAX_MS || 45 * 60_000);
+// En régime « arrêt » ou « réserve », le Cockpit demande le gratuit : Hermes prend alors Gemini (quota
+// gratuit), et, s'il est épuisé, le modèle local du serveur (fallback_providers de hermes/config.yaml).
+const MODELE_GRATUIT = { provider: 'gemini', model: process.env.HERMES_MODELE_GRATUIT || 'gemini-3.8-flash' };
+const MODELE_LOCAL = { provider: 'local', model: process.env.HERMES_MODELE_LOCAL || 'qwen3:4b' };
 
 // Ce qu'Hermes lit avant chaque demande : ses compétences à lui, et la règle d'apprentissage.
 export const PREAMBULE = "Tu es Hermes, l'exécutant du cerveau rAIme, et tu travailles dans /travail. "
@@ -40,24 +44,55 @@ function resultat(id, d) {
   fs.writeFileSync(path.join(dossier, '.resultat.json'), JSON.stringify(d));
 }
 
-export async function executer({ tache, id }, { fetch: f = fetch } = {}) {
+// Hermes rend parfois un échec comme une réponse ordinaire (constaté le 26/09 avec le vrai Hermes :
+// « ⚠️ Provider authentication failed… », statut 200, zéro jeton). On le reconnaît à tous ses signes,
+// pour ne jamais annoncer « faite » une demande qui n'a pas été faite.
+export function echecHermes(d, entetes) {
+  const choix = d?.choices?.[0];
+  const texte = String(choix?.message?.content || '').trim();
+  if (choix?.finish_reason === 'error' || d?.hermes?.failed === true || entetes?.get?.('x-hermes-completed') === 'false')
+    return d?.hermes?.error || entetes?.get?.('x-hermes-error') || texte.slice(0, 300) || 'échec signalé par Hermes';
+  if (d?.usage?.total_tokens === 0 && texte.startsWith('⚠️')) return texte.slice(0, 300);
+  return null;
+}
+// Un échec d'accès au modèle (crédit, quota, clé absente) survient avant tout travail : on peut
+// alors redemander, sans risque de faire deux fois la même chose, au modèle local.
+const ACCES_REFUSE = /credit|crédit|billing|402|429|quota|rate.?limit|credentials|authentication|provider/i;
+
+async function demander(f, tache, route) {
+  const r = await f(`${HERMES}/v1/chat/completions`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${CLE}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model: 'hermes-agent', stream: false, ...route,
+      messages: [{ role: 'user', content: PREAMBULE + String(tache) }] }),
+    signal: AbortSignal.timeout(DUREE_MAX_MS),
+  });
+  const texte = await r.text();
+  if (!r.ok) return { echec: `Hermes ${r.status} : ${texte.slice(0, 400)}` };
+  let d; try { d = JSON.parse(texte); } catch { return { echec: 'réponse illisible de Hermes' }; }
+  const echec = echecHermes(d, r.headers);
+  if (echec) return { echec };
+  const sortie = String(d?.choices?.[0]?.message?.content || '').trim();
+  return sortie ? { sortie } : { echec: 'Hermes a rendu une réponse vide' };
+}
+
+export async function executer({ tache, id, gratuit = false }, { fetch: f = fetch } = {}) {
   const t0 = Date.now();
   const duree = () => Math.round((Date.now() - t0) / 1000);
+  // Les routes, dans l'ordre : gratuit demandé → Gemini puis le local ; sinon le modèle habituel
+  // d'Hermes (et sa chaîne de repli), puis le local si l'accès au modèle a été refusé.
+  const routes = gratuit ? [MODELE_GRATUIT, MODELE_LOCAL] : [{}, MODELE_LOCAL];
+  const traces = [];
   try {
-    const r = await f(`${HERMES}/v1/chat/completions`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${CLE}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'hermes-agent', stream: false,
-        messages: [{ role: 'user', content: PREAMBULE + String(tache) }] }),
-      signal: AbortSignal.timeout(DUREE_MAX_MS),
-    });
-    const texte = await r.text();
-    if (!r.ok) return { code: 1, sortie: '', trace: `Hermes ${r.status} : ${texte.slice(0, 400)}`, duree_s: duree() };
-    let d; try { d = JSON.parse(texte); } catch { return { code: 1, sortie: '', trace: 'réponse illisible de Hermes', duree_s: duree() }; }
-    const sortie = String(d?.choices?.[0]?.message?.content || '').trim();
-    return sortie ? { code: 0, sortie, duree_s: duree() } : { code: 1, sortie: '', trace: 'Hermes a rendu une réponse vide', duree_s: duree() };
+    for (const route of routes) {
+      const r = await demander(f, tache, route);
+      if (r.sortie) return { code: 0, sortie: r.sortie, duree_s: duree(), ...(route.provider ? { moteur: `${route.provider} · ${route.model}` } : {}) };
+      traces.push(r.echec);
+      if (!ACCES_REFUSE.test(r.echec)) break; // un vrai échec de la tâche : on ne la refait pas
+    }
+    return { code: 1, sortie: '', trace: traces.join(' | ').slice(0, 800), duree_s: duree() };
   } catch (e) {
-    return { code: 1, sortie: '', trace: `Hermes injoignable ou trop long : ${e.message}`, duree_s: duree() };
+    return { code: 1, sortie: '', trace: [...traces, `Hermes injoignable ou trop long : ${e.message}`].join(' | '), duree_s: duree() };
   }
 }
 
