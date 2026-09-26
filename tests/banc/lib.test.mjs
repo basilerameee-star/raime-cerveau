@@ -1,5 +1,5 @@
-// Le socle : le modèle factice répond sans réseau ni clé, et sans MODELE_FACTICE=1
-// le chemin de production reste exactement celui d'avant.
+// Le socle : le modèle factice répond sans réseau ni clé ; sans MODELE_FACTICE=1, la production parle
+// sans frais (Gemini gratuit, puis le modèle local), jamais par OpenRouter.
 import { requetes } from './outils.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -25,11 +25,15 @@ test('une consigne sans fixture échoue franchement', async () => {
   await assert.rejects(ask({ task: 'extraction', system: 'consigne imprévue', user: '-' }), /aucune fixture/);
 });
 
-test('sans MODELE_FACTICE=1, le chemin de production est pris (et réclame sa clé)', async () => {
+test('sans MODELE_FACTICE=1, la production parle SANS FRAIS : jamais OpenRouter, même avec une clé', async () => {
   delete process.env.MODELE_FACTICE;
+  const avant = requetes.length;
+  process.env.OPENROUTER_API_KEY = 'ne-doit-pas-servir';
   try {
     await assert.rejects(ask({ task: 'redaction', system: 'Tu es le radar produit de rAIme.', user: '-' }),
-      /OPENROUTER_API_KEY manquante/);
-  } finally { process.env.MODELE_FACTICE = '1'; }
-  assert.equal(requetes.length, 0, 'aucune requête réseau');
+      /aucun modèle gratuit ne répond/);
+  } finally { process.env.MODELE_FACTICE = '1'; delete process.env.OPENROUTER_API_KEY; }
+  const faites = requetes.slice(avant);
+  assert.ok(faites.some((u) => /raime-ollama:11434\/api\/chat$/.test(u)), 'le modèle local est essayé');
+  assert.ok(!faites.some((u) => /openrouter/.test(u)), 'OpenRouter a été appelé');
 });

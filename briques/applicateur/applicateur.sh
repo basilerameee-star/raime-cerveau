@@ -15,7 +15,7 @@ exec 9>/tmp/applicateur.verrou; flock -n 9 || exit 0
 T=/opt/raime/harness/travail
 D=/opt/raime/cerveau-git
 P=$(docker ps -qf name=postgres | head -1)
-INTERDIT='^(plugin-cerveau/CONSTITUTION|\.github/|deploy\.sh|run\.sh|porte/|briques/|cockpit/)'
+INTERDIT='^(plugin-cerveau/CONSTITUTION|\.github/|deploy\.sh|run\.sh|porte/|briques/|cockpit/|jarvis/)'
 SECRET='sk-[A-Za-z0-9_-]{16}|BEGIN [A-Z ]*PRIVATE KEY|ghp_[A-Za-z0-9]{20}|github_pat_|AIza[0-9A-Za-z_-]{30}|xox[bp]-'
 
 journal() { # $1 changement, $2 motif — textes venus de l'exécutant : on retire « $ » (fin de citation SQL)

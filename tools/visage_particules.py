@@ -2,7 +2,7 @@
 
 Source : google-ai-edge/mediapipe, mediapipe/modules/face_geometry/data/canonical_face_model.obj
 (licence Apache 2.0). 468 sommets, 898 triangles ; z vers l'observateur.
-    python3 tools/visage_particules.py canonical_face_model.obj > cockpit/visage_donnees.js
+    python3 tools/visage_particules.py canonical_face_model.obj > jarvis/interface/visage.js
 Chaque particule : position (x, y, z) et normale (nx, ny, nz), plus son rôle : 0 peau, 1 iris,
 2 lèvre du haut, 3 lèvre du bas et menton (s'ouvrent avec la voix), 4 paupière.
 """

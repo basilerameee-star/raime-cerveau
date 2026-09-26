@@ -1,7 +1,7 @@
 // BOUCLE PERMANENTE — le cœur battant de la firme.
 // Un conteneur qui ne s'arrête jamais (--restart unless-stopped) : plus besoin de cron système.
 // Chaque agent a son rythme ; la boucle survit aux redémarrages du serveur.
-import { db } from './lib.js';
+import { db, sansFrais } from './lib.js';
 import pg from 'pg';
 import * as experience from './experience.js';
 import * as econome from './econome.js';
@@ -151,8 +151,12 @@ async function main() {
   for (;;) {
     let r = { mode: 'normal', facteur: 1, pauses: [] };
     try { r = await econome.evaluer({ brain }); } catch (e) { console.error(`[econome] lecture impossible : ${e.message}`); }
+    // Sans frais (modèles gratuits), le budget ne ralentit ni n'arrête plus aucun agent.
+    if (sansFrais()) r = { ...r, facteur: 1, pauses: [] };
     for (const t of RYTHMES) {
       if (r.pauses.includes(t.nom)) continue;
+      // Mesurer les prix des modèles payants n'a plus d'objet tant que tout tourne sans frais.
+      if (sansFrais() && (t.nom === 'metrologue' || t.nom === 'chasseur')) continue;
       if (t.heures && (heureParis() < t.heures[0] || heureParis() >= t.heures[1])) continue;
       const toutes = t.toutes * (econome.PAYANTS.has(t.nom) ? r.facteur : 1);
       if (Date.now() - (dernier[t.nom] || 0) >= toutes) {

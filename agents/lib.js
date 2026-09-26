@@ -1,6 +1,13 @@
-// Socle commun des agents rAIme : routage de modèle, appel OpenRouter, DB, traçabilité.
-// Souverain : aucun appel à Anthropic. Tout passe par OpenRouter (DeepSeek / Qwen).
+// Socle commun des agents rAIme : routage de modèle, appel de modèle, DB, traçabilité.
+// Souverain : aucun appel à Anthropic. Depuis le 26/09/2026 (Basile : OpenRouter est supprimé), les agents
+// parlent SANS FRAIS : Gemini gratuit, puis le modèle local du serveur (jarvis/parole.cjs, la même parole
+// que Jarvis). OpenRouter ne sert plus que si Basile le rallume (OPENROUTER_PAYANT=1 et une clé).
 import pg from 'pg';
+import { createRequire } from 'node:module';
+const { repondreSansFrais } = createRequire(import.meta.url)('../jarvis/parole.cjs');
+
+// Vrai tant que Basile n'a pas rallumé le payant : la boucle ne met alors aucun agent en pause pour le budget.
+export const sansFrais = () => !(process.env.OPENROUTER_PAYANT === '1' && process.env.OPENROUTER_API_KEY);
 
 const OR_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
@@ -70,8 +77,15 @@ export async function ask({ task, system, user, json = true, maxTokens = 6000, t
     const { repondre } = await import('./modele_factice.js');
     return repondre({ task, system, user });
   }
+  if (sansFrais()) {
+    const t0 = Date.now();
+    const r = await repondreSansFrais({ messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
+      profond: task === 'raisonnement' || task === 'contradiction', json, maxTokens, temperature });
+    if (!r.texte) throw new Error('aucun modèle gratuit ne répond (ni Gemini, ni le modèle local)');
+    const u = r.usage || {};
+    return { text: r.texte, model: r.source, tokensIn: u.prompt_tokens || 0, tokensOut: u.completion_tokens || 0, costUsd: 0, ms: Date.now() - t0 };
+  }
   const key = process.env.OPENROUTER_API_KEY;
-  if (!key) throw new Error('OPENROUTER_API_KEY manquante');
 
   const body = {
     model: cfg.model,

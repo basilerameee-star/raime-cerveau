@@ -76,7 +76,8 @@ export function joursRestantsDuMois(maintenant = new Date()) {
 let dernier = null, derniereLecture = 0;
 export async function evaluer({ brain, maintenant = new Date() }) {
   if (dernier && Date.now() - derniereLecture < 30 * 60_000) return dernier;
-  const cle = process.env.OPENROUTER_API_KEY;
+  // OpenRouter n'est lu que si Basile a rallumé le payant (sinon ses crédits n'arrêtent plus rien).
+  const cle = process.env.OPENROUTER_PAYANT === '1' ? process.env.OPENROUTER_API_KEY : null;
   let moisUsd = null, semaineUsd = null, creditsUsd = null;
   const lire = async (url) => ((await (await fetch(url, { headers: { Authorization: 'Bearer ' + cle }, signal: AbortSignal.timeout(8000) })).json()) || {}).data || {};
   if (cle) {

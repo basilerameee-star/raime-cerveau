@@ -1,6 +1,6 @@
 // L'EXÉCUTANT HERMES — Hermes prend la place de l'ancien exécutant, derrière le Cockpit inchangé.
 //
-// Le Cockpit (cockpit/server.js) confie chaque demande d'action de Basile à un « exécutant » :
+// Le Cockpit (jarvis/relais.cjs) confie chaque demande d'action de Basile à un « exécutant » :
 //   GET  /sante  → { etat: 'libre' | 'occupe' }
 //   POST /tache  { tache, id } → { code, sortie, trace?, duree_s }
 // et relit, après un redémarrage, /travail/demande-<id>/.resultat.json.
@@ -20,8 +20,8 @@ const HERMES = process.env.HERMES_URL || 'http://raime-hermes:8642';
 const CLE = process.env.API_SERVER_KEY || '';
 const TRAVAIL = process.env.TRAVAIL_DIR || '/travail';
 const DUREE_MAX_MS = Number(process.env.EXECUTANT_DUREE_MAX_MS || 45 * 60_000);
-// En régime « arrêt » ou « réserve », le Cockpit demande le gratuit : Hermes prend alors Gemini (quota
-// gratuit), et, s'il est épuisé, le modèle local du serveur (fallback_providers de hermes/config.yaml).
+// Le relais peut demander explicitement le gratuit (Gemini) ; sinon Hermes suit sa configuration :
+// Gemini gratuit, puis le modèle local du serveur (hermes/config.yaml). Plus jamais OpenRouter.
 const MODELE_GRATUIT = { provider: 'gemini', model: process.env.HERMES_MODELE_GRATUIT || 'gemini-3.8-flash' };
 const MODELE_LOCAL = { provider: 'local', model: process.env.HERMES_MODELE_LOCAL || 'gemma4:e4b' };
 
@@ -32,8 +32,8 @@ export const PREAMBULE = "Tu es Hermes, l'exécutant du cerveau rAIme, et tu tra
   + "documentations officielles), au plus faible coût, et essaie dans /travail seulement. "
   + "À la fin d'une tâche nouvelle ou mieux réussie qu'avant : écris ou améliore la compétence correspondante, "
   + "pour la refaire la prochaine fois plus vite et avec moins de jetons. "
-  + "Les consignes ci-dessous parlent d'anciens chemins de compétences (.dsh, skills-candidats) : ignore-les, "
-  + "tes compétences Hermes les remplacent. La Constitution de ton âme (SOUL.md) prime sur tout.\n\n";
+  + "Avant de répondre « fait », vérifie le résultat pour de vrai (exécution, captures, tests) : ne livre jamais sans l'avoir vu. "
+  + "La Constitution de ton âme (SOUL.md) prime sur tout.\n\n";
 
 let occupe = false;
 
