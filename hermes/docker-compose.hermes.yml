@@ -1,0 +1,36 @@
+# Hermes Agent et le serveur MCP du cerveau, sur le réseau interne de rAIme.
+# À poser dans /opt/raime/ par la session locale (hermes/INSTALLER.md). Différences voulues avec le
+# docker-compose d'origine d'Hermes : PAS de network_mode: host, PAS de socket Docker, AUCUN port
+# publié sur Internet, tableau de bord fermé.
+services:
+  raime-mcp:
+    image: node:20-alpine
+    container_name: raime-mcp
+    restart: unless-stopped
+    working_dir: /app
+    command: ["node", "agents/raime_mcp.js"]
+    volumes:
+      - /opt/raime/raime-brain:/app:ro
+    env_file: /opt/raime/mcp.env                   # DATABASE_URL, DATABASE_URL_N8N, RAIME_MCP_JETON, GITHUB_CHANTIER_TOKEN
+    environment:
+      RAIME_MCP_PORT: "8766"
+    networks: [raime_default]
+
+  hermes:
+    image: raime-hermes:d0288be5                     # construit depuis le commit vérifié (INSTALLER.md, étape 2)
+    container_name: raime-hermes
+    restart: unless-stopped
+    depends_on: [raime-mcp]
+    volumes:
+      - /opt/raime/hermes-data:/opt/data             # config.yaml, SOUL.md, mémoire, compétences, atelier
+    env_file: /opt/raime/hermes.env                  # OPENROUTER_API_KEY, RAIME_MCP_JETON, jetons de messagerie
+    environment:
+      HERMES_UID: "10000"
+      HERMES_GID: "10000"
+    mem_limit: 2g
+    cpus: 2
+    networks: [raime_default]
+
+networks:
+  raime_default:
+    external: true

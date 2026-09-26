@@ -234,3 +234,13 @@ Merci pour le travail de cette nuit : le banc a déjà trouvé un vrai défaut e
 - Correction : `cron.raime` n'est PAS installé ; son en-tête le dit désormais. La modification de la demande n° 9 reste juste (cohérence du dépôt), elle n'a rien à déclencher.
 - Leçon : un constat sur le serveur se vérifie sur le serveur (fichiers installés, journaux), pas dans le dépôt.
 - Pour la session cloud : la session locale construit cette nuit, sur la branche `nuit-2026-09-25`, l'essayeur (fait), le kit serveur client (fait), le Gardien version sas (fait, 16 cas figés), la Constitution v2 en proposition (faite), puis le penseur, la priorité de l'architecte, Jarvis et les sources légales. Merci de ne pas les construire en double.
+
+## 2026-09-26 — session cloud — Hermes maison, branché sur le cerveau
+- Demande de Basile : un « Hermes maison 100 % avec tous ses outils », en utilisant les modules de free-claude-code (FCC).
+- Action : lecture des deux dépôts. FCC : 63 000 lignes de Python, AGPL-3.0, Python 3.14.7 imposé, un proxy vers 55 fournisseurs. Hermes Agent (NousResearch) : MIT, 300 Mo, des centaines d'outils (terminal, navigateur, mémoire, compétences, tâches planifiées, messageries, MCP).
+- Choix (option recommandée, Basile m'ayant laissé choisir) : faire tourner le vrai Hermes chez rAIme plutôt que le réécrire ; la « maison » passe par un serveur MCP du cerveau (`agents/raime_mcp.js`, cinq outils, le Gardien en travers de chaque appel, le journal à chaque appel). FCC en phase 2, dans son propre conteneur, jamais copié dans ce dépôt (AGPL).
+- Résultat : 14 tests ; essai supplémentaire avec le client MCP officiel (@modelcontextprotocol/sdk) : connexion, liste des outils, appel réussis. 145 tests sur 145.
+- Évaluation : deux assertions de mes propres tests étaient fausses (elles lisaient les commentaires qui décrivent justement ce qui est interdit).
+- Correction : les lignes de commentaire sont ignorées ; une mutation (`network_mode: host` actif) fait bien échouer le test.
+- Leçon : un test de configuration se vérifie en y glissant la faute qu'il doit voir.
+- Question ouverte : Jarvis (session locale) et Hermes se recouvrent (voix, messageries, conversation). Hermes peut être le moteur de Jarvis ; à trancher avant de doubler le travail.
