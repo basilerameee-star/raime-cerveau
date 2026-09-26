@@ -12,8 +12,8 @@ const DEPOT = new URL('../../', import.meta.url).pathname;
 
 // options : santeApresMaj (Jarvis répond après la bascule), geminiAuCoffre (la clé est rangée au coffre),
 // gemmaDispo (le modèle Gemma 4 se télécharge), compose (version de docker compose), surchargeEtrangere
-// (un docker-compose.override.yml qui n'est pas le nôtre existe déjà).
-function scenario({ santeApresMaj = true, geminiAuCoffre = true, gemmaDispo = true, compose = '2.29.1', surchargeEtrangere = false } = {}) {
+// (un docker-compose.override.yml du serveur existe déjà, comme sur le vrai serveur le 26/09/2026).
+function scenario({ santeApresMaj = true, geminiAuCoffre = true, gemmaDispo = true, compose = '2.29.1', surchargeEtrangere = true } = {}) {
   const R = fs.mkdtempSync(path.join(os.tmpdir(), 'banc-installer-'));
   const d = (p) => path.join(R, p);
   for (const x of ['bin', 'travail-cockpit', 'hermes-data', 'raime-brain/hermes', 'raime-brain/node_modules/pg', 'raime-brain/cockpit', 'compose']) fs.mkdirSync(d(x), { recursive: true });
@@ -28,6 +28,8 @@ function scenario({ santeApresMaj = true, geminiAuCoffre = true, gemmaDispo = tr
   fs.writeFileSync(d('raime-brain/.env'), 'DATABASE_URL=fictive\n');
   fs.writeFileSync(d('compose/docker-compose.yml'), 'services: {}\n');
   if (surchargeEtrangere) fs.writeFileSync(d('compose/docker-compose.override.yml'), 'services: {} # réglage de Basile\n');
+  fs.writeFileSync(d('compose/.env'), 'POSTGRES_PASSWORD=fictif\nCOMPOSE_PROJECT_NAME=raime\n');
+  const fichiers = [d('compose/docker-compose.yml'), ...(surchargeEtrangere ? [d('compose/docker-compose.override.yml')] : [])].join(',');
   // La version que Jarvis annonce : l'empreinte de ses fichiers .cjs et .json, comme serveur.cjs la calcule.
   const h = crypto.createHash('sha256');
   for (const f of fs.readdirSync(d('raime-brain/jarvis')).filter((f) => /\.(cjs|json)$/.test(f)).sort()) h.update(fs.readFileSync(d(`raime-brain/jarvis/${f}`)));
@@ -42,7 +44,7 @@ case "$*" in
   "compose version --short") echo "${compose}" ;;
   "inspect raime-cockpit-1 --format {{range .Mounts}}"*) echo "${d('travail-cockpit')}" ;;
   *"com.docker.compose.project.working_dir"*) echo "${d('compose')}" ;;
-  *"com.docker.compose.project.config_files"*) echo "${d('compose')}/docker-compose.yml" ;;
+  *"com.docker.compose.project.config_files"*) echo "${fichiers}" ;;
   *"com.docker.compose.service"*) echo "cockpit" ;;
   "inspect raime-cockpit-1 --format {{.Config.Image}}") echo "raime-cockpit" ;;
   "inspect raime-cockpit-1 --format {{.Image}}") echo "sha256:ancienne" ;;
@@ -53,7 +55,7 @@ case "$*" in
   "exec raime-cockpit-1 wget -qO- http://harness:8201/sante") echo '{"etat":"libre","moteur":"hermes"}' ;;
   "exec raime-cockpit-1 wget -qO- -T 180"*) echo '{"message":{"role":"assistant","content":"Une PME gagne du temps."}}' ;;
   "exec raime-cockpit-1 wget -qO- http://127.0.0.1:8090/healthz") if [ "$(cat "${d('etat-maj')}")" = oui ]; then ${santeApresMaj ? `echo "ok ${version}"` : 'exit 1'}; else echo ok; fi ;;
-  *"override.yml up -d --no-deps cockpit") echo oui > "${d('etat-maj')}" ;;
+  *"jarvis.yml up -d --no-deps cockpit") echo oui > "${d('etat-maj')}" ;;
   *" up -d --no-deps cockpit") echo non > "${d('etat-maj')}" ;;
   "exec raime-ollama ollama pull gemma4:e4b") ${gemmaDispo ? 'exit 0' : 'exit 1'} ;;
   "exec raime-ollama ollama show gemma4:e4b --license") echo "Apache License 2.0 (exemple)" ;;
@@ -84,8 +86,8 @@ test('installer : clé Gemini transmise une fois (Hermes et agents) et jamais af
   const j = s.journal();
   const i = (m) => j.findIndex((l) => m.test(l));
   assert.ok(i(/up -d --force-recreate hermes raime-executant/) >= 0 && i(/up -d raime-ollama/) > i(/up -d --force-recreate hermes/), 'la bascule avant le modèle local');
-  assert.ok(i(/override\.yml up -d --no-deps cockpit$/) > i(/ollama pull gemma4:e4b/), 'le Cockpit est remplacé en dernier');
-  assert.ok(i(/^restart raime-boucle$/) > i(/override\.yml up -d/), 'les agents relisent la clé');
+  assert.ok(i(/jarvis\.yml up -d --no-deps cockpit$/) > i(/ollama pull gemma4:e4b/), 'le Cockpit est remplacé en dernier');
+  assert.ok(i(/^restart raime-boucle$/) > i(/jarvis\.yml up -d/), 'les agents relisent la clé');
   assert.equal(i(/openrouter/i), -1);
   assert.equal(i(/remove-orphans|\bdown\b|^rm raime-hermes|^rm raime-harness/), -1, 'rien n’est supprimé');
   // Relancer ne double rien.
@@ -107,7 +109,7 @@ test('Jarvis : la surcharge posée lit le code livré, en lecture seule, sans re
   const s = scenario();
   const r = s.lancer('raime-brain/jarvis/installer.sh');
   assert.equal(r.status, 0, r.stdout + r.stderr);
-  const sur = fs.readFileSync(s.d('compose/docker-compose.override.yml'), 'utf8');
+  const sur = fs.readFileSync(s.d('compose/docker-compose.jarvis.yml'), 'utf8');
   assert.match(sur, /pose par raime-brain\/jarvis\/installer\.sh/);
   assert.match(sur, /build: !reset null/);
   assert.match(sur, /command: \["node", "jarvis\/demarrer\.cjs"\]/);
@@ -124,7 +126,8 @@ test('Jarvis ne répond pas avec la bonne version : l’ancien Cockpit est remis
   const r = s.lancer('raime-brain/jarvis/installer.sh');
   assert.equal(r.status, 3, r.stdout + r.stderr);
   assert.match(r.stdout, /REVENU/);
-  assert.ok(!fs.existsSync(s.d('compose/docker-compose.override.yml')), 'la surcharge est retirée');
+  assert.ok(!fs.existsSync(s.d('compose/docker-compose.jarvis.yml')), 'notre fichier est retiré');
+  assert.equal(fs.readFileSync(s.d('compose/.env'), 'utf8'), 'POSTGRES_PASSWORD=fictif\nCOMPOSE_PROJECT_NAME=raime\n', 'le .env n’est pas touché');
   assert.ok(s.journal().includes('tag raime-cockpit-ancien:avant-jarvis raime-cockpit'), 'l’ancienne image est remise');
   assert.ok(fs.existsSync(s.d('raime-brain/cockpit')), 'rien de l’ancien n’est effacé');
 });
@@ -134,17 +137,39 @@ test('retour en arrière volontaire : jarvis/revenir.sh remet l’ancien Cockpit
   assert.equal(s.lancer('raime-brain/jarvis/installer.sh').status, 0);
   const r = s.lancer('raime-brain/jarvis/revenir.sh');
   assert.equal(r.status, 0, r.stdout + r.stderr);
-  assert.ok(!fs.existsSync(s.d('compose/docker-compose.override.yml')));
+  assert.ok(!fs.existsSync(s.d('compose/docker-compose.jarvis.yml')));
+  assert.equal(fs.readFileSync(s.d('compose/.env'), 'utf8'), 'POSTGRES_PASSWORD=fictif\nCOMPOSE_PROJECT_NAME=raime\n', 'le .env retrouve son contenu d’avant');
+  assert.match(fs.readFileSync(s.d('compose/docker-compose.override.yml'), 'utf8'), /réglage de Basile/);
   assert.ok(s.journal().includes('tag raime-cockpit-ancien:avant-jarvis raime-cockpit'));
 });
 
-test('garde-fous : docker compose trop ancien, ou surcharge qui n’est pas la nôtre : rien n’est touché', () => {
-  for (const s of [scenario({ compose: '2.20.0' }), scenario({ surchargeEtrangere: true })]) {
-    const r = s.lancer('raime-brain/jarvis/installer.sh');
-    assert.equal(r.status, 1, r.stdout + r.stderr);
-    assert.ok(!s.journal().some((l) => /^tag |up -d/.test(l)));
-  }
-  assert.match(fs.readFileSync(scenario({ surchargeEtrangere: true }).d('compose/docker-compose.override.yml'), 'utf8'), /réglage de Basile/);
+test('garde-fou : docker compose trop ancien : rien n’est touché', () => {
+  const s = scenario({ compose: '2.20.0' });
+  const r = s.lancer('raime-brain/jarvis/installer.sh');
+  assert.equal(r.status, 1, r.stdout + r.stderr);
+  assert.ok(!s.journal().some((l) => /^tag |up -d/.test(l)));
+});
+
+test('le docker-compose.override.yml du serveur n’est jamais touché ; notre fichier passe derrière, inscrit au .env', () => {
+  const s = scenario({ surchargeEtrangere: true });
+  const r = s.lancer('raime-brain/jarvis/installer.sh');
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.equal(fs.readFileSync(s.d('compose/docker-compose.override.yml'), 'utf8'), 'services: {} # réglage de Basile\n');
+  const env = fs.readFileSync(s.d('compose/.env'), 'utf8');
+  assert.match(env, /^POSTGRES_PASSWORD=fictif$/m, 'les réglages du .env restent');
+  const liste = env.match(/^COMPOSE_FILE=(.*)$/m)[1].split(':');
+  assert.deepEqual(liste, [s.d('compose/docker-compose.yml'), s.d('compose/docker-compose.override.yml'), s.d('compose/docker-compose.jarvis.yml')]);
+  assert.ok(s.journal().some((l) => l.includes(`-f ${s.d('compose/docker-compose.override.yml')} -f ${s.d('compose/docker-compose.jarvis.yml')} up -d --no-deps cockpit`)));
+  // Relancer ne double pas la ligne.
+  assert.equal(s.lancer('raime-brain/jarvis/installer.sh').status, 0);
+  assert.equal(fs.readFileSync(s.d('compose/.env'), 'utf8').match(/^COMPOSE_FILE=/gm).length, 1);
+});
+
+test('sans surcharge sur le serveur : même chemin', () => {
+  const s = scenario({ surchargeEtrangere: false });
+  const r = s.lancer('raime-brain/jarvis/installer.sh');
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.match(fs.readFileSync(s.d('compose/.env'), 'utf8'), new RegExp(`^COMPOSE_FILE=${s.d('compose/docker-compose.yml')}:${s.d('compose/docker-compose.jarvis.yml')}$`, 'm'));
 });
 
 test('modèle local introuvable : l’installation s’arrête avant de toucher au Cockpit', () => {

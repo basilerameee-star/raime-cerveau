@@ -24,21 +24,17 @@ FICHIERS=$(etiquette com.docker.compose.project.config_files)
 SVC=$(etiquette com.docker.compose.service)
 [ -n "$WD" ] && [ -n "$FICHIERS" ] && [ -n "$SVC" ] || { echo "ECHEC : le Cockpit n'a pas ete lance par docker compose ; rien n'est touche"; exit 1; }
 
-# Le fichier de surcharge que docker compose lit tout seul dans ce dossier : le changement est permanent,
-# même si quelqu'un relance « docker compose up » plus tard.
-PREMIER=$(printf '%s' "$FICHIERS" | cut -d, -f1)
-case "$(basename "$PREMIER")" in
-  compose.yaml|compose.yml) SURCHARGE="$WD/compose.override.yaml" ;;
-  *) SURCHARGE="$WD/docker-compose.override.yml" ;;
-esac
-if [ -f "$SURCHARGE" ] && ! grep -qF "$MARQUE" "$SURCHARGE"; then
-  echo "ECHEC : $SURCHARGE existe deja et n'est pas le notre ; rien n'est touche"; exit 1
-fi
-ARGS=(--project-directory "$WD"); IFS=',' read -ra F <<< "$FICHIERS"
-for f in "${F[@]}"; do [ "$f" = "$SURCHARGE" ] || ARGS+=(-f "$f"); done
+# Notre propre fichier, à côté de ceux du serveur, qui ne sont jamais modifiés (le 26/09, un
+# docker-compose.override.yml existait déjà). Après la réussite, il est inscrit dans le .env du dossier
+# (COMPOSE_FILE) : le changement est permanent, même si quelqu'un relance « docker compose up » plus tard.
+SURCHARGE="$WD/docker-compose.jarvis.yml"
+ENVF="$WD/.env"
+BASES=(); IFS=',' read -ra F <<< "$FICHIERS"
+for f in "${F[@]}"; do [ "$f" = "$SURCHARGE" ] || BASES+=("$f"); done
+ARGS=(--project-directory "$WD"); for f in "${BASES[@]}"; do ARGS+=(-f "$f"); done
 
-# L'ancienne version est gardée pour revenir en arrière (image étiquetée, surcharge absente = ancien Cockpit).
-if ! grep -qF "$MARQUE" "$SURCHARGE" 2>/dev/null; then
+# L'ancienne version est gardée pour revenir en arrière (image étiquetée, fichier retiré = ancien Cockpit).
+if [ ! -f "$SURCHARGE" ]; then
   docker tag "$(docker inspect "$C" --format '{{.Image}}')" raime-cockpit-ancien:avant-jarvis
   docker inspect "$C" --format '{{.Config.Image}}' > /opt/raime/cockpit-avant-jarvis.txt
   echo "ancien Cockpit garde sous raime-cockpit-ancien:avant-jarvis"
@@ -59,12 +55,22 @@ services:
 EOF
 docker compose "${ARGS[@]}" -f "$SURCHARGE" config -q || { rm -f "$SURCHARGE"; echo "ECHEC : configuration refusee ; rien n'est change"; exit 1; }
 
+# Inscrire notre fichier dans le .env du dossier, derrière ceux du serveur ; l'ancienne ligne est gardée à part.
+inscrire() {
+  touch "$ENVF"
+  grep -qF "$MARQUE" "$ENVF" || { grep '^COMPOSE_FILE=' "$ENVF" > /opt/raime/compose-file-avant-jarvis.txt || true; }
+  local liste; liste="$(IFS=:; echo "${BASES[*]}"):$SURCHARGE"
+  { grep -vF "$MARQUE" "$ENVF" | grep -v '^COMPOSE_FILE=' || true; printf '%s\nCOMPOSE_FILE=%s\n' "$MARQUE" "$liste"; } > "$ENVF.jarvis"
+  cat "$ENVF.jarvis" > "$ENVF"; rm -f "$ENVF.jarvis"
+}
+
 # La version attendue : l'empreinte du code de jarvis/ (calculée comme serveur.cjs la calcule).
 ATTENDU=$(cd "$J" && LC_ALL=C ls | grep -E '\.(cjs|json)$' | LC_ALL=C sort | xargs cat | sha256sum | cut -c1-12)
 sante() { for _ in $(seq 1 30); do
   [ "$(docker exec "$C" wget -qO- http://127.0.0.1:8090/healthz 2>/dev/null)" = "ok $ATTENDU" ] && return 0; sleep 2; done; return 1; }
 
 if docker compose "${ARGS[@]}" -f "$SURCHARGE" up -d --no-deps "$SVC" && sante; then
+  inscrire
   # L'ancien Cockpit est désinstallé : son conteneur est remplacé ; la copie du dépôt qu'il laissait est retirée.
   rm -rf "$CERVEAU/cockpit"
   echo "JARVIS EN SERVICE : version $ATTENDU ; il se mettra a jour seul a chaque livraison."
