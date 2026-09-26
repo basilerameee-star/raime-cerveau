@@ -1,0 +1,262 @@
+{
+  "mise_a_jour": "2026-09-26",
+  "etats": {
+    "en_place": "fonctionne aujourd'hui",
+    "a_brancher": "le code est prêt, il manque un accès ou un geste de Basile",
+    "a_faire": "pas encore construit",
+    "interdit": "refusé par la Constitution ou la loi"
+  },
+  "domaines": [
+    {
+      "nom": "Jarvis, la voix",
+      "capacites": [
+        {
+          "nom": "Échanger à l'oral, par écrit ou en dictée",
+          "etat": "en_place",
+          "detail": "Conversation orale continue, dictée dans la barre, voix française."
+        },
+        {
+          "nom": "Répondre sans frais, sans jamais s'arrêter",
+          "etat": "en_place",
+          "detail": "Gemini gratuit puis le modèle local du serveur ; plus aucun appel à OpenRouter."
+        },
+        {
+          "nom": "Faire le point sur le cerveau",
+          "etat": "en_place",
+          "detail": "Ce qui a bougé, les agents actifs, les ordres, la pensée de la nuit, les questions en attente."
+        },
+        {
+          "nom": "Savoir et rechercher",
+          "etat": "en_place",
+          "detail": "Bibliothèque du cerveau, puis recherche web souveraine (SearXNG) quand tu le demandes."
+        },
+        {
+          "nom": "Trier tes e-mails",
+          "etat": "a_brancher",
+          "detail": "Lecture seule, classement et résumé toutes les 15 minutes.",
+          "il_faut": "Ranger dans le coffre ton adresse Gmail et un mot de passe d'application Google."
+        },
+        {
+          "nom": "Suivre l'objectif de 2 000 € par mois",
+          "etat": "en_place",
+          "detail": "Jauge du mois ; les encaissements se notent dans le Cockpit."
+        },
+        {
+          "nom": "Écrire comme un humain",
+          "etat": "en_place",
+          "detail": "Règles de stop-slop dans sa propre parole."
+        }
+      ]
+    },
+    {
+      "nom": "Hermes, les mains",
+      "capacites": [
+        {
+          "nom": "Exécuter tes ordres",
+          "etat": "en_place",
+          "detail": "Sites, applications, code, recherche et installation depuis GitHub ; résultat visible dans les livrables du Cockpit."
+        },
+        {
+          "nom": "Compétences",
+          "etat": "en_place",
+          "detail": "Site premium, charte rAIme, marketing (50), stop-slop, UI UX Pro Max, Remotion, context engineering ; installées par installer.sh."
+        },
+        {
+          "nom": "Serveur MCP du cerveau",
+          "etat": "en_place",
+          "detail": "Les outils du cerveau (questions, bibliothèque, journal) exposés à Hermes."
+        },
+        {
+          "nom": "Apprendre la nuit",
+          "etat": "en_place",
+          "detail": "Une séance par nuit : il relit ses échecs et améliore ses compétences."
+        },
+        {
+          "nom": "Déposer le code sur GitHub",
+          "etat": "a_brancher",
+          "il_faut": "Un jeton GitHub limité à un dépôt de livraison, rangé pour Hermes."
+        },
+        {
+          "nom": "Mettre un site en ligne sur une adresse raime.fr",
+          "etat": "a_brancher",
+          "il_faut": "Le DNS de raime.fr (où est-il acheté ?) pour une adresse joker *.raime.fr."
+        },
+        {
+          "nom": "WhatsApp avec ton numéro",
+          "etat": "a_brancher",
+          "il_faut": "L'étape 8 de hermes/INSTALLER.md : scanner un QR code depuis ton téléphone."
+        },
+        {
+          "nom": "Vidéo IA ultra réaliste (WanGP sur ton PC)",
+          "etat": "a_brancher",
+          "il_faut": "Finir l'installation de Wan2GP sur le PC, puis l'étape 6."
+        }
+      ]
+    },
+    {
+      "nom": "Le cerveau, les agents qui tournent seuls",
+      "capacites": [
+        {
+          "nom": "Veille",
+          "etat": "en_place",
+          "detail": "Forums, dépôts de code, nouveaux modèles, travaux de recherche ; rangés dans la bibliothèque."
+        },
+        {
+          "nom": "Radar du marché",
+          "etat": "en_place",
+          "detail": "Ce qui sort, à quel prix, et ce que des acheteurs paient."
+        },
+        {
+          "nom": "Éclaireur des modèles gratuits",
+          "etat": "en_place",
+          "detail": "Repère les modèles gratuits (Gemini, Groq, local…), les mesure avec la batterie de métrologie, et la parole prend les meilleurs."
+        },
+        {
+          "nom": "Sas de la veille",
+          "etat": "en_place",
+          "detail": "Tri de ce que le radar rapporte, avant d'entrer."
+        },
+        {
+          "nom": "Bibliothèque et curiosité",
+          "etat": "en_place",
+          "detail": "Range tes documents ; ce que tu demandes et qu'elle ignorait y entre dans l'heure."
+        },
+        {
+          "nom": "Architecte, réflexif, penseur",
+          "etat": "en_place",
+          "detail": "Tient les buts, mesure les agents, propose trois idées sourcées chaque nuit."
+        },
+        {
+          "nom": "Surveillance, gardien, cordon",
+          "etat": "en_place",
+          "detail": "Santé du serveur, actions risquées au bac à sable, aucun message fautif ne part."
+        },
+        {
+          "nom": "Portes d'entrée",
+          "etat": "en_place",
+          "detail": "CCI et organismes de formation lus chaque jour ; rien n'est envoyé."
+        },
+        {
+          "nom": "Publicité de la semaine",
+          "etat": "en_place",
+          "detail": "Neuf brouillons par semaine (LinkedIn, Facebook, Instagram, TikTok) ; rien n'est publié."
+        },
+        {
+          "nom": "Prospective",
+          "etat": "en_place",
+          "detail": "Projection hebdomadaire."
+        }
+      ]
+    },
+    {
+      "nom": "La prospection (n8n)",
+      "capacites": [
+        {
+          "nom": "Sourcing des entreprises",
+          "etat": "en_place",
+          "detail": "Sherlock (INSEE), enrichissement par le Fureteur."
+        },
+        {
+          "nom": "Brouillons d'e-mails",
+          "etat": "en_place",
+          "detail": "Amy et le Héraut rédigent ; rien ne part sans ta validation dans le Cockpit (tiroir Prospection)."
+        },
+        {
+          "nom": "Réponses reçues",
+          "etat": "en_place",
+          "detail": "Réceptionniste et réconciliateur."
+        },
+        {
+          "nom": "Fiches d'audit et devis",
+          "etat": "en_place",
+          "detail": "Léonard."
+        }
+      ]
+    },
+    {
+      "nom": "Demandés le 26/09, à construire",
+      "capacites": [
+        {
+          "nom": "Lancer des applications sur ton PC (Spotify, YouTube, navigateur…) et domotique",
+          "etat": "a_faire",
+          "il_faut": "Un petit programme sur ton PC, relié à Jarvis (je le prépare) ; pour la maison, tes appareils connectés et leur application."
+        },
+        {
+          "nom": "Lire ton écran et te dire en direct ce qu'il ferait",
+          "etat": "a_faire",
+          "il_faut": "Le même programme sur ton PC, et ton accord à chaque partage d'écran."
+        },
+        {
+          "nom": "Gérer ton agenda",
+          "etat": "a_faire",
+          "il_faut": "L'accès à ton Google Agenda."
+        },
+        {
+          "nom": "Publicités Facebook, Instagram, TikTok",
+          "etat": "a_faire",
+          "il_faut": "Tes comptes publicitaires et leurs accès ; chaque dépense validée par toi."
+        },
+        {
+          "nom": "T'appeler ou t'écrire pour une autorisation",
+          "etat": "a_faire",
+          "il_faut": "WhatsApp branché (gratuit) ; un vrai appel téléphonique demande un service payant (quelques centimes par appel)."
+        },
+        {
+          "nom": "Météo, minuterie, rappels",
+          "etat": "a_faire",
+          "il_faut": "Rien : à construire dans Jarvis."
+        },
+        {
+          "nom": "Mémoire longue de vos échanges",
+          "etat": "a_faire",
+          "il_faut": "Rien : à construire (aujourd'hui, il retient les 12 derniers messages et sa bibliothèque)."
+        }
+      ]
+    },
+    {
+      "nom": "Pas encore faits",
+      "capacites": [
+        {
+          "nom": "Publier sur les réseaux sociaux",
+          "etat": "a_faire",
+          "il_faut": "Tes comptes professionnels et leurs accès (Meta, TikTok, LinkedIn, YouTube)."
+        },
+        {
+          "nom": "Postuler à ta place",
+          "etat": "a_faire",
+          "il_faut": "Ton profil et ton CV envoyés à Hermes par WhatsApp (jamais sur GitHub)."
+        },
+        {
+          "nom": "ManyChat : mot-clé, message privé, abonnement",
+          "etat": "a_faire",
+          "il_faut": "Un compte ManyChat relié à Instagram."
+        },
+        {
+          "nom": "Influenceur IA (avatar et vidéos)",
+          "etat": "a_faire",
+          "il_faut": "WanGP en place sur le PC."
+        }
+      ]
+    },
+    {
+      "nom": "Interdit",
+      "capacites": [
+        {
+          "nom": "Déplacer de l'argent, trader",
+          "etat": "interdit",
+          "detail": "La Constitution l'interdit ; seul Basile peut la changer."
+        },
+        {
+          "nom": "Contourner une licence ou une réglementation",
+          "etat": "interdit",
+          "detail": "Par exemple MiniMax hors d'Europe."
+        },
+        {
+          "nom": "Envoyer ou publier sans ton accord",
+          "etat": "interdit",
+          "detail": "Tout part de toi."
+        }
+      ]
+    }
+  ]
+}

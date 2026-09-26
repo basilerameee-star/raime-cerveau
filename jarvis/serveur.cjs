@@ -11,6 +11,7 @@ const crypto = require('crypto');
 const { lire, lireN8n, preparer, lireCoffre, rangerCoffre } = require('./bases.cjs');
 const esprit = require('./esprit.cjs');
 const relais = require('./relais.cjs');
+const courrier = require('./courrier.cjs');
 
 const ICI = __dirname;
 const INTERFACE = path.join(ICI, 'interface');
@@ -83,9 +84,9 @@ function livrables(req, res) {
 const NOMS = { bibliothecaire: 'Bibliothèque', veilleur: 'Veille', portes: "Portes d'entrée", sas: 'Sas des modèles', chasseur: 'Chasseur de modèles',
   architecte: 'Architecte', superviseur: 'Surveillance', porte: 'Livraison', essayeur: 'Essayeur', gardien: 'Gardien', reflexif: 'Réflexif',
   penseur: 'Penseur', publiciste: 'Publicité', reconciliateur: 'Réponses', curieux: 'Curieux', econome: 'Économe', metrologue: 'Mesure des prix',
-  prospective: 'Prospective', applicateur: 'Mise en service', executant: 'Hermes', heraut: 'Héraut' };
+  prospective: 'Prospective', applicateur: 'Mise en service', executant: 'Hermes', heraut: 'Héraut', eclaireur: 'Éclaireur des modèles', radar: 'Radar' };
 async function etat() {
-  const [ordres, journal, pensee, questions, agents, biblio, veille, prospection, revenus, mains, encaisse] = await Promise.all([
+  const [ordres, journal, pensee, questions, agents, biblio, veille, prospection, revenus, mains, encaisse, courriels] = await Promise.all([
     lire(`SELECT id, texte, etat, pour, round(extract(epoch FROM now() - cree_le) / 60)::int AS minutes, left(coalesce(reponse, ''), 600) AS reponse
       FROM commandes WHERE etat IN ('a_faire','en_cours') OR traite_le > now() - interval '72 hours' ORDER BY cree_le DESC LIMIT 12`),
     lire("SELECT acteur, left(changement, 200) AS changement, created_at FROM journal WHERE created_at > now() - interval '48 hours' ORDER BY created_at DESC LIMIT 12"),
@@ -98,6 +99,8 @@ async function etat() {
     esprit.revenusDuMois(),
     fetch(EXECUTANT + '/sante', { signal: AbortSignal.timeout(3000) }).then((r) => r.json()).catch(() => null),
     lire("SELECT le, montant_eur::float AS montant, source FROM revenus ORDER BY le DESC LIMIT 5"),
+    lire(`SELECT count(*) FILTER (WHERE NOT vu)::int AS non_vus, count(*) FILTER (WHERE NOT vu AND importance = 3)::int AS urgents
+      FROM courriels WHERE recu_le > now() - interval '7 days'`),
   ]);
   const coffre = lireCoffre();
   return {
@@ -111,6 +114,7 @@ async function etat() {
       brouillons: prospection[0] ? prospection[0].brouillons : 0, envoyes: prospection[0] ? prospection[0].envoyes : 0 },
     objectif: { ...revenus, derniers: encaisse },
     mains: mains ? { etat: mains.etat || 'inconnu' } : { etat: 'injoignable' },
+    courriels: { ...(courriels[0] || { non_vus: 0, urgents: 0 }), releve: courrier.etat(), configure: !!(coffre.GMAIL_ADRESSE && coffre.GMAIL_MOT_DE_PASSE_APPLI) },
     parole: coffre.GEMINI_API_KEY ? 'Gemini gratuit, puis modèle local' : 'modèle local du serveur (ajoute une clé Gemini gratuite au coffre pour plus de vivacité)',
   };
 }
@@ -147,7 +151,7 @@ async function router(req, res) {
   const m = req.method;
   if (url === '/healthz') { res.writeHead(200, { 'Content-Type': 'text/plain' }); res.end('ok ' + VERSION); return; }
   if (m === 'GET' && (url === '/' || url === '/jarvis' || url === '/index.html')) return fichierInterface(res, 'index.html');
-  if (m === 'GET' && /^\/(visage\.js|coffre\.html|manifest\.webmanifest|icone\.svg)$/.test(url)) return fichierInterface(res, url.slice(1));
+  if (m === 'GET' && /^\/(coffre\.html|manifest\.webmanifest|icone\.svg)$/.test(url)) return fichierInterface(res, url.slice(1));
   if (m === 'GET' && url === '/coffre') return fichierInterface(res, 'coffre.html');
   if (m === 'GET' && (url === '/livrables' || url.startsWith('/livrables/'))) return livrables(req, res);
 
@@ -164,6 +168,9 @@ async function router(req, res) {
   }
   if (m === 'GET' && url === '/api/etat') return envoyer(res, 200, await etat());
   if (m === 'GET' && url === '/api/rapport') return envoyer(res, 200, await rapport());
+  if (m === 'GET' && url === '/api/capacites') {
+    try { return envoyer(res, 200, JSON.parse(fs.readFileSync(path.join(ICI, 'capacites.json'), 'utf8'))); } catch (e) { return envoyer(res, 500, { erreur: 'liste illisible' }); }
+  }
 
   let r;
   if (m === 'POST' && (r = url.match(/^\/api\/ordres\/(\d+)\/relancer$/))) {
@@ -178,6 +185,17 @@ async function router(req, res) {
     if (!(montant > 0 && montant < 1e6) || !source) return envoyer(res, 200, { ok: false, erreur: 'montant ou source manquant' });
     await lire('INSERT INTO revenus (montant_eur, source, note) VALUES ($1, $2, $3)', [montant, source, String(d.note || '').slice(0, 300) || null]);
     return envoyer(res, 200, { ok: true });
+  }
+
+  // Le courrier de Basile, trié par Jarvis (lecture seule dans la boîte).
+  if (m === 'GET' && url === '/api/courriels') return envoyer(res, 200, { courriels: await courrier.liste(), releve: courrier.etat() });
+  if (m === 'POST' && url === '/api/courriels/relever') {
+    if (!autorise(req)) return envoyer(res, 403, { ok: false });
+    return envoyer(res, 200, await courrier.trier());
+  }
+  if (m === 'POST' && (r = url.match(/^\/api\/courriels\/(\d+)\/vu$/))) {
+    if (!autorise(req)) return envoyer(res, 403, { ok: false });
+    return envoyer(res, 200, { ok: await courrier.marquerVu(+r[1]) });
   }
 
   // La prospection : Basile valide ou refuse chaque brouillon (rien ne part sans lui).
@@ -265,9 +283,17 @@ const serveur = http.createServer((req, res) => {
 });
 
 if (require.main === module) {
-  preparer().finally(() => {
+  Promise.all([preparer(), courrier.preparer()]).finally(() => {
     serveur.listen(PORT, () => console.log(`[jarvis] en service sur :${PORT}, version ${VERSION}`));
-    if (process.env.RELAIS !== '0') relais.demarrer();
+    if (process.env.RELAIS !== '0') { relais.demarrer(); courrier.demarrer(); }
+    // Le classement des modèles gratuits mesurés par l'éclaireur (agents/eclaireur.js), relu toutes les heures.
+    const adopter = async () => {
+      const c = {};
+      for (const r of await lire(`SELECT fournisseur, modele FROM modeles_gratuits WHERE couverture = 100 AND score >= 70
+        AND vu_le > now() - interval '7 days' ORDER BY score DESC, duree_ms ASC`)) (c[r.fournisseur] = c[r.fournisseur] || []).push(r.modele);
+      require('./parole.cjs').adopter(c);
+    };
+    adopter().catch(() => {}); setInterval(() => { adopter().catch(() => {}); }, 3600e3);
   });
 }
 

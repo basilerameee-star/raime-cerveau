@@ -11,6 +11,12 @@ const LOCAL_MODELE = 'gemma4:e4b';
 const GEMINI_RAPIDE = ['gemini-3.1-flash-lite', 'gemini-3.8-flash'];
 const GEMINI_PROFOND = ['gemini-3.1-pro-preview', 'gemini-3.8-flash'];
 
+// LE CLASSEMENT ADOPTÉ — l'éclaireur (agents/eclaireur.js) mesure les modèles gratuits avec la batterie de
+// métrologie ; les meilleurs passent devant, par fournisseur. Sans classement : l'ordre par défaut ci-dessous.
+let classement = {};
+function adopter(c) { classement = c && typeof c === 'object' ? c : {}; }
+const enTete = (nom, defaut) => [...new Set([...(classement[nom] || []).slice(0, 2), ...defaut])];
+
 // Les listes de modèles lues chez un fournisseur sont gardées six heures.
 const memoire = new Map();
 async function enMemoire(cle, lire) {
@@ -37,15 +43,15 @@ function fournisseurs({ cles, profond, fetch }) {
   };
   return [
     { nom: 'Gemini', cle: cles.GEMINI_API_KEY, url: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
-      modeles: async () => (profond ? GEMINI_PROFOND : GEMINI_RAPIDE) },
+      modeles: async () => (profond ? GEMINI_PROFOND : enTete('Gemini', GEMINI_RAPIDE)) },
     { nom: 'Groq', cle: cles.GROQ_API_KEY, url: 'https://api.groq.com/openai/v1/chat/completions',
-      modeles: async () => preferer(await enMemoire('groq', lireModeles('https://api.groq.com/openai/v1/models', cles.GROQ_API_KEY)),
-        [/llama-3\.3-70b/, /gpt-oss-120b/, /qwen/, /kimi/, /llama/], 2) },
+      modeles: async () => enTete('Groq', preferer(await enMemoire('groq', lireModeles('https://api.groq.com/openai/v1/models', cles.GROQ_API_KEY)),
+        [/llama-3\.3-70b/, /gpt-oss-120b/, /qwen/, /kimi/, /llama/], 2)) },
     { nom: 'Mistral', cle: cles.MISTRAL_API_KEY, url: 'https://api.mistral.ai/v1/chat/completions',
-      modeles: async () => ['mistral-small-latest'] },
+      modeles: async () => enTete('Mistral', ['mistral-small-latest']) },
     { nom: 'Cerebras', cle: cles.CEREBRAS_API_KEY, url: 'https://api.cerebras.ai/v1/chat/completions',
-      modeles: async () => preferer(await enMemoire('cerebras', lireModeles('https://api.cerebras.ai/v1/models', cles.CEREBRAS_API_KEY)),
-        [/qwen/, /gpt-oss/, /llama/], 2) },
+      modeles: async () => enTete('Cerebras', preferer(await enMemoire('cerebras', lireModeles('https://api.cerebras.ai/v1/models', cles.CEREBRAS_API_KEY)),
+        [/qwen/, /gpt-oss/, /llama/], 2)) },
   ];
 }
 
@@ -105,4 +111,12 @@ async function repondreSansFrais({ messages, profond = false, coffre = {}, env =
   return { texte: '', source: null, usage: {} };
 }
 
-module.exports = { repondreSansFrais, preferer, resserrer, LOCAL_MODELE, _oublier: () => memoire.clear() };
+// Les fournisseurs gratuits et leurs adresses, pour l'éclaireur (liste des modèles, mesure).
+const FOURNISSEURS = {
+  Gemini: { cle: 'GEMINI_API_KEY', base: 'https://generativelanguage.googleapis.com/v1beta/openai' },
+  Groq: { cle: 'GROQ_API_KEY', base: 'https://api.groq.com/openai/v1' },
+  Mistral: { cle: 'MISTRAL_API_KEY', base: 'https://api.mistral.ai/v1' },
+  Cerebras: { cle: 'CEREBRAS_API_KEY', base: 'https://api.cerebras.ai/v1' },
+};
+
+module.exports = { repondreSansFrais, preferer, resserrer, adopter, FOURNISSEURS, LOCAL_URL, LOCAL_MODELE, _oublier: () => memoire.clear() };
