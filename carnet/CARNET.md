@@ -333,3 +333,9 @@ Merci pour le travail de cette nuit : le banc a déjà trouvé un vrai défaut e
 - Résultat réel sur le serveur : étapes 1 à 3 faites (Hermes branché, Gemma 4 répond en 61 s) ; étape 4 arrêtée proprement : « /opt/raime/docker-compose.override.yml existe deja et n'est pas le notre ; rien n'est touche ».
 - Correction : Jarvis pose son propre fichier `docker-compose.jarvis.yml`, lu après ceux du serveur (jamais modifiés), et l'inscrit au `.env` du dossier (`COMPOSE_FILE`) seulement après la réussite ; l'ancienne ligne est gardée et remise par `revenir.sh`. Le banc simule désormais un serveur qui a déjà sa surcharge.
 - Leçon : un banc d'essai doit ressembler au vrai serveur, surcharges comprises.
+
+## 2026-09-26 — session cloud — Cinq paquets de compétences pour Hermes (demande de Basile)
+- Importés de GitHub, licence lue et contenu inspecté (aucune instruction piégée, aucun envoi de données ; les programmes inclus sont des tests ou des exemples) : marketing de Corey Haines (50, MIT), stop-slop (MIT), UI UX Pro Max (base de styles et script de recherche, MIT, essayé : « cyberpunk » trouvé), Remotion (12, licence Remotion gratuite jusqu'à 3 personnes), context engineering (17, MIT).
+- Évaluation : Hermes joint la description de chaque compétence à chaque demande ; celles d'origine pesaient ~11 000 jetons, assez pour faire déborder le modèle local (16 384).
+- Correction : `tools/importer_competences.py` ramène chaque description à une phrase (~2 700 jetons pour les 84), traduit les chemins de Claude Code vers ceux d'Hermes, écarte les tests, écrit SOURCE.md (dépôt, commit, licence). Jarvis applique les règles de stop-slop dans sa propre parole ; Hermes sait quelle compétence prendre. Test `competences` (budget, sources, aucun secret).
+- Leçon : une compétence coûte à chaque demande, même inutilisée ; mesurer ce qu'elle ajoute avant de l'installer.
