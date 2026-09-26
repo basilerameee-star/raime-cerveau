@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="fr">
+<head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Demander un devis — Guide PDF de randonnée en Haute-Savoie</title>
+<meta name="description" content="Écrivez-nous : réponse par e-mail.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="/favicon.png">
+<link rel="preload" as="font" type="font/woff2" href="/fonts/InterVariable.woff2" crossorigin>
+<style>@font-face{font-family:Inter;font-style:normal;font-weight:100 900;font-display:swap;src:url(/fonts/InterVariable.woff2) format("woff2")}
+*{box-sizing:border-box}html,body{margin:0}
+body{min-height:100vh;font-family:Inter,system-ui,sans-serif;color:#2b2b2e;background:#f6f5f2;background-color:#f6f5f2;line-height:1.6}
+a{color:#141416}
+.demo{background:#141416;color:#fff;text-align:center;font-size:14px;padding:8px 16px}
+header,main,footer{max-width:960px;margin:0 auto;padding:0 clamp(16px,5vw,48px)}
+header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-top:24px;padding-bottom:24px}
+header a{text-decoration:none;font-weight:650;color:#141416}
+header img{height:34px;width:auto;display:block}
+nav{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:15px}
+nav a{font-weight:500;color:#2b2b2e}
+main{padding-bottom:64px}
+.etiq{margin:32px 0 12px;font-size:12px;font-weight:500;letter-spacing:.18em;text-transform:uppercase;color:#5d5d63}
+h1{margin:0;font-size:clamp(34px,6vw,60px);line-height:1.05;letter-spacing:-.035em;font-weight:650;color:#141416}
+h1 em{display:block;font-style:normal;font-weight:400;color:#3b5b7a}
+h2{margin:48px 0 12px;font-size:clamp(22px,3vw,28px);letter-spacing:-.02em;color:#141416}
+p,li{font-size:clamp(16px,1.4vw,18px);max-width:62ch}
+.cartes{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;padding:0;list-style:none}
+.cartes li{background:#ffffff;border:1px solid rgba(20,20,22,.12);border-radius:14px;padding:18px 20px}
+.appel{display:flex;flex-wrap:wrap;align-items:center;gap:14px 22px;margin-top:28px}
+.bouton{display:inline-flex;align-items:center;height:52px;padding:0 28px;border-radius:999px;background:#141416;color:#ffffff;font-size:16px;font-weight:600;text-decoration:none;border:0;cursor:pointer}
+form .bouton,main>.bouton{margin-top:24px;justify-self:start}
+.prix{margin:0;font-size:22px;font-weight:650;color:#141416}
+details{border-top:1px solid rgba(20,20,22,.12);padding:14px 0}summary{cursor:pointer;font-weight:600;color:#141416}
+form{display:grid;gap:14px;max-width:560px}label{display:grid;gap:6px;font-weight:500}
+input,textarea{font:inherit;padding:12px 14px;border-radius:10px;border:1px solid rgba(20,20,22,.12);background:#ffffff;color:#2b2b2e}
+footer{border-top:1px solid rgba(20,20,22,.12);padding-top:20px;padding-bottom:40px;font-size:14px;color:#5d5d63;display:flex;flex-wrap:wrap;gap:8px 20px}
+footer a{color:#5d5d63}</style>
+</head>
+<body>
+<div class="demo">Site de démonstration réalisé par rAIme : les paiements y sont des essais, sans débit réel.</div>
+<header>
+<a href="/" aria-label="Accueil">Guide PDF de randonnée en Haute-Savoie</a>
+<nav><a href="/offre/">L’offre</a><a href="/questions/">Questions</a><a href="/contact/" aria-current="page">Demander un devis</a></nav>
+</header>
+<main>
+<p class="etiq">Demander un devis</p>
+<h1>Parlons de votre besoin.<em>Réponse par e-mail.</em></h1>
+<form action="mailto:contact@raime.fr?subject=Demande%20%3A%20Guide%20PDF%20de%20randonn%C3%A9e%20en%20Haute-Savoie" method="post" enctype="text/plain">
+<label>Votre nom<input name="nom" autocomplete="name" required></label>
+<label>Votre e-mail<input name="email" type="email" autocomplete="email" required></label>
+<label>Votre besoin<textarea name="besoin" rows="6" required></textarea></label>
+<button class="bouton" type="submit">Envoyer la demande</button>
+</form>
+<p>Ou directement : <a href="mailto:contact@raime.fr">contact@raime.fr</a></p>
+</main>
+<footer><span>Guide PDF de randonnée en Haute-Savoie</span><a href="/mentions-legales/">Mentions légales</a><a href="/confidentialite/">Confidentialité</a><span>Site réalisé par rAIme</span></footer>
+</body>
+</html>
