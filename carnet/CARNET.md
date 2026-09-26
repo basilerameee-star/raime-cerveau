@@ -244,3 +244,10 @@ Merci pour le travail de cette nuit : le banc a déjà trouvé un vrai défaut e
 - Correction : les lignes de commentaire sont ignorées ; une mutation (`network_mode: host` actif) fait bien échouer le test.
 - Leçon : un test de configuration se vérifie en y glissant la faute qu'il doit voir.
 - Question ouverte : Jarvis (session locale) et Hermes se recouvrent (voix, messageries, conversation). Hermes peut être le moteur de Jarvis ; à trancher avant de doubler le travail.
+
+## 2026-09-26 — session cloud — Hermes posé sur le serveur, redémarrait en boucle
+- Action : Basile a lancé les étapes 1 à 3 depuis PowerShell : jetons posés, image construite, `raime-mcp` à l'écoute (5 outils).
+- Résultat : `raime-hermes` « Up 6 seconds » une heure après sa création ; `docker exec … hermes` se ferme aussitôt.
+- Évaluation : sans commande, l'image lance la conversation interactive ; sans terminal, elle s'arrête et Docker la relance. Le compose d'origine d'Hermes passe `command: ["gateway", "run"]` : je l'avais omis.
+- Correction : la commande ajoutée, gardée par un test ; la notice interdit `--remove-orphans` (le compose partage `/opt/raime` avec le compose principal).
+- Leçon : en reprenant la configuration d'un projet, recopier aussi sa commande de démarrage, pas seulement ses volumes et son réseau.

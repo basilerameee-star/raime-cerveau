@@ -19,6 +19,9 @@ services:
   hermes:
     image: raime-hermes:d0288be5                     # construit depuis le commit vérifié (INSTALLER.md, étape 2)
     container_name: raime-hermes
+    # Sans commande, l'image ouvre la conversation dans un terminal ; un conteneur n'en a pas,
+    # Hermes s'arrête et Docker le relance en boucle. La passerelle, elle, tourne en continu.
+    command: ["gateway", "run"]
     restart: unless-stopped
     depends_on: [raime-mcp]
     volumes:
