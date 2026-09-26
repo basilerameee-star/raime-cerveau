@@ -152,3 +152,11 @@ test('modèle local introuvable : l’installation s’arrête avant de toucher 
   assert.notEqual(r.status, 0);
   assert.ok(!s.journal().some((l) => / build cockpit$/.test(l)), 'le Cockpit n’est pas reconstruit');
 });
+
+test('empreintes_connues.txt contient la version de travail de chaque fichier du Cockpit (sinon : tools/empreintes_cockpit.sh)', () => {
+  const liste = fs.readFileSync(path.join(DEPOT, 'cockpit/empreintes_connues.txt'), 'utf8');
+  for (const f of ['server.js', 'index.html', 'jarvis.html', 'Dockerfile', 'parole.js']) {
+    const e = crypto.createHash('sha256').update(fs.readFileSync(path.join(DEPOT, 'cockpit', f))).digest('hex');
+    assert.ok(liste.includes(`${e}  ${f}`), `${f} : empreinte absente, lancer tools/empreintes_cockpit.sh`);
+  }
+});
