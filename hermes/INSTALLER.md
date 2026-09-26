@@ -79,6 +79,24 @@ ssh -i "$HOME\.ssh\raime_vps" root@2.29.6.94 "echo TELEGRAM_BOT_TOKEN=$T >> /opt
 
 Puis écrire au bot depuis le téléphone. Un message d'un autre compte est ignoré (`TELEGRAM_ALLOWED_USERS`).
 
+## 4 ter. Hermes devient l'exécutant du Cockpit (même apparence)
+
+Le Cockpit confie chaque demande d'action à un « exécutant » (nom réseau `harness`). Le relais
+`hermes/executant.js` prend ce nom et transmet à Hermes : le Cockpit ne change pas d'une ligne, et Hermes
+écrit une compétence après chaque tâche nouvelle (moins de jetons la fois suivante).
+
+Après la fusion et la Livraison, une seule commande, dans PowerShell :
+
+```powershell
+ssh -i "$HOME\.ssh\raime_vps" root@2.29.6.94 'bash /opt/raime/raime-brain/hermes/brancher.sh'
+```
+
+La dernière ligne doit montrer `"moteur":"hermes"`. Pour revenir à l'ancien exécutant :
+
+```powershell
+ssh -i "$HOME\.ssh\raime_vps" root@2.29.6.94 'bash /opt/raime/raime-brain/hermes/revenir.sh'
+```
+
 ## 5. Phase 2 — les modèles gratuits (Free Claude Code)
 
 **Ce que Basile fait lui-même** (la maison ne crée aucun compte) : ouvrir les comptes des fournisseurs voulus
