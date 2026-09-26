@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Coffre · Jarvis</title>
+<style>
+:root{--fond:#02060b;--trait:rgba(94,231,255,.2);--cyan:#5ee7ff;--texte:#d8f6ff;--doux:#7fa7b8}
+body{margin:0;background:radial-gradient(900px 600px at 50% 20%,#0a2233,var(--fond) 70%);color:var(--texte);font:15px/1.55 Inter,system-ui,sans-serif;min-height:100vh;display:grid;place-items:center}
+main{width:min(540px,92vw);padding:32px 0}
+h1{font:500 16px ui-monospace,monospace;letter-spacing:.3em;color:var(--cyan)}
+p{color:var(--doux);font-size:14px}
+label{display:block;margin:20px 0 8px;font-size:13px}
+select,input{width:100%;box-sizing:border-box;height:46px;padding:0 14px;background:rgba(2,6,11,.7);border:1px solid var(--trait);border-radius:10px;color:var(--texte);font:15px inherit}
+button{margin-top:20px;height:46px;padding:0 24px;border-radius:999px;border:1px solid var(--cyan);background:rgba(94,231,255,.08);color:var(--texte);font:15px inherit;cursor:pointer}
+ul{list-style:none;padding:0;margin:26px 0 0}li{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid rgba(94,231,255,.08);font-size:14px}
+li b{font-weight:500;color:#4dffb0}li b.non{color:var(--doux)}#dit{margin-top:12px;color:var(--cyan);min-height:20px}a{color:var(--cyan)}
+</style>
+</head>
+<body>
+<main>
+  <p><a href="/">← Jarvis</a></p>
+  <h1>LE COFFRE</h1>
+  <p>Tu ranges ici tes accès. Ils restent sur ton serveur ; personne ne peut les relire depuis cette page : elle dit seulement s'ils sont présents. Une clé Gemini gratuite (Google AI Studio) rend Jarvis plus vif.</p>
+  <label for="nom">Quoi</label><select id="nom"></select>
+  <input id="libre" placeholder="Nom de la clé, par exemple TMDB_API_KEY" style="display:none;margin-top:10px">
+  <label for="val">La valeur</label><input id="val" type="password" autocomplete="off" spellcheck="false">
+  <button id="ok">Ranger dans le coffre</button><div id="dit" aria-live="polite"></div>
+  <ul id="liste"></ul>
+</main>
+<script>
+(function () {
+  var sel = document.getElementById('nom'), libre = document.getElementById('libre'), R = {};
+  function voir() {
+    fetch('/api/coffre', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) {
+      R = d.libelles || {};
+      if (!sel.options.length) {
+        Object.keys(R).forEach(function (k) { var o = document.createElement('option'); o.value = k; o.textContent = R[k]; sel.appendChild(o); });
+        var a = document.createElement('option'); a.value = ''; a.textContent = 'Autre clé…'; sel.appendChild(a);
+      }
+      var l = document.getElementById('liste'); l.textContent = '';
+      Object.keys(d.presents || {}).forEach(function (k) {
+        var x = document.createElement('li'); x.textContent = R[k] || k;
+        var b = document.createElement('b'); b.textContent = d.presents[k] ? 'présent' : 'absent'; if (!d.presents[k]) b.className = 'non';
+        x.appendChild(b); l.appendChild(x);
+      });
+    });
+  }
+  sel.onchange = function () { libre.style.display = sel.value ? 'none' : 'block'; };
+  document.getElementById('ok').onclick = function () {
+    var v = document.getElementById('val'); if (!v.value.trim()) return;
+    fetch('/api/coffre', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Jarvis': '1' },
+      body: JSON.stringify({ nom: sel.value || libre.value.trim().toUpperCase(), valeur: v.value.trim() }) })
+      .then(function (r) { return r.json(); })
+      .then(function (d) { document.getElementById('dit').textContent = d.ok ? 'Rangé.' : 'Refusé : ' + (d.erreur || ''); v.value = ''; voir(); });
+  };
+  voir();
+})();
+</script>
+</body>
+</html>

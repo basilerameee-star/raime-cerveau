@@ -1,13 +1,11 @@
 # Hermes Agent, version maison rAIme. Copié dans le volume de Hermes (/opt/data/config.yaml) par
 # hermes/INSTALLER.md. AUCUNE clé ici : ${VAR} est lu dans l'environnement du conteneur.
 #
-# Phase 1 : OpenRouter, avec la clé que le cerveau utilise déjà, et le modèle de rédaction du
-# routeur (agents/lib.js, ROUTER.redaction). Phase 2 (hermes/INSTALLER.md, étape 5) : les modèles
-# gratuits passent par Free Claude Code, mesurés d'abord par le sas.
+# OpenRouter est supprimé (26/09/2026, décision de Basile) : Hermes travaille sur le quota gratuit de
+# Gemini, puis sur le modèle local du serveur. Sans clé Gemini, brancher.sh met le local en premier.
 model:
-  provider: "openrouter"
-  default: "deepseek/deepseek-v4-flash-0731"
-  base_url: "https://openrouter.ai/api/v1"
+  provider: "gemini"
+  default: "gemini-3.8-flash"
 
 # Le terminal d'Hermes travaille dans SON conteneur, dans /travail (le dossier des livrables du
 # Cockpit) : jamais sur le serveur, jamais sur le cerveau en service (lu dans /cerveau, lecture
@@ -27,13 +25,11 @@ mcp_servers:
     headers:
       Authorization: "Bearer ${RAIME_MCP_JETON}"
 
-# LA PAROLE ET LES ORDRES NE S'ARRÊTENT JAMAIS (26/09/2026, demande de Basile). Si le modèle principal
-# refuse (crédit épuisé, quota, panne), Hermes passe seul au gratuit (Gemini), puis au modèle local du
+# LA PAROLE ET LES ORDRES NE S'ARRÊTENT JAMAIS (26/09/2026, demande de Basile). Si Gemini refuse
+# (quota du jour, panne), Hermes passe seul au modèle local du
 # serveur (Ollama, Gemma 4 E4B, Apache 2.0 : ni compte, ni quota, ni frais). Prouvé avec le vrai Hermes :
 # 402 sur le principal puis 429 sur le gratuit → le local répond, même sur une tâche à plusieurs étapes.
 fallback_providers:
-  - provider: gemini
-    model: gemini-3.8-flash
   - provider: local
     model: gemma4:e4b
 

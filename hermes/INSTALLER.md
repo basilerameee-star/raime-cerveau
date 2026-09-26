@@ -148,8 +148,8 @@ graphique n'en porte pas deux.
 ## 7. Tout en une commande : Hermes aux commandes, jamais à court de crédit
 
 Fait, dans l'ordre : la clé Gemini du coffre donnée à Hermes (jamais affichée) ; la bascule (étape 4 ter) ;
-le modèle local (Ollama : Qwen3 4B en service, Gemma 4 E4B essayé à côté, avec sa vitesse et sa licence
-affichées) ; le Cockpit reconstruit avec la parole sans frais (retour arrière automatique s'il ne répond pas).
+le modèle local (Ollama : Gemma 4 E4B, avec sa vitesse et sa licence
+affichées) ; le nouveau Cockpit Jarvis (jarvis/installer.sh) remplace l’ancien et se recharge seul à chaque livraison (retour arrière automatique s’il ne répond pas ; volontaire : jarvis/revenir.sh).
 Le premier passage télécharge les modèles : une dizaine de minutes.
 
 ```powershell

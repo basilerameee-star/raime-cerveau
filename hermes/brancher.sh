@@ -20,6 +20,16 @@ grep '^API_SERVER_KEY=' /opt/raime/hermes.env > /opt/raime/executant.env
 
 # La configuration a jour (dossier de travail /travail) et l'ame d'Hermes.
 cp "$H/config.yaml" "$H/SOUL.md" /opt/raime/hermes-data/
+# Sans cle Gemini gratuite, le modele local du serveur passe en premier (jamais OpenRouter).
+if ! grep -q '^GEMINI_API_KEY=.' /opt/raime/hermes.env; then
+  sed -i 's/^  provider: "gemini"$/  provider: "local"/; s/^  default: "gemini-3.8-flash"$/  default: "gemma4:e4b"/' /opt/raime/hermes-data/config.yaml
+  echo "pas de cle Gemini : Hermes travaille sur le modele local du serveur"
+fi
+# Les competences de la maison (site-premium, charte-raime...) ; la video reste sur le PC (WanGP).
+mkdir -p /opt/raime/hermes-data/skills
+for d in "$H"/competences/*/; do [ -d "$d" ] || continue; n=$(basename "$d"); [ "$n" = video-wangp ] && continue; if [ -d "/opt/raime/hermes-data/skills/$n" ]; then mkdir -p /opt/raime/hermes-data/skills-anciennes; rm -rf "/opt/raime/hermes-data/skills-anciennes/$n"; mv "/opt/raime/hermes-data/skills/$n" "/opt/raime/hermes-data/skills-anciennes/$n"; fi; cp -r "$d" "/opt/raime/hermes-data/skills/$n"; done
+chown -R "$PROPRIO:$GROUPE" /opt/raime/hermes-data/skills
+echo "competences : $(ls /opt/raime/hermes-data/skills | tr '\n' ' ')"
 cp "$H/docker-compose.hermes.yml" /opt/raime/docker-compose.hermes.yml
 
 # L'ancien executant s'arrete ; sa regle de redemarrage est gardee pour revenir en arriere.

@@ -17,6 +17,7 @@ function scenario({ cockpitSansTravail = false } = {}) {
   for (const f of ['config.yaml', 'SOUL.md', 'docker-compose.hermes.yml', 'brancher.sh', 'revenir.sh'])
     fs.writeFileSync(path.join(RACINE, 'raime-brain/hermes', f),
       fs.readFileSync(path.join(DEPOT, 'hermes', f), 'utf8').replaceAll('/opt/raime', RACINE).replace(/^sleep \d+$/m, 'sleep 0'));
+  fs.cpSync(path.join(DEPOT, 'hermes/competences'), path.join(RACINE, 'raime-brain/hermes/competences'), { recursive: true });
   fs.writeFileSync(path.join(RACINE, 'hermes.env'), 'OPENROUTER_API_KEY=fictive\nRAIME_MCP_JETON=fictif\n');
   fs.writeFileSync(path.join(RACINE, 'mcp.env'), 'RAIME_MCP_JETON=fictif\n');   // posé à l'étape 1 de la notice
   fs.writeFileSync(path.join(RACINE, 'restart-harness'), 'unless-stopped');
@@ -99,4 +100,16 @@ test('le compose se lit avec le vrai « docker compose » : relais nommé harnes
   assert.equal(c.hermes.volumes.find((v) => v.target === '/cerveau').read_only, true);
   assert.equal(c.hermes.environment.HERMES_UID, String(fs.statSync(TRAVAIL).uid));
   for (const s of Object.values(c)) { assert.equal(s.ports, undefined); assert.notEqual(s.network_mode, 'host'); }
+});
+
+test('brancher installe les compétences de la maison chez Hermes (pas la vidéo, qui reste sur le PC) et garde l’ancienne version', () => {
+  scenario();
+  assert.equal(lancer('brancher.sh').status, 0);
+  const skills = path.join(RACINE, 'hermes-data/skills');
+  assert.ok(fs.existsSync(path.join(skills, 'site-premium/SKILL.md')));
+  assert.ok(fs.existsSync(path.join(skills, 'charte-raime/SKILL.md')));
+  assert.ok(!fs.existsSync(path.join(skills, 'video-wangp')));
+  fs.appendFileSync(path.join(skills, 'site-premium/SKILL.md'), '\nAmélioration écrite par Hermes.\n');
+  assert.equal(lancer('brancher.sh').status, 0);
+  assert.match(fs.readFileSync(path.join(RACINE, 'hermes-data/skills-anciennes/site-premium/SKILL.md'), 'utf8'), /Amélioration écrite par Hermes/);
 });

@@ -2,7 +2,7 @@
 # RÉPÉTITION DE BOUT EN BOUT — le vrai Hermes derrière le vrai Cockpit, sans serveur ni frais.
 #
 # Joue, sur cette machine, le chemin d'une demande de Basile :
-#   Cockpit (cockpit/server.js, tel quel) → relais (hermes/executant.js) → Hermes Agent (vrai code)
+#   Cockpit Jarvis (jarvis/, tel quel) → relais (hermes/executant.js) → Hermes Agent (vrai code)
 #   → modèle de substitution (tests/repetition/modele_substitut.mjs, à la place d'OpenRouter)
 #   → catalogue d'outils d'Hermes → serveur MCP du cerveau (agents/raime_mcp.js) → Gardien → base.
 # Réussite : la demande passe « faite », sa réponse contient la question témoin lue dans la base, et le
@@ -66,16 +66,14 @@ fond hermes.log env HERMES_HOME="$T/hermes-data" RAIME_MCP_JETON="$JETON" API_SE
 attendre "curl -sf 127.0.0.1:8642/health >/dev/null" 90 "le serveur API d'Hermes ne répond pas"
 attendre "grep -q \"MCP server 'raime'.*registered 5 tool\" $T/hermes-data/logs/*.log" 30 "Hermes n'a pas branché le serveur du cerveau"
 
-echo "4/9 relais « harness » et Cockpit (copie conforme de son conteneur)"
+echo "4/9 relais « harness » et Cockpit Jarvis (le code même du serveur)"
 fond relais.log env HERMES_URL=http://127.0.0.1:8642 API_SERVER_KEY="$CLE" TRAVAIL_DIR="$T/travail" node "$DEPOT/hermes/executant.js"
 attendre "curl -sf 127.0.0.1:8201/sante | grep -q '\"moteur\":\"hermes\"'" 20 "le relais ne répond pas"
-mkdir -p "$T/cockpit" && (cd "$T/cockpit" && npm init -y >/dev/null 2>&1 && npm install -q pg@8 >/dev/null 2>&1)
-cp "$DEPOT"/cockpit/{server.js,parole.js,index.html,jarvis.html} "$T/cockpit/"
-cp "$DEPOT/cockpit/parole.js" "$T/cockpit/"; : > "$T/coffre.env"
-fond cockpit.log env -C "$T/cockpit" PGHOST="$T" PGPORT=5433 PGUSER=raime PGPASSWORD=x PGDATABASE=n8n \
+: > "$T/coffre.env"
+fond cockpit.log env PGHOST="$T" PGPORT=5433 PGUSER=raime PGPASSWORD=x PGDATABASE=n8n PGDATABASE_CERVEAU=raime_brain \
   EXECUTANT_URL=http://127.0.0.1:8201 LIVRABLES_DIR="$T/travail" COFFRE_FICHIER="$T/coffre.env" \
-  OPENROUTER_API_KEY=cle-sans-credit MODELE_LOCAL_URL=http://127.0.0.1:9997 node server.js
-attendre "grep -q 'cockpit live' $T/cockpit.log" 20 "le Cockpit ne démarre pas"
+  MODELE_LOCAL_URL=http://127.0.0.1:9997 RECHERCHE_URL=http://127.0.0.1:1 PORT=8090 node "$DEPOT/jarvis/demarrer.cjs"
+attendre "grep -q 'en service sur' $T/cockpit.log" 20 "le Cockpit Jarvis ne démarre pas"
 
 echo "5/9 une demande de Basile, notée comme Jarvis la note"
 ID=$(sql "INSERT INTO commandes (texte, pour) VALUES ('Dis-moi quelles questions le cerveau attend de moi.', 'harness') RETURNING id" | head -1)
@@ -85,7 +83,7 @@ echo "6/9 vérifications"
 REPONSE=$(sql "SELECT reponse FROM commandes WHERE id = $ID")
 echo "$REPONSE" | grep -q "TEMOIN-REPETITION" || { echo "ECHEC : la réponse ne vient pas de la base"; echo "$REPONSE"; exit 1; }
 sql "SELECT count(*) FROM journal WHERE acteur = 'hermes' AND changement = 'questions_pour_basile'" | grep -qx 1 || { echo "ECHEC : appel d'Hermes absent du journal"; exit 1; }
-sql "SELECT count(*) FROM journal WHERE acteur = 'executant' AND changement LIKE 'Demande n°$ID faite%'" | grep -qx 1 || { echo "ECHEC : demande absente du journal"; exit 1; }
+sql "SELECT count(*) FROM journal WHERE acteur = 'executant' AND changement LIKE 'Ordre n°$ID fait%'" | grep -qx 1 || { echo "ECHEC : demande absente du journal"; exit 1; }
 [ -f "$T/travail/demande-$ID/.resultat.json" ] || { echo "ECHEC : .resultat.json absent"; exit 1; }
 grep -q '"skill_video_vue":true' "$T/substitut.jsonl" || { echo "ECHEC : Hermes ne voit pas la compétence vidéo"; exit 1; }
 echo "PREUVE OK : Cockpit → relais → Hermes → cerveau → base, demande n° $ID faite ; compétence vidéo chargée."
@@ -100,7 +98,7 @@ JARVIS=$(curl -s -m 200 -X POST 127.0.0.1:8090/api/chat -H 'Content-Type: applic
 echo "$JARVIS" | grep -q '\[local\]' || { echo "ECHEC : Jarvis ne répond pas en panne de crédit : $JARVIS"; exit 1; }
 echo "   Jarvis répond : $(echo "$JARVIS" | head -c 120)"
 
-echo "8/9 un ordre en régime « arrêt » : le gratuit est demandé (pas de clé Gemini → le local)"
+echo "8/9 un ordre en régime « arrêt » (pas de clé Gemini → le local)"
 ID2=$(sql "INSERT INTO commandes (texte, pour) VALUES ('Dis-moi quelles questions le cerveau attend de moi.', 'harness') RETURNING id" | head -1)
 attendre "[ \"\$(sql \"SELECT etat FROM commandes WHERE id = $ID2\")\" = faite ]" 200 "l'ordre n° $ID2 n'est pas exécuté en panne de crédit"
 REPONSE2=$(sql "SELECT reponse FROM commandes WHERE id = $ID2")

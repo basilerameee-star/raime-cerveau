@@ -1,0 +1,600 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#02060b">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Ccircle cx=%2216%22 cy=%2216%22 r=%2212%22 fill=%22none%22 stroke=%22%235ee7ff%22 stroke-width=%223%22/%3E%3Ccircle cx=%2216%22 cy=%2216%22 r=%224%22 fill=%22%235ee7ff%22/%3E%3C/svg%3E">
+<title>Jarvis · rAIme</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --fond:#02060b; --fond2:#06111b; --verre:rgba(10,32,48,.42); --trait:rgba(94,231,255,.16); --trait2:rgba(94,231,255,.32);
+  --cyan:#5ee7ff; --cyan2:#9ff3ff; --texte:#d8f6ff; --doux:#7fa7b8; --ambre:#ffb547; --rouge:#ff5d73; --vert:#4dffb0; --rose:#ff7eb0;
+  --mono:"JetBrains Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--fond);color:var(--texte);font:15px/1.5 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+body{overflow:hidden;background:radial-gradient(1200px 800px at 50% 38%,#0a2233 0%,#04101a 45%,var(--fond) 75%)}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.35;
+  background:linear-gradient(transparent 0 calc(100% - 1px),rgba(94,231,255,.05) 0) 0 0/100% 4px}
+button,input,textarea{font:inherit;color:inherit}
+a{color:var(--cyan);text-decoration:none}
+.mono{font-family:var(--mono);letter-spacing:.06em}
+
+/* ── La scène ─────────────────────────────────────────── */
+#scene{position:fixed;inset:0;display:grid;grid-template-columns:minmax(280px,340px) 1fr minmax(280px,340px);grid-template-rows:56px 1fr auto;gap:0 18px;padding:0 18px 18px}
+header{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--trait)}
+.marque{display:flex;align-items:center;gap:12px}
+.marque b{font:500 15px var(--mono);letter-spacing:.42em;color:var(--cyan)}
+.marque span{font-size:12px;color:var(--doux);letter-spacing:.1em}
+.puces{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.puce{display:flex;align-items:center;gap:7px;font:11px var(--mono);letter-spacing:.08em;color:var(--doux);padding:5px 10px;border:1px solid var(--trait);border-radius:999px;background:rgba(6,17,27,.6)}
+.puce i{width:7px;height:7px;border-radius:50%;background:var(--doux);box-shadow:0 0 8px currentColor}
+.puce.ok i{background:var(--vert);color:var(--vert)} .puce.occupe i{background:var(--ambre);color:var(--ambre)} .puce.ko i{background:var(--rouge);color:var(--rouge)}
+.puce a{color:inherit}
+
+.colonne{display:flex;flex-direction:column;gap:14px;overflow:auto;padding:16px 2px 4px;scrollbar-width:thin;scrollbar-color:var(--trait) transparent}
+.panneau{position:relative;background:var(--verre);border:1px solid var(--trait);border-radius:14px;padding:14px 14px 12px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.panneau::before,.panneau::after{content:"";position:absolute;width:12px;height:12px;border:1px solid var(--cyan);opacity:.7}
+.panneau::before{top:-1px;left:-1px;border-right:0;border-bottom:0;border-radius:14px 0 0 0}
+.panneau::after{bottom:-1px;right:-1px;border-left:0;border-top:0;border-radius:0 0 14px 0}
+.panneau h2{margin:0 0 10px;font:500 11px var(--mono);letter-spacing:.24em;text-transform:uppercase;color:var(--cyan);display:flex;justify-content:space-between;align-items:center}
+.panneau h2 small{color:var(--doux);letter-spacing:.08em;font-size:10px}
+.vide{color:var(--doux);font-size:13px}
+
+/* ordres */
+.ordre{padding:10px 0;border-top:1px solid var(--trait)}
+.ordre:first-of-type{border-top:0;padding-top:2px}
+.ordre .tete{display:flex;gap:8px;align-items:baseline;font:11px var(--mono);letter-spacing:.06em}
+.ordre .num{color:var(--cyan)}
+.etiq{padding:1px 7px;border-radius:6px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;border:1px solid}
+.etiq.en_cours{color:var(--ambre);border-color:rgba(255,181,71,.4)} .etiq.a_faire{color:var(--cyan2);border-color:var(--trait2)}
+.etiq.faite{color:var(--vert);border-color:rgba(77,255,176,.35)} .etiq.bloque{color:var(--rouge);border-color:rgba(255,93,115,.4)}
+.ordre p{margin:5px 0 0;font-size:13px;line-height:1.45}
+.ordre .rep{color:var(--doux);font-size:12.5px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.ordre .actions{display:flex;gap:12px;margin-top:6px;font-size:12.5px}
+.ordre button.lien{background:none;border:0;color:var(--cyan);padding:0;cursor:pointer}
+.barre{height:2px;background:var(--trait);border-radius:2px;overflow:hidden;margin-top:7px}
+.barre i{display:block;height:100%;width:30%;background:linear-gradient(90deg,transparent,var(--ambre),transparent);animation:balaye 1.6s linear infinite}
+@keyframes balaye{from{transform:translateX(-100%)}to{transform:translateX(340%)}}
+
+/* objectif */
+.objectif{display:flex;gap:14px;align-items:center}
+.jauge{position:relative;width:96px;height:96px;flex:none}
+.jauge svg{width:100%;height:100%;transform:rotate(-90deg)}
+.jauge .val{position:absolute;inset:0;display:grid;place-items:center;text-align:center;font:500 15px var(--mono)}
+.jauge .val small{display:block;font-size:9px;color:var(--doux);letter-spacing:.12em}
+.objectif .info{font-size:13px;color:var(--doux)}
+.objectif .info b{color:var(--texte);font-weight:500}
+form.encaisse{display:none;gap:6px;margin-top:10px;flex-wrap:wrap}
+form.encaisse.ouvert{display:flex}
+form.encaisse input{flex:1 1 90px;min-width:0;height:34px;padding:0 10px;background:rgba(2,6,11,.6);border:1px solid var(--trait);border-radius:8px}
+.bouton{height:34px;padding:0 14px;border-radius:999px;border:1px solid var(--trait2);background:rgba(94,231,255,.06);color:var(--cyan2);cursor:pointer;font-size:13px}
+.bouton:hover{background:rgba(94,231,255,.14)}
+
+/* cerveau */
+.chiffres{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.chiffre{padding:9px 10px;border:1px solid var(--trait);border-radius:10px;background:rgba(2,6,11,.35)}
+.chiffre b{display:block;font:500 20px var(--mono);color:var(--cyan2)}
+.chiffre span{font-size:11.5px;color:var(--doux)}
+ul.fil{list-style:none;margin:0;padding:0}
+ul.fil li{padding:6px 0;border-top:1px solid rgba(94,231,255,.08);font-size:12.5px;line-height:1.4}
+ul.fil li:first-child{border-top:0}
+ul.fil em{font-style:normal;font:11px var(--mono);color:var(--cyan);margin-right:6px}
+ul.fil strong{font-weight:500;color:var(--texte)}
+
+/* ── Le centre : le visage et ses anneaux ─────────────── */
+#centre{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:0}
+#reacteur{position:relative;width:min(62vh,46vw);aspect-ratio:1;cursor:pointer;flex:none}
+#reacteur canvas{position:absolute;inset:0;width:100%;height:100%}
+#anneaux{position:absolute;inset:-6%;width:112%;height:112%;pointer-events:none;overflow:visible}
+#anneaux .tourne{transform-origin:50% 50%;animation:tourne 40s linear infinite}
+#anneaux .tourne2{transform-origin:50% 50%;animation:tourne 26s linear infinite reverse}
+#anneaux .tourne3{transform-origin:50% 50%;animation:tourne 70s linear infinite}
+@keyframes tourne{to{transform:rotate(360deg)}}
+body[data-etat=reflexion] #anneaux .tourne{animation-duration:6s} body[data-etat=reflexion] #anneaux .tourne2{animation-duration:4s}
+body[data-etat=ecoute] #anneaux circle.pouls{stroke:var(--vert)}
+#etat{margin-top:6px;font:500 12px var(--mono);letter-spacing:.34em;text-transform:uppercase;color:var(--cyan)}
+body[data-etat=ecoute] #etat{color:var(--vert)} body[data-etat=reflexion] #etat{color:var(--ambre)}
+#sous-titres{max-width:760px;width:100%;margin-top:14px;min-height:72px;text-align:center}
+#toi{font-size:13px;color:var(--doux);margin-bottom:6px;min-height:20px}
+#lui{font-size:17px;line-height:1.55;color:var(--texte);max-height:30vh;overflow:auto;white-space:pre-wrap}
+#lui a{word-break:break-all}
+
+/* la barre d'échange */
+#echange{grid-column:1/-1;display:flex;justify-content:center;padding-top:10px}
+#barre{display:flex;align-items:center;gap:8px;width:min(860px,100%);padding:7px;border:1px solid var(--trait2);border-radius:999px;background:rgba(6,17,27,.75);backdrop-filter:blur(12px);box-shadow:0 0 40px rgba(94,231,255,.06)}
+#saisie{flex:1;min-width:0;height:44px;border:0;background:none;outline:none;padding:0 14px;font-size:15.5px}
+#saisie::placeholder{color:var(--doux)}
+.rond{width:44px;height:44px;flex:none;border-radius:50%;border:1px solid var(--trait2);background:rgba(94,231,255,.05);display:grid;place-items:center;cursor:pointer;color:var(--cyan2);transition:.2s}
+.rond:hover{background:rgba(94,231,255,.15)}
+.rond svg{width:20px;height:20px}
+.rond.actif{background:var(--cyan);color:#022;border-color:var(--cyan);box-shadow:0 0 22px rgba(94,231,255,.6)}
+.rond.dicte{background:var(--vert);color:#022;border-color:var(--vert);box-shadow:0 0 22px rgba(77,255,176,.5)}
+#envoyer{background:var(--cyan);color:#022;border-color:var(--cyan)}
+
+/* tiroirs : conversation, prospection */
+nav#onglets{display:flex;gap:6px}
+nav#onglets button{background:none;border:1px solid var(--trait);color:var(--doux);border-radius:999px;padding:5px 11px;font:11px var(--mono);letter-spacing:.1em;cursor:pointer}
+nav#onglets button:hover{color:var(--cyan2);border-color:var(--trait2)}
+.tiroir{position:fixed;top:0;right:0;bottom:0;width:min(560px,100%);background:rgba(3,10,17,.97);border-left:1px solid var(--trait2);transform:translateX(102%);transition:transform .35s cubic-bezier(.2,.8,.2,1);z-index:20;display:flex;flex-direction:column}
+.tiroir.ouvert{transform:none}
+.tiroir header{padding:0 18px;min-height:56px}
+.tiroir .corps{overflow:auto;padding:16px 18px 30px;flex:1}
+.bulle{margin:0 0 12px;padding:10px 13px;border-radius:12px;max-width:92%;white-space:pre-wrap;font-size:14px}
+.bulle.user{margin-left:auto;background:rgba(94,231,255,.1);border:1px solid var(--trait)}
+.bulle.assistant{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)}
+.brouillon{border:1px solid var(--trait);border-radius:12px;padding:12px;margin-bottom:12px}
+.brouillon h3{margin:0 0 4px;font-size:14px;font-weight:500}
+.brouillon .meta{font-size:12px;color:var(--doux)}
+.brouillon pre{white-space:pre-wrap;font:13px/1.5 Inter,sans-serif;color:var(--texte);background:rgba(0,0,0,.25);padding:10px;border-radius:8px;max-height:220px;overflow:auto}
+.brouillon .actions{display:flex;gap:8px}
+.fermer{background:none;border:0;color:var(--doux);font-size:26px;cursor:pointer;line-height:1}
+
+#avis{position:fixed;left:50%;top:70px;transform:translateX(-50%);background:rgba(255,93,115,.12);border:1px solid rgba(255,93,115,.4);color:#ffd0d7;padding:8px 14px;border-radius:10px;font-size:13px;z-index:30;display:none}
+
+/* ── Téléphone ─────────────────────────────────────────── */
+@media (max-width:1000px){
+  body{overflow:auto}
+  #scene{position:static;display:flex;flex-direction:column;padding:0 14px calc(90px + env(safe-area-inset-bottom));gap:12px}
+  header{position:sticky;top:0;z-index:5;background:rgba(2,6,11,.94);backdrop-filter:blur(10px);flex-direction:column;align-items:stretch;gap:8px;padding:10px 0 8px;margin:0 -14px;padding-left:14px;padding-right:14px}
+  .marque{justify-content:space-between}
+  .puces{justify-content:flex-start;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;gap:6px}
+  .puces::-webkit-scrollbar{display:none}
+  nav#onglets{flex:none}
+  nav#onglets button,.puce{white-space:nowrap;flex:none}
+  .puce.large{display:none}
+  #centre{order:1;padding-top:8px}
+  #reacteur{width:min(78vw,380px)}
+  #lui{font-size:16px;max-height:none}
+  .colonne{order:2;overflow:visible;padding:0}
+  #echange{position:fixed;left:0;right:0;bottom:0;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:linear-gradient(transparent,rgba(2,6,11,.96) 30%);z-index:10}
+  .rond{width:42px;height:42px}
+}
+@media (prefers-reduced-motion:reduce){#anneaux *{animation:none!important}.barre i{animation:none}}
+</style>
+</head>
+<body data-etat="repos">
+<div id="avis" role="alert"></div>
+<div id="scene">
+  <header>
+    <div class="marque"><b>J.A.R.V.I.S</b><span>rAIme · le cerveau</span></div>
+    <div class="puces">
+      <nav id="onglets" aria-label="Tiroirs">
+        <button data-tiroir="t-conversation">CONVERSATION</button>
+        <button data-tiroir="t-prospection">PROSPECTION <span id="n-brouillons"></span></button>
+        <button onclick="location.href='/livrables/'">LIVRABLES</button>
+        <button onclick="location.href='/coffre'">COFFRE</button>
+      </nav>
+      <span class="puce large" id="p-parole" title="Comment Jarvis parle"><i></i><span>PAROLE</span></span>
+      <span class="puce" id="p-mains" title="Hermes, les mains"><i></i><span>MAINS</span></span>
+      <span class="puce large mono" id="p-heure">--:--</span>
+    </div>
+  </header>
+
+  <section class="colonne" aria-label="Ordres et objectif">
+    <div class="panneau">
+      <h2>Objectif <small>2 000 € / mois</small></h2>
+      <div class="objectif">
+        <div class="jauge"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="42" fill="none" stroke="rgba(94,231,255,.12)" stroke-width="7"/>
+          <circle id="arc" cx="50" cy="50" r="42" fill="none" stroke="url(#degrade)" stroke-width="7" stroke-linecap="round" stroke-dasharray="0 264"/>
+          <defs><linearGradient id="degrade"><stop offset="0" stop-color="#5ee7ff"/><stop offset="1" stop-color="#4dffb0"/></linearGradient></defs></svg>
+          <div class="val"><div><span id="o-pct">0 %</span><small>DU MOIS</small></div></div></div>
+        <div class="info"><b id="o-mois">0 €</b> encaissés ce mois.<br><span id="o-reste"></span><br>
+          <button class="bouton" id="o-ajouter" style="margin-top:8px;white-space:nowrap">+ Encaissement</button></div>
+      </div>
+      <form class="encaisse" id="f-encaisse"><input name="montant" inputmode="decimal" placeholder="Montant €" required><input name="source" placeholder="Pour quoi (ex. formation Dirigeant)" required><button class="bouton">Noter</button></form>
+    </div>
+    <div class="panneau">
+      <h2>Ordres en cours <small id="o-n"></small></h2>
+      <div id="ordres"><p class="vide">Aucun ordre pour l'instant. Dis-moi « crée… », « écris… », « installe… » : mes mains s'en chargent.</p></div>
+    </div>
+  </section>
+
+  <main id="centre">
+    <div id="reacteur" title="Touche le visage pour parler (ou barre d'espace)">
+      <svg id="anneaux" viewBox="0 0 200 200" aria-hidden="true">
+        <g class="tourne3"><circle cx="100" cy="100" r="97" fill="none" stroke="rgba(94,231,255,.18)" stroke-width=".4" stroke-dasharray="1 3"/></g>
+        <g class="tourne"><circle cx="100" cy="100" r="92" fill="none" stroke="rgba(94,231,255,.35)" stroke-width=".6" stroke-dasharray="40 8 4 8 60 12 2 10"/></g>
+        <g class="tourne2"><circle cx="100" cy="100" r="86" fill="none" stroke="rgba(94,231,255,.22)" stroke-width="1.4" stroke-dasharray="3 5"/></g>
+        <circle class="pouls" cx="100" cy="100" r="80" fill="none" stroke="rgba(94,231,255,.15)" stroke-width=".4"/>
+        <g stroke="rgba(94,231,255,.5)" stroke-width=".5"><line x1="100" y1="2" x2="100" y2="8"/><line x1="100" y1="192" x2="100" y2="198"/><line x1="2" y1="100" x2="8" y2="100"/><line x1="192" y1="100" x2="198" y2="100"/></g>
+      </svg>
+      <canvas id="visage" aria-label="Le visage de Jarvis"></canvas>
+    </div>
+    <div id="etat">en veille</div>
+    <div id="sous-titres" aria-live="polite"><div id="toi"></div><div id="lui">Bonjour Basile. Parle-moi, écris-moi ou dicte : je t'écoute.</div></div>
+  </main>
+
+  <section class="colonne" aria-label="Le cerveau">
+    <div class="panneau">
+      <h2>Le cerveau <small id="version"></small></h2>
+      <div class="chiffres">
+        <div class="chiffre"><b id="c-agents">–</b><span>agents actifs (24 h)</span></div>
+        <div class="chiffre"><b id="c-biblio">–</b><span>passages en mémoire</span></div>
+        <div class="chiffre"><b id="c-veille">–</b><span>trouvailles de veille (24 h)</span></div>
+        <div class="chiffre"><b id="c-brouillons">–</b><span>brouillons à valider</span></div>
+      </div>
+    </div>
+    <div class="panneau" id="bloc-questions" hidden><h2>Il attend ta décision</h2><ul class="fil" id="questions"></ul></div>
+    <div class="panneau"><h2>Pensée de la nuit</h2><ul class="fil" id="pensee"><li class="vide">Pas encore de pensée.</li></ul></div>
+    <div class="panneau"><h2>Ce qui a bougé <small>48 h</small></h2><ul class="fil" id="journal"><li class="vide">Rien de neuf.</li></ul></div>
+  </section>
+
+  <div id="echange">
+    <form id="barre" autocomplete="off">
+      <button type="button" class="rond" id="b-conversation" title="Conversation orale : il t'écoute, te répond à voix haute, puis t'écoute de nouveau" aria-label="Conversation orale">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 12a9 9 0 0 1 18 0v5a2 2 0 0 1-2 2h-1v-6h3M3 12v5a2 2 0 0 0 2 2h1v-6H3"/></svg></button>
+      <input id="saisie" placeholder="Écris à Jarvis, ou dicte avec le micro…" aria-label="Ton message" maxlength="4000">
+      <button type="button" class="rond" id="b-dicter" title="Dicter : ta voix devient du texte dans la barre" aria-label="Dicter">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+      <button type="button" class="rond" id="b-muet" title="Voix de Jarvis : activée" aria-label="Couper la voix">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 9h4l5-4v14l-5-4H4z"/><path id="onde" d="M17 9a4 4 0 0 1 0 6M19.5 6.5a8 8 0 0 1 0 11"/></svg></button>
+      <button class="rond" id="envoyer" title="Envoyer" aria-label="Envoyer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+    </form>
+  </div>
+</div>
+
+<aside class="tiroir" id="t-conversation" aria-label="Conversation">
+  <header><div class="marque"><b style="letter-spacing:.2em">CONVERSATION</b></div><button class="fermer" aria-label="Fermer">×</button></header>
+  <div class="corps" id="historique"></div>
+</aside>
+<aside class="tiroir" id="t-prospection" aria-label="Prospection">
+  <header><div class="marque"><b style="letter-spacing:.2em">PROSPECTION</b><span>rien ne part sans toi</span></div><button class="fermer" aria-label="Fermer">×</button></header>
+  <div class="corps" id="brouillons"></div>
+</aside>
+
+<script src="/visage.js"></script>
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var ecrire = { 'Content-Type': 'application/json', 'X-Jarvis': '1' };
+  function avis(t) { var a = $('avis'); a.textContent = t; a.style.display = 'block'; clearTimeout(avis.m); avis.m = setTimeout(function () { a.style.display = 'none'; }, 5000); }
+  function el(tag, cls, texte) { var e = document.createElement(tag); if (cls) e.className = cls; if (texte != null) e.textContent = texte; return e; }
+
+  // ── L'état : dessiné autour du visage ─────────────────────────────────────────────
+  var etat = 'repos';
+  var LIBELLES = { repos: 'en veille', ecoute: "j'écoute", reflexion: 'je réfléchis', parole: 'je parle', dictee: 'je transcris ta dictée' };
+  function changer(e) { etat = e; document.body.dataset.etat = e === 'dictee' ? 'ecoute' : e; $('etat').textContent = LIBELLES[e] || e; }
+
+  // ── Le visage : des particules sur un vrai maillage de visage (MediaPipe, Apache 2.0), dessinées par la carte graphique ──
+  var visage = (function () {
+    var c = $('visage'), D = Math.min(window.devicePixelRatio || 1, 2), gl = null;
+    try { gl = c.getContext('webgl', { antialias: false, alpha: true, premultipliedAlpha: false }); } catch (e) {}
+    var x = gl ? null : c.getContext('2d');
+    var VI = window.VISAGE, P = [];
+    if (VI) {
+      var brut = atob(VI.donnees), vue = new DataView(new ArrayBuffer(brut.length));
+      for (var i = 0; i < brut.length; i++) vue.setUint8(i, brut.charCodeAt(i));
+      for (var j = 0; j < VI.n; j++) {
+        var o = j * 10, y = vue.getInt16(o + 2, true) / 30000, role = vue.getInt8(o + 9), oeil = VI.yeux[vue.getInt16(o, true) < 0 ? 0 : 1];
+        P.push([vue.getInt16(o, true) / 30000, y, -vue.getInt16(o + 4, true) / 30000, Math.random(), role,
+          role === 1 || role === 4 ? y - oeil[1] : y - VI.bouche[1], vue.getInt8(o + 6) / 120, vue.getInt8(o + 7) / 120, -vue.getInt8(o + 8) / 120]);
+      }
+    }
+    var N = P.length, L = [-.55, -.45, .7], ln = Math.hypot(L[0], L[1], L[2]); L = L.map(function (v) { return v / ln; });
+    var ETATS = { repos: { a: .018, f: 2.2 }, ecoute: { a: .05, f: 3 }, reflexion: { a: .035, f: 7 }, parole: { a: .06, f: 4 }, dictee: { a: .05, f: 3 } };
+    var niveau = 0, source = null, W = 1, H = 1, t0 = performance.now(), calme = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var souris = { x: 0, y: 0 }, suivi = { x: 0, y: 0 };
+    addEventListener('pointermove', function (e) { souris.x = e.clientX / innerWidth * 2 - 1; souris.y = e.clientY / innerHeight * 2 - 1; });
+    function taille() { var r = c.getBoundingClientRect(); W = Math.max(1, r.width); H = Math.max(1, r.height); c.width = W * D; c.height = H * D; if (x) x.setTransform(D, 0, 0, D, 0, 0); if (gl) gl.viewport(0, 0, c.width, c.height); }
+    function rms(an) { var b = new Uint8Array(an.fftSize), s = 0; an.getByteTimeDomainData(b); for (var i = 0; i < b.length; i++) { var v = (b[i] - 128) / 128; s += v * v; } return Math.sqrt(s / b.length); }
+    function pose(t) {
+      var s = ETATS[etat] || ETATS.repos;
+      suivi.x += (souris.x - suivi.x) * .05; suivi.y += (souris.y - suivi.y) * .05;
+      return { s: s, lacet: calme ? 0 : Math.sin(t * .31) * .2 + Math.sin(t * .13) * .07 + (etat === 'reflexion' ? .16 : 0) + suivi.x * .3,
+        inc: calme ? .04 : .04 + Math.sin(t * .23) * .05 + suivi.y * .15, amp: (s.a + niveau * .12) * .25,
+        cligne: (t % 5.3) < .14 ? .12 : 1, ouvre: etat === 'parole' ? niveau * .09 : 0 };
+    }
+    var prog = null, U = {};
+    if (gl && N) {
+      // Teinte holographique : cyan pâle, reflets cyan vif du côté de la lumière, iris lumineux.
+      var VS = 'attribute vec3 aPos;attribute vec3 aNor;attribute vec3 aInfo;uniform float uT,uYaw,uPitch,uAmp,uF,uCligne,uOuvre,uR,uD;uniform vec2 uC,uRes;uniform vec3 uL;varying vec4 vCol;'
+        + 'void main(){vec3 p=aPos;float role=aInfo.y,rel=aInfo.z;'
+        + 'if((role>.5&&role<1.5)||role>3.5)p.y-=rel*(1.-uCligne);if(abs(role-2.)<.5)p.y+=uOuvre*.25;if(abs(role-3.)<.5)p.y-=uOuvre*max(0.,1.+rel/.6);'
+        + 'p+=aNor*.006*sin(uT*1.7+aInfo.x*40.);'
+        + 'float onde=1.+uAmp*sin(p.y*uF*2.+uT*1.3+aInfo.x*6.)*cos(p.x*uF+uT*.9);'
+        + 'float ca=cos(uYaw),sa=sin(uYaw),ci=cos(uPitch),si=sin(uPitch);float X=p.x*ca-p.z*sa,Z=p.x*sa+p.z*ca,Y=p.y;float Y2=Y*ci-Z*si,Z2=Y*si+Z*ci;'
+        + 'float k=2.6/(2.6+Z2);vec2 q=uC+vec2(X,-Y2)*uR*onde*k;gl_Position=vec4(q.x/uRes.x*2.-1.,1.-q.y/uRes.y*2.,0.,1.);'
+        + 'vec3 n=aNor;float nX=n.x*ca-n.z*sa,nZ=n.x*sa+n.z*ca,nY=n.y*ci-nZ*si,nZ2=n.y*si+nZ*ci;float face=nZ2<.2?1.:.25;'
+        + 'float lum=max(0.,nX*uL.x-nY*uL.y-nZ2*uL.z);'
+        + 'float vif=(role>.5&&role<1.5)?1.:max(max(lum>.7?(lum-.7)/.3:0.,aInfo.x>.97?.5:0.),abs(role-2.)<.5?.45:0.);'
+        + 'float a=(.06+.7*face)*(.18+.82*lum*lum)*((role>.5&&role<1.5)?1.8:(role>1.5?1.35:1.));'
+        + 'vCol=vec4(mix(vec3(.72,.93,1.),vec3(.37,.91,1.),vif),min(1.,a));gl_PointSize=(1.1+2.1*face)*k*(vif>.5?1.3:1.)*uD;}';
+      var FS = 'precision mediump float;varying vec4 vCol;void main(){vec2 d=gl_PointCoord-.5;float r=dot(d,d)*4.;if(r>1.)discard;gl_FragColor=vec4(vCol.rgb*vCol.a*exp(-r*2.2),1.);}';
+      var nuanceur = function (type, src) { var sh = gl.createShader(type); gl.shaderSource(sh, src); gl.compileShader(sh); if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh)); return sh; };
+      try {
+        prog = gl.createProgram(); gl.attachShader(prog, nuanceur(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, nuanceur(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(prog);
+        if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+        gl.useProgram(prog);
+        var tampon = function (nom, dim, f) { var a = new Float32Array(N * dim); for (var i = 0; i < N; i++) f(P[i], a, i * dim);
+          var b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, a, gl.STATIC_DRAW);
+          var l = gl.getAttribLocation(prog, nom); gl.enableVertexAttribArray(l); gl.vertexAttribPointer(l, dim, gl.FLOAT, false, 0, 0); };
+        tampon('aPos', 3, function (p, a, o) { a[o] = p[0]; a[o + 1] = p[1]; a[o + 2] = p[2]; });
+        tampon('aNor', 3, function (p, a, o) { a[o] = p[6]; a[o + 1] = p[7]; a[o + 2] = p[8]; });
+        tampon('aInfo', 3, function (p, a, o) { a[o] = p[3]; a[o + 1] = p[4]; a[o + 2] = p[5]; });
+        gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE); gl.clearColor(0, 0, 0, 0);
+      } catch (e) { console.warn('WebGL indisponible, dessin 2D :', e.message); gl = null; x = c.getContext('2d'); }
+    }
+    function u(nom) { return U[nom] || (U[nom] = gl.getUniformLocation(prog, nom)); }
+    addEventListener('resize', taille); taille();
+    function image(now) {
+      var t = (now - t0) / 1000, R = Math.min(W, H) * .36, cx = W / 2, cy = H * .5;
+      if (source) niveau += (Math.min(1, rms(source) * 7) - niveau) * .22;
+      var po = pose(t);
+      if (gl) {
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.uniform1f(u('uT'), t); gl.uniform1f(u('uYaw'), po.lacet); gl.uniform1f(u('uPitch'), po.inc); gl.uniform1f(u('uAmp'), po.amp);
+        gl.uniform1f(u('uF'), po.s.f); gl.uniform1f(u('uCligne'), po.cligne); gl.uniform1f(u('uOuvre'), po.ouvre); gl.uniform1f(u('uR'), R);
+        gl.uniform1f(u('uD'), D); gl.uniform2f(u('uC'), cx, cy); gl.uniform2f(u('uRes'), W, H); gl.uniform3f(u('uL'), L[0], L[1], L[2]);
+        gl.drawArrays(gl.POINTS, 0, N);
+      } else if (x) {
+        x.clearRect(0, 0, W, H); x.globalCompositeOperation = 'lighter';
+        var ca = Math.cos(po.lacet), sa = Math.sin(po.lacet), ci = Math.cos(po.inc), si = Math.sin(po.inc);
+        for (var i = 0; i < N; i += 2) {
+          var p = P[i], X0 = p[0], Y0 = p[1], Z0 = p[2];
+          if (p[4] === 1 || p[4] === 4) Y0 -= p[5] * (1 - po.cligne);
+          if (p[4] === 3) Y0 -= po.ouvre * Math.max(0, 1 + p[5] / .6);
+          var X = X0 * ca - Z0 * sa, Z = X0 * sa + Z0 * ca, Y2 = Y0 * ci - Z * si, Z2 = Y0 * si + Z * ci, k = 2.6 / (2.6 + Z2);
+          var nZ = p[6] * sa + p[8] * ca, nZ2 = p[7] * si + nZ * ci, face = nZ2 < .2 ? 1 : .25;
+          x.fillStyle = 'rgba(160,236,255,' + (.1 + .6 * face).toFixed(2) + ')';
+          x.fillRect(cx + X * R * k, cy - Y2 * R * k, 1.4 * k, 1.4 * k);
+        }
+        x.globalCompositeOperation = 'source-over';
+      }
+      niveau *= .95;
+      requestAnimationFrame(image);
+    }
+    requestAnimationFrame(image);
+    return { ecouter: function (an) { source = an; }, pousser: function (v) { niveau = Math.min(1, niveau + v); } };
+  })();
+
+  // ── Le tableau : lu toutes les 10 secondes ────────────────────────────────────────────
+  var echecs = 0;
+  function remplir(d) {
+    $('version').textContent = 'v ' + d.version;
+    var mains = $('p-mains'), me = d.mains && d.mains.etat;
+    mains.className = 'puce ' + (me === 'libre' ? 'ok' : me === 'occupe' ? 'occupe' : 'ko');
+    mains.querySelector('span').textContent = 'MAINS · ' + (me === 'libre' ? 'PRÊTES' : me === 'occupe' ? 'AU TRAVAIL' : 'HORS LIGNE');
+    var pa = $('p-parole'); pa.className = 'puce large ok'; pa.title = 'Parole : ' + d.parole; pa.querySelector('span').textContent = 'PAROLE · SANS FRAIS';
+    // objectif
+    var o = d.objectif || { mois: 0, objectif: 2000 }, pct = Math.min(100, Math.round(100 * o.mois / o.objectif));
+    $('arc').setAttribute('stroke-dasharray', (2.64 * pct).toFixed(1) + ' 264');
+    $('o-pct').textContent = pct + ' %'; $('o-mois').textContent = o.mois.toLocaleString('fr-FR') + ' €';
+    $('o-reste').textContent = o.mois >= o.objectif ? 'Objectif atteint.' : 'Encore ' + (o.objectif - o.mois).toLocaleString('fr-FR') + ' € pour les 2 000 €.';
+    // ordres
+    var box = $('ordres'), ordres = d.ordres || [];
+    $('o-n').textContent = ordres.filter(function (x) { return x.etat !== 'faite'; }).length ? ordres.filter(function (x) { return x.etat !== 'faite'; }).length + ' actifs' : '';
+    if (ordres.length) {
+      box.textContent = '';
+      ordres.forEach(function (x) {
+        var d2 = el('div', 'ordre'), tete = el('div', 'tete');
+        tete.appendChild(el('span', 'num', 'N°' + x.id));
+        var cle = x.bloque ? 'bloque' : x.etat, lib = { en_cours: 'en cours · ' + x.minutes + ' min', a_faire: 'en file', faite: 'fait', bloque: 'bloqué' }[cle] || x.etat;
+        tete.appendChild(el('span', 'etiq ' + cle, lib));
+        d2.appendChild(tete); d2.appendChild(el('p', '', x.texte.length > 160 ? x.texte.slice(0, 159) + '…' : x.texte));
+        if (x.etat === 'en_cours') { var b = el('div', 'barre'); b.appendChild(el('i')); d2.appendChild(b); }
+        if (x.reponse && x.etat !== 'en_cours') d2.appendChild(el('p', 'rep', x.reponse.replace(/\s*\[(relance|redonnée sans frais|relancé par Basile)\]/g, '')));
+        var act = el('div', 'actions');
+        if (x.lien) { var a = el('a', '', '→ voir le résultat'); a.href = x.lien; a.target = '_blank'; a.rel = 'noopener'; act.appendChild(a); }
+        if (x.bloque) { var r = el('button', 'lien', '↻ relancer'); r.type = 'button'; r.onclick = function () { relancer(x.id); }; act.appendChild(r); }
+        if (act.childNodes.length) d2.appendChild(act);
+        box.appendChild(d2);
+      });
+    }
+    // cerveau
+    var c = d.compteurs || {};
+    $('c-agents').textContent = c.agents; $('c-biblio').textContent = (c.bibliotheque || 0).toLocaleString('fr-FR');
+    $('c-veille').textContent = c.veille; $('c-brouillons').textContent = c.brouillons;
+    $('n-brouillons').textContent = c.brouillons ? '· ' + c.brouillons : '';
+    liste($('pensee'), (d.pensee || []).map(function (p) { return [null, p.titre, p.proposition]; }), 'Pas encore de pensée.');
+    liste($('journal'), (d.journal || []).slice(0, 8).map(function (j) { return [j.heure, j.qui, j.quoi]; }), 'Rien de neuf.');
+    $('bloc-questions').hidden = !(d.questions && d.questions.length);
+    liste($('questions'), (d.questions || []).map(function (q) { return [null, null, q]; }), '');
+  }
+  function liste(ul, lignes, vide) {
+    ul.textContent = '';
+    if (!lignes.length) { if (vide) ul.appendChild(el('li', 'vide', vide)); return; }
+    lignes.forEach(function (l) { var li = el('li'); if (l[0]) li.appendChild(el('em', '', l[0])); if (l[1]) { li.appendChild(el('strong', '', l[1])); li.appendChild(document.createTextNode(l[2] ? ' — ' : '')); } li.appendChild(document.createTextNode(l[2] || '')); ul.appendChild(li); });
+  }
+  function charger() {
+    fetch('/api/etat', { cache: 'no-store' }).then(function (r) { if (!r.ok) throw 0; return r.json(); })
+      .then(function (d) { echecs = 0; remplir(d); })
+      .catch(function () { if (++echecs === 3) avis('Le serveur ne répond pas pour l’instant : je réessaie tout seul.'); });
+  }
+  function relancer(id) {
+    fetch('/api/ordres/' + id + '/relancer', { method: 'POST', headers: ecrire }).then(function (r) { return r.json(); })
+      .then(function (d) { if (!d.ok) avis('Cet ordre ne peut pas être relancé.'); charger(); });
+  }
+  charger(); setInterval(charger, 10000);
+  setInterval(function () { $('p-heure').textContent = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }); }, 1000);
+
+  $('o-ajouter').onclick = function () { $('f-encaisse').classList.toggle('ouvert'); };
+  $('f-encaisse').onsubmit = function (e) {
+    e.preventDefault(); var f = e.target;
+    fetch('/api/revenus', { method: 'POST', headers: ecrire, body: JSON.stringify({ montant: f.montant.value, source: f.source.value }) })
+      .then(function (r) { return r.json(); }).then(function (d) { if (!d.ok) return avis(d.erreur || 'Refusé.'); f.reset(); f.classList.remove('ouvert'); charger(); });
+  };
+
+  // ── Les tiroirs ────────────────────────────────────────────────────────────────────
+  document.querySelectorAll('[data-tiroir]').forEach(function (b) { b.onclick = function () { ouvrir(b.dataset.tiroir); }; });
+  document.querySelectorAll('.tiroir .fermer').forEach(function (b) { b.onclick = function () { b.closest('.tiroir').classList.remove('ouvert'); }; });
+  function ouvrir(id) {
+    $(id).classList.add('ouvert');
+    if (id === 't-conversation') fetch('/api/conversation').then(function (r) { return r.json(); }).then(function (d) {
+      var h = $('historique'); h.textContent = '';
+      (d.messages || []).forEach(function (m) { h.appendChild(el('div', 'bulle ' + (m.role === 'user' ? 'user' : 'assistant'), m.content)); });
+      h.scrollTop = h.scrollHeight;
+    });
+    if (id === 't-prospection') brouillons();
+  }
+  function brouillons() {
+    fetch('/api/prospection').then(function (r) { return r.json(); }).then(function (d) {
+      var b = $('brouillons'); b.textContent = '';
+      if (!(d.brouillons || []).length) { b.appendChild(el('p', 'vide', 'Aucun brouillon à valider.')); return; }
+      d.brouillons.forEach(function (x) {
+        var c = el('div', 'brouillon');
+        c.appendChild(el('h3', '', x.prospect_name || 'Prospect')); c.appendChild(el('div', 'meta', (x.segment || '') + ' · ' + (x.to_email || '')));
+        c.appendChild(el('p', '', x.subject || '')); c.appendChild(el('pre', '', x.body || ''));
+        var a = el('div', 'actions'), ok = el('button', 'bouton', '✓ Valider'), non = el('button', 'bouton', '✗ Refuser');
+        ok.onclick = function () { decider(x.id, 'valide'); }; non.onclick = function () { decider(x.id, 'refuse'); };
+        a.appendChild(ok); a.appendChild(non); c.appendChild(a); b.appendChild(c);
+      });
+    });
+  }
+  function decider(id, action) {
+    fetch('/api/prospection/' + id, { method: 'POST', headers: ecrire, body: JSON.stringify({ action: action }) }).then(function () { brouillons(); charger(); });
+  }
+
+  // ── La voix de Jarvis ────────────────────────────────────────────────────────────────
+  // D'abord la plus naturelle des voix françaises du navigateur (Edge « Natural », Chrome « Google »…),
+  // sinon la voix du serveur (Piper), sinon le texte seul.
+  var muet = false, son = new Audio(), ctxA = null, anaVoix = null, anaMic = null, voixNav = null;
+  function choisirVoix() {
+    if (!('speechSynthesis' in window)) return;
+    var fr = speechSynthesis.getVoices().filter(function (v) { return /^fr(-|_|$)/i.test(v.lang); });
+    var note = function (v) { return (/natural|neural|online/i.test(v.name) ? 8 : 0) + (/google/i.test(v.name) ? 5 : 0) + (/premium|enhanced|amélioré/i.test(v.name) ? 6 : 0) + (/fr-FR/i.test(v.lang) ? 2 : 0) + (/denise|henri|vivienne|remy|amélie|thomas/i.test(v.name) ? 1 : 0); };
+    fr.sort(function (a, b) { return note(b) - note(a); });
+    voixNav = fr[0] && note(fr[0]) >= 5 ? fr[0] : null;
+  }
+  if ('speechSynthesis' in window) { choisirVoix(); speechSynthesis.onvoiceschanged = choisirVoix; }
+  function audio() {
+    if (!ctxA) {
+      ctxA = new (window.AudioContext || window.webkitAudioContext)();
+      var s = ctxA.createMediaElementSource(son); anaVoix = ctxA.createAnalyser(); anaVoix.fftSize = 1024; s.connect(anaVoix); anaVoix.connect(ctxA.destination);
+    }
+    if (ctxA.state === 'suspended') ctxA.resume();
+  }
+  function pourLaVoix(t) {
+    return String(t).replace(/https?:\/\/\S+/g, '').replace(/\[[^\]]*\]/g, '').replace(/[*_#>`|]/g, '')
+      .replace(/\s*\n+\s*/g, '. ').replace(/\.\s*\./g, '.').replace(/\s{2,}/g, ' ').trim().slice(0, 1600);
+  }
+  var parleEnCours = false;
+  function taire() { parleEnCours = false; try { son.pause(); } catch (e) {} if ('speechSynthesis' in window) speechSynthesis.cancel(); }
+  function parler(texte, suite) {
+    var t = pourLaVoix(texte), fini = function () { if (!parleEnCours) return; parleEnCours = false; visage.ecouter(null); suite && suite(); };
+    if (!t || muet) { if (suite) suite(); return; }
+    parleEnCours = true; changer('parole');
+    var navigateur = function () {
+      if (!('speechSynthesis' in window)) return fini();
+      var u = new SpeechSynthesisUtterance(t); u.lang = 'fr-FR'; u.rate = 1.04; u.pitch = .96;
+      var v = voixNav || speechSynthesis.getVoices().filter(function (x) { return /^fr/i.test(x.lang); })[0]; if (v) u.voice = v;
+      u.onboundary = function () { visage.pousser(.4); }; u.onend = fini; u.onerror = fini;
+      speechSynthesis.cancel(); speechSynthesis.speak(u);
+    };
+    if (voixNav) return navigateur();
+    fetch('/api/voix/parler', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ texte: t }) })
+      .then(function (r) { if (!r.ok) throw 0; return r.blob(); })
+      .then(function (b) {
+        var url = URL.createObjectURL(b); son.src = url; visage.ecouter(anaVoix);
+        son.onended = function () { URL.revokeObjectURL(url); fini(); }; son.onerror = fini;
+        return son.play();
+      }).catch(navigateur);
+  }
+
+  // ── Dire quelque chose à Jarvis (texte, dictée ou conversation : le même chemin) ─────────
+  function demander(message, oral, suite, essai) {
+    message = String(message || '').trim(); if (!message) return;
+    essai = essai || 0; taire();
+    $('toi').textContent = '« ' + message + ' »'; $('lui').textContent = ''; changer('reflexion');
+    fetch('/api/dire', { method: 'POST', headers: ecrire, body: JSON.stringify({ message: message, oral: oral }) })
+      .then(function (r) { if (!r.ok) throw 0; return r.json(); })
+      .then(function (d) {
+        var rep = d.reply || '(pas de réponse)';
+        $('lui').textContent = rep; charger();
+        parler(rep, function () { if (suite) suite(); else changer('repos'); });
+        if (muet && !suite) changer('repos');
+      })
+      .catch(function () {
+        if (essai < 3) return setTimeout(function () { demander(message, oral, suite, essai + 1); }, 2500 * (essai + 1));
+        $('lui').textContent = 'Je ne joins pas le serveur. Réessaie dans un instant.'; changer('repos');
+      });
+  }
+  $('barre').onsubmit = function (e) { e.preventDefault(); audio(); var i = $('saisie'); demander(i.value, false); i.value = ''; };
+
+  // ── L'oreille : le micro, la détection de fin de phrase, la transcription par le serveur ──
+  var flux = null;
+  function micro() {
+    if (flux) return Promise.resolve(flux);
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return Promise.reject(new Error('micro indisponible'));
+    return navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }).then(function (f) {
+      flux = f; audio(); var s = ctxA.createMediaStreamSource(f); anaMic = ctxA.createAnalyser(); anaMic.fftSize = 1024; s.connect(anaMic); return f;
+    });
+  }
+  function niveauMic() { var b = new Uint8Array(anaMic.fftSize), s = 0; anaMic.getByteTimeDomainData(b); for (var i = 0; i < b.length; i++) { var v = (b[i] - 128) / 128; s += v * v; } return Math.sqrt(s / b.length); }
+  // Enregistre une phrase : commence quand tu parles, finit après un silence ; rend le texte transcrit.
+  function unePhrase(opts) {
+    return micro().then(function (f) {
+      return new Promise(function (resolve, reject) {
+        var type = window.MediaRecorder && MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : '';
+        var rec = new MediaRecorder(f, type ? { mimeType: type } : undefined), morceaux = [], aParle = false, silence = 0, debut = Date.now(), annule = false;
+        var seuil = opts.seuil || .022, fin = opts.silence || 1100, max = opts.max || 60000, attente = opts.attente || 15000;
+        rec.ondataavailable = function (e) { if (e.data.size) morceaux.push(e.data); };
+        rec.onstop = function () {
+          clearInterval(tic); visage.ecouter(null);
+          if (annule || !aParle) return resolve('');
+          changer('reflexion');
+          fetch('/api/voix/transcrire', { method: 'POST', body: new Blob(morceaux, { type: rec.mimeType || 'audio/webm' }) })
+            .then(function (r) { return r.json(); }).then(function (d) { resolve(String(d.texte || '').trim()); }).catch(reject);
+        };
+        var tic = setInterval(function () {
+          var n = niveauMic();
+          if (n > seuil) { aParle = true; silence = 0; } else if (aParle) silence += 100;
+          if ((aParle && silence >= fin) || Date.now() - debut > max || (!aParle && Date.now() - debut > attente)) { if (rec.state === 'recording') rec.stop(); }
+        }, 100);
+        unePhrase.arreter = function (sansEnvoi) { annule = !!sansEnvoi; if (!sansEnvoi) aParle = aParle || Date.now() - debut > 600; if (rec.state === 'recording') rec.stop(); };
+        visage.ecouter(anaMic); rec.start(250);
+      });
+    });
+  }
+
+  // La dictée : ta voix devient du texte dans la barre ; tu relis, tu envoies.
+  var dicte = false;
+  $('b-dicter').onclick = function () {
+    audio();
+    if (dicte) { unePhrase.arreter(false); return; }
+    if (conversation) basculer();
+    dicte = true; this.classList.add('dicte'); changer('dictee');
+    var b = this;
+    unePhrase({ silence: 2200, attente: 20000, max: 120000 }).then(function (t) {
+      var i = $('saisie'); if (t) i.value = (i.value ? i.value + ' ' : '') + t; i.focus();
+    }).catch(function () { avis('Micro refusé ou voix du serveur indisponible.'); })
+      .then(function () { dicte = false; b.classList.remove('dicte'); changer('repos'); });
+  };
+
+  // La conversation orale : il t'écoute, sent quand tu as fini, répond à voix haute, puis t'écoute de nouveau.
+  var conversation = false, vides = 0;
+  var FIN = /^(stop|arr[êe]te|merci (jarvis|c'est tout)|c'est tout|au revoir|[çc]a ira|bonne nuit|fin de la conversation)\b/i;
+  function ecouter() {
+    if (!conversation) return;
+    changer('ecoute');
+    unePhrase({}).then(function (t) {
+      if (!conversation) return;
+      if (!t) { if (++vides >= 3) { basculer(); $('lui').textContent = 'Je me mets en veille. Touche le visage pour reprendre.'; } else ecouter(); return; }
+      vides = 0;
+      if (FIN.test(t)) { basculer(); $('toi').textContent = '« ' + t + ' »'; parler('Très bien, je reste là si tu as besoin.'); return; }
+      demander(t, true, ecouter);
+    }).catch(function () { basculer(); avis('Micro refusé ou voix du serveur indisponible : écris-moi en attendant.'); });
+  }
+  function basculer() {
+    audio();
+    conversation = !conversation; vides = 0;
+    $('b-conversation').classList.toggle('actif', conversation);
+    if (conversation) { taire(); ecouter(); }
+    else { if (unePhrase.arreter) unePhrase.arreter(true); changer('repos'); }
+  }
+  $('b-conversation').onclick = basculer;
+  $('reacteur').onclick = function () { if (parleEnCours) { taire(); changer(conversation ? 'ecoute' : 'repos'); if (conversation) ecouter(); return; } basculer(); };
+  $('b-muet').onclick = function () { muet = !muet; if (muet) taire(); $('onde').style.display = muet ? 'none' : ''; this.title = 'Voix de Jarvis : ' + (muet ? 'coupée' : 'activée'); };
+  addEventListener('keydown', function (e) {
+    if (e.code === 'Space' && document.activeElement !== $('saisie')) { e.preventDefault(); basculer(); }
+    if (e.key === 'Escape') { taire(); document.querySelectorAll('.tiroir.ouvert').forEach(function (t) { t.classList.remove('ouvert'); }); }
+  });
+})();
+</script>
+</body>
+</html>
