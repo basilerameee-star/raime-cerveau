@@ -106,7 +106,7 @@ test('crédit épuisé (402) : le relais redemande au modèle local, et la deman
   const r = await appeler('POST', '/tache', { tache: 'credit-epuise', id: 42 });
   assert.equal(r.corps.code, 0);
   assert.equal(r.corps.sortie, 'Fait par le modèle local.');
-  assert.equal(r.corps.moteur, 'local · qwen3:4b');
+  assert.equal(r.corps.moteur, 'local · gemma4:e4b');
   assert.deepEqual(recus.map((x) => x.provider), [undefined, 'local']);
 });
 

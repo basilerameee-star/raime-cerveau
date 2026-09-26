@@ -54,7 +54,7 @@ services:
         aliases: [harness]
 
   # Le modèle local : la parole et les ordres continuent même sans crédit ni quota (26/09/2026).
-  # Ollama (MIT) et Qwen3 4B (Apache 2.0) ; sur le processeur du serveur, sans carte graphique.
+  # Ollama (MIT) et Gemma 4 E4B (Apache 2.0) ; sur le processeur du serveur, sans carte graphique.
   raime-ollama:
     image: ollama/ollama:0.34.4
     container_name: raime-ollama
@@ -65,6 +65,7 @@ services:
       OLLAMA_KEEP_ALIVE: "2h"                        # gardé chargé deux heures après usage : réponse immédiate
       OLLAMA_NUM_PARALLEL: "1"
       OLLAMA_MAX_LOADED_MODELS: "1"
+      OLLAMA_CONTEXT_LENGTH: "16384"                 # les consignes d'Hermes dépassent 4 096 jetons (défaut d'Ollama)
     mem_limit: 8g                                  # Gemma 4 E4B tient dedans ; le serveur a 16 Go
     cpus: 4
     networks: [raime_default]

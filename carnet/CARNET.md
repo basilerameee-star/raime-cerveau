@@ -301,3 +301,8 @@ Merci pour le travail de cette nuit : le banc a déjà trouvé un vrai défaut e
 - Évaluation : le Cockpit en service se construit depuis une copie à part (`/opt/raime/cockpit`), pas depuis le dépôt livré (`raime-brain/cockpit`). Le garde-fou a joué son rôle.
 - Correction : `mettre_a_jour.sh` verse le code du dépôt dans la copie à part, seulement si chaque fichier en service a l'empreinte d'une version connue du dépôt (`cockpit/empreintes_connues.txt`, 42 empreintes) ; sinon il s'arrête sans rien toucher ; ancien dossier gardé, remis avec l'image si la nouvelle version ne répond pas. 3 tests de plus.
 - Leçon : vérifier d'où un conteneur est construit avant d'écrire sa mise à jour.
+
+## 2026-09-26 — session cloud — Le modèle local devient Gemma 4 E4B
+- Mesure sur le serveur : Gemma 4 E4B répond en 22 s (licence Apache 2.0 affichée par `ollama show`) ; Qwen3 4B occupe 4 cœurs à 100 % plusieurs minutes (il « réfléchit » malgré `think: false`) ; contexte d'Ollama à 4 096 jetons, trop court pour les consignes d'Hermes.
+- Correction : Gemma 4 E4B partout (Cockpit, relais, repli d'Hermes, installation) ; `OLLAMA_CONTEXT_LENGTH=16384` ; essai limité à 3 minutes ; si le modèle local ne répond pas, l'installation s'arrête avant le Cockpit (test ajouté).
+- Leçon : choisir le modèle local sur la mesure faite sur la vraie machine, pas sur sa réputation.

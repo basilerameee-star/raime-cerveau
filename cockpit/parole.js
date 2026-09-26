@@ -4,13 +4,13 @@
 //   1. Gemini, sur le quota gratuit de la clé Google rangée au coffre ;
 //   2. Groq, Mistral, Cerebras : chacun seulement si sa clé gratuite est au coffre ;
 //   3. OpenRouter, ses seuls modèles à prix zéro (la liste est relue chez OpenRouter, jamais figée) ;
-//   4. le modèle local du serveur (Ollama, Qwen3 4B, licence Apache 2.0) : ni compte, ni quota, ni
+//   4. le modèle local du serveur (Ollama, Gemma 4 E4B, licence Apache 2.0 lue sur le serveur le 26/09) : ni compte, ni quota, ni
 //      crédit ; toujours là, même si tout le reste tombe.
 // Aucun modèle payant ici : le budget ne peut plus faire taire Jarvis.
 'use strict';
 
 const LOCAL_URL = process.env.MODELE_LOCAL_URL || 'http://raime-ollama:11434';
-const LOCAL_MODELE = process.env.MODELE_LOCAL || 'qwen3:4b';
+const LOCAL_MODELE = process.env.MODELE_LOCAL || 'gemma4:e4b';
 const GEMINI_RAPIDE = ['gemini-3.1-flash-lite', 'gemini-3.8-flash'];
 const GEMINI_PROFOND = ['gemini-3.1-pro-preview', 'gemini-3.8-flash'];
 

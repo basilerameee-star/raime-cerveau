@@ -3,14 +3,13 @@
 #   bash /opt/raime/raime-brain/hermes/installer.sh
 # 1. la cle Gemini du coffre du Cockpit est aussi donnee a Hermes (jamais affichee) ;
 # 2. Hermes devient l'executant du Cockpit (brancher.sh ; retour : revenir.sh) ;
-# 3. le modele local (Ollama) : Qwen3 4B, en service, et Gemma 4 E4B, essaye a cote (vitesse, licence) ;
+# 3. le modele local (Ollama) : Gemma 4 E4B (Qwen3 4B, essaye le 26/09, reflechissait plusieurs minutes) ;
 # 4. le Cockpit est reconstruit avec la parole sans frais (retour arriere automatique).
 # Relancer ne double rien.
 set -euo pipefail
 cd /opt/raime
 H=/opt/raime/raime-brain/hermes
-MODELE=qwen3:4b
-ESSAI=gemma4:e4b
+MODELE=gemma4:e4b    # 22 s, Apache 2.0 (mesure et licence lues sur le serveur, 26/09/2026)
 
 echo "=== 1/4 cle Gemini pour Hermes"
 if grep -q '^GEMINI_API_KEY=' /opt/raime/hermes.env; then
@@ -35,20 +34,15 @@ for _ in $(seq 1 30); do docker exec raime-ollama ollama list >/dev/null 2>&1 &&
 essayer() {
   local m=$1 t0 rep
   t0=$(date +%s)
-  rep=$(docker exec raime-cockpit-1 wget -qO- -T 600 --header 'Content-Type: application/json' \
+  rep=$(docker exec raime-cockpit-1 wget -qO- -T 180 --header 'Content-Type: application/json' \
     --post-data "{\"model\":\"$m\",\"stream\":false,\"think\":false,\"messages\":[{\"role\":\"user\",\"content\":\"En une phrase, en francais : qu'est-ce que rAIme peut faire pour une PME ?\"}]}" \
     http://raime-ollama:11434/api/chat) || { echo "$m : ne repond pas"; return 1; }
   printf '%s' "$rep" | grep -q '"content":"[^"]' || { echo "$m : reponse vide"; return 1; }
   echo "$m : $(( $(date +%s) - t0 )) s -> $(printf '%s' "$rep" | sed -n 's/.*"content":"\([^"]*\)".*/\1/p' | head -c 160)"
 }
 docker exec raime-ollama ollama pull "$MODELE"
-essayer "$MODELE" || { echo "ECHEC : le modele local en service ne repond pas"; exit 1; }
-if docker exec raime-ollama ollama pull "$ESSAI"; then
-  essayer "$ESSAI" || true
-  echo "--- licence de $ESSAI (debut) :"; docker exec raime-ollama ollama show "$ESSAI" --license 2>/dev/null | head -8 || true
-else
-  echo "$ESSAI indisponible pour l'instant : $MODELE reste seul"
-fi
+essayer "$MODELE" || { echo "ECHEC : le modele local ne repond pas"; exit 1; }
+echo "--- licence de $MODELE (debut) :"; docker exec raime-ollama ollama show "$MODELE" --license 2>/dev/null | head -3 || true
 
 echo "=== 4/4 le Cockpit, avec la parole sans frais"
 bash /opt/raime/raime-brain/cockpit/mettre_a_jour.sh repondreSansFrais

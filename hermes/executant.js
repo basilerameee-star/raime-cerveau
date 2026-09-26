@@ -23,7 +23,7 @@ const DUREE_MAX_MS = Number(process.env.EXECUTANT_DUREE_MAX_MS || 45 * 60_000);
 // En régime « arrêt » ou « réserve », le Cockpit demande le gratuit : Hermes prend alors Gemini (quota
 // gratuit), et, s'il est épuisé, le modèle local du serveur (fallback_providers de hermes/config.yaml).
 const MODELE_GRATUIT = { provider: 'gemini', model: process.env.HERMES_MODELE_GRATUIT || 'gemini-3.8-flash' };
-const MODELE_LOCAL = { provider: 'local', model: process.env.HERMES_MODELE_LOCAL || 'qwen3:4b' };
+const MODELE_LOCAL = { provider: 'local', model: process.env.HERMES_MODELE_LOCAL || 'gemma4:e4b' };
 
 // Ce qu'Hermes lit avant chaque demande : ses compétences à lui, et la règle d'apprentissage.
 export const PREAMBULE = "Tu es Hermes, l'exécutant du cerveau rAIme, et tu travailles dans /travail. "
