@@ -277,3 +277,8 @@ Merci pour le travail de cette nuit : le banc a déjà trouvé un vrai défaut e
 - Évaluation : ERREUR TROUVÉE dans mon propre travail du jour : sous Windows, Hermes range ses compétences dans `%LOCALAPPDATA%\hermes`, pas `~\.hermes`. Les commandes de l'étape 6 auraient posé la compétence vidéo au mauvais endroit, sans message d'erreur. Deux constats : les outils MCP d'Hermes passent par son catalogue (`tool_search` / `tool_call`), ce qui économise des jetons ; le régime « arrêt » du Cockpit coupe aussi les ordres, pas seulement les réponses.
 - Correction : `ajouter_wangp.py` calcule le dossier comme Hermes (vérifié contre le code d'Hermes, Windows simulé) et copie lui-même la compétence ; une seule commande à l'étape 6.
 - Leçon : une notice n'est pas prouvée tant qu'on n'a pas lu le code de l'outil sur la plateforme de Basile ; le dossier par défaut change selon le système.
+
+## 2026-09-26 — session cloud — Scan de sécurité complet (ECC / AgentShield)
+- Action : AgentShield 1.6.0 (projet ECC, paquet officiel) sur tout le dépôt avec analyse de flux ; `npm audit` ; recherche de clés dans les 128 commits de l'historique ; relecture du chemin Jarvis → exécutant.
+- Résultat : aucun défaut exploitable. 14 « critiques » = empreintes sha512 de package-lock.json (faux positifs vérifiés) ; 12 constats sur `site/CLAUDE.md` (notes de la session locale, à compléter sur le PC) ; 0 vulnérabilité npm ; aucune clé dans l'historique (contre-épreuve réussie). Rapport : `securite/SCAN-2026-09-26.md`.
+- Leçon : un outil de scan donne des alertes, pas des verdicts ; chaque « critique » se vérifie à la ligne avant d'être annoncé.
