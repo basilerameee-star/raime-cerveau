@@ -52,7 +52,7 @@ case "$*" in
   "update --restart="*" raime-harness-1") echo "\${2#--restart=}" > "${d('etat-restart')}" ;;
   "exec raime-cockpit-1 sh -c"*) ${geminiAuCoffre ? 'echo "GEMINI_API_KEY=cle-gemini-secrete-123"' : 'exit 1'} ;;
   "exec raime-cockpit-1 wget -qO- http://harness:8201/sante") echo '{"etat":"libre","moteur":"hermes"}' ;;
-  "exec raime-cockpit-1 wget -qO- -T 600"*) echo '{"message":{"role":"assistant","content":"Une PME gagne du temps."}}' ;;
+  "exec raime-cockpit-1 wget -qO- -T 180"*) echo '{"message":{"role":"assistant","content":"Une PME gagne du temps."}}' ;;
   "exec raime-cockpit-1 wget -qO- http://127.0.0.1:8090/healthz") [ "$(cat "${d('etat-maj')}")" = oui ] && ${santeApresMaj ? 'exit 0' : 'exit 1'}; exit 0 ;;
   "exec raime-cockpit-1 grep -q repondreSansFrais /app/server.js") [ "$(cat "${d('etat-maj')}")" = oui ] ;;
   *"config --format json") echo '${cfg}' ;;
@@ -76,27 +76,26 @@ test('installer : clé Gemini transmise une fois et jamais affichée, bascule, m
   assert.doesNotMatch(r.stdout + r.stderr, /cle-gemini-secrete-123/, 'la clé ne doit jamais s’afficher');
   assert.match(fs.readFileSync(s.d('hermes.env'), 'utf8'), /^GEMINI_API_KEY=cle-gemini-secrete-123$/m);
   assert.match(r.stdout, /BRANCHE/);
-  assert.match(r.stdout, /qwen3:4b : \d+ s -> Une PME gagne du temps\./);
-  assert.match(r.stdout, /gemma4:e4b : \d+ s ->/);
+  assert.match(r.stdout, /gemma4:e4b : \d+ s -> Une PME gagne du temps\./);
   assert.match(r.stdout, /licence de gemma4:e4b/);
+  assert.doesNotMatch(r.stdout, /qwen3/, 'Qwen3 (plusieurs minutes de réflexion sur le serveur) n’est plus installé');
   assert.match(r.stdout, /COCKPIT A JOUR/);
   assert.match(r.stdout, /INSTALLE/);
   const j = s.journal();
   const i = (m) => j.findIndex((l) => m.test(l));
   assert.ok(i(/up -d --force-recreate hermes raime-executant/) >= 0 && i(/up -d raime-ollama/) > i(/up -d --force-recreate hermes/), 'la bascule avant le modèle local');
-  assert.ok(i(/ build cockpit$/) > i(/ollama pull qwen3:4b/), 'le Cockpit est reconstruit en dernier');
+  assert.ok(i(/ build cockpit$/) > i(/ollama pull gemma4:e4b/), 'le Cockpit est reconstruit en dernier');
   assert.equal(i(/remove-orphans|\bdown\b|^rm raime-hermes|^rm raime-harness/), -1, 'rien n’est supprimé');
   // Relancer ne double rien.
   assert.equal(s.lancer('raime-brain/hermes/installer.sh').status, 0);
   assert.equal(fs.readFileSync(s.d('hermes.env'), 'utf8').match(/^GEMINI_API_KEY=/gm).length, 1);
 });
 
-test('installer sans clé Gemini au coffre et sans Gemma 4 : il continue avec le modèle local', () => {
-  const s = scenario({ geminiAuCoffre: false, gemmaDispo: false });
+test('installer sans clé Gemini au coffre : il continue avec le modèle local', () => {
+  const s = scenario({ geminiAuCoffre: false });
   const r = s.lancer('raime-brain/hermes/installer.sh');
   assert.equal(r.status, 0, r.stdout + r.stderr);
   assert.match(r.stdout, /pas de cle Gemini au coffre/);
-  assert.match(r.stdout, /gemma4:e4b indisponible pour l'instant : qwen3:4b reste seul/);
   assert.doesNotMatch(fs.readFileSync(s.d('hermes.env'), 'utf8'), /GEMINI_API_KEY/);
 });
 
@@ -145,4 +144,11 @@ test('copie à part versée puis nouvelle version muette : les fichiers d’avan
   assert.equal(r.status, 3, r.stdout + r.stderr);
   assert.match(fs.readFileSync(s.d('cockpit-prod/server.js'), 'utf8'), /ancienne version connue/);
   assert.ok(!fs.existsSync(s.d('cockpit-prod/parole.js')), 'un fichier ajouté par la mise à jour est retiré');
+});
+
+test('modèle local introuvable : l’installation s’arrête avant de toucher au Cockpit', () => {
+  const s = scenario({ gemmaDispo: false });
+  const r = s.lancer('raime-brain/hermes/installer.sh');
+  assert.notEqual(r.status, 0);
+  assert.ok(!s.journal().some((l) => / build cockpit$/.test(l)), 'le Cockpit n’est pas reconstruit');
 });

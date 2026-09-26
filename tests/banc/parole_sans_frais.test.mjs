@@ -50,7 +50,7 @@ test('crédit OpenRouter épuisé (402) et quota Gemini épuisé (429) : le mod�
   ]);
   const r = await repondreSansFrais({ messages, coffre: { GEMINI_API_KEY: 'g' }, env: { OPENROUTER_API_KEY: 'o' }, fetch });
   assert.equal(r.texte, 'Réponse locale');
-  assert.match(r.source, /^local · qwen3:4b$/);
+  assert.match(r.source, /^local · gemma4:e4b$/);
   const essayes = appels.filter((a) => /openrouter\.ai\/api\/v1\/chat/.test(a.url)).map((a) => a.modele);
   assert.deepEqual(essayes, ['deepseek/deepseek-r2:free', 'qwen/qwen3-coder:free'], 'seuls les modèles à prix zéro sont essayés');
 });
@@ -62,7 +62,7 @@ test('aucun modèle payant n’est jamais demandé, quel que soit le scénario',
   ]);
   const r = await repondreSansFrais({ messages, coffre: { GEMINI_API_KEY: 'g' }, env: { OPENROUTER_API_KEY: 'o' }, fetch });
   assert.equal(r.texte, '');
-  const permis = new Set(['qwen/qwen3-coder:free', 'deepseek/deepseek-r2:free', 'gemini-3.1-flash-lite', 'gemini-3.8-flash', 'qwen3:4b']);
+  const permis = new Set(['qwen/qwen3-coder:free', 'deepseek/deepseek-r2:free', 'gemini-3.1-flash-lite', 'gemini-3.8-flash', 'gemma4:e4b']);
   for (const a of appels.filter((x) => x.modele)) assert.ok(permis.has(a.modele), `modèle payant demandé : ${a.modele}`);
 });
 
