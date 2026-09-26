@@ -251,3 +251,10 @@ Merci pour le travail de cette nuit : le banc a déjà trouvé un vrai défaut e
 - Évaluation : sans commande, l'image lance la conversation interactive ; sans terminal, elle s'arrête et Docker la relance. Le compose d'origine d'Hermes passe `command: ["gateway", "run"]` : je l'avais omis.
 - Correction : la commande ajoutée, gardée par un test ; la notice interdit `--remove-orphans` (le compose partage `/opt/raime` avec le compose principal).
 - Leçon : en reprenant la configuration d'un projet, recopier aussi sa commande de démarrage, pas seulement ses volumes et son réseau.
+
+## 2026-09-26 — session cloud — Hermes répond avec la mémoire de la maison
+- Action : après la correction « gateway run », Basile relance ; puis une question en une ligne : « Quelles questions le cerveau attend-il de Basile ? Utilise le serveur raime. »
+- Résultat : `raime-hermes` « Up 20 seconds » (plus de boucle) ; Hermes répond avec les vraies demandes ouvertes du cerveau (n° 13, 14, 21 bloquantes ; 7, 9, 10, 11…), lues par le serveur MCP. Premier appel réel de bout en bout : Hermes → raime-mcp → Gardien → base → journal.
+- Évaluation : deux accrocs sans gravité : les avertissements « Nous Portal » (Hermes essaie son propre service avant OpenRouter), et PowerShell qui retire les guillemets des arguments (« 'questions' is not a hermes command »).
+- Correction : apostrophes doublées dans les commandes PowerShell ; notée dans la notice avec l'étape Telegram.
+- Leçon : une commande donnée à Basile se donne dans la syntaxe exacte de SON terminal (PowerShell), pas dans celle du serveur.

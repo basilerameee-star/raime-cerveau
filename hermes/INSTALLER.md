@@ -59,10 +59,25 @@ compose principal ; Docker prendrait la base, Caddy, n8n et le Cockpit pour des 
 ssh -t -i ~/.ssh/raime_vps root@2.29.6.94 'docker exec -it raime-hermes hermes'
 ```
 
-Lui demander : « Quelles questions le cerveau attend-il de Basile ? ». Il doit appeler l'outil
+Lui demander : « Quelles questions le cerveau attend-il de Basile ? ».
+Sans entrer dans la conversation, depuis PowerShell (apostrophes doublées : PowerShell retire les guillemets) :
+`ssh -i "$HOME\.ssh\raime_vps" root@2.29.6.94 'docker exec raime-hermes hermes -z ''Ta question ici'''` Il doit appeler l'outil
 `questions_pour_basile` du serveur `raime` et les lister ; l'appel apparaît au journal du cerveau (acteur `hermes`).
 
 **Après chaque livraison du cerveau** : `docker restart raime-mcp` (le code est lu au démarrage).
+
+## 4 bis. Lui écrire de partout : Telegram
+
+1. Sur Telegram, écrire à `@BotFather` → `/newbot` → garder le **jeton** du bot (Basile crée ce compte lui-même).
+2. Écrire à `@userinfobot` → garder son **identifiant** (un nombre) : seul ce compte pourra parler à Hermes.
+3. Depuis PowerShell (le jeton est tapé, jamais écrit dans le dépôt ni dans une conversation) :
+
+```powershell
+$T = Read-Host "Jeton du bot"; $U = Read-Host "Identifiant Telegram"
+ssh -i "$HOME\.ssh\raime_vps" root@2.29.6.94 "echo TELEGRAM_BOT_TOKEN=$T >> /opt/raime/hermes.env && echo TELEGRAM_ALLOWED_USERS=$U >> /opt/raime/hermes.env && cd /opt/raime && docker compose -f docker-compose.hermes.yml up -d --force-recreate hermes"
+```
+
+Puis écrire au bot depuis le téléphone. Un message d'un autre compte est ignoré (`TELEGRAM_ALLOWED_USERS`).
 
 ## 5. Phase 2 — les modèles gratuits (Free Claude Code)
 
