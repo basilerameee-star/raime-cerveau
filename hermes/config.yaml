@@ -1,0 +1,27 @@
+# Hermes Agent, version maison rAIme. Copié dans le volume de Hermes (/opt/data/config.yaml) par
+# hermes/INSTALLER.md. AUCUNE clé ici : ${VAR} est lu dans l'environnement du conteneur.
+#
+# Phase 1 : OpenRouter, avec la clé que le cerveau utilise déjà, et le modèle de rédaction du
+# routeur (agents/lib.js, ROUTER.redaction). Phase 2 (hermes/INSTALLER.md, étape 5) : les modèles
+# gratuits passent par Free Claude Code, mesurés d'abord par le sas.
+model:
+  provider: "openrouter"
+  default: "deepseek/deepseek-v4-flash-0731"
+  base_url: "https://openrouter.ai/api/v1"
+
+# Le terminal d'Hermes travaille dans SON conteneur, sur un dossier de travail à lui : jamais sur
+# le serveur, jamais sur le cerveau en service, jamais avec le socket Docker.
+terminal:
+  backend: "local"
+  cwd: "/opt/data/atelier"
+
+# Les consignes d'Hermes lui-même (SOUL.md…) ne changent qu'avec l'accord de Basile.
+approval:
+  protected_instruction_files: true
+
+# La maison : le cerveau de rAIme, par son serveur MCP (agents/raime_mcp.js), sur le réseau interne.
+mcp_servers:
+  raime:
+    url: "http://raime-mcp:8766/mcp"
+    headers:
+      Authorization: "Bearer ${RAIME_MCP_JETON}"
