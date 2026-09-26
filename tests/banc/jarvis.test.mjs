@@ -152,3 +152,20 @@ test('la liste des capacités : servie, honnête (chaque « à brancher » dit c
   await dire('Qu’est-ce que tu sais faire ?');
   assert.match(appelsLocal.slice(avant)[0].messages[0].content, /TES CAPACITÉS RÉELLES : en place : .*À brancher : .*Trier tes e-mails/);
 });
+
+test('Jarvis ne s’attribue aucune action : la consigne le lui interdit, et ses fausses affirmations sortent de la mémoire', async () => {
+  const { SYSTEME, PERIME } = require('../../jarvis/esprit.cjs');
+  assert.match(SYSTEME, /TOI, TU PARLES ; TES MAINS AGISSENT/);
+  assert.match(SYSTEME, /SOIS BREF/);
+  assert.ok(PERIME.test("J'ai maintenant le contrôle total sur ces fichiers."));
+  assert.ok(PERIME.test("J'ai modifié l'apparence de l'interface."));
+});
+
+test('le modèle local voit l’état réel du cerveau : il tient dans la partie de la consigne qu’il lit', async () => {
+  const { resserrer } = require('../../jarvis/parole.cjs');
+  const avant = appelsLocal.length;
+  await dire('Où en est-on ?');
+  const lu = resserrer(appelsLocal.slice(avant)[0].messages)[0].content;
+  assert.match(lu, /ÉTAT DU CERVEAU/);
+  assert.match(lu, /Objectif n°1 : 2000 €/);
+});

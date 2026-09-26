@@ -24,7 +24,7 @@ a{color:var(--cyan);text-decoration:none}
 .mono{font-family:var(--mono);letter-spacing:.06em}
 
 /* ── La scène ─────────────────────────────────────────── */
-#scene{position:fixed;inset:0;display:grid;grid-template-columns:minmax(280px,340px) 1fr minmax(280px,340px);grid-template-rows:56px 1fr auto;gap:0 18px;padding:0 18px 18px}
+#scene{position:fixed;inset:0;display:grid;grid-template-columns:minmax(250px,330px) minmax(0,1fr) minmax(250px,330px);grid-template-rows:56px minmax(0,1fr) auto;gap:0 18px;padding:0 18px 18px}
 header{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--trait)}
 .marque{display:flex;align-items:center;gap:12px}
 .marque b{font:500 15px var(--mono);letter-spacing:.42em;color:var(--cyan)}
@@ -86,8 +86,9 @@ ul.fil em{font-style:normal;font:11px var(--mono);color:var(--cyan);margin-right
 ul.fil strong{font-weight:500;color:var(--texte)}
 
 /* ── Le centre : la sphère et ses anneaux ─────────────── */
-#centre{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:0}
-#reacteur{position:relative;width:min(62vh,46vw);aspect-ratio:1;cursor:pointer;flex:none}
+#centre{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:0;min-width:0;overflow:hidden}
+#reacteur{position:relative;width:min(58vh,100%);aspect-ratio:1;cursor:pointer;flex:0 1 auto;min-height:0;transition:width .5s}
+body.reponse #reacteur{width:min(40vh,100%)}
 #reacteur canvas{position:absolute;inset:0;width:100%;height:100%}
 #anneaux{position:absolute;inset:-6%;width:112%;height:112%;pointer-events:none;overflow:visible}
 #anneaux .tourne{transform-origin:50% 50%;animation:tourne 40s linear infinite}
@@ -98,9 +99,9 @@ body[data-etat=reflexion] #anneaux .tourne{animation-duration:6s} body[data-etat
 body[data-etat=ecoute] #anneaux circle.pouls{stroke:var(--vert)}
 #etat{margin-top:6px;font:500 12px var(--mono);letter-spacing:.34em;text-transform:uppercase;color:var(--cyan)}
 body[data-etat=ecoute] #etat{color:var(--vert)} body[data-etat=reflexion] #etat{color:var(--ambre)}
-#sous-titres{max-width:760px;width:100%;margin-top:14px;min-height:72px;text-align:center}
+#sous-titres{max-width:760px;width:100%;margin-top:10px;min-height:48px;text-align:center;flex:0 1 auto;min-height:0;display:flex;flex-direction:column}
 #toi{font-size:13px;color:var(--doux);margin-bottom:6px;min-height:20px}
-#lui{font-size:17px;line-height:1.55;color:var(--texte);max-height:30vh;overflow:auto;white-space:pre-wrap}
+#lui{font-size:16.5px;line-height:1.55;color:var(--texte);max-height:32vh;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;scrollbar-width:thin;scrollbar-color:var(--trait) transparent;padding:0 6px}
 #lui a{word-break:break-all}
 
 /* la barre d'échange */
@@ -151,7 +152,7 @@ nav#onglets button:hover{color:var(--cyan2);border-color:var(--trait2)}
 #avis{position:fixed;left:50%;top:70px;transform:translateX(-50%);background:rgba(255,93,115,.12);border:1px solid rgba(255,93,115,.4);color:#ffd0d7;padding:8px 14px;border-radius:10px;font-size:13px;z-index:30;display:none}
 
 /* ── Téléphone ─────────────────────────────────────────── */
-@media (max-width:1000px){
+@media (max-width:1200px){
   body{overflow:auto}
   #scene{position:static;display:flex;flex-direction:column;padding:0 14px calc(90px + env(safe-area-inset-bottom));gap:12px}
   header{position:sticky;top:0;z-index:5;background:rgba(2,6,11,.94);backdrop-filter:blur(10px);flex-direction:column;align-items:stretch;gap:8px;padding:10px 0 8px;margin:0 -14px;padding-left:14px;padding-right:14px}
@@ -595,7 +596,7 @@ nav#onglets button:hover{color:var(--cyan2);border-color:var(--trait2)}
       .then(function (r) { if (!r.ok) throw 0; return r.json(); })
       .then(function (d) {
         var rep = d.reply || '(pas de réponse)';
-        $('lui').textContent = rep; charger();
+        $('lui').textContent = rep; $('lui').scrollTop = 0; document.body.classList.toggle('reponse', rep.length > 260); charger();
         parler(rep, function () { if (suite) suite(); else changer('repos'); });
         if (muet && !suite) changer('repos');
       })

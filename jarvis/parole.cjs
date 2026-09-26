@@ -60,7 +60,7 @@ const sansPensee = (t) => String(t || '').replace(/<think>[\s\S]*?<\/think>/g, '
 // Le modèle local tourne sur le processeur du serveur : on lui donne l'essentiel (la consigne et les
 // derniers échanges) pour qu'il réponde en quelques secondes.
 function resserrer(messages) {
-  const systeme = messages.filter((m) => m.role === 'system').map((m) => String(m.content).slice(0, 6000));
+  const systeme = messages.filter((m) => m.role === 'system').map((m) => String(m.content).slice(0, 12000));
   const suite = messages.filter((m) => m.role !== 'system').slice(-6);
   return [...systeme.map((content) => ({ role: 'system', content })), ...suite];
 }
@@ -99,7 +99,7 @@ async function repondreSansFrais({ messages, profond = false, coffre = {}, env =
   try {
     const r = await fetch((env.MODELE_LOCAL_URL || LOCAL_URL) + '/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ model: env.MODELE_LOCAL || LOCAL_MODELE, messages: resserrer(messages), stream: false, think: false,
-        ...(json ? { format: 'json' } : {}), options: { num_ctx: 8192, ...(temperature != null ? { temperature } : {}) } }),
+        ...(json ? { format: 'json' } : {}), options: { num_ctx: 12288, ...(temperature != null ? { temperature } : {}) } }),
       signal: AbortSignal.timeout(delaiLocal) });
     if (r.ok) {
       const d = await r.json();
