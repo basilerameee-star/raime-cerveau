@@ -6,12 +6,15 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import crypto from 'node:crypto';
 
 const DEPOT = new URL('../../', import.meta.url).pathname;
 
 // options : cockpitNeuf (le dossier de construction a le nouveau code), santeApresMaj (le Cockpit reconstruit répond),
 // geminiAuCoffre (la clé est rangée au coffre du Cockpit), gemmaDispo (le modèle Gemma 4 se télécharge).
-function scenario({ cockpitNeuf = true, santeApresMaj = true, geminiAuCoffre = true, gemmaDispo = true } = {}) {
+// contexteSepare : le Cockpit se construit depuis une copie à part (comme /opt/raime/cockpit en production) ;
+// 'connu' = ses fichiers sont une version connue du dépôt, 'modifie' = un fichier a été changé hors dépôt.
+function scenario({ cockpitNeuf = true, santeApresMaj = true, geminiAuCoffre = true, gemmaDispo = true, contexteSepare = null } = {}) {
   const R = fs.mkdtempSync(path.join(os.tmpdir(), 'banc-installer-'));
   const d = (p) => path.join(R, p);
   for (const x of ['bin', 'travail-cockpit', 'hermes-data', 'raime-brain/hermes', 'raime-brain/cockpit', 'compose']) fs.mkdirSync(d(x), { recursive: true });
@@ -20,11 +23,21 @@ function scenario({ cockpitNeuf = true, santeApresMaj = true, geminiAuCoffre = t
   for (const f of ['config.yaml', 'SOUL.md', 'docker-compose.hermes.yml', 'brancher.sh', 'revenir.sh', 'installer.sh']) copier(`hermes/${f}`, `raime-brain/hermes/${f}`);
   copier('cockpit/mettre_a_jour.sh', 'raime-brain/cockpit/mettre_a_jour.sh');
   fs.writeFileSync(d('raime-brain/cockpit/server.js'), cockpitNeuf ? 'const { repondreSansFrais } = require("./parole.js");' : '// ancien');
+  for (const f of ['parole.js', 'index.html', 'jarvis.html', 'Dockerfile']) fs.writeFileSync(d(`raime-brain/cockpit/${f}`), `// ${f} du dépôt`);
+  const ANCIEN = '// ancienne version connue du Cockpit\n';
+  const empreinte = crypto.createHash('sha256').update(ANCIEN).digest('hex');
+  fs.writeFileSync(d('raime-brain/cockpit/empreintes_connues.txt'), `# test\n${empreinte}  server.js\n`);
+  if (contexteSepare) {
+    fs.mkdirSync(d('cockpit-prod'));
+    fs.writeFileSync(d('cockpit-prod/server.js'), contexteSepare === 'modifie' ? ANCIEN + '// réglage fait à la main sur le serveur\n' : ANCIEN);
+    fs.writeFileSync(d('cockpit-prod/index.html'), '// index.html du dépôt');
+  }
+  const CONTEXTE = contexteSepare ? d('cockpit-prod') : d('raime-brain/cockpit');
   fs.writeFileSync(d('hermes.env'), 'OPENROUTER_API_KEY=fictive\nRAIME_MCP_JETON=fictif\n');
   fs.writeFileSync(d('mcp.env'), 'RAIME_MCP_JETON=fictif\n');
   fs.writeFileSync(d('etat-restart'), 'unless-stopped');
   fs.writeFileSync(d('etat-maj'), 'non');
-  const cfg = JSON.stringify({ services: { cockpit: { build: { context: d('raime-brain/cockpit') } } } });
+  const cfg = JSON.stringify({ services: { cockpit: { build: { context: CONTEXTE } } } });
   fs.writeFileSync(d('bin/docker'), `#!/usr/bin/env bash
 echo "$*" >> "${d('docker.log')}"
 case "$*" in
@@ -104,4 +117,32 @@ test('mise à jour du Cockpit : sans le nouveau code dans le dossier de construc
   assert.equal(r.status, 1);
   assert.match(r.stdout, /n'a pas encore la nouvelle version ; rien n'est touche/);
   assert.ok(!s.journal().some((l) => /^tag | build |up -d/.test(l)));
+});
+
+test('Cockpit construit depuis une copie à part, version connue : le code du dépôt y est versé, l’ancien dossier gardé', () => {
+  const s = scenario({ contexteSepare: 'connu' });
+  const r = s.lancer('raime-brain/cockpit/mettre_a_jour.sh');
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /code du depot verse/);
+  assert.match(r.stdout, /COCKPIT A JOUR/);
+  assert.match(fs.readFileSync(s.d('cockpit-prod/server.js'), 'utf8'), /repondreSansFrais/);
+  assert.ok(fs.existsSync(s.d('cockpit-prod/parole.js')));
+  assert.match(fs.readFileSync(s.d('cockpit-prod.avant-maj/server.js'), 'utf8'), /ancienne version connue/);
+});
+
+test('Cockpit modifié hors dépôt sur le serveur : rien n’est écrasé ni reconstruit', () => {
+  const s = scenario({ contexteSepare: 'modifie' });
+  const r = s.lancer('raime-brain/cockpit/mettre_a_jour.sh');
+  assert.equal(r.status, 1);
+  assert.match(r.stdout, /server\.js a ete modifie hors du depot ; rien n'est touche/);
+  assert.match(fs.readFileSync(s.d('cockpit-prod/server.js'), 'utf8'), /réglage fait à la main/);
+  assert.ok(!s.journal().some((l) => /^tag | build |up -d/.test(l)));
+});
+
+test('copie à part versée puis nouvelle version muette : les fichiers d’avant sont remis, et l’image', () => {
+  const s = scenario({ contexteSepare: 'connu', santeApresMaj: false });
+  const r = s.lancer('raime-brain/cockpit/mettre_a_jour.sh');
+  assert.equal(r.status, 3, r.stdout + r.stderr);
+  assert.match(fs.readFileSync(s.d('cockpit-prod/server.js'), 'utf8'), /ancienne version connue/);
+  assert.ok(!fs.existsSync(s.d('cockpit-prod/parole.js')), 'un fichier ajouté par la mise à jour est retiré');
 });

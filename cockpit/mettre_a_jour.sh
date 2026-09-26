@@ -20,6 +20,25 @@ s = json.load(sys.stdin)['services']['$SVC']
 b = s.get('build') or {}
 print(b.get('context', '') if isinstance(b, dict) else b)")
 [ -n "$CTX" ] || { echo "ECHEC : le Cockpit tourne sur une image fixe, pas construite par compose ; rien n'est touche"; exit 1; }
+# Le dossier de construction peut etre une copie a part (sur le serveur de rAIme : /opt/raime/cockpit).
+# On n'y verse le code du depot que si chaque fichier en service est une version connue du depot
+# (empreintes_connues.txt) : une modification faite hors depot n'est jamais ecrasee. Copie gardee.
+DEPOT_COCKPIT=$(cd "$(dirname "$0")" && pwd)
+FICHIERS_COCKPIT=(server.js parole.js index.html jarvis.html Dockerfile)
+SYNCHRO=0
+if ! grep -q "$MARQUE" "$CTX/server.js" 2>/dev/null && [ "$(cd "$CTX" && pwd)" != "$DEPOT_COCKPIT" ]; then
+  grep -q "$MARQUE" "$DEPOT_COCKPIT/server.js" || { echo "ECHEC : le depot n'a pas la nouvelle version ; rien n'est touche"; exit 1; }
+  for f in "${FICHIERS_COCKPIT[@]}"; do
+    [ -f "$CTX/$f" ] || continue
+    e=$(sha256sum "$CTX/$f" | cut -c1-64)
+    grep -q "^$e  $f\$" "$DEPOT_COCKPIT/empreintes_connues.txt" || cmp -s "$CTX/$f" "$DEPOT_COCKPIT/$f" || {
+      echo "ECHEC : $CTX/$f a ete modifie hors du depot ; rien n'est touche. Verser d'abord ce changement dans le depot."; exit 1; }
+  done
+  rm -rf "$CTX.avant-maj" && cp -a "$CTX" "$CTX.avant-maj"
+  for f in "${FICHIERS_COCKPIT[@]}"; do cp "$DEPOT_COCKPIT/$f" "$CTX/$f"; done
+  SYNCHRO=1
+  echo "code du depot verse dans $CTX (ancien dossier garde : $CTX.avant-maj)"
+fi
 grep -q "$MARQUE" "$CTX/server.js" 2>/dev/null || { echo "ECHEC : $CTX/server.js n'a pas encore la nouvelle version ; rien n'est touche"; exit 1; }
 
 IMAGE=$(docker inspect "$C" --format '{{.Config.Image}}')
@@ -36,6 +55,8 @@ if docker compose "${ARGS[@]}" build "$SVC" && docker compose "${ARGS[@]}" up -d
   exit 0
 fi
 echo "la nouvelle version ne repond pas : retour a la precedente"
+if [ "$SYNCHRO" = 1 ]; then for f in "${FICHIERS_COCKPIT[@]}"; do
+  if [ -f "$CTX.avant-maj/$f" ]; then cp "$CTX.avant-maj/$f" "$CTX/$f"; else rm -f "$CTX/$f"; fi; done; fi
 docker tag "$SAUVE" "$IMAGE"
 docker compose "${ARGS[@]}" up -d --no-deps "$SVC"
 for _ in $(seq 1 20); do docker exec "$C" wget -qO- http://127.0.0.1:8090/healthz >/dev/null 2>&1 && { echo "REVENU : l'ancien Cockpit repond"; exit 3; }; sleep 2; done
