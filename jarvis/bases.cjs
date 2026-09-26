@@ -26,6 +26,7 @@ async function preparer() {
   await lire('CREATE INDEX IF NOT EXISTS commandes_etat ON commandes(etat, cree_le)');
   await lire(`CREATE TABLE IF NOT EXISTS revenus (id serial PRIMARY KEY, le timestamptz NOT NULL DEFAULT now(),
     montant_eur numeric(10,2) NOT NULL CHECK (montant_eur > 0), source text NOT NULL, note text)`);
+  await lire('ALTER TABLE revenus ADD COLUMN IF NOT EXISTS plateforme text');
 }
 
 // ── LE COFFRE — Basile y range ses accès. Les valeurs ne sont jamais renvoyées ni journalisées.

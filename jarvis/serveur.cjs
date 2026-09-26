@@ -12,6 +12,8 @@ const { lire, lireN8n, preparer, lireCoffre, rangerCoffre } = require('./bases.c
 const esprit = require('./esprit.cjs');
 const relais = require('./relais.cjs');
 const courrier = require('./courrier.cjs');
+const outils = require('./outils.cjs');
+const voix = require('./voix.cjs');
 
 const ICI = __dirname;
 const INTERFACE = path.join(ICI, 'interface');
@@ -86,7 +88,7 @@ const NOMS = { bibliothecaire: 'Bibliothèque', veilleur: 'Veille', portes: "Por
   penseur: 'Penseur', publiciste: 'Publicité', reconciliateur: 'Réponses', curieux: 'Curieux', econome: 'Économe', metrologue: 'Mesure des prix',
   prospective: 'Prospective', applicateur: 'Mise en service', executant: 'Hermes', heraut: 'Héraut', eclaireur: 'Éclaireur des modèles', radar: 'Radar' };
 async function etat() {
-  const [ordres, journal, pensee, questions, agents, biblio, veille, prospection, revenus, mains, encaisse, courriels] = await Promise.all([
+  const [ordres, journal, pensee, questions, agents, biblio, veille, prospection, revenus, mains, encaisse, courriels, echus, rappels] = await Promise.all([
     lire(`SELECT id, texte, etat, pour, round(extract(epoch FROM now() - cree_le) / 60)::int AS minutes, left(coalesce(reponse, ''), 600) AS reponse
       FROM commandes WHERE etat IN ('a_faire','en_cours') OR traite_le > now() - interval '72 hours' ORDER BY cree_le DESC LIMIT 12`),
     lire("SELECT acteur, left(changement, 200) AS changement, created_at FROM journal WHERE created_at > now() - interval '48 hours' ORDER BY created_at DESC LIMIT 12"),
@@ -98,9 +100,10 @@ async function etat() {
     lireN8n("SELECT count(*) FILTER (WHERE status = 'brouillon')::int AS brouillons, count(*) FILTER (WHERE sent_at > now() - interval '7 days')::int AS envoyes FROM outreach"),
     esprit.revenusDuMois(),
     fetch(EXECUTANT + '/sante', { signal: AbortSignal.timeout(3000) }).then((r) => r.json()).catch(() => null),
-    lire("SELECT le, montant_eur::float AS montant, source FROM revenus ORDER BY le DESC LIMIT 5"),
+    lire("SELECT le, montant_eur::float AS montant, source, plateforme FROM revenus ORDER BY le DESC LIMIT 5"),
     lire(`SELECT count(*) FILTER (WHERE NOT vu)::int AS non_vus, count(*) FILTER (WHERE NOT vu AND importance = 3)::int AS urgents
       FROM courriels WHERE recu_le > now() - interval '7 days'`),
+    outils.rappelsEchus(), outils.rappelsAVenir(),
   ]);
   const coffre = lireCoffre();
   return {
@@ -113,8 +116,10 @@ async function etat() {
     compteurs: { agents: agents[0] ? agents[0].n : 0, bibliotheque: biblio[0] ? biblio[0].n : 0, veille: veille[0] ? veille[0].n : 0,
       brouillons: prospection[0] ? prospection[0].brouillons : 0, envoyes: prospection[0] ? prospection[0].envoyes : 0 },
     objectif: { ...revenus, derniers: encaisse },
+    rappels: { echus, a_venir: rappels },
     mains: mains ? { etat: mains.etat || 'inconnu' } : { etat: 'injoignable' },
     courriels: { ...(courriels[0] || { non_vus: 0, urgents: 0 }), releve: courrier.etat(), configure: !!(coffre.GMAIL_ADRESSE && coffre.GMAIL_MOT_DE_PASSE_APPLI) },
+    voix: coffre.GEMINI_API_KEY ? 'gemini' : 'serveur',
     parole: coffre.GEMINI_API_KEY ? 'Gemini gratuit, puis modèle local' : 'modèle local du serveur (ajoute une clé Gemini gratuite au coffre pour plus de vivacité)',
   };
 }
@@ -132,7 +137,7 @@ async function rapport() {
     { titre: 'Le cerveau cette nuit : sa pensée', lignes: pensee.length ? pensee.map((p) => `${p.titre} — ${court(p.proposition, 220)}`) : ['Pas de pensée cette nuit.'] },
     { titre: 'Tes ordres faits (24 h)', lignes: faites.length ? faites.map((c) => `n°${c.id} — ${court(c.texte, 90)} → ${court(c.reponse, 200)}`) : ['Aucun.'] },
     { titre: 'Améliorations mises en service seul (24 h)', lignes: mep.length ? mep.map((j) => court(j.changement, 160)) : ['Aucune.'] },
-    { titre: 'Objectif du mois', lignes: [`${rev.mois} € encaissés sur ${rev.objectif} €.`] },
+    { titre: 'Monétisation des contenus', lignes: [`${rev.mois} € ce mois sur ${rev.objectif} €.`, ...rev.plateformes.map((p) => `${p.plateforme} : ${p.montant} €`)] },
     { titre: 'Ce qui attend ta décision', lignes: [`${br ? br.n : 0} brouillons d’e-mails à valider dans le Cockpit.`, ...qs.map((x) => court(x.question, 200))] },
   ] };
 }
@@ -142,6 +147,7 @@ const RANGEMENTS = {
   GEMINI_API_KEY: 'Clé Google AI Studio (Gemini, gratuite)', GROQ_API_KEY: 'Clé Groq (gratuite)', MISTRAL_API_KEY: 'Clé Mistral',
   CEREBRAS_API_KEY: 'Clé Cerebras (gratuite)', GMAIL_ADRESSE: 'Ton adresse Gmail', GMAIL_MOT_DE_PASSE_APPLI: "Mot de passe d'application Gmail",
   META_ACCESS_TOKEN: 'Clé Meta', AGENDA_LIEN: 'Lien de ta page de réservation',
+  JARVIS_VOIX: 'Voix de Jarvis (Gemini : Charon, Puck, Kore, Fenrir…)', AGENDA_ICAL: 'Adresse secrète iCal de ton Google Agenda (lecture seule)', METEO_VILLE: 'Ta ville, pour la météo',
 };
 const NOM_LIBRE = /^[A-Z][A-Z0-9_]{2,40}$/;
 
@@ -183,7 +189,8 @@ async function router(req, res) {
     const montant = Math.round(Number(String(d.montant).replace(',', '.')) * 100) / 100;
     const source = String(d.source || '').trim().slice(0, 120);
     if (!(montant > 0 && montant < 1e6) || !source) return envoyer(res, 200, { ok: false, erreur: 'montant ou source manquant' });
-    await lire('INSERT INTO revenus (montant_eur, source, note) VALUES ($1, $2, $3)', [montant, source, String(d.note || '').slice(0, 300) || null]);
+    const plateforme = [...esprit.PLATEFORMES, 'raime'].includes(d.plateforme) ? d.plateforme : 'autre';
+    await lire('INSERT INTO revenus (montant_eur, source, note, plateforme) VALUES ($1, $2, $3, $4)', [montant, source, String(d.note || '').slice(0, 300) || null, plateforme]);
     return envoyer(res, 200, { ok: true });
   }
 
@@ -222,9 +229,14 @@ async function router(req, res) {
   if (m === 'POST' && (url === '/api/voix/parler' || url === '/api/jarvis/parler')) {
     try {
       const texte = await corps(req, 20000);
-      const v = await fetch(VOIX + '/parler', { method: 'POST', body: texte, signal: AbortSignal.timeout(30000) });
-      if (!v.ok) throw new Error('voix');
-      const wav = Buffer.from(await v.arrayBuffer());
+      // D'abord la voix de Gemini (la plus humaine, quota gratuit), puis celle du serveur (Piper).
+      let dit = ''; try { dit = String(JSON.parse(texte.toString('utf8')).texte || ''); } catch (e) {}
+      let wav = await voix.direGemini(dit.slice(0, 1600), { coffre: lireCoffre() }).catch(() => null);
+      if (!wav) {
+        const v = await fetch(VOIX + '/parler', { method: 'POST', body: texte, signal: AbortSignal.timeout(30000) });
+        if (!v.ok) throw new Error('voix');
+        wav = Buffer.from(await v.arrayBuffer());
+      }
       res.writeHead(200, { 'Content-Type': 'audio/wav', 'Content-Length': wav.length, 'Cache-Control': 'no-store' }); res.end(wav);
     } catch (e) { res.writeHead(502); res.end(); }
     return;
@@ -283,9 +295,9 @@ const serveur = http.createServer((req, res) => {
 });
 
 if (require.main === module) {
-  Promise.all([preparer(), courrier.preparer()]).finally(() => {
+  Promise.all([preparer(), courrier.preparer(), outils.preparer()]).finally(() => {
     serveur.listen(PORT, () => console.log(`[jarvis] en service sur :${PORT}, version ${VERSION}`));
-    if (process.env.RELAIS !== '0') { relais.demarrer(); courrier.demarrer(); }
+    if (process.env.RELAIS !== '0') { relais.demarrer(); courrier.demarrer(); setInterval(() => { outils.memoriser().catch(() => {}); }, 3600e3); }
     // Le classement des modèles gratuits mesurés par l'éclaireur (agents/eclaireur.js), relu toutes les heures.
     const adopter = async () => {
       const c = {};

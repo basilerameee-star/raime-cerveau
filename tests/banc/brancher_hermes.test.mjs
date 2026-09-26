@@ -10,7 +10,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 const DEPOT = new URL('../../', import.meta.url).pathname;
 let RACINE, BIN, TRAVAIL, JOURNAL;
 
-function scenario({ cockpitSansTravail = false } = {}) {
+function scenario({ cockpitSansTravail = false , hermesRefuse = false} = {}) {
   RACINE = fs.mkdtempSync(path.join(os.tmpdir(), 'banc-opt-raime-'));
   BIN = path.join(RACINE, 'bin'); TRAVAIL = path.join(RACINE, 'travail-cockpit'); JOURNAL = path.join(RACINE, 'docker.log');
   for (const d of [BIN, TRAVAIL, 'hermes-data', 'raime-brain/hermes']) fs.mkdirSync(path.isAbsolute(d) ? d : path.join(RACINE, d), { recursive: true });
@@ -30,6 +30,7 @@ case "$*" in
   "inspect raime-harness-1") exit 0 ;;
   "update --restart="*" raime-harness-1") echo "\${2#--restart=}" > "${RACINE}/restart-harness" ;;
   "exec raime-cockpit-1 wget -qO- http://harness:8201/sante") echo '{"etat":"libre","moteur":"hermes"}' ;;
+  "exec raime-executant node -e"*) echo ${hermesRefuse ? 401 : 200} ;;
   *) exit 0 ;;
 esac
 `, { mode: 0o755 });
@@ -112,4 +113,24 @@ test('brancher installe les compétences de la maison chez Hermes (pas la vidéo
   fs.appendFileSync(path.join(skills, 'site-premium/SKILL.md'), '\nAmélioration écrite par Hermes.\n');
   assert.equal(lancer('brancher.sh').status, 0);
   assert.match(fs.readFileSync(path.join(RACINE, 'hermes-data/skills-anciennes/site-premium/SKILL.md'), 'utf8'), /Amélioration écrite par Hermes/);
+});
+
+test('la clé du relais est aussi écrite dans le fichier d’Hermes, qui passe avant son environnement ; le lien est testé', () => {
+  scenario();
+  fs.writeFileSync(path.join(RACINE, 'hermes-data/.env'), 'WHATSAPP_ENABLED=true\nAPI_SERVER_KEY=ancienne-cle-du-wizard\n');
+  const r = lancer('brancher.sh');
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /LIEN HERMES OK/);
+  const henv = fs.readFileSync(path.join(RACINE, 'hermes-data/.env'), 'utf8');
+  assert.match(henv, /^WHATSAPP_ENABLED=true$/m, 'les autres réglages restent');
+  assert.doesNotMatch(henv, /ancienne-cle-du-wizard/);
+  assert.equal(henv.match(/^API_SERVER_KEY=.*$/m)[0], fs.readFileSync(path.join(RACINE, 'executant.env'), 'utf8').trim());
+  assert.equal((fs.statSync(path.join(RACINE, 'hermes-data/.env')).mode & 0o777).toString(8), '600');
+});
+
+test('Hermes refuse encore la clé : l’installation le dit et s’arrête (plus d’ordres qui échouent en silence)', () => {
+  scenario({ hermesRefuse: true });
+  const r = lancer('brancher.sh');
+  assert.equal(r.status, 1);
+  assert.match(r.stdout, /ECHEC : Hermes refuse la cle du relais \(code 401\)/);
 });

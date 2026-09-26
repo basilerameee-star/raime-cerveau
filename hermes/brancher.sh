@@ -16,7 +16,15 @@ printf 'TRAVAIL_HOTE=%s\nHERMES_UID=%s\nHERMES_GID=%s\n' "$TRAVAIL" "$PROPRIO" "
 if ! grep -q '^API_SERVER_KEY=' /opt/raime/hermes.env; then
   echo "API_SERVER_KEY=$(openssl rand -hex 32)" >> /opt/raime/hermes.env
 fi
-grep '^API_SERVER_KEY=' /opt/raime/hermes.env > /opt/raime/executant.env
+grep -m1 '^API_SERVER_KEY=' /opt/raime/hermes.env > /opt/raime/executant.env
+# Hermes lit aussi son propre fichier (/opt/data/.env), qui passe AVANT son environnement : une autre clé
+# écrite là (assistant WhatsApp…) faisait refuser chaque ordre (« 401 Invalid gateway API key », 26/09/2026).
+# La même clé y est donc écrite, sans toucher aux autres lignes.
+HENV=/opt/raime/hermes-data/.env
+touch "$HENV"
+{ grep -v '^API_SERVER_KEY=' "$HENV" || true; cat /opt/raime/executant.env; } > "$HENV.nouveau"
+cat "$HENV.nouveau" > "$HENV"; rm -f "$HENV.nouveau"
+chmod 600 "$HENV"; chown "$PROPRIO:$GROUPE" "$HENV"
 
 # La configuration a jour (dossier de travail /travail) et l'ame d'Hermes.
 cp "$H/config.yaml" "$H/SOUL.md" /opt/raime/hermes-data/
@@ -45,5 +53,12 @@ sleep 25
 echo "--- sante vue depuis le Cockpit :"
 docker exec raime-cockpit-1 wget -qO- http://harness:8201/sante || { echo "ECHEC : le Cockpit ne joint pas le relais ; lancer revenir.sh"; exit 1; }
 echo
+# Le vrai test : le relais présente sa clé à Hermes, qui doit l'accepter (200) ; sinon chaque ordre échoue (401).
+CODE=0
+for _ in $(seq 1 12); do
+  CODE=$(docker exec raime-executant node -e "fetch((process.env.HERMES_URL||'http://raime-hermes:8642')+'/v1/models',{headers:{Authorization:'Bearer '+process.env.API_SERVER_KEY}}).then(r=>console.log(r.status)).catch(()=>console.log(0))" 2>/dev/null || echo 0)
+  [ "$CODE" = 200 ] && break; sleep 5
+done
+[ "$CODE" = 200 ] && echo "LIEN HERMES OK : Hermes accepte la cle du relais" || { echo "ECHEC : Hermes refuse la cle du relais (code $CODE)"; exit 1; }
 docker ps --filter name=raime-hermes --filter name=raime-executant --format '{{.Names}} {{.Status}}'
 echo "BRANCHE : les demandes d'action du Cockpit vont a Hermes."
