@@ -26,3 +26,21 @@ mcp_servers:
     url: "http://raime-mcp:8766/mcp"
     headers:
       Authorization: "Bearer ${RAIME_MCP_JETON}"
+
+# LA PAROLE ET LES ORDRES NE S'ARRÊTENT JAMAIS (26/09/2026, demande de Basile). Si le modèle principal
+# refuse (crédit épuisé, quota, panne), Hermes passe seul au gratuit (Gemini), puis au modèle local du
+# serveur (Ollama, Qwen3 4B, Apache 2.0 : ni compte, ni quota, ni frais). Prouvé avec le vrai Hermes :
+# 402 sur le principal puis 429 sur le gratuit → le local répond, même sur une tâche à plusieurs étapes.
+fallback_providers:
+  - provider: gemini
+    model: gemini-3.8-flash
+  - provider: local
+    model: qwen3:4b
+
+# Le modèle local, nommé : le relais peut le demander directement (hermes/executant.js).
+providers:
+  local:
+    name: "Modèle local du serveur"
+    api: http://raime-ollama:11434/v1
+    transport: chat_completions
+    default_model: qwen3:4b

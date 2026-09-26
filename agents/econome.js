@@ -7,7 +7,7 @@
 //   normal  : rien ne change ;
 //   econome : les agents payants passent deux fois moins souvent, Cortex prend un modèle léger ;
 //   reserve : quatre fois moins souvent, les agents payants non essentiels attendent le 1er ;
-//   arret   : plus aucun appel payant ; les agents gratuits continuent.
+//   arret   : plus aucun appel payant ; les agents gratuits, Jarvis et les ordres (sur modèles gratuits) continuent.
 // Le code décide, pas un modèle : l'économe ne dépense rien.
 export const PLAFOND_EUR = 16; // Constitution, principe 5 : le prix du serveur
 
@@ -53,7 +53,7 @@ export function regime({ plafondEur = PLAFOND_EUR, depenseMoisEur, rythmeJourEur
     normal: [`Rythme normal : ${raison}.`],
     econome: [`Rythme économe : ${raison}.`, 'Les agents payants passent deux fois moins souvent.', 'Cortex répond avec un modèle léger, environ trente fois moins cher.'],
     reserve: [`Réserve : ${raison}.`, 'Seules la surveillance et l’architecte tournent, quatre fois moins souvent ; les autres agents payants attendent le 1er du mois.', 'Cortex répond avec un modèle léger.'],
-    arret: [`Arrêt des dépenses : ${raison}.`, 'Plus aucun appel payant jusqu’au 1er du mois ou jusqu’à une recharge ; les agents gratuits continuent.', 'Jarvis répond encore au budget et note tes demandes pour Claude.'],
+    arret: [`Arrêt des dépenses : ${raison}.`, 'Plus aucun appel payant jusqu’au 1er du mois ou jusqu’à une recharge ; les agents gratuits continuent.', 'Jarvis répond toujours, sans frais ; tes ordres continuent, sur des modèles gratuits.'],
   }[mode];
   if (chiffres.jours_credits != null) {
     mesures.push(chiffres.jours_credits < 7

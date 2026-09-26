@@ -16,8 +16,14 @@ const recus = [];
 let lent = null;
 prevoir(/raime-hermes:8642\/v1\/chat\/completions$/, (u, o) => {
   const d = JSON.parse(o.body);
-  recus.push({ auth: o.headers.Authorization, contenu: d.messages[0].content });
-  if (/panne/.test(d.messages[0].content)) return { choices: [{ message: { content: '' } }] };
+  recus.push({ auth: o.headers.Authorization, contenu: d.messages[0].content, provider: d.provider, model: d.model });
+  const c = d.messages[0].content;
+  if (/panne/.test(c)) return { choices: [{ message: { content: '' } }] };
+  // Les échecs tels que le vrai Hermes les rend (relevés le 26/09/2026).
+  if (/deguise/.test(c)) return { choices: [{ message: { content: "⚠️ Provider authentication failed: No usable credentials found for provider 'gemini'." }, finish_reason: 'stop' }], usage: { total_tokens: 0 } };
+  if (d.provider === 'local') return { choices: [{ message: { content: 'Fait par le modèle local.' }, finish_reason: 'stop' }], usage: { total_tokens: 40 } };
+  if (/credit-epuise/.test(c)) return { choices: [{ message: { content: 'Billing or credits exhausted' }, finish_reason: 'error' }], hermes: { failed: true, error: 'HTTP 402: Insufficient credits' } };
+  if (/bug-tache/.test(c)) return { choices: [{ message: { content: 'Le script a planté' }, finish_reason: 'error' }], hermes: { failed: true, error: 'tool execution crashed' } };
   return { choices: [{ message: { content: 'Fait : le site est dans demande-7/app/index.html.' } }] };
 });
 
@@ -79,4 +85,35 @@ test('requêtes invalides refusées ; sans clé, le relais ne démarre pas', asy
   delete process.env.API_SERVER_KEY;
   const m = await import('../../hermes/executant.js?sanscle');
   assert.throws(() => m.creerServeur(), /API_SERVER_KEY/);
+});
+
+test('en régime « arrêt », le Cockpit demande le gratuit : Hermes reçoit Gemini ; sinon, son modèle habituel', async () => {
+  recus.length = 0;
+  await appeler('POST', '/tache', { tache: 'un ordre en régime arrêt', id: 31, gratuit: true });
+  await appeler('POST', '/tache', { tache: 'un ordre en régime normal', id: 32 });
+  assert.deepEqual([recus[0].provider, recus[0].model], ['gemini', 'gemini-3.8-flash']);
+  assert.deepEqual([recus[1].provider, recus[1].model], [undefined, 'hermes-agent']);
+});
+
+test('un échec déguisé en réponse (⚠️, zéro jeton) n’est jamais annoncé « fait »', async () => {
+  const r = await appeler('POST', '/tache', { tache: 'deguise', id: 41 });
+  assert.equal(r.corps.code, 1);
+  assert.match(r.corps.trace, /Provider authentication failed/);
+});
+
+test('crédit épuisé (402) : le relais redemande au modèle local, et la demande est faite', async () => {
+  recus.length = 0;
+  const r = await appeler('POST', '/tache', { tache: 'credit-epuise', id: 42 });
+  assert.equal(r.corps.code, 0);
+  assert.equal(r.corps.sortie, 'Fait par le modèle local.');
+  assert.equal(r.corps.moteur, 'local · qwen3:4b');
+  assert.deepEqual(recus.map((x) => x.provider), [undefined, 'local']);
+});
+
+test('un vrai échec de la tâche n’est pas refait (pas de double exécution)', async () => {
+  recus.length = 0;
+  const r = await appeler('POST', '/tache', { tache: 'bug-tache', id: 43 });
+  assert.equal(r.corps.code, 1);
+  assert.equal(recus.length, 1);
+  assert.match(r.corps.trace, /tool execution crashed/);
 });
