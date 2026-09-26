@@ -37,14 +37,34 @@
           "il_faut": "Ranger dans le coffre ton adresse Gmail et un mot de passe d'application Google."
         },
         {
-          "nom": "Suivre l'objectif de 2 000 € par mois",
+          "nom": "Suivre l'objectif de 2 000 € par mois de monétisation des contenus",
           "etat": "en_place",
-          "detail": "Jauge du mois ; les encaissements se notent dans le Cockpit."
+          "detail": "Jauge du mois par plateforme (Instagram, Facebook, TikTok, YouTube) ; les revenus se notent dans le Cockpit en attendant la lecture automatique des plateformes. Les ventes de rAIme sont comptées à part."
         },
         {
           "nom": "Écrire comme un humain",
           "etat": "en_place",
           "detail": "Règles de stop-slop dans sa propre parole."
+        },
+        {
+          "nom": "Voix la plus humaine possible",
+          "etat": "en_place",
+          "detail": "Voix de Gemini (quota gratuit, avec ta clé) ; sinon celle du serveur, puis celle du navigateur."
+        },
+        {
+          "nom": "Météo, heure, minuteries et rappels",
+          "etat": "en_place",
+          "detail": "Répondus par du code, sans modèle ; les rappels sont dits à voix haute à l'heure."
+        },
+        {
+          "nom": "Mémoire longue",
+          "etat": "en_place",
+          "detail": "« Retiens que… », et toutes les heures il retient seul les faits durables de vos échanges."
+        },
+        {
+          "nom": "Lire ton agenda",
+          "etat": "a_brancher",
+          "il_faut": "L'adresse secrète iCal de ton Google Agenda (Paramètres de l'agenda → Adresse secrète au format iCal), rangée dans le coffre."
         }
       ]
     },
@@ -187,11 +207,6 @@
           "il_faut": "Le même programme sur ton PC, et ton accord à chaque partage d'écran."
         },
         {
-          "nom": "Gérer ton agenda",
-          "etat": "a_faire",
-          "il_faut": "L'accès à ton Google Agenda."
-        },
-        {
           "nom": "Publicités Facebook, Instagram, TikTok",
           "etat": "a_faire",
           "il_faut": "Tes comptes publicitaires et leurs accès ; chaque dépense validée par toi."
@@ -200,16 +215,6 @@
           "nom": "T'appeler ou t'écrire pour une autorisation",
           "etat": "a_faire",
           "il_faut": "WhatsApp branché (gratuit) ; un vrai appel téléphonique demande un service payant (quelques centimes par appel)."
-        },
-        {
-          "nom": "Météo, minuterie, rappels",
-          "etat": "a_faire",
-          "il_faut": "Rien : à construire dans Jarvis."
-        },
-        {
-          "nom": "Mémoire longue de vos échanges",
-          "etat": "a_faire",
-          "il_faut": "Rien : à construire (aujourd'hui, il retient les 12 derniers messages et sa bibliothèque)."
         }
       ]
     },

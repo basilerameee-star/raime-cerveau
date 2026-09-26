@@ -53,6 +53,7 @@ case "$*" in
   "update --restart="*" raime-harness-1") echo "\${2#--restart=}" > "${d('etat-restart')}" ;;
   "exec raime-cockpit-1 sh -c"*) ${geminiAuCoffre ? 'echo "GEMINI_API_KEY=cle-gemini-secrete-123"' : 'exit 1'} ;;
   "exec raime-cockpit-1 wget -qO- http://harness:8201/sante") echo '{"etat":"libre","moteur":"hermes"}' ;;
+  "exec raime-executant node -e"*) echo 200 ;;
   "exec raime-cockpit-1 wget -qO- -T 180"*) echo '{"message":{"role":"assistant","content":"Une PME gagne du temps."}}' ;;
   "exec raime-cockpit-1 wget -qO- http://127.0.0.1:8090/healthz") if [ "$(cat "${d('etat-maj')}")" = oui ]; then ${santeApresMaj ? `echo "ok ${version}"` : 'exit 1'}; else echo ok; fi ;;
   *"jarvis.yml up -d --no-deps cockpit") echo oui > "${d('etat-maj')}" ;;

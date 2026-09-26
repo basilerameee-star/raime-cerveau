@@ -194,17 +194,18 @@ nav#onglets button:hover{color:var(--cyan2);border-color:var(--trait2)}
 
   <section class="colonne" aria-label="Ordres et objectif">
     <div class="panneau">
-      <h2>Objectif <small>2 000 € / mois</small></h2>
+      <h2>Monétisation <small>objectif 2 000 € / mois</small></h2>
       <div class="objectif">
         <div class="jauge"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="42" fill="none" stroke="rgba(94,231,255,.12)" stroke-width="7"/>
           <circle id="arc" cx="50" cy="50" r="42" fill="none" stroke="url(#degrade)" stroke-width="7" stroke-linecap="round" stroke-dasharray="0 264"/>
           <defs><linearGradient id="degrade"><stop offset="0" stop-color="#5ee7ff"/><stop offset="1" stop-color="#4dffb0"/></linearGradient></defs></svg>
           <div class="val"><div><span id="o-pct">0 %</span><small>DU MOIS</small></div></div></div>
-        <div class="info"><b id="o-mois">0 €</b> encaissés ce mois.<br><span id="o-reste"></span><br>
-          <button class="bouton" id="o-ajouter" style="margin-top:8px;white-space:nowrap">+ Encaissement</button></div>
+        <div class="info"><b id="o-mois">0 €</b> ce mois sur Instagram, Facebook, TikTok, YouTube.<br><span id="o-detail"></span><br><span id="o-reste"></span><br>
+          <button class="bouton" id="o-ajouter" style="margin-top:8px;white-space:nowrap">+ Revenu</button></div>
       </div>
-      <form class="encaisse" id="f-encaisse"><input name="montant" inputmode="decimal" placeholder="Montant €" required><input name="source" placeholder="Pour quoi (ex. formation Dirigeant)" required><button class="bouton">Noter</button></form>
+      <form class="encaisse" id="f-encaisse"><input name="montant" inputmode="decimal" placeholder="Montant €" required><select name="plateforme" style="flex:1 1 110px;height:34px;background:rgba(2,6,11,.6);border:1px solid var(--trait);border-radius:8px;color:inherit"><option value="instagram">Instagram</option><option value="facebook">Facebook</option><option value="tiktok">TikTok</option><option value="youtube">YouTube</option><option value="autre">Autre contenu</option><option value="raime">Vente rAIme (hors objectif)</option></select><input name="source" placeholder="Détail (ex. bonus Reels, partenariat)" required><button class="bouton">Noter</button></form>
     </div>
+    <div class="panneau" id="bloc-rappels" hidden><h2>Rappels</h2><ul class="fil" id="rappels"></ul></div>
     <div class="panneau" id="bloc-courriels">
       <h2>E-mails <small id="c-etat"></small></h2>
       <div id="courriels-resume" class="vide">…</div>
@@ -399,11 +400,13 @@ nav#onglets button:hover{color:var(--cyan2);border-color:var(--trait2)}
     var mains = $('p-mains'), me = d.mains && d.mains.etat;
     mains.className = 'puce ' + (me === 'libre' ? 'ok' : me === 'occupe' ? 'occupe' : 'ko');
     mains.querySelector('span').textContent = 'MAINS · ' + (me === 'libre' ? 'PRÊTES' : me === 'occupe' ? 'AU TRAVAIL' : 'HORS LIGNE');
+    voixGemini = d.voix === 'gemini';
     var pa = $('p-parole'); pa.className = 'puce large ok'; pa.title = 'Parole : ' + d.parole; pa.querySelector('span').textContent = 'PAROLE · SANS FRAIS';
     // objectif
     var o = d.objectif || { mois: 0, objectif: 2000 }, pct = Math.min(100, Math.round(100 * o.mois / o.objectif));
     $('arc').setAttribute('stroke-dasharray', (2.64 * pct).toFixed(1) + ' 264');
     $('o-pct').textContent = pct + ' %'; $('o-mois').textContent = o.mois.toLocaleString('fr-FR') + ' €';
+    $('o-detail').textContent = (o.plateformes || []).map(function (p) { return p.plateforme + ' ' + p.montant + ' €'; }).join(' · ');
     $('o-reste').textContent = o.mois >= o.objectif ? 'Objectif atteint.' : 'Encore ' + (o.objectif - o.mois).toLocaleString('fr-FR') + ' € pour les 2 000 €.';
     // ordres
     var box = $('ordres'), ordres = d.ordres || [];
@@ -425,6 +428,15 @@ nav#onglets button:hover{color:var(--cyan2);border-color:var(--trait2)}
         box.appendChild(d2);
       });
     }
+    // rappels : ceux qui arrivent à échéance sont dits à voix haute et affichés
+    var rp = d.rappels || { echus: [], a_venir: [] };
+    $('bloc-rappels').hidden = !rp.a_venir.length;
+    liste($('rappels'), rp.a_venir.map(function (r) { return [new Date(r.echeance).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }), null, r.texte]; }), '');
+    rp.echus.forEach(function (r) {
+      $('lui').textContent = '⏰ ' + r.texte; avis('⏰ ' + r.texte);
+      try { if (window.Notification && Notification.permission === 'granted') new Notification('Jarvis', { body: r.texte }); } catch (e) {}
+      if (!parleEnCours) parler('Rappel : ' + r.texte);
+    });
     // e-mails
     var cm = d.courriels || {}, cr = $('courriels-resume');
     $('n-courriels').textContent = cm.non_vus ? '· ' + cm.non_vus : '';
@@ -441,6 +453,13 @@ nav#onglets button:hover{color:var(--cyan2);border-color:var(--trait2)}
     $('c-veille').textContent = c.veille; $('c-brouillons').textContent = c.brouillons;
     $('n-brouillons').textContent = c.brouillons ? '· ' + c.brouillons : '';
     liste($('pensee'), (d.pensee || []).map(function (p) { return [null, p.titre, p.proposition]; }), 'Pas encore de pensée.');
+    // L'initiative du cerveau : une idée de la nuit se confie à Hermes d'un geste (Basile garde la main).
+    Array.prototype.forEach.call($('pensee').children, function (li, i) {
+      var p = (d.pensee || [])[i]; if (!p) return;
+      var b = el('button', 'lien', '→ confier à Hermes'); b.type = 'button'; b.style.cssText = 'display:block;background:none;border:0;color:var(--cyan);cursor:pointer;padding:4px 0 0;font-size:12.5px';
+      b.onclick = function () { demander('Fais ceci : ' + p.titre + ' — ' + p.proposition, false); };
+      li.appendChild(b);
+    });
     liste($('journal'), (d.journal || []).slice(0, 8).map(function (j) { return [j.heure, j.qui, j.quoi]; }), 'Rien de neuf.');
     $('bloc-questions').hidden = !(d.questions && d.questions.length);
     liste($('questions'), (d.questions || []).map(function (q) { return [null, null, q]; }), '');
@@ -460,12 +479,13 @@ nav#onglets button:hover{color:var(--cyan2);border-color:var(--trait2)}
       .then(function (d) { if (!d.ok) avis('Cet ordre ne peut pas être relancé.'); charger(); });
   }
   charger(); setInterval(charger, 10000);
+  document.addEventListener('click', function premier() { try { if (window.Notification && Notification.permission === 'default') Notification.requestPermission(); } catch (e) {} document.removeEventListener('click', premier); });
   setInterval(function () { $('p-heure').textContent = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }); }, 1000);
 
   $('o-ajouter').onclick = function () { $('f-encaisse').classList.toggle('ouvert'); };
   $('f-encaisse').onsubmit = function (e) {
     e.preventDefault(); var f = e.target;
-    fetch('/api/revenus', { method: 'POST', headers: ecrire, body: JSON.stringify({ montant: f.montant.value, source: f.source.value }) })
+    fetch('/api/revenus', { method: 'POST', headers: ecrire, body: JSON.stringify({ montant: f.montant.value, source: f.source.value, plateforme: f.plateforme.value }) })
       .then(function (r) { return r.json(); }).then(function (d) { if (!d.ok) return avis(d.erreur || 'Refusé.'); f.reset(); f.classList.remove('ouvert'); charger(); });
   };
 
@@ -544,7 +564,7 @@ nav#onglets button:hover{color:var(--cyan2);border-color:var(--trait2)}
   // ── La voix de Jarvis ────────────────────────────────────────────────────────────────
   // D'abord la plus naturelle des voix françaises du navigateur (Edge « Natural », Chrome « Google »…),
   // sinon la voix du serveur (Piper), sinon le texte seul.
-  var muet = false, son = new Audio(), ctxA = null, anaVoix = null, anaMic = null, voixNav = null;
+  var voixGemini = false, muet = false, son = new Audio(), ctxA = null, anaVoix = null, anaMic = null, voixNav = null;
   function choisirVoix() {
     if (!('speechSynthesis' in window)) return;
     var fr = speechSynthesis.getVoices().filter(function (v) { return /^fr(-|_|$)/i.test(v.lang); });
@@ -577,7 +597,7 @@ nav#onglets button:hover{color:var(--cyan2);border-color:var(--trait2)}
       u.onboundary = function () { sphere.pousser(.4); }; u.onend = fini; u.onerror = fini;
       speechSynthesis.cancel(); speechSynthesis.speak(u);
     };
-    if (voixNav) return navigateur();
+    if (voixNav && !voixGemini) return navigateur();   // avec Gemini, la voix du serveur passe d'abord : c'est la plus humaine
     fetch('/api/voix/parler', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ texte: t }) })
       .then(function (r) { if (!r.ok) throw 0; return r.blob(); })
       .then(function (b) {

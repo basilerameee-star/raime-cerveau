@@ -37,7 +37,7 @@ before(async () => {
   const { serveur } = require('../../jarvis/serveur.cjs');
   const b = require('../../jarvis/bases.cjs');
   await b.lire('DROP TABLE IF EXISTS commandes'); await b.lire('DROP TABLE IF EXISTS revenus');
-  await b.preparer();
+  await b.preparer(); await require('../../jarvis/outils.cjs').preparer();
   jarvis = serveur.listen(0);
   await new Promise((r) => jarvis.once('listening', r));
   base = `http://127.0.0.1:${jarvis.address().port}`;
@@ -79,7 +79,7 @@ test('une question : réponse du modèle local (aucune clé), sans budget ni Ope
   assert.equal(r.reply, 'Réponse du modèle local.');
   const consigne = appelsLocal.slice(avant)[0].messages[0].content;
   assert.match(consigne, /LE BUDGET NE LIMITE RIEN/);
-  assert.match(consigne, /Objectif n°1 : 2000 €/);
+  assert.match(consigne, /Objectif n°1 \(monétisation des contenus\) : 2000 €/);
   assert.doesNotMatch(consigne, /Arrêt des dépenses|recharge est à prévoir/);
 });
 
@@ -167,5 +167,23 @@ test('le modèle local voit l’état réel du cerveau : il tient dans la partie
   await dire('Où en est-on ?');
   const lu = resserrer(appelsLocal.slice(avant)[0].messages)[0].content;
   assert.match(lu, /ÉTAT DU CERVEAU/);
-  assert.match(lu, /Objectif n°1 : 2000 €/);
+  assert.match(lu, /Objectif n°1 \(monétisation des contenus\) : 2000 €/);
+});
+
+test('l’objectif de 2 000 € compte la monétisation des contenus, pas les ventes de rAIme', async () => {
+  const noter = (montant, plateforme) => fetch(base + '/api/revenus', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Jarvis': '1' },
+    body: JSON.stringify({ montant, source: 'test', plateforme }) }).then((r) => r.json());
+  const avant = (await (await fetch(base + '/api/etat')).json()).objectif.mois;
+  await noter('120', 'tiktok'); await noter('990', 'raime');
+  const o = (await (await fetch(base + '/api/etat')).json()).objectif;
+  assert.equal(o.mois, avant + 120, 'une vente rAIme ne compte pas dans l’objectif');
+  assert.equal(o.raime, 990);
+  assert.ok(o.plateformes.some((p) => p.plateforme === 'tiktok' && p.montant === 120));
+});
+
+test('heure et rappels répondus par du code, sans modèle', async () => {
+  const avant = appelsLocal.length;
+  assert.match((await dire('Quelle heure est-il ?')).reply, /^Il est /);
+  assert.match((await dire('Rappelle-moi dans 10 minutes de relancer le garage Morel')).reply, /C'est noté : relancer le garage Morel/);
+  assert.equal(appelsLocal.length, avant, 'aucun appel au modèle');
 });
