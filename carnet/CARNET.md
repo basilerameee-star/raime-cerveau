@@ -285,6 +285,10 @@ Merci pour le travail de cette nuit : le banc a déjà trouvé un vrai défaut e
 - Correction : le relais reconnaît tous les signes d'échec (finish_reason error, hermes.failed, X-Hermes-Completed, ⚠️ à zéro jeton) ; sur un refus d'accès au modèle (crédit, quota, clé), il redemande au modèle local ; un vrai échec de la tâche n'est jamais refait.
 - Reste (côté serveur, refusé à la session par les règles de sécurité de l'environnement : « déploiement en production ») : installer Ollama + Qwen3 4B, donner la clé Gemini à Hermes, reconstruire le Cockpit. À décider avec Basile.
 - Leçon : un échec peut se déguiser en succès ; la preuve doit vérifier la réponse, pas seulement le statut.
+## 2026-09-26 — session cloud — Scan de sécurité complet (ECC / AgentShield)
+- Action : AgentShield 1.6.0 (projet ECC, paquet officiel) sur tout le dépôt avec analyse de flux ; `npm audit` ; recherche de clés dans les 128 commits de l'historique ; relecture du chemin Jarvis → exécutant.
+- Résultat : aucun défaut exploitable. 14 « critiques » = empreintes sha512 de package-lock.json (faux positifs vérifiés) ; 12 constats sur `site/CLAUDE.md` (notes de la session locale, à compléter sur le PC) ; 0 vulnérabilité npm ; aucune clé dans l'historique (contre-épreuve réussie). Rapport : `securite/SCAN-2026-09-26.md`.
+- Leçon : un outil de scan donne des alertes, pas des verdicts ; chaque « critique » se vérifie à la ligne avant d'être annoncé.
 
 ## 2026-09-26 — session cloud — Installation en une commande, Gemma 4, WhatsApp, influenceur
 - Action : Basile autorise les scripts d'installation du serveur et valide les PR #17 et #18. `hermes/installer.sh` fait tout (clé Gemini du coffre → Hermes, bascule, Ollama avec Qwen3 4B en service et Gemma 4 E4B essayé à côté, Cockpit reconstruit) ; `cockpit/mettre_a_jour.sh` reconstruit le Cockpit et remet l'ancienne version s'il ne répond pas. WhatsApp : mode « self-chat » d'Hermes (numéro personnel, sans Meta). Compétence vidéo : modèles d'avatar parlant et marche à suivre de l'influenceur IA.
