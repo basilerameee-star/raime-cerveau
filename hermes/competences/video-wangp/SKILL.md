@@ -25,7 +25,15 @@ du PC, rien ne se paie.
 
 Autorisés (licence ouverte, usage commercial en France) :
 - **Wan 2.1 / 2.2** (Apache 2.0) : texte → vidéo, image → vidéo. Premier choix.
-- **Qwen Image** (Apache 2.0) : images, affiches, visuels de publicité.
+- **Qwen Image** (Apache 2.0) : images, affiches, visuels de publicité, et le visage de l'avatar.
+- **InfiniteTalk** (Apache 2.0, MeiGen-AI) : un visage + une voix → une personne qui parle face caméra,
+  longues vidéos. Premier choix pour l'influenceur.
+- **MultiTalk** (Apache 2.0) : deux personnes qui se parlent.
+- **LongCat Avatar 1.5** (MIT, Meituan) : avatar animé par la voix, autre choix à comparer.
+- **Wan 2.2 Animate 2** (Apache 2.0) : l'avatar reprend les gestes d'une vidéo modèle.
+- **LTX-2.5** (licence communautaire LTX-2.x : gratuite sous 10 M$ de chiffre d'affaires annuel, ce qui
+  est le cas de rAIme ; au-delà, licence payante) : vidéo et son synchronisés en une passe.
+  (Licences lues à la source le 26/09/2026.)
 - Tout autre modèle : lis sa licence sur sa page officielle AVANT le premier usage, et note le verdict
   dans la section « Journal des essais » ci-dessous. Sans verdict écrit, tu ne l'utilises pas.
 
@@ -48,12 +56,28 @@ Interdits :
 3. Livre le chemin du fichier et les réglages utilisés, en une ligne chacun.
 4. Rien ne se publie : une vidéo pour Facebook, Instagram ou TikTok reste un brouillon jusqu'au « ok » de Basile.
 
-## 5. Règles de rAIme pour les images et vidéos
+## 5. L'influenceur IA de rAIme (demande de Basile, 26/09/2026)
+
+Un personnage inventé, reconnaissable, ludique, qui parle des nouveautés de l'IA, filmé « depuis sa
+caméra », dans sa chambre, au format vertical (9:16).
+1. **Le personnage** : une fiche fixe (nom, âge apparent, style, décor de la chambre, tics de langage)
+   rangée dans ta mémoire ; un visage créé avec Qwen Image, JAMAIS celui d'une personne réelle ; garde
+   l'image de référence et réutilise-la à chaque vidéo (même visage, même chambre).
+2. **Le texte** : 30 à 60 s, une accroche dans les 2 premières secondes, une nouveauté vérifiée et sourcée,
+   une chute. Ton ludique ; rien d'inventé.
+3. **La voix** : un modèle de voix de WanGP dont la licence est vérifiée et notée ci-dessous ; toujours la
+   même voix pour le personnage.
+4. **L'image qui parle** : InfiniteTalk (visage de référence + voix), 480p d'abord ; monter si l'essai est bon.
+5. **Finition** : sous-titres incrustés, format 9:16, mention « personnage créé par IA » (obligatoire sur
+   TikTok et Instagram).
+6. **Brouillon seulement** : la vidéo et sa légende partent à Basile pour son « ok » ; rien ne se publie seul.
+
+## 6. Règles de rAIme pour les images et vidéos
 
 - Aucune personne réelle reconnaissable, aucun logo ou marque d'un tiers, aucune voix clonée sans accord écrit.
 - Textes à l'écran : aucun « je », aucune tournure négative, aucune mention du CPF.
 
-## 6. Apprendre
+## 7. Apprendre
 
 À la fin de chaque vidéo réussie, ajoute une ligne au journal ci-dessous : modèle, résolution, durée,
 pas, temps de calcul, verdict. La fois suivante, repars du meilleur réglage noté. Si un réglage

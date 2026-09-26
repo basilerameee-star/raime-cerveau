@@ -145,6 +145,40 @@ interface, joignable depuis ce PC seulement), puis relancer `fcc-hermes`. Pour r
 habituelle : fermer cette fenêtre, puis `run.bat` comme avant. Une seule des deux à la fois : la carte
 graphique n'en porte pas deux.
 
+## 7. Tout en une commande : Hermes aux commandes, jamais à court de crédit
+
+Fait, dans l'ordre : la clé Gemini du coffre donnée à Hermes (jamais affichée) ; la bascule (étape 4 ter) ;
+le modèle local (Ollama : Qwen3 4B en service, Gemma 4 E4B essayé à côté, avec sa vitesse et sa licence
+affichées) ; le Cockpit reconstruit avec la parole sans frais (retour arrière automatique s'il ne répond pas).
+Le premier passage télécharge les modèles : une dizaine de minutes.
+
+```powershell
+ssh -i "$HOME\.ssh\raime_vps" root@2.29.6.94 'bash /opt/raime/raime-brain/hermes/installer.sh'
+```
+
+La dernière ligne doit être `INSTALLE : ...`. Retour : `revenir.sh` (étape 4 ter).
+
+## 8. WhatsApp, avec le numéro personnel de Basile
+
+Hermes se branche comme un appareil lié (comme WhatsApp Web), en mode « self-chat » : on lui écrit dans la
+conversation avec soi-même (« Vous »). Rien à créer chez Meta. Trois gestes, dans PowerShell :
+
+```powershell
+# 1. le numéro autorisé (indicatif sans +, ex. 336...), tapé ici, jamais écrit dans un fichier du dépôt
+$N = Read-Host "Numero WhatsApp (ex. 33612345678)"
+ssh -i "$HOME\.ssh\raime_vps" root@2.29.6.94 "printf 'WHATSAPP_ENABLED=true\nWHATSAPP_MODE=self-chat\nWHATSAPP_ALLOWED_USERS=$N\n' >> /opt/raime/hermes.env"
+# 2. l'appairage : choisir « self-chat », puis sur le téléphone : Réglages > Appareils connectés > Connecter un appareil, et scanner le QR code
+ssh -t -i "$HOME\.ssh\raime_vps" root@2.29.6.94 'docker exec -it raime-hermes hermes whatsapp'
+# 3. Hermes relancé avec WhatsApp
+ssh -i "$HOME\.ssh\raime_vps" root@2.29.6.94 'cd /opt/raime && docker compose --env-file hermes-compose.env -f docker-compose.hermes.yml up -d --force-recreate hermes'
+```
+
+Limites connues (documentation d'Hermes) : ce pont n'est pas l'accès officiel de WhatsApp ; un petit risque
+de restriction du compte existe (pas d'envois en masse, pas de messages à des inconnus). Le dossier de session
+(`/opt/raime/hermes-data/platforms/whatsapp/session`) donne accès au compte : il ne quitte jamais le serveur.
+Les messages qu'Hermes écrit dans « Vous » peuvent arriver sans sonnerie ; pour de vraies alertes, un numéro
+dédié (mode « bot ») ou Telegram.
+
 ## Ce qui reste fermé, et pourquoi
 
 - **Pas de port public, pas de tableau de bord ouvert** : le tableau de bord d'Hermes garde des clés.

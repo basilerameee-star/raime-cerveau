@@ -65,7 +65,7 @@ services:
       OLLAMA_KEEP_ALIVE: "2h"                        # gardé chargé deux heures après usage : réponse immédiate
       OLLAMA_NUM_PARALLEL: "1"
       OLLAMA_MAX_LOADED_MODELS: "1"
-    mem_limit: 6g
+    mem_limit: 8g                                  # Gemma 4 E4B tient dedans ; le serveur a 16 Go
     cpus: 4
     networks: [raime_default]
 
