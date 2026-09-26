@@ -122,8 +122,8 @@ test('livrables : servis en lecture, isolés (sandbox), sans sortie du dossier',
 test('l’interface, le coffre (présent ou absent, jamais la valeur), la santé avec la version', async () => {
   const page = await (await fetch(base + '/')).text();
   assert.match(page, /J\.A\.R\.V\.I\.S/);
-  for (const id of ['b-conversation', 'b-dicter', 'saisie', 'visage']) assert.match(page, new RegExp(`id="${id}"`), id);
-  assert.equal((await fetch(base + '/visage.js')).status, 200);
+  for (const id of ['b-conversation', 'b-dicter', 'saisie', 'sphere']) assert.match(page, new RegExp(`id="${id}"`), id);
+  assert.equal((await fetch(base + '/visage.js')).status, 404, 'l’ancien visage est retiré');
   const ranger = await fetch(base + '/api/coffre', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Jarvis': '1' },
     body: JSON.stringify({ nom: 'GEMINI_API_KEY', valeur: 'cle-secrete-banc' }) });
   assert.deepEqual(await ranger.json(), { ok: true });
@@ -137,4 +137,35 @@ test('aucun appel payant dans le code du Cockpit', () => {
   const dir = new URL('../../jarvis/', import.meta.url).pathname;
   for (const f of fs.readdirSync(dir).filter((n) => n.endsWith('.cjs')))
     assert.doesNotMatch(fs.readFileSync(path.join(dir, f), 'utf8'), /openrouter\.ai/, f);
+});
+
+test('la liste des capacités : servie, honnête (chaque « à brancher » dit ce qu’il faut), connue de Jarvis', async () => {
+  const c = await (await fetch(base + '/api/capacites')).json();
+  const toutes = c.domaines.flatMap((d) => d.capacites);
+  assert.ok(toutes.length >= 25);
+  for (const x of toutes) {
+    assert.ok(['en_place', 'a_brancher', 'a_faire', 'interdit'].includes(x.etat), x.nom);
+    if (x.etat === 'a_brancher' || x.etat === 'a_faire') assert.ok(x.il_faut, `${x.nom} : il faut dire ce qui manque`);
+  }
+  assert.ok(toutes.some((x) => /argent/i.test(x.nom) && x.etat === 'interdit'));
+  const avant = appelsLocal.length;
+  await dire('Qu’est-ce que tu sais faire ?');
+  assert.match(appelsLocal.slice(avant)[0].messages[0].content, /TES CAPACITÉS RÉELLES : en place : .*À brancher : .*Trier tes e-mails/);
+});
+
+test('Jarvis ne s’attribue aucune action : la consigne le lui interdit, et ses fausses affirmations sortent de la mémoire', async () => {
+  const { SYSTEME, PERIME } = require('../../jarvis/esprit.cjs');
+  assert.match(SYSTEME, /TOI, TU PARLES ; TES MAINS AGISSENT/);
+  assert.match(SYSTEME, /SOIS BREF/);
+  assert.ok(PERIME.test("J'ai maintenant le contrôle total sur ces fichiers."));
+  assert.ok(PERIME.test("J'ai modifié l'apparence de l'interface."));
+});
+
+test('le modèle local voit l’état réel du cerveau : il tient dans la partie de la consigne qu’il lit', async () => {
+  const { resserrer } = require('../../jarvis/parole.cjs');
+  const avant = appelsLocal.length;
+  await dire('Où en est-on ?');
+  const lu = resserrer(appelsLocal.slice(avant)[0].messages)[0].content;
+  assert.match(lu, /ÉTAT DU CERVEAU/);
+  assert.match(lu, /Objectif n°1 : 2000 €/);
 });

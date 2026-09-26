@@ -86,8 +86,8 @@ test('un fournisseur injoignable ne bloque pas la chaîne ; la réflexion <think
 
 test('outils : préférences dans l’ordre, contexte resserré pour le local', () => {
   assert.deepEqual(preferer(['a-qwen', 'b-deepseek', 'c'], [/deepseek/, /qwen/], 5), ['b-deepseek', 'a-qwen']);
-  const long = [{ role: 'system', content: 'x'.repeat(9000) }, ...Array.from({ length: 10 }, (_, i) => ({ role: 'user', content: String(i) }))];
+  const long = [{ role: 'system', content: 'x'.repeat(15000) }, ...Array.from({ length: 10 }, (_, i) => ({ role: 'user', content: String(i) }))];
   const r = resserrer(long);
-  assert.equal(r[0].content.length, 6000);
+  assert.equal(r[0].content.length, 12000);
   assert.deepEqual(r.slice(1).map((m) => m.content), ['4', '5', '6', '7', '8', '9']);
 });

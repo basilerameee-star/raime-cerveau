@@ -5,6 +5,9 @@ import { db, sansFrais } from './lib.js';
 import pg from 'pg';
 import * as experience from './experience.js';
 import * as econome from './econome.js';
+import * as eclaireur from './eclaireur.js';
+import { createRequire } from 'node:module';
+const parole = createRequire(import.meta.url)('../jarvis/parole.cjs');
 
 const MIN = 60_000, H = 60 * MIN;
 
@@ -34,6 +37,9 @@ const RYTHMES = [
   // Le chasseur ferme la chaine de la veille : il mesure les candidats que le sas a reperes,
   // puis rouvre le sas. Deux modeles neufs par jour, trois passages chacun.
   { nom: 'chasseur',     module: './chasseur.js',    fn: 'chasser',     toutes: 24 * H, besoinN8n: false },
+  // L'éclaireur : les modèles GRATUITS, repérés, mesurés par la batterie de métrologie, et les meilleurs
+  // adoptés par la parole (jarvis/parole.cjs). Il remplace le chasseur tant que tout tourne sans frais.
+  { nom: 'eclaireur',    module: './eclaireur.js',   fn: 'eclairer',    toutes: 24 * H, besoinN8n: false },
   // La bibliotheque avale ce qu on depose dans bibliotheque/ : notes, offres, sources.
   // Recherche en francais dans Postgres, sans appeler personne et sans depenser un centime.
   { nom: 'bibliothecaire', module: './bibliothecaire.js', fn: 'ranger', toutes: 12 * H, besoinN8n: false },
@@ -153,6 +159,8 @@ async function main() {
     try { r = await econome.evaluer({ brain }); } catch (e) { console.error(`[econome] lecture impossible : ${e.message}`); }
     // Sans frais (modèles gratuits), le budget ne ralentit ni n'arrête plus aucun agent.
     if (sansFrais()) r = { ...r, facteur: 1, pauses: [] };
+    // Le classement des modèles gratuits mesurés par l'éclaireur : la parole des agents prend les meilleurs.
+    try { await eclaireur.preparer(brain); parole.adopter(await eclaireur.classement(brain)); } catch (e) { /* ordre par défaut */ }
     for (const t of RYTHMES) {
       if (r.pauses.includes(t.nom)) continue;
       // Mesurer les prix des modèles payants n'a plus d'objet tant que tout tourne sans frais.
