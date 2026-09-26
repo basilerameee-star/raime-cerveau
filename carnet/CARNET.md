@@ -264,3 +264,9 @@ Merci pour le travail de cette nuit : le banc a déjà trouvé un vrai défaut e
 - Résultat : 7 tests du relais ; 152 tests sur 152.
 - Évaluation : le Cockpit reste identique ; l'ancien exécutant est arrêté, pas supprimé (sa politique de redémarrage est gardée pour le retour).
 - Leçon : remplacer un moteur derrière un contrat existant plutôt que modifier l'interface ; le retour arrière tient en une commande.
+
+## 2026-09-26 — session cloud — La compétence vidéo d'Hermes (WanGP, sur le PC)
+- Action : Basile a installé Wan2GP (RTX 3060). WanGP sert lui-même un serveur MCP (`--mcp`, documenté dans son dépôt) : la compétence `hermes/competences/video-wangp/` apprend à Hermes à le piloter, un lanceur `.bat` le démarre sur ce PC seulement (127.0.0.1), un petit script l'ajoute à la configuration d'Hermes.
+- Résultat : 4 tests (forme, licences, lanceur Windows, ajout unique à la configuration) ; mutation « H3 parmi les autorisés » attrapée.
+- Évaluation : MiniMax H3 figure dans WanGP, mais sa licence exclut l'Union européenne : interdit dans la compétence. Tout autre modèle : licence lue et notée avant le premier usage.
+- Leçon : avant d'écrire un pont, chercher si l'outil en sert déjà un (WanGP avait son MCP) ; lire le script qu'on enveloppe (`run.bat` change de dossier : chemins absolus).
