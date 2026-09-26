@@ -131,10 +131,12 @@ Une fois, dans PowerShell :
 
 ```powershell
 cd C:\Users\Lenovo\Projets\rAIme\cerveau; git pull
-New-Item -ItemType Directory -Force "$HOME\.hermes\skills" | Out-Null
-Copy-Item -Recurse -Force hermes\competences\video-wangp "$HOME\.hermes\skills\"
 python hermes\competences\video-wangp\ajouter_wangp.py
 ```
+
+Le script trouve le dossier d'Hermes comme Hermes lui-même (sous Windows : `%LOCALAPPDATA%\hermes`,
+pas `~\.hermes`), y copie la compétence et ajoute WanGP à sa configuration (copie de secours gardée).
+Il affiche les deux chemins : c'est la preuve que tout est au bon endroit.
 
 Puis copier `lancer_wangp_hermes.bat` dans le dossier `scripts` de Wan2GP (à côté de `run.bat`).
 

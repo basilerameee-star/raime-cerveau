@@ -35,18 +35,29 @@ test('rien ne se publie sans le « ok » de Basile, et le serveur MCP reste sur 
   assert.ok(!/[^\x00-\x7F]/.test(bat), 'le .bat reste en ASCII (cmd.exe)');
 });
 
-test('ajouter_wangp.py ajoute le serveur une seule fois, sans toucher au reste', { skip: !aPython() }, () => {
+const SCRIPT = path.join(DOSSIER, 'ajouter_wangp.py');
+const py = (code) => execFileSync('python3', ['-c', `import sys; sys.path.insert(0, ${JSON.stringify(DOSSIER)}); import ajouter_wangp as a; ${code}`]).toString().trim();
+
+test('le dossier d’Hermes est celui qu’Hermes calcule : %LOCALAPPDATA%\\hermes sous Windows, ~/.hermes ailleurs', { skip: !aPython() }, () => {
+  assert.equal(py(`print(a.dossier_hermes('win32', {'LOCALAPPDATA': 'C:/Users/L/AppData/Local'}, '/h'))`), path.join('C:/Users/L/AppData/Local', 'hermes'));
+  assert.equal(py(`print(a.dossier_hermes('win32', {}, '/h'))`), '/h/AppData/Local/hermes');
+  assert.equal(py(`print(a.dossier_hermes('linux', {}, '/h'))`), '/h/.hermes');
+  assert.equal(py(`print(a.dossier_hermes('win32', {'HERMES_HOME': '/ailleurs', 'LOCALAPPDATA': 'C:/x'}, '/h'))`), '/ailleurs');
+});
+
+test('ajouter_wangp.py installe la compétence et ajoute le serveur une seule fois, sans toucher au reste', { skip: !aPython() }, () => {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'banc-hermes-'));
   const conf = path.join(home, 'config.yaml');
   fs.writeFileSync(conf, 'model:\n  default: x\nmcp_servers:\n  raime:\n    url: "http://raime-mcp:8766/mcp"\n');
-  const lancer = () => execFileSync('python3', [path.join(DOSSIER, 'ajouter_wangp.py')], { env: { ...process.env, HERMES_HOME: home } }).toString();
-  assert.match(lancer(), /ajoute/);
-  assert.match(lancer(), /deja present/);
+  const lancer = () => execFileSync('python3', [SCRIPT], { env: { ...process.env, HERMES_HOME: home } }).toString();
+  assert.match(lancer(), /serveur WanGP : ajoute/);
+  assert.match(lancer(), /serveur WanGP : deja present/);
   const t = fs.readFileSync(conf, 'utf8');
   assert.equal(t.match(/wangp:/g).length, 1);
   assert.match(t, /raime:\n    url: "http:\/\/raime-mcp:8766\/mcp"/);
   assert.match(t, /^model:\n  default: x$/m);
   assert.ok(fs.existsSync(conf + '.avant-wangp'), 'copie de secours absente');
+  assert.ok(fs.existsSync(path.join(home, 'skills/video-wangp/SKILL.md')), 'compétence non copiée');
 });
 
 function aPython() {
