@@ -400,6 +400,7 @@ nav#onglets button:hover{color:var(--cyan2);border-color:var(--trait2)}
     var mains = $('p-mains'), me = d.mains && d.mains.etat;
     mains.className = 'puce ' + (me === 'libre' ? 'ok' : me === 'occupe' ? 'occupe' : 'ko');
     mains.querySelector('span').textContent = 'MAINS · ' + (me === 'libre' ? 'PRÊTES' : me === 'occupe' ? 'AU TRAVAIL' : 'HORS LIGNE');
+    mains.title = d.mains && d.mains.raison || 'Hermes, les mains';
     voixGemini = d.voix === 'gemini';
     var pa = $('p-parole'); pa.className = 'puce large ok'; pa.title = 'Parole : ' + d.parole; pa.querySelector('span').textContent = 'PAROLE · SANS FRAIS';
     // objectif

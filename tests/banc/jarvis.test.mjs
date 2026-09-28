@@ -12,7 +12,8 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const T = fs.mkdtempSync(path.join(os.tmpdir(), 'banc-jarvis-'));
 const appelsLocal = [];
-let local, jarvis, base;
+let local, jarvis, base, executant;
+let santeExecutant = { etat: 'libre', moteur: 'hermes' };
 
 before(async () => {
   // Le modèle local simulé (format Ollama) : il note ce qu'on lui demande et répond.
@@ -25,13 +26,18 @@ before(async () => {
     });
   }).listen(0);
   await new Promise((r) => local.once('listening', r));
+  executant = http.createServer((req, res) => {
+    res.writeHead(santeExecutant.etat === 'indisponible' ? 503 : 200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(santeExecutant));
+  }).listen(0);
+  await new Promise((r) => executant.once('listening', r));
   fs.mkdirSync(path.join(T, 'travail/demande-7/app'), { recursive: true });
   fs.writeFileSync(path.join(T, 'travail/demande-7/app/index.html'), '<h1>site livré</h1>');
   Object.assign(process.env, {
     PGDATABASE: process.env.BANC_BASE_N8N || 'n8n_test', PGDATABASE_CERVEAU: process.env.BANC_BASE_BRAIN || 'raime_brain_test',
     PGHOST: process.env.PGHOST || 'localhost', PGUSER: process.env.PGUSER || 'raime',
     LIVRABLES_DIR: path.join(T, 'travail'), COFFRE_FICHIER: path.join(T, 'coffre.env'),
-    MODELE_LOCAL_URL: `http://127.0.0.1:${local.address().port}`, EXECUTANT_URL: 'http://127.0.0.1:1', RECHERCHE_URL: 'http://127.0.0.1:1',
+    MODELE_LOCAL_URL: `http://127.0.0.1:${local.address().port}`, EXECUTANT_URL: `http://127.0.0.1:${executant.address().port}`, RECHERCHE_URL: 'http://127.0.0.1:1',
     OPENROUTER_API_KEY: 'ne-doit-jamais-servir',
   });
   const { serveur } = require('../../jarvis/serveur.cjs');
@@ -43,7 +49,7 @@ before(async () => {
   base = `http://127.0.0.1:${jarvis.address().port}`;
 });
 after(async () => {
-  jarvis.close(); local.close();
+  jarvis.close(); local.close(); executant.close();
   const b = require('../../jarvis/bases.cjs');
   await b.lire('DROP TABLE IF EXISTS commandes'); await b.lire('DROP TABLE IF EXISTS revenus');
   await b.cerveau.end(); await b.n8n.end();
@@ -66,10 +72,20 @@ test('un ordre dit à Jarvis part dans la file d’Hermes et se voit dans le tab
   assert.equal(r.voie, 'action');
   assert.ok(r.commande > 0);
   assert.match(r.reply, /ordre numéro \d+/);
+  assert.match(r.reply, /dans la file/);
+  assert.doesNotMatch(r.reply, /dans la minute/);
   const e = await (await fetch(base + '/api/etat')).json();
   const o = e.ordres.find((x) => x.id === r.commande);
   assert.equal(o.etat, 'a_faire');
   assert.equal(o.pour, 'harness');
+});
+
+test('Hermes refuse sa clé : le tableau expose l’indisponibilité et sa cause', async () => {
+  santeExecutant = { etat: 'indisponible', moteur: 'hermes', raison: 'Hermes refuse la clé du relais.', statut: 401 };
+  try {
+    const e = await (await fetch(base + '/api/etat')).json();
+    assert.deepEqual(e.mains, { etat: 'indisponible', raison: 'Hermes refuse la clé du relais.' });
+  } finally { santeExecutant = { etat: 'libre', moteur: 'hermes' }; }
 });
 
 test('une question : réponse du modèle local (aucune clé), sans budget ni OpenRouter dans la consigne', async () => {

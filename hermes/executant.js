@@ -96,11 +96,32 @@ export async function executer({ tache, id, gratuit = false }, { fetch: f = fetc
   }
 }
 
+// Le relais peut être vivant alors que sa clé est refusée par Hermes. Vérifier la
+// passerelle avant de se dire disponible : cette lecture ne sollicite aucun modèle.
+async function sante({ fetch: f = fetch } = {}) {
+  if (occupe) return { etat: 'occupe', moteur: 'hermes' };
+  try {
+    const r = await f(`${HERMES}/v1/models`, {
+      headers: { Authorization: `Bearer ${CLE}` },
+      signal: AbortSignal.timeout(5000),
+    });
+    await r.body?.cancel?.();
+    if (r.ok) return { etat: occupe ? 'occupe' : 'libre', moteur: 'hermes' };
+    return { etat: 'indisponible', moteur: 'hermes', statut: r.status,
+      raison: [401, 403].includes(r.status) ? 'Hermes refuse la clé du relais.' : 'Hermes ne répond pas correctement.' };
+  } catch {
+    return { etat: 'indisponible', moteur: 'hermes', raison: 'Hermes est injoignable.' };
+  }
+}
+
 export function creerServeur(options = {}) {
   if (!CLE && !options.sansCle) throw new Error('API_SERVER_KEY absente : le relais refuse de démarrer');
   return http.createServer(async (req, res) => {
     const repondre = (code, corps) => { res.writeHead(code, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(corps)); };
-    if (req.method === 'GET' && req.url === '/sante') return repondre(200, { etat: occupe ? 'occupe' : 'libre', moteur: 'hermes' });
+    if (req.method === 'GET' && req.url === '/sante') {
+      const etat = await sante(options);
+      return repondre(etat.etat === 'indisponible' ? 503 : 200, etat);
+    }
     if (req.method !== 'POST' || req.url !== '/tache') return repondre(404, { erreur: 'inconnu' });
     if (occupe) return repondre(409, { erreur: 'occupé' });
     let corps = '';
