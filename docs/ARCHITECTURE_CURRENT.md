@@ -33,7 +33,7 @@ Codex du 28/09 : `REPRISE_CODEX.md`.
 | Routeur de tâches | PARTIEL | ordre ou question, par règles (`jarvis/esprit.cjs`) |
 | Gouverneur de jetons / budgétaire | PARTIEL | `agents/econome.js` (16 €/mois modèles) ; budget global de 150 € non encodé |
 | Compilateur de contexte | PARTIEL | rudimentaire (consigne resserrée pour le local) |
-| Routeur de modèles | PARTIEL | chaîne gratuite (`jarvis/parole.cjs`) ; réparée le 30/09 pour Hermes et la boucle |
+| Routeur de modèles | PARTIEL | chaîne gratuite (`jarvis/parole.cjs`) ; réparée le 30/09 : agents sur Gemini 3.5 Flash (9 s, 0 $), Hermes passe seul de 3.8 à 3.7 Flash (ordre 25 fait en 2 min) |
 | Routeur d'approbation / politiques | PARTIEL | gardien, cordon, sas, brouillons seulement ; pas d'états unifiés |
 | Gestionnaire d'état | PARTIEL | tables buts, états, journal, commandes ; pas d'objet d'état unique |
 | Watchdog | PARTIEL | crons watchdog, gardien, réparateur ; `/sante` du relais vérifie Hermes depuis le 30/09 |
@@ -47,7 +47,7 @@ Codex du 28/09 : `REPRISE_CODEX.md`.
 | Moteur de contenu | PARTIEL | images, brouillons ; aucune publication en service |
 | Influenceur IA / clip farming | PLANIFIÉ / NON IMPLÉMENTÉ | |
 | Croissance et distribution | PARTIEL | clé Meta rangée ; module de publication à livrer |
-| Analyse et apprentissage | PARTIEL | métrologue ; réflexif réparé le 30/09 (à confirmer) |
+| Analyse et apprentissage | PARTIEL | métrologue ; architecte (70 s) et superviseur (26 s) repassés avec succès le 30/09, réflexif et penseur sur la même chaîne |
 | Ventes et administration | PARTIEL | prospection n8n, brouillons, tri des e-mails, DocuSeal |
 | Livraison client | PARTIEL | scripts d'audit, d'arbitrage, Score |
 | Finance / CFO | PARTIEL | dépense des modèles seulement ; table `revenus` vide |
@@ -75,7 +75,7 @@ Codex du 28/09 : `REPRISE_CODEX.md`.
 
 ## Prochaines tâches, dans l'ordre
 
-1. Prouver par un vrai ordre et un vrai passage des quatre agents que les réparations du 30/09 tiennent.
+1. Fait le 30/09 : ordre 25 (Gemini 3.8 saturé → 3.7 Flash, fichier relu), architecte et superviseur passés. À surveiller : les passages de la nuit dans `boucle_passages`.
 2. Pont vers les routines Claude Code (demande d'outil → routine → branche → banc → porte) : il faut que
    Basile crée la routine et range son jeton d'appel dans le coffre.
 3. Faire poser la configuration d'Hermes par la porte à chaque livraison (aujourd'hui : à la main).
