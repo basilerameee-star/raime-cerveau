@@ -375,3 +375,11 @@ Merci pour le travail de cette nuit : le banc a déjà trouvé un vrai défaut e
 - Évaluation honnête : JEV seul jugeait « utiles » 14 questions sur 14. Deux règles écrites (interne ou trouvable) et la liste de ce que la maison possède corrigent : 13 questions sur 16 retenues, 3 restent pour Basile.
 - Vérifié : banc complet (Postgres, conteneurs jetables sur le serveur) avant chaque livraison, 242/242 ; en production : cap compilé, jugements JEV réels, architecte en 78 s à 0 $ avec une question retenue.
 - Leçon : un juge ne tranche bien que ce qu'on lui a montré ; lui dire ce que la maison possède vaut mieux qu'abaisser un seuil.
+
+## 2026-09-30 (nuit) — ménage de l'ancien modèle, API automatiques, routines Claude, appels à J+7
+- Accord de Basile : retirer les doublons et tout l'ancien modèle ; créer les deux routines ; les usage credits sont coupés.
+- Retirés : chasseur, métrologue, synchronisation OpenRouter, balayage du sas, cron.raime, applicateur/déposeur/installeur (crons serveur sauvegardés, scripts dans `/opt/raime/scripts/retires-20260930/`), trois documents périmés ; n8n « Cortex · Chat » et « Vigie » désactivés (9 flux actifs). La boucle tourne avec 17 agents.
+- Construit : chaque ordre d'Hermes et chaque chantier part avec les API publiques utiles (`jarvis/apis_utiles.cjs`, vérifié en réel : validation d'e-mail → 3 API ; une faute de frappe → aucune) ; appels de relance à J+7 (`jarvis/appels.cjs`, 43 prospects à appeler le soir même, dans /api/etat pour l'interface 3D et à l'oral) ; publicité : petit budget fixé par Basile, chaque campagne avec son accord (cap, but 13).
+- Routines Claude (abonnement, Sonnet 5.5, sans connecteur) : « Ingénierie » deux fois par jour (chantiers GitHub, pull request sans fusion) ; « Moteur de contenu » chaque lundi (première livraison : l'étude de positionnement, lancée le soir même).
+- Constat : le jeton GitHub du coffre ne voit pas raime-cerveau (404) ; le cerveau ne peut pas encore ouvrir de chantier. Prospection réelle : 212 e-mails depuis le 15/08, 2 réponses ; 94 envois vers des organismes de formation contre 31 vers les cabinets comptables, pourtant cible n° 1.
+- Leçon : une routine autonome reçoit par défaut TOUS les connecteurs du compte (Gmail en écriture compris) ; les retirer à la création.

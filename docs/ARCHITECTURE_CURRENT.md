@@ -48,7 +48,7 @@ Codex du 28/09 : `REPRISE_CODEX.md`.
 | Influenceur IA / clip farming | PLANIFIÉ / NON IMPLÉMENTÉ | |
 | Croissance et distribution | PARTIEL | clé Meta rangée ; module de publication à livrer |
 | Analyse et apprentissage | PARTIEL | métrologue ; architecte (70 s) et superviseur (26 s) repassés avec succès le 30/09, réflexif et penseur sur la même chaîne |
-| Ventes et administration | PARTIEL | prospection n8n, brouillons, tri des e-mails, DocuSeal |
+| Ventes et administration | PARTIEL | prospection n8n (212 envois, 2 réponses au 30/09), brouillons, tri des e-mails, DocuSeal, appels de relance à J+7 (`jarvis/appels.cjs`) |
 | Livraison client | PARTIEL | scripts d'audit, d'arbitrage, Score |
 | Finance / CFO | PARTIEL | dépense des modèles seulement ; table `revenus` vide |
 | Ingénierie / DevOps | ACTIF | porte GitHub → serveur (banc, OIDC) |
@@ -97,8 +97,9 @@ Codex du 28/09 : `REPRISE_CODEX.md`.
 ## Prochaines tâches, dans l'ordre
 
 1. Fait le 30/09 : ordre 25 (Gemini 3.8 saturé → 3.7 Flash, fichier relu), architecte et superviseur passés. À surveiller : les passages de la nuit dans `boucle_passages`.
-2. Pont vers les routines Claude Code (demande d'outil → routine → branche → banc → porte) : il faut que
-   Basile crée la routine et range son jeton d'appel dans le coffre.
+2. Routines Claude créées le 30/09 (Sonnet 5.5, abonnement, sans connecteur) : « Ingénierie » (chantiers GitHub,
+   deux fois par jour, pull request sans fusion) et « Moteur de contenu » (chaque lundi). Il manque au cerveau un
+   jeton GitHub qui voie raime-cerveau (droit Issues) pour ouvrir lui-même les chantiers.
 3. Faire poser la configuration d'Hermes par la porte à chaque livraison (aujourd'hui : à la main).
 4. Relancer ou clore les anciens ordres échoués (14 à 21).
 5. Requêtes automatiques vers les API publiques : en service le 30/09 pour les ordres d'Hermes et les chantiers (`jarvis/apis_utiles.cjs`).
