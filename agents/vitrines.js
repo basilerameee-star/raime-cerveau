@@ -27,7 +27,8 @@ const UA = { 'User-Agent': 'Mozilla/5.0 (compatible; rAIme-vitrines/1.0; +https:
 export const METIERS = ['boulangerie', 'boucherie', 'fleuriste', 'coiffeur', 'institut de beauté', 'garage automobile', 'plombier',
   'électricien', 'serrurier', 'menuisier', 'restaurant', 'pizzeria', 'pressing', 'cordonnier', 'fromagerie', 'caviste',
   'toiletteur', 'photographe', 'peintre en bâtiment', 'paysagiste'];
-const REGION = ['74', '73', '01', '38']; // la région de Basile d'abord, puis la France par taille de ville
+// La Haute-Savoie de Basile d'abord, puis les départements voisins dans cet ordre, puis la France par taille de ville.
+const REGION = ['74', '73', '01', '38'];
 const ANNUAIRES = /(pagesjaunes|facebook|instagram|google|tripadvisor|yelp|societe\.com|pappers|infogreffe|linkedin|mappy|justacote|118712|annuaire|kompass|verif\.com|manageo|youtube|tiktok|wikipedia|leboncoin|doctolib|planity|treatwell|ubereats|deliveroo|lafourchette|thefork)/i;
 
 export async function preparer(brain) {
@@ -66,7 +67,7 @@ async function villes(brain, f) {
 async function prochaine(brain, source) {
   const { rows } = await brain.query(`SELECT v.nom AS ville, m.metier FROM vitrines_villes v CROSS JOIN unnest($1::text[]) WITH ORDINALITY m(metier, o)
     WHERE NOT EXISTS (SELECT 1 FROM vitrines_recherches r WHERE r.ville = v.nom AND r.metier = m.metier AND r.source = $2)
-    ORDER BY v.rang, m.o LIMIT 1`, [METIERS, source]);
+    ORDER BY array_position($3::text[], v.departement) NULLS LAST, v.population DESC, m.o LIMIT 1`, [METIERS, source, REGION]);
   return rows[0] || null;
 }
 
@@ -90,7 +91,8 @@ export async function chercherOsm({ metier, ville, fetch: f = globalThis.fetch }
   const [k, v] = tag.split('=');
   const q = `[out:json][timeout:40];area["name"="${ville.replace(/"/g, '')}"]["admin_level"="8"]->.a;nwr(area.a)["${k}"="${v}"]["name"];out tags center 60;`;
   const d = await lireJson(f, 'https://overpass-api.de/api/interpreter', { method: 'POST', body: 'data=' + encodeURIComponent(q),
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded', ...UA }, delai: 60000 });
+    // Overpass refuse (406) une signature de navigateur : il veut celle d'un programme (constaté le 30/09/2026).
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': 'raime-cerveau/1.0 (+https://raime.fr)' }, delai: 60000 });
   return (d.elements || []).map((e) => { const t = e.tags || {}; return {
     source: 'osm', source_id: `osm:${e.type}/${e.id}`, nom: t.name, metier, ville,
     adresse: [t['addr:housenumber'], t['addr:street'], t['addr:postcode'], t['addr:city']].filter(Boolean).join(' ') || null,
