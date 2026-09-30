@@ -453,6 +453,14 @@ ${moi.reponses.length ? moi.reponses.map((r) => `- ${r.question} → ${r.reponse
   const questions = [];
   for (const q of (m.questions || []).slice(0, 2)) {
     if (!q?.question || porteUnSecret(q.question) || await dejaPosee(brain, q.question)) continue;
+    // Le goût, ici aussi : « Autorises-tu la création d'un répertoire… » (30/09/2026) est une décision
+    // interne et réversible, que la maison prend seule (Constitution, zone 1).
+    const g = await jugerQuestion({ brain, source: 'architecte', question: q.question, contexte: q.pourquoi || m.synthese || '' });
+    if (g.verdict !== 'AUTO') {
+      await noter('CORRIGER', { but_id: but?.id, action: 'question', arguments: { type: 'question_retenue' },
+        correction: `question non posée à Basile (${g.motif}) : ${String(q.question).slice(0, 300)}` });
+      continue;
+    }
     const r = await brain.query(
       `INSERT INTO demandes(question, pourquoi, bloquant, cycle_id) VALUES($1,$2,$3,$4)
        ON CONFLICT (question) DO NOTHING RETURNING id`,
