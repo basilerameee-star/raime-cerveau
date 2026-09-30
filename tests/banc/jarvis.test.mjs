@@ -278,3 +278,21 @@ test('vitrines : la maquette est publique et isolée, la fiche dit « e-mail non
     await b.lire('DROP TABLE IF EXISTS appels');
   }
 });
+
+test('une réponse brève n’est jamais un ordre ; « relance les ordres 7 et 8 » relance par du code', async () => {
+  const b = require('../../jarvis/bases.cjs');
+  const avant = (await b.lire('SELECT count(*)::int AS n FROM commandes'))[0].n;
+  for (const m of ['Parfait.', "Non, c'est bon.", '23 et 24', 'ok top']) {
+    const r = await dire(m);
+    assert.notEqual(r.voie, 'action', `« ${m} » ne doit pas devenir un ordre`);
+  }
+  assert.equal((await b.lire('SELECT count(*)::int AS n FROM commandes'))[0].n, avant, 'aucun ordre créé');
+  const [bloque] = await b.lire("INSERT INTO commandes (texte, pour, etat, reponse) VALUES ('ordre bloqué', 'claude', 'a_faire', 'Hermes n''a pas abouti') RETURNING id");
+  const [fait] = await b.lire("INSERT INTO commandes (texte, pour, etat) VALUES ('ordre fait', 'harness', 'faite') RETURNING id");
+  const r = await dire(`Relance les ordres ${bloque.id} et ${fait.id}`);
+  assert.equal(r.voie, 'relance');
+  assert.match(r.reply, new RegExp(`ordre ${bloque.id} est relancé.*ordre ${fait.id} est déjà fait`, 'i'));
+  const [x] = await b.lire('SELECT etat, pour FROM commandes WHERE id = $1', [bloque.id]);
+  assert.deepEqual(x, { etat: 'a_faire', pour: 'harness' });
+  assert.equal((await b.lire('SELECT count(*)::int AS n FROM commandes'))[0].n, avant + 2, 'rien de neuf pour Hermes');
+});

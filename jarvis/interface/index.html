@@ -617,7 +617,9 @@ nav#onglets button:hover{color:var(--cyan2);border-color:var(--trait2)}
       .then(function (r) { if (!r.ok) throw 0; return r.json(); })
       .then(function (d) {
         var rep = d.reply || '(pas de réponse)';
-        $('lui').textContent = rep; $('lui').scrollTop = 0; document.body.classList.toggle('reponse', rep.length > 260); charger();
+        // Demandé à la voix : réponse à la voix seulement, sans texte affiché (Basile, 30/09/2026) ; voix coupée : le texte.
+        var ecrit = !oral || muet;
+        $('lui').textContent = ecrit ? rep : ''; $('lui').scrollTop = 0; document.body.classList.toggle('reponse', ecrit && rep.length > 260); charger();
         parler(rep, function () { if (suite) suite(); else changer('repos'); });
         if (muet && !suite) changer('repos');
       })

@@ -166,6 +166,29 @@ const ORDRE = " Seulement si Basile ORDONNE une action concrète (créer, corrig
 const INTENTION_BUDGET = /\b(budget|tokens?|jetons?|crédits?|credits?|forfait|dépensé|dépense du mois)\b/i;
 const INTENTION_ACTION = /^(?:(?:ok|okay|top|bon|alors|parfait|super|génial|d'accord|très bien|vas-y|allez|et)[\s,!.]+)*(?:(?:jarvis|cortex)[, ]+)?(?!fais(?:-| )?(?:moi )?le point)(?:(?:est-ce que tu peux|est-ce que tu pourrais|peux-tu|tu peux|pourrais-tu|je veux que tu|il faut que tu|j'aimerais que tu|je voudrais que tu|note que tu dois)\s+)?(?:fais|fai|fabriqu|écri|ecri|rédig|dépos|pouss|réalis|conçoi|concoi|cré|construi|lanc|met|ajout|modifi|corrig|déploi|publi|envoi|envoy|install|supprim|chang|programm|développ|cod|génér|refai|refass|amélior|répar|automatis|intégr|prépar)[\p{L}]*/iu;
 const QUESTION = /\?\s*$|^(qu'est-ce|est-ce que|comment|pourquoi|quel|quelle|combien|où|quand|qui|que |sais-tu|peux-tu me dire)/i;
+// 30/09/2026 : « 23 et 24 », « Non, c'est bon. », « Parfait. » sont devenus des ordres pour Hermes (n° 26 à 28).
+// Une réponse brève n'est jamais un ordre ; « relance les ordres 23 et 24 » relance ces ordres-là, par du code.
+const ACCUSE = /^(?:(?:ok|okay|oui|non|parfait|super|merci|d'accord|très bien|top|génial|cool|nickel|entendu|c'est bon|ça marche|vas-y|bien reçu)[\s,!.]*)+$/i;
+const NUMEROS_SEULS = /^\s*(?:(?:l'|les? )?(?:ordres?|demandes?|n°|numéros?)\s*)?\d+(?:\s*(?:,|et|&)\s*(?:n°\s*)?\d+)*\s*[.!]?\s*$/i;
+const RELANCE = /\b(relanc|redémarr|redemarr|reprends?|réessai)\w*/i;
+const breve = (m) => ACCUSE.test(m.trim()) || NUMEROS_SEULS.test(m);
+
+// Relancer (ou dire l'état de) des ordres cités par leur numéro, sans rien confier de neuf à Hermes.
+async function relancerOrdres(message) {
+  const ids = [...new Set((message.match(/\d+/g) || []).map(Number))].slice(0, 10);
+  const lignes = [];
+  for (const id of ids) {
+    const r = (await lire('SELECT etat, pour FROM commandes WHERE id = $1', [id]))[0];
+    if (!r) { lignes.push(`l'ordre ${id} n'existe pas`); continue; }
+    if (r.etat === 'faite') { lignes.push(`l'ordre ${id} est déjà fait`); continue; }
+    if (r.etat === 'en_cours') { lignes.push(`l'ordre ${id} est en cours`); continue; }
+    if (r.etat === 'a_faire' && r.pour === 'harness') { lignes.push(`l'ordre ${id} attend déjà son tour`); continue; }
+    lignes.push(await require('./relais.cjs').relancer(id) ? `l'ordre ${id} est relancé` : `l'ordre ${id} n'a pas pu être relancé`);
+  }
+  const reply = ids.length ? lignes.join(', ').replace(/^./, (c) => c.toUpperCase()) + '.' : 'Dis-moi le numéro de l\'ordre à relancer.';
+  await noter('assistant', reply);
+  return { voie: 'relance', reply };
+}
 const PROFOND = /réfléchis (à fond|bien|en profondeur)|en profondeur|analyse approfondie|prends ton temps/i;
 // Les anciennes réponses qui liaient une tâche au crédit ne sont plus vraies : elles sortent de l'historique.
 const PERIME = /recharg|crédits? (de modèles )?(épuisé|insuffisant)|budget (n'est|est) (pas )?(épuisé|rechargé)|arrêt des dépenses|1er du mois|openrouter|contrôle total|j'ai (modifié|injecté|déployé|changé|mis à jour)/i;
@@ -201,6 +224,8 @@ async function dire(message, { oral = true } = {}) {
     await noter('assistant', reply);
     return { voie: 'budget', reply };
   }
+  if (RELANCE.test(message) && /\d/.test(message) && /(ordres?|demandes?|n°|numéros?)\b|\d+\s*(?:et|,)\s*\d+/i.test(message)) return relancerOrdres(message);
+  if (NUMEROS_SEULS.test(message)) return relancerOrdres(message); // « 23 et 24 » seul : leur état, rien de neuf
   if (INTENTION_ACTION.test(message)) return noterCommande(message, '');
   const question = QUESTION.test(message.trim())
     || /(fais(-| )(moi )?le point|point de situation|où (on en est|en est|en sommes)|quoi de neuf|résume|raconte|dis-moi|explique)/i.test(message);
@@ -215,7 +240,7 @@ async function dire(message, { oral = true } = {}) {
     .filter((h) => !(h.role === 'assistant' && PERIME.test(h.content)));
   // L'ordre compte : le modèle local ne lit que le début d'une longue consigne (parole.cjs, resserrer). L'état réel
   // passe donc juste après l'essentiel, avant la liste des capacités et les passages (26/09/2026 : coupé, Jarvis inventait).
-  const messages = [{ role: 'system', content: SYSTEME + (oral ? ORAL : '') + (question ? '' : ORDRE)
+  const messages = [{ role: 'system', content: SYSTEME + (oral ? ORAL : '') + (question || breve(message) ? '' : ORDRE)
       + "\n\nÉTAT DU CERVEAU (maintenant, il prime sur ce qui a été dit plus tôt) :" + await etatDuCerveau(message) + "\n" + CAPACITES + savoir },
     ...hist.map((h) => ({ role: h.role === 'assistant' ? 'assistant' : 'user', content: h.content })),
     { role: 'user', content: message }];
@@ -224,7 +249,7 @@ async function dire(message, { oral = true } = {}) {
   let reply = parole.texte || "Je n'arrive pas à formuler de réponse à l'instant, même avec le modèle local. Réessaie dans une minute.";
   if (/^\s*\[\[COMMANDE\]\]/.test(reply)) {
     const reste = reply.replace(/^\s*\[\[COMMANDE\]\]\s*/, '');
-    if (!question && reste.length < 260 && !/\n/.test(reste.trim())) return noterCommande(message, reste);
+    if (!question && !breve(message) && reste.length < 260 && !/\n/.test(reste.trim())) return noterCommande(message, reste);
     reply = reste;
   }
   await noter('assistant', reply);
