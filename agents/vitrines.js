@@ -11,8 +11,10 @@
 //   2. QUALIFIER : aucun site, ou un site ancien (sans HTTPS, pas fait pour le téléphone, copyright ancien…).
 //   3. E-MAIL : la fiche OSM, les pages du site, puis la recherche web du serveur ; l'adresse doit avoir un MX.
 //   4. MAQUETTE : une page à son nom, servie par le Cockpit (/demo/<slug>), marquée « démonstration ».
-//   5. BROUILLON : le texte de Basile ; RIEN ne part d'ici (l'envoi, après sa validation, est une autre pièce).
-//   6. APPEL : sans e-mail, tout de suite dans la liste d'appels ; avec, sept jours après l'envoi (jarvis/appels.cjs).
+//   5. BROUILLON : le texte de Basile ; RIEN ne part d'ici.
+//   6. ENVOI : un brouillon que Basile valide passe dans la file du workflow n8n « Vitrines · Envoi »
+//      (n8n/vitrines_envoi.json, la clé Resend reste dans n8n) ; synchroniser() en rapporte l'issue, les réponses et les « stop ».
+//   7. APPEL : sans e-mail, tout de suite dans la liste d'appels ; avec, dès sa réponse ou sept jours après l'envoi (jarvis/appels.cjs).
 // Conditions de Google : les données d'un lieu écarté sont effacées au bout de 30 jours (seul son identifiant reste).
 import crypto from 'node:crypto';
 import dns from 'node:dns/promises';
@@ -277,6 +279,103 @@ export async function passer({ brain, env = process.env, fetch = globalThis.fetc
   await brain.query(`INSERT INTO journal(acteur, changement, motif) VALUES ('vitrines', $1, $2)`,
     [`Vitrines : ${bilan.neufs} commerces repérés, ${bilan.brouillons} brouillons, ${bilan.a_appeler} à appeler (sans e-mail), ${bilan.ecartes} écartés`,
       bilan.decouverte || `erreurs : ${bilan.erreurs}`]);
+  return bilan;
+}
+
+// ── L'ENVOI ───────────────────────────────────────────────────────────────────
+// La file et le réglage vivent dans la base n8n, à côté de la liste de suppression et des réponses reçues.
+// Mode « test » par défaut : un brouillon validé part d'abord vers l'adresse de test de Basile ; le passage
+// en « live » (vers les commerçants) est sa décision : UPDATE vitrines_envoi_config SET mode = 'live',
+// puis UPDATE vitrines_envoi SET statut = 'a_envoyer' WHERE statut = 'teste' pour envoyer ce qui a été essayé.
+export async function preparerEnvoi(n8n) {
+  await n8n.query(`CREATE TABLE IF NOT EXISTS vitrines_envoi (id int PRIMARY KEY, to_email text NOT NULL, sujet text NOT NULL,
+    corps text NOT NULL, statut text NOT NULL DEFAULT 'a_envoyer', resend_id text, erreur text, envoye_le timestamptz,
+    cree_le timestamptz NOT NULL DEFAULT now(), maj_le timestamptz NOT NULL DEFAULT now())`);
+  await n8n.query(`CREATE TABLE IF NOT EXISTS vitrines_envoi_config (id int PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+    mode text NOT NULL DEFAULT 'test' CHECK (mode IN ('pause', 'test', 'live')), plafond_jour int NOT NULL DEFAULT 10,
+    from_email text NOT NULL DEFAULT 'contact@raime.fr', from_name text NOT NULL DEFAULT 'Basile Ramé · rAIme', test_to text)`);
+  await n8n.query('INSERT INTO vitrines_envoi_config (id) VALUES (1) ON CONFLICT (id) DO NOTHING');
+  // L'adresse de test est celle de l'Expéditeur des prospects : aucune adresse écrite dans le code.
+  await n8n.query(`UPDATE vitrines_envoi_config SET test_to = (SELECT test_to FROM send_config WHERE id = 1)
+    WHERE id = 1 AND test_to IS NULL`).catch(() => {});
+}
+
+const jourMois = (d) => new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', timeZone: 'Europe/Paris' });
+
+// Le Réceptionniste (n8n) range chaque e-mail reçu dans `replies`, précédé de sa catégorie : « [interesse] résumé || texte ».
+export function lireReponse(corps) {
+  const m = /^\[([a-z_]+)\]\s*([^|]*)/i.exec(String(corps || ''));
+  const categorie = m ? m[1].toLowerCase() : 'autre';
+  const resume = m ? m[2].trim().slice(0, 160) : '';
+  if (categorie.startsWith('desab')) return { statut: 'pas_interesse', motif: 'a répondu « stop »', stop: true };
+  if (categorie === 'pas_interesse') return { statut: 'pas_interesse', motif: `a répondu : pas intéressé${resume ? ` (${resume})` : ''}` };
+  if (categorie === 'rebond_erreur') return { statut: 'a_appeler', motif: 'e-mail revenu en erreur : à appeler' };
+  if (categorie === 'absence_bureau') return null; // un message d'absence n'est pas une réponse
+  return { statut: 'repondu', motif: `a répondu${resume ? ` : ${resume}` : ''}` };
+}
+
+export async function synchroniser({ brain, n8n }) {
+  await preparer(brain); await preparerEnvoi(n8n);
+  const bilan = { en_file: 0, annules: 0, envoyes: 0, essais: 0, erreurs: 0, reponses: 0, desinscrits: 0 };
+
+  // ① Les brouillons validés par Basile entrent dans la file (une seule fois ; une vitrine re-validée y revient).
+  const { rows: valides } = await brain.query(`SELECT id, email, sujet, corps FROM vitrines
+    WHERE statut = 'valide' AND email IS NOT NULL AND sujet IS NOT NULL AND corps IS NOT NULL`);
+  for (const v of valides) {
+    const r = await n8n.query(`INSERT INTO vitrines_envoi (id, to_email, sujet, corps) VALUES ($1, $2, $3, $4)
+      ON CONFLICT (id) DO UPDATE SET statut = 'a_envoyer', to_email = EXCLUDED.to_email, sujet = EXCLUDED.sujet,
+        corps = EXCLUDED.corps, erreur = NULL, maj_le = now() WHERE vitrines_envoi.statut = 'annule'`, [v.id, v.email, v.sujet, v.corps]);
+    bilan.en_file += r.rowCount;
+  }
+  // ② Une vitrine écartée après sa validation ne part plus. (Un numéro négatif est un essai de la chaîne, en mode
+  //    test, vers l'adresse de Basile : il ne dépend d'aucune vitrine.)
+  bilan.annules = (await n8n.query(`UPDATE vitrines_envoi SET statut = 'annule', maj_le = now()
+    WHERE statut = 'a_envoyer' AND id > 0 AND NOT (id = ANY($1::int[]))`, [valides.map((v) => v.id)])).rowCount;
+
+  // ③ L'issue de chaque envoi revient dans la fiche.
+  const { rows: faits } = await n8n.query(`SELECT id, statut, envoye_le, erreur FROM vitrines_envoi WHERE statut IN ('envoye', 'teste', 'erreur')`);
+  for (const f of faits) {
+    if (f.statut === 'envoye') {
+      bilan.envoyes += (await brain.query(`UPDATE vitrines SET statut = 'envoye', envoye_le = $2, motif = NULL, maj_le = now()
+        WHERE id = $1 AND statut = 'valide'`, [f.id, f.envoye_le])).rowCount;
+      continue;
+    }
+    const motif = f.statut === 'teste' ? `essai reçu par Basile le ${jourMois(f.envoye_le)}` : `envoi refusé : ${String(f.erreur || '').slice(0, 150)}`;
+    const n = (await brain.query(`UPDATE vitrines SET motif = $2, maj_le = now() WHERE id = $1 AND statut = 'valide'
+      AND motif IS DISTINCT FROM $2`, [f.id, motif])).rowCount;
+    if (f.statut === 'teste') bilan.essais += n; else bilan.erreurs += n;
+  }
+
+  // ④ Les réponses (boîte de réception lue par le Réceptionniste) : la plus récente après l'envoi fait foi.
+  let reponses = [];
+  try {
+    ({ rows: reponses } = await n8n.query(`SELECT DISTINCT ON (e.id) e.id, e.to_email, r.body, r.received_at FROM vitrines_envoi e
+      JOIN replies r ON lower(r.from_email) = lower(e.to_email) AND r.received_at > e.envoye_le
+      WHERE e.statut = 'envoye' ORDER BY e.id, r.received_at DESC`));
+  } catch { /* boîte de réception absente : rien à lire */ }
+  for (const r of reponses) {
+    const suite = lireReponse(r.body);
+    if (!suite) continue;
+    const n = (await brain.query(`UPDATE vitrines SET statut = $2, motif = $3, maj_le = now() WHERE id = $1 AND statut = 'envoye'`,
+      [r.id, suite.statut, `${suite.motif} (${jourMois(r.received_at)})`])).rowCount;
+    bilan.reponses += n;
+    if (n && suite.stop) await n8n.query(`INSERT INTO suppression (email, reason) VALUES ($1, 'reply_stop') ON CONFLICT DO NOTHING`, [r.to_email]).catch(() => {});
+  }
+
+  // ⑤ Une adresse désinscrite (lien « se désinscrire » ou « stop ») n'est plus jamais proposée.
+  let supprimees = [];
+  try { ({ rows: supprimees } = await n8n.query('SELECT lower(email) AS email FROM suppression WHERE email IS NOT NULL')); } catch { /* liste absente */ }
+  if (supprimees.length) {
+    bilan.desinscrits = (await brain.query(`UPDATE vitrines SET statut = 'ecarte', motif = 'désinscrit', maj_le = now()
+      WHERE statut IN ('brouillon', 'valide') AND lower(email) = ANY($1::text[])`, [supprimees.map((s) => s.email)])).rowCount;
+  }
+
+  const bouge = Object.values(bilan).some((n) => n > 0);
+  if (bouge) {
+    await brain.query(`INSERT INTO journal(acteur, changement, motif) VALUES ('vitrines', $1, $2)`,
+      [`Vitrines, envoi : ${bilan.en_file} en file, ${bilan.envoyes} envoyés, ${bilan.essais} essais, ${bilan.reponses} réponses`,
+        `annulés ${bilan.annules}, refusés ${bilan.erreurs}, désinscrits ${bilan.desinscrits}`]);
+  }
   return bilan;
 }
 

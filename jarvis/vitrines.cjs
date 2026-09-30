@@ -1,6 +1,6 @@
 // LES VITRINES DANS LE COCKPIT — la maquette publique d'un commerçant (/demo/<slug>), sa fiche (quand Basile
 // clique dessus dans l'interface), la liste par état, et les gestes de Basile (valider le brouillon, écarter,
-// noter une vente). L'agent qui les fabrique : agents/vitrines.js. Rien n'est envoyé d'ici.
+// noter une vente). L'agent qui les fabrique et les met en file d'envoi : agents/vitrines.js. Rien n'est envoyé d'ici.
 'use strict';
 
 const { lire } = require('./bases.cjs');
@@ -43,7 +43,8 @@ async function uneFiche(id, adresse) {
   return r[0] ? fiche(r[0], adresse) : null;
 }
 
-// Les gestes de Basile. « valider » ne rend le brouillon prêt que pour l'expéditeur (quand il existera) : rien ne part ici.
+// Les gestes de Basile. « valider » met le brouillon dans la file du workflow n8n « Vitrines · Envoi » (agents/vitrines.js,
+// synchroniser) : rien ne part d'ici, et le réglage d'envoi (test ou live) reste dans la base n8n.
 async function agir(id, { action, note = null } = {}) {
   if (action === 'note') {
     await lire('UPDATE vitrines SET note = $2, maj_le = now() WHERE id = $1', [Number(id), note ? String(note).slice(0, 500) : null]);

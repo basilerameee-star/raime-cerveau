@@ -1,0 +1,254 @@
+{
+  "id": "vitrinesEnvoi01",
+  "name": "Vitrines · Envoi des maquettes (gated)",
+  "description": "Envoie les brouillons de vitrines validés par Basile (file vitrines_envoi, remplie par agents/vitrines.js). Source : n8n/vitrines_envoi.json du dépôt raime-cerveau.",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "nodes": [
+    {
+      "id": "815060cc-1ab0-5c7c-85e4-1dcf120a8581",
+      "name": "Chaque jour 09h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        200,
+        340
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "245bc871-f84c-56f3-82d7-834dc0c36699",
+      "name": "A la demande",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        200,
+        500
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "5ffd8244-867c-52e8-afc6-ff865e73bc81",
+      "name": "Lire config",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        400,
+        400
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "BrXTH33ssavnLbT5",
+          "name": "Postgres rAIme"
+        }
+      },
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT mode, plafond_jour, from_email, from_name, test_to FROM vitrines_envoi_config WHERE id = 1",
+        "options": {}
+      }
+    },
+    {
+      "id": "b2f4c155-a594-52dd-90a4-6f97a8f9be5f",
+      "name": "A envoyer",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        600,
+        400
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "BrXTH33ssavnLbT5",
+          "name": "Postgres rAIme"
+        }
+      },
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT e.id, e.to_email, e.sujet, e.corps FROM vitrines_envoi e WHERE e.statut = 'a_envoyer' AND e.to_email IS NOT NULL AND lower(e.to_email) NOT IN (SELECT lower(email) FROM suppression WHERE email IS NOT NULL) ORDER BY e.cree_le, e.id LIMIT greatest(0, (SELECT plafond_jour FROM vitrines_envoi_config WHERE id = 1) - (SELECT count(*) FROM vitrines_envoi WHERE statut IN ('envoye', 'teste') AND envoye_le >= date_trunc('day', now() AT TIME ZONE 'Europe/Paris') AT TIME ZONE 'Europe/Paris'))",
+        "options": {}
+      }
+    },
+    {
+      "id": "7529886a-a55f-5a51-bda6-52f5e7e445c2",
+      "name": "Prepare",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        400
+      ],
+      "parameters": {
+        "jsCode": "// Vitrines · Envoi (01/10/2026). pause : rien ne part ; test : tout part vers l'adresse de test de Basile (marqué « teste ») ;\n// live : vers le commerçant, jamais le week-end. Le texte vient tel quel du brouillon validé par Basile (agents/vitrines.js).\nconst cfg = ($('Lire config').first() || { json: {} }).json || {};\nconst mode = cfg.mode || 'pause';\nif (mode !== 'live' && mode !== 'test') return [];\nconst jour = new Date().toLocaleString('en-US', { timeZone: 'Europe/Paris', weekday: 'short' });\nif (mode === 'live' && (jour === 'Sat' || jour === 'Sun')) return [];\nif (mode === 'test' && !cfg.test_to) return [];\nconst fromEmail = cfg.from_email || 'contact@raime.fr';\nconst fromName = cfg.from_name || 'rAIme';\nconst esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');\nconst liens = (s) => s.replace(/https:\\/\\/[^\\s<]+/g, (u) => '<a href=\"' + u + '\">' + u + '</a>');\nconst NL = String.fromCharCode(10);\nconst out = [];\nfor (const it of $('A envoyer').all()) {\n  const d = it.json || {};\n  if (!d.id || !d.to_email || !d.corps) continue;\n  const desinscription = 'https://cockpit.raime.fr/unsub?e=' + encodeURIComponent(d.to_email);\n  const essai = mode === 'test' ? ' · [ESSAI : destinataire réel ' + esc(d.to_email) + ']' : '';\n  const html = '<div style=\"font-family:-apple-system,Segoe UI,Roboto,sans-serif;font-size:15px;line-height:1.6;color:#1a1a1a\">'\n    + liens(esc(d.corps)).split(NL).join('<br>')\n    + '<p style=\"font-size:11px;color:#999999;margin-top:22px\">' + esc(fromEmail) + essai\n    + ' · <a href=\"' + desinscription + '\" style=\"color:#999999\">se désinscrire</a></p></div>';\n  out.push({ json: { id: d.id, mode, email_body: {\n    from: fromName + ' <' + fromEmail + '>',\n    to: [mode === 'live' ? d.to_email : cfg.test_to],\n    reply_to: fromEmail,\n    subject: (mode === 'test' ? '[ESSAI] ' : '') + (d.sujet || 'Votre site'),\n    html,\n    text: d.corps + NL + NL + 'Se désinscrire : ' + desinscription,\n    headers: { 'List-Unsubscribe': '<' + desinscription + '>' },\n  } } });\n}\nreturn out;\n"
+      }
+    },
+    {
+      "id": "e780e094-2800-56b0-a13f-b3042ba71dd2",
+      "name": "Resend envoie",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1000,
+        400
+      ],
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "abAOr4U3s8bzRjWi",
+          "name": "Header Auth account"
+        }
+      },
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.resend.com/emails",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.email_body }}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 700
+            }
+          },
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "78bd0670-c8bd-519f-9695-3771f10a4a07",
+      "name": "Marque",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        400
+      ],
+      "parameters": {
+        "jsCode": "// Chaque e-mail est marqué selon SA réponse de Resend : un refus au milieu du lot n'efface pas les envois réussis\n// (sinon ils repartiraient le lendemain). Un essai (mode test) n'est jamais compté comme un envoi.\nconst envois = $('Prepare').all();\nconst reponses = $input.all();\nconst q = (s) => \"'\" + String(s).replace(/'/g, \"''\") + \"'\";\nconst lignes = [];\nenvois.forEach((e, i) => {\n  const id = parseInt(e.json.id);\n  if (isNaN(id)) return;\n  const r = (reponses[i] || { json: {} }).json || {};\n  const ok = typeof r.id === 'string' && /^[A-Za-z0-9-]{8,64}$/.test(r.id) && !r.statusCode && !r.error;\n  const statut = ok ? (e.json.mode === 'live' ? 'envoye' : 'teste') : 'erreur';\n  const erreur = ok ? null : String(r.message || (r.error && (r.error.message || r.error)) || 'réponse inattendue de Resend').slice(0, 200);\n  lignes.push('(' + id + ',' + q(statut) + ',' + (ok ? q(r.id) : 'NULL') + ',' + (erreur === null ? 'NULL' : q(erreur)) + ')');\n});\nif (!lignes.length) return [];\nconst sql = 'UPDATE vitrines_envoi e SET statut = v.statut::text, resend_id = v.resend_id::text, erreur = v.erreur::text, '\n  + \"envoye_le = CASE WHEN v.statut::text <> 'erreur' THEN now() END, maj_le = now() \"\n  + 'FROM (VALUES ' + lignes.join(',') + \") AS v(id, statut, resend_id, erreur) WHERE e.id = v.id AND e.statut = 'a_envoyer';\";\nreturn [{ json: { sql, count: lignes.length } }];\n"
+      }
+    },
+    {
+      "id": "c7bb925c-01c7-54cc-8278-ee7dcc20bb68",
+      "name": "Ecrit statut",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1400,
+        400
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "BrXTH33ssavnLbT5",
+          "name": "Postgres rAIme"
+        }
+      },
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ $json.sql }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Chaque jour 09h": {
+      "main": [
+        [
+          {
+            "node": "Lire config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "A la demande": {
+      "main": [
+        [
+          {
+            "node": "Lire config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lire config": {
+      "main": [
+        [
+          {
+            "node": "A envoyer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "A envoyer": {
+      "main": [
+        [
+          {
+            "node": "Prepare",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare": {
+      "main": [
+        [
+          {
+            "node": "Resend envoie",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resend envoie": {
+      "main": [
+        [
+          {
+            "node": "Marque",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Marque": {
+      "main": [
+        [
+          {
+            "node": "Ecrit statut",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "staticData": null,
+  "tags": [],
+  "meta": null
+}
