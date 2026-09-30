@@ -66,6 +66,25 @@ export const OUTILS = {
       return (await ACTIONS.mesurer({ brain, n8n })).resume;
     },
   },
+  cap_lire: {
+    description: 'Le cap de rAIme : objectifs, règles, goût, la bonne réponse, règles commerciales, le passé et le futur du moment. À relire avant une décision qui engage.',
+    inputSchema: { type: 'object', properties: {} },
+    action: () => ({ type: 'lire', cible: 'cap' }),
+    async faire({ brain }) {
+      const { capActuel } = await import('./cap.js');
+      return (await capActuel({ brain })).texte;
+    },
+  },
+  api_publique_chercher: {
+    description: 'Cherche une API publique existante pour un besoin (répertoire public-apis, près de 2 000 API, en anglais) avant de construire un outil. Rend le nom, la description, la clé exigée ou non, et le lien.',
+    inputSchema: { type: 'object', properties: { besoin: { type: 'string', minLength: 3 }, sans_cle: { type: 'boolean' } }, required: ['besoin'] },
+    action: (a) => ({ type: 'lire', cible: 'apis_publiques', contenu: a.besoin }),
+    async faire({ brain, a }) {
+      const { chercher, enLigne } = await import('./apis_publiques.js');
+      const r = await chercher({ brain, besoin: String(a.besoin), sansCle: a.sans_cle === true });
+      return r.length ? r.map(enLigne).join('\n') : 'Aucune API publique trouvée pour ce besoin.';
+    },
+  },
   chantier_ouvrir: {
     description: 'Demande un changement du code du cerveau : une issue « chantier » avec constat, mesure chiffrée, attendu et piste. Trois ouverts au plus.',
     inputSchema: { type: 'object', properties: { titre: { type: 'string' }, constat: { type: 'string' }, mesure: { type: 'string' },

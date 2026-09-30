@@ -46,7 +46,9 @@ function consigne(c) {
     + `Si une compétence manque, cherche la meilleure méthode (dépôts reconnus, documentation officielle), fais-la, puis écris la compétence (du texte seulement, jamais de secret). `
     + `Avant de répondre, vérifie pour de vrai : le code s'exécute sans erreur, les tests passent, l'affichage tient sur ordinateur et téléphone, aucune donnée ni aucun prix inventé. `
     + `N'écris jamais une clé ou un mot de passe dans un fichier ni dans ta réponse. Ce que tu ne peux pas faire : publier, envoyer à des personnes, payer. `
-    + `Ta réponse finale ne contient QUE le compte rendu, en français : trois phrases au plus, ce que tu as fait, où est le résultat (avec l'adresse), ce qui reste.\n\nDemande de Basile : ${c.texte}`;
+    + `Ta réponse finale ne contient QUE le compte rendu, en français : trois phrases au plus, ce que tu as fait, où est le résultat (avec l'adresse), ce qui reste.`
+    // Le cap commun (jarvis/cap.cjs, 30/09/2026) : objectifs, règles, goût, bonne réponse, règles commerciales.
+    + `\n\n${require('./cap.cjs').fixe()}\n\nDemande de Basile : ${c.texte}`;
 }
 
 async function relayer({ fetch = globalThis.fetch } = {}) {

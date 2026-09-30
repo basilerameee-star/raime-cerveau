@@ -67,6 +67,9 @@ const RYTHMES = [
   // La publicité de la semaine suivante : neuf BROUILLONS (LinkedIn, Facebook, Instagram,
   // TikTok), texte et image fixe, relus par le code. Rien n'est publié : aucun compte n'existe.
   { nom: 'publiciste',   module: './publiciste.js',  fn: 'preparerSemaine', toutes: 7 * 24 * H, besoinN8n: false },
+  // Le répertoire des API publiques (public-apis, MIT) : relu chaque semaine, reversé seulement si le
+  // dépôt a changé. Du code, aucun modèle : coût zéro. Demande de Basile, 30/09/2026.
+  { nom: 'apis',         module: './apis_publiques.js', fn: 'actualiser', toutes: 7 * 24 * H, besoinN8n: false },
   // La courbe de prix se construit un releve a la fois. C'est le temps l'ingredient.
   // Le penseur : la pensée de la nuit (au plus trois idées sourcées, sans conseil de placement),
   // relue par Jarvis au matin. Entre 2 h et 5 h, heure de Paris, une fois par nuit.

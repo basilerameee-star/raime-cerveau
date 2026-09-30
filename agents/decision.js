@@ -18,7 +18,9 @@ const URL = 'https://api.typesafe.ai/v1/systemone';
 const MODELE = process.env.TYPESAFE_MODEL || 'jev-latest';
 const PRIX_IN = 0.042;   // $ par million de jetons d'entrée ; sortie gratuite
 
-export const disponible = () => Boolean(process.env.TYPESAFE_API_KEY);
+// La clé : TYPESAFE_API_KEY, ou JEV (le nom choisi par Basile au coffre le 30/09/2026).
+const cleJev = () => process.env.TYPESAFE_API_KEY || process.env.JEV || '';
+export const disponible = () => Boolean(cleJev());
 
 // Les trois formes de question, pour éviter de recopier la structure à chaque appel.
 export const oui = (instructions, vrai, faux) =>
@@ -29,8 +31,8 @@ export const echelle = (instructions, niveaux) =>
   ({ type: 'score', instructions, criteria: niveaux });
 
 export async function decider({ etat, questions, modele = MODELE }) {
-  const cle = process.env.TYPESAFE_API_KEY;
-  if (!cle) throw new Error('TYPESAFE_API_KEY manquante : la décision typée reste hors service.');
+  const cle = cleJev();
+  if (!cle) throw new Error('clé JEV manquante (TYPESAFE_API_KEY ou JEV) : la décision typée reste hors service.');
 
   const t0 = Date.now();
   const c = new AbortController();
@@ -77,9 +79,7 @@ export const QUALIFIER = {
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   if (!disponible()) {
-    console.log('[decision] TYPESAFE_API_KEY absente.');
-    console.log('           Une fois la clé créée sur typesafe.ai, ajouter la ligne dans');
-    console.log('           /opt/raime/raime-brain/.env puis relancer cet essai.');
+    console.log('[decision] clé JEV absente : la ranger au coffre (cockpit.raime.fr/coffre), nom JEV.');
     process.exit(0);
   }
   const etat = process.argv.slice(2).join(' ') ||

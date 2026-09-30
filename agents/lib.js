@@ -10,16 +10,19 @@ const { repondreSansFrais } = createRequire(import.meta.url)('../jarvis/parole.c
 // Les clés GRATUITES absentes de l'environnement sont lues dans le .env du cerveau. La boucle a été
 // créée avant que la clé Gemini n'y entre : sans elle, architecte, superviseur, penseur et réflexif
 // tombaient sur le modèle local, trop lent pour leurs consignes (coupés à 3 minutes, constaté du 26 au
-// 30/09/2026). Seuls ces quatre noms sont lus ; une valeur déjà présente n'est jamais remplacée ; rien
-// n'est affiché.
+// 30/09/2026). Seuls les noms listés ici sont lus ; une valeur déjà présente n'est jamais remplacée ;
+// rien n'est affiché.
 export const CLES_GRATUITES = ['GEMINI_API_KEY', 'GROQ_API_KEY', 'MISTRAL_API_KEY', 'CEREBRAS_API_KEY'];
+// Et la clé de JEV (TypeSafe), payante mais donnée par Basile le 30/09/2026 pour le goût (agents/gout.js),
+// plafonnée à GOUT_PLAFOND_JOUR appels par jour (≈ 0,01 $).
+export const CLES_AUTORISEES = ['TYPESAFE_API_KEY', 'JEV'];
 export function chargerClesGratuites(chemin = new URL('../.env', import.meta.url), env = process.env) {
   let texte = '';
   try { texte = readFileSync(chemin, 'utf8'); } catch { return []; }
   const chargees = [];
   for (const ligne of texte.split(/\r?\n/)) {
     const m = /^\s*(?:export\s+)?([A-Z_]+)\s*=\s*(.*?)\s*$/.exec(ligne);
-    if (!m || !CLES_GRATUITES.includes(m[1]) || env[m[1]]) continue;
+    if (!m || ![...CLES_GRATUITES, ...CLES_AUTORISEES].includes(m[1]) || env[m[1]]) continue;
     const valeur = m[2].replace(/^(['"])(.*)\1$/, '$2');
     if (valeur) { env[m[1]] = valeur; chargees.push(m[1]); }
   }
@@ -88,6 +91,22 @@ export async function derivePrix() {
   }).filter((x) => x.etat || Math.abs(x.ecart_pct ?? 0) >= 5);
 }
 
+// LE CAP (voulu par Basile le 30/09/2026) : chaque consigne d'agent commence par la boussole commune
+// (objectifs, règles, goût, bonne réponse, règles commerciales, passé, futur : agents/cap.js).
+// CAP_DANS_CONSIGNES=0 le retire sans livraison. Un cap indisponible ne bloque jamais un agent.
+export async function avecCap(system) {
+  if (process.env.CAP_DANS_CONSIGNES === '0') return system;
+  try {
+    const cap = await import('./cap.js');
+    let c = cap.enMemoire();
+    if (!c) {
+      const client = db(); await client.connect();
+      try { c = await cap.capActuel({ brain: client }); } finally { await client.end().catch(() => {}); }
+    }
+    return `${c.texte}\n\n---\n\n${system}`;
+  } catch { return system; }
+}
+
 export async function ask({ task, system, user, json = true, maxTokens = 6000, temperature = 0.1 }) {
   const cfg = ROUTER[task];
   if (!cfg) throw new Error(`Tâche inconnue: ${task}`);
@@ -98,6 +117,7 @@ export async function ask({ task, system, user, json = true, maxTokens = 6000, t
     const { repondre } = await import('./modele_factice.js');
     return repondre({ task, system, user });
   }
+  system = await avecCap(system);
   if (sansFrais()) {
     const t0 = Date.now();
     const r = await repondreSansFrais({ messages: [{ role: 'system', content: system }, { role: 'user', content: user }],

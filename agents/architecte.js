@@ -30,6 +30,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { prioriser, retenir, justesse } from './priorite.js';
+import { jugerQuestion } from './gout.js';
 
 const PROMPT_VERSION = 'architecte-v2';
 const RACINE_BIBLIO = process.env.BIBLIO_ENTREE || '/app/bibliotheque';
@@ -359,7 +360,14 @@ DONNÉES : ${JSON.stringify(sortie.donnees).slice(0, 1400)}`,
         await brain.query(`INSERT INTO journal(acteur, changement, motif) VALUES($1,$2,$3)`,
           ['architecte', `Refactoring proposé sur l'outil « ${t.action} »`, String(e.correction || '').slice(0, 400)]);
       }
-      if (e.type_correction === 'demande_donnees' && e.question_basile && !(await dejaPosee(brain, e.question_basile))) {
+      // Le goût (agents/gout.js) retient les questions que Basile n'a pas à trancher (30/09/2026).
+      const gout = e.type_correction === 'demande_donnees' && e.question_basile && !(await dejaPosee(brain, e.question_basile))
+        ? await jugerQuestion({ brain, source: 'architecte', question: e.question_basile, contexte: `${t.action} : ${e.cause || ''}` })
+        : null;
+      if (gout && gout.verdict !== 'AUTO') {
+        await noter('CORRIGER', { but_id: but?.id, action: t.action, arguments: { type: 'question_retenue' },
+          correction: `question non posée à Basile (${gout.motif}) : ${String(e.question_basile).slice(0, 300)}` });
+      } else if (gout) {
         await brain.query(`INSERT INTO demandes(question, pourquoi, cycle_id) VALUES($1,$2,$3) ON CONFLICT (question) DO NOTHING`,
           [String(e.question_basile).slice(0, 400), String(e.cause || '').slice(0, 400), cycleId]);
         await noter('DEMANDER_INFOS', { but_id: but?.id, action: t.action, resultat: e.question_basile });
