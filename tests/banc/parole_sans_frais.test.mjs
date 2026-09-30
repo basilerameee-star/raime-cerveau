@@ -52,6 +52,16 @@ test('aucun modèle payant n’est jamais demandé, quel que soit le scénario',
   for (const a of appels.filter((x) => x.modele)) assert.ok(permis.has(a.modele), `modèle payant demandé : ${a.modele}`);
 });
 
+test('réflexion profonde : Pro refusé et Flash saturé, un autre Gemini gratuit répond avant le local', async () => {
+  const { fetch, appels } = reseau([[/generativelanguage/, (c) => (/3\.5-flash/.test(c.model) ? ok('Réponse Gemini') : refus(c.model.includes('pro') ? 429 : 503))],
+    [LOCAL, localOk('ne doit pas servir')]]);
+  const r = await repondreSansFrais({ messages, profond: true, env: { GEMINI_API_KEY: 'g' }, fetch });
+  assert.equal(r.texte, 'Réponse Gemini');
+  assert.equal(r.source, 'Gemini · gemini-3.5-flash');
+  assert.ok(!appels.some((a) => a.modele === 'gemma4:e4b'), 'le local a été appelé alors qu’un Gemini répondait');
+  assert.ok(appels.every((a) => !a.modele || /^gemini-/.test(a.modele)), 'seuls des Gemini gratuits sont demandés');
+});
+
 test('pour les agents : la clé vient de l’environnement, le JSON est demandé à Gemini comme au local', async () => {
   const corps = [];
   const { fetch } = reseau([[/generativelanguage/, (c) => { corps.push(c); return refus(429); }], [LOCAL, (c) => { corps.push(c); return localOk('{"ok":true}'); }]]);

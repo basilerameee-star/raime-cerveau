@@ -9,7 +9,10 @@
 const LOCAL_URL = 'http://raime-ollama:11434';
 const LOCAL_MODELE = 'gemma4:e4b';
 const GEMINI_RAPIDE = ['gemini-3.1-flash-lite', 'gemini-3.8-flash'];
-const GEMINI_PROFOND = ['gemini-3.1-pro-preview', 'gemini-3.8-flash'];
+// Mesure du 30/09/2026 sur la clé gratuite : 3.1 Pro refusé (429, en 0,3 s), 3.8 Flash saturé (503),
+// 3.5 Flash et 3.1 Flash Lite répondent. Les agents n'avaient que les deux premiers : ils finissaient sur
+// le modèle local, trop lent pour leurs consignes.
+const GEMINI_PROFOND = ['gemini-3.1-pro-preview', 'gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-3.1-flash-lite'];
 
 // LE CLASSEMENT ADOPTÉ — l'éclaireur (agents/eclaireur.js) mesure les modèles gratuits avec la batterie de
 // métrologie ; les meilleurs passent devant, par fournisseur. Sans classement : l'ordre par défaut ci-dessous.
