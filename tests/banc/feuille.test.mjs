@@ -21,6 +21,7 @@ test('41 points, numéros et rangs uniques ; chaque point dit quand il est fini 
     assert.ok(['a_faire', 'en_cours', 'fait', 'attend_basile'].includes(p.etat), `n°${p.n}`);
     assert.ok(p.fini_quand && p.fini_quand.length > 20, `n°${p.n} : fini quand ?`);
     if (p.groupe === 'basile') assert.ok(p.il_faut, `n°${p.n} : il faut quoi de Basile ?`);
+    if (p.etat === 'fait') assert.ok(p.preuve && p.preuve.length > 30, `n°${p.n} : fait, mais la preuve n’est pas écrite`);
     for (const d of p.depend_de || []) assert.ok(F.points.some((q) => q.n === d), `n°${p.n} dépend d’un point inconnu`);
   }
 });

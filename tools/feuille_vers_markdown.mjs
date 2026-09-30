@@ -9,7 +9,7 @@ const ETATS = { a_faire: 'à faire', en_cours: 'en cours', fait: 'FAIT', attend_
 
 export function versMarkdown(f = F) {
   const pts = [...f.points].sort((a, b) => a.rang - b.rang);
-  const ligne = (p) => `| ${p.rang} | ${p.n} | ${p.moteur} | ${p.titre}${p.depend_de ? ` (après ${p.depend_de.map((d) => `n°${d}`).join(', ')})` : ''} | ${p.groupe === 'basile' ? p.il_faut : '—'} | ${p.fini_quand} | ${ETATS[p.etat] || p.etat} |`;
+  const ligne = (p) => `| ${p.rang} | ${p.n} | ${p.moteur} | ${p.titre}${p.depend_de ? ` (après ${p.depend_de.map((d) => `n°${d}`).join(', ')})` : ''} | ${p.groupe === 'basile' ? p.il_faut : '—'} | ${p.fini_quand} | ${ETATS[p.etat] || p.etat}${p.preuve ? ` (preuve : ${p.preuve})` : ''} |`;
   const tableau = (g) => ['| Rang | N° | Moteur | Point | Il faut de Basile | Fini quand | État |', '|---|---|---|---|---|---|---|',
     ...pts.filter((p) => p.groupe === g).map(ligne)].join('\n');
   const faits = pts.filter((p) => p.etat === 'fait').length;

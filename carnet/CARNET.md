@@ -419,3 +419,29 @@ Merci pour le travail de cette nuit : le banc a déjà trouvé un vrai défaut e
 - Marque média : nom retenu « Obito AF », masque d'Obito. Risque de droits signalé (manga *Naruto*), gardé par Basile.
 - Images des comptes préparées : Bureau, dossier « A TELEVERSER - comptes ». Guide dans le coffre, note 15.
 - Les comptes (Gmail, YouTube, Instagram, Page, TikTok) sont créés par Basile : aucune création de compte ni saisie de mot de passe par Claude.
+
+## 2026-10-01 (nuit) — point 12 fait : le canal d'envoi des vitrines
+- Workflow n8n « Vitrines · Envoi des maquettes (gated) » :
+  - versionné dans `n8n/vitrines_envoi.json`, importé par `n8n import:workflow`, actif ;
+  - la file `vitrines_envoi` et le réglage `vitrines_envoi_config` sont dans la base n8n ;
+  - pause : rien ne part ; test : tout part vers la boîte de Basile ; live : en semaine à 9 h, 10 par jour au plus ;
+  - chaque e-mail est marqué selon sa propre réponse de Resend ; la clé reste dans n8n.
+- Agent de boucle `vitrines_envoi` (toutes les heures) :
+  - un brouillon validé entre dans la file ;
+  - l'issue revient dans la fiche ;
+  - une réponse passe la vitrine à « répondu » et en tête des appels ; un « stop » ou une désinscription l'écarte.
+- Preuve : le vrai brouillon n°106 (Techni Nails) est parti en essai de contact@raime.fr et est arrivé dans la boîte de réception de Basile.
+- Cockpit :
+  - tiroir VITRINES : valider ou écarter d'un clic, voir la maquette, choisir Pause, Essai ou Réel ;
+  - `/api/vitrines/envoi` ; Jarvis dit combien sont partis.
+- Qualité de l'agent (constats sur de vraies fiches) :
+  - une page supprimée d'un site vivant passait pour « aucun site » : la racine est désormais lue ;
+  - un site qui répond mal est écarté ;
+  - « sur Google » n'est plus dit pour une fiche OpenStreetMap ;
+  - l'adresse d'une autre maison est refusée ;
+  - une adresse ne reçoit qu'un e-mail ;
+  - « une boulangerie » ;
+  - une page Facebook ou une fiche d'annuaire n'est pas un site (c'est la cible) ;
+  - une adresse sans https:// se lit ;
+  - les enseignes ne sont pas démarchées.
+- Panneau Monétisation corrigé : 2 000 € sur chacune de TikTok, YouTube et Instagram, « pour les 6 000 € » ; Facebook et produits hors objectif.

@@ -29,7 +29,8 @@
       "moteur": "Moteur 1 : sites à 500 €",
       "titre": "Canal d'envoi des e-mails des vitrines",
       "fini_quand": "Un e-mail validé part depuis raime.fr par le flux n8n dédié, plafonné par jour, avec désinscription ; une réponse passe la vitrine à « répondu ».",
-      "etat": "en_cours"
+      "etat": "fait",
+      "preuve": "01/10/2026 : workflow n8n « Vitrines · Envoi » (vitrinesEnvoi01) actif ; le vrai brouillon n°106 (Techni Nails) est parti de contact@raime.fr par Resend en mode essai, arrivé dans la boîte de réception de Basile, marqué « teste » ; plafond du jour, désinscription, réponse → « répondu » et « stop » prouvés au banc (tests/banc/vitrines_envoi.test.mjs)."
     },
     {
       "n": 14,
@@ -47,7 +48,7 @@
       "groupe": "basile",
       "moteur": "Moteur 1 : sites à 500 €",
       "titre": "Envoi automatique des vitrines",
-      "il_faut": "La validation par Basile du texte final de l'e-mail (500 €, maquette, agenda).",
+      "il_faut": "Lire l'essai reçu le 01/10/2026 (« [ESSAI] Techni Nails : j'ai préparé votre site ») ; si le texte convient : dans Jarvis, tiroir VITRINES, valider les brouillons, puis choisir « Réel » (10 e-mails par jour au plus, en semaine à 9 h).",
       "depend_de": [
         12
       ],

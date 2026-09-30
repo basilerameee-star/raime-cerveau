@@ -4,7 +4,7 @@
 
 Décidée avec Basile le 30/09/2026. Cette liste fait foi : chaque session (Claude, routines, Codex) la reprend là où elle en est, jusqu'à ce que tout soit fait.
 
-**Avancement : 0 point(s) fait(s) sur 41.**
+**Avancement : 1 point(s) fait(s) sur 41.**
 
 ## Règles
 
@@ -22,7 +22,7 @@ Décidée avec Basile le 30/09/2026. Cette liste fait foi : chaque session (Clau
 
 | Rang | N° | Moteur | Point | Il faut de Basile | Fini quand | État |
 |---|---|---|---|---|---|---|
-| 1 | 12 | Moteur 1 : sites à 500 € | Canal d'envoi des e-mails des vitrines | — | Un e-mail validé part depuis raime.fr par le flux n8n dédié, plafonné par jour, avec désinscription ; une réponse passe la vitrine à « répondu ». | en cours |
+| 1 | 12 | Moteur 1 : sites à 500 € | Canal d'envoi des e-mails des vitrines | — | Un e-mail validé part depuis raime.fr par le flux n8n dédié, plafonné par jour, avec désinscription ; une réponse passe la vitrine à « répondu ». | FAIT (preuve : 01/10/2026 : workflow n8n « Vitrines · Envoi » (vitrinesEnvoi01) actif ; le vrai brouillon n°106 (Techni Nails) est parti de contact@raime.fr par Resend en mode essai, arrivé dans la boîte de réception de Basile, marqué « teste » ; plafond du jour, désinscription, réponse → « répondu » et « stop » prouvés au banc (tests/banc/vitrines_envoi.test.mjs).) |
 | 4 | 18 | Moteur 1 : sites à 500 € | Écarter les chaînes et franchises | — | Aucune enseigne nationale (Paul, Brioche Dorée…) n'arrive en brouillon ; test à l'appui. | à faire |
 | 6 | 16 | Moteur 1 : sites à 500 € | Maquettes premium pour ceux qui répondent | — | Une vitrine « répondu » reçoit une maquette soignée par Hermes (site-premium) ; la vidéo au défilement vient avec le point 26. | à faire |
 | 9 | 19 | Moteur 2 : la niche (contenus et produits) | Agent de recherche de produits dans la niche retenue | — | Chaque semaine, 3 produits proposés dans Jarvis : saison, tendance sourcée, conformité UE, prix de vente visé, note du goût. | à faire |
@@ -51,7 +51,7 @@ Décidée avec Basile le 30/09/2026. Cette liste fait foi : chaque session (Clau
 | Rang | N° | Moteur | Point | Il faut de Basile | Fini quand | État |
 |---|---|---|---|---|---|---|
 | 2 | 14 | Moteur 1 : sites à 500 € | Google Places branché | La clé GOOGLE_PLACES_API_KEY au coffre (projet Google Cloud, Places API (New), budget 1 € d'alerte). | Un passage de l'agent trouve des commerces par Google, avec téléphone, sous 900 recherches par mois. | attend Basile |
-| 3 | 13 | Moteur 1 : sites à 500 € | Envoi automatique des vitrines (après n°12) | La validation par Basile du texte final de l'e-mail (500 €, maquette, agenda). | Les brouillons validés partent seuls, au plafond du jour, et Jarvis dit combien sont partis. | attend Basile |
+| 3 | 13 | Moteur 1 : sites à 500 € | Envoi automatique des vitrines (après n°12) | Lire l'essai reçu le 01/10/2026 (« [ESSAI] Techni Nails : j'ai préparé votre site ») ; si le texte convient : dans Jarvis, tiroir VITRINES, valider les brouillons, puis choisir « Réel » (10 e-mails par jour au plus, en semaine à 9 h). | Les brouillons validés partent seuls, au plafond du jour, et Jarvis dit combien sont partis. | attend Basile |
 | 5 | 17 | Moteur 1 : sites à 500 € | Parcours de vente des sites à 500 € | Un lien de paiement Stripe à 500 €, créé une fois par Basile. | Oui → rendez-vous → lien de paiement → site du client en ligne ; un premier site vendu. | attend Basile |
 | 7 | 15 | Moteur 1 : sites à 500 € | Adresse demo.raime.fr (option) | Un enregistrement DNS chez Cloudflare. | Les maquettes s'ouvrent sur demo.raime.fr. | attend Basile |
 | 8 | 30 | Moteur 2 : la niche (contenus et produits) | Le personnage influenceur et sa niche (marque média et produits) | Nom retenu le 01/10/2026 : « Obito AF », masque d'Obito (spirale orange), photo de profil prête. Reste avec Basile : la niche, et le personnage 3D (Blender) : homme au style street, toujours masqué, visage jamais montré, train de vie fastueux, montres ; tenues et couleurs qui changent. | Le nom, la niche et la fiche du personnage sont écrits en tête de contenus/POSITIONNEMENT.md ; le personnage 3D existe ; le plan de la semaine et la recherche de produits les suivent. | attend Basile |
