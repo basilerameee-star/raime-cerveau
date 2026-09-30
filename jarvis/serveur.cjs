@@ -14,6 +14,7 @@ const relais = require('./relais.cjs');
 const courrier = require('./courrier.cjs');
 const outils = require('./outils.cjs');
 const voix = require('./voix.cjs');
+const appels = require('./appels.cjs');
 
 const ICI = __dirname;
 const INTERFACE = path.join(ICI, 'interface');
@@ -88,7 +89,7 @@ const NOMS = { bibliothecaire: 'Bibliothèque', veilleur: 'Veille', portes: "Por
   penseur: 'Penseur', publiciste: 'Publicité', reconciliateur: 'Réponses', curieux: 'Curieux', econome: 'Économe',
   prospective: 'Prospective', applicateur: 'Mise en service', executant: 'Hermes', heraut: 'Héraut', eclaireur: 'Éclaireur des modèles', radar: 'Radar' };
 async function etat() {
-  const [ordres, journal, pensee, questions, agents, biblio, veille, prospection, revenus, mains, encaisse, courriels, echus, rappels] = await Promise.all([
+  const [ordres, journal, pensee, questions, agents, biblio, veille, prospection, revenus, mains, encaisse, courriels, echus, rappels, relances] = await Promise.all([
     lire(`SELECT id, texte, etat, pour, round(extract(epoch FROM now() - cree_le) / 60)::int AS minutes, left(coalesce(reponse, ''), 600) AS reponse
       FROM commandes WHERE etat IN ('a_faire','en_cours') OR traite_le > now() - interval '72 hours' ORDER BY cree_le DESC LIMIT 12`),
     lire("SELECT acteur, left(changement, 200) AS changement, created_at FROM journal WHERE created_at > now() - interval '48 hours' ORDER BY created_at DESC LIMIT 12"),
@@ -104,6 +105,7 @@ async function etat() {
     lire(`SELECT count(*) FILTER (WHERE NOT vu)::int AS non_vus, count(*) FILTER (WHERE NOT vu AND importance = 3)::int AS urgents
       FROM courriels WHERE recu_le > now() - interval '7 days'`),
     outils.rappelsEchus(), outils.rappelsAVenir(),
+    appels.aFaire(5).catch(() => ({ total: 0, liste: [] })),
   ]);
   const coffre = lireCoffre();
   return {
@@ -117,6 +119,8 @@ async function etat() {
       brouillons: prospection[0] ? prospection[0].brouillons : 0, envoyes: prospection[0] ? prospection[0].envoyes : 0 },
     objectif: { ...revenus, derniers: encaisse },
     rappels: { echus, a_venir: rappels },
+    // Les appels de relance à J+7 : pour l'interface (la 3D comprise), le total et les cinq plus anciens.
+    appels: { a_faire: relances.total, prochains: relances.liste },
     mains: mains ? { etat: mains.etat || 'inconnu', ...(mains.raison ? { raison: mains.raison } : {}) } : { etat: 'injoignable' },
     courriels: { ...(courriels[0] || { non_vus: 0, urgents: 0 }), releve: courrier.etat(), configure: !!(coffre.GMAIL_ADRESSE && coffre.GMAIL_MOT_DE_PASSE_APPLI) },
     voix: coffre.GEMINI_API_KEY ? 'gemini' : 'serveur',
@@ -206,6 +210,11 @@ async function router(req, res) {
   }
 
   // La prospection : Basile valide ou refuse chaque brouillon (rien ne part sans lui).
+  if (m === 'GET' && url === '/api/appels') return envoyer(res, 200, await appels.aFaire(50));
+  if (m === 'POST' && (r = url.match(/^\/api\/appels\/(\d{9})$/))) {
+    if (!autorise(req)) return envoyer(res, 403, { ok: false });
+    return envoyer(res, 200, await appels.noter(r[1], await json(req, 2000)));
+  }
   if (m === 'GET' && url === '/api/prospection') {
     return envoyer(res, 200, { brouillons: await lireN8n("SELECT id, prospect_name, segment, to_email, subject, body FROM outreach WHERE status = 'brouillon' ORDER BY created_at DESC LIMIT 30") });
   }

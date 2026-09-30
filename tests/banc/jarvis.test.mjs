@@ -204,3 +204,42 @@ test('heure et rappels répondus par du code, sans modèle', async () => {
   assert.match((await dire('Rappelle-moi dans 10 minutes de relancer le garage Morel')).reply, /C'est noté : relancer le garage Morel/);
   assert.equal(appelsLocal.length, avant, 'aucun appel au modèle');
 });
+
+test('appels de relance : un e-mail sans réponse depuis 7 jours met le numéro sous les yeux de Basile, jusqu’à ce qu’il note l’appel', async () => {
+  const b = require('../../jarvis/bases.cjs');
+  await b.lireN8n(`INSERT INTO prospects(siren, name, sector, city, status, telephone) VALUES
+    ('900000001', 'Fleuriste Test', 'commerce', 'Annecy', 'contacte', '04 50 00 00 01'),
+    ('900000002', 'Garage Récent', 'commerce', 'Annecy', 'contacte', '04 50 00 00 02'),
+    ('900000003', 'Boulangerie Répondue', 'commerce', 'Annecy', 'contacte', '04 50 00 00 03')`);
+  await b.lireN8n(`INSERT INTO outreach(siren, prospect_name, subject, body, status, sent_at, reply_at) VALUES
+    ('900000001', 'Fleuriste Test', 's', 'b', 'envoye', now() - interval '9 days', NULL),
+    ('900000002', 'Garage Récent', 's', 'b', 'envoye', now() - interval '2 days', NULL),
+    ('900000003', 'Boulangerie Répondue', 's', 'b', 'envoye', now() - interval '12 days', now() - interval '10 days')`);
+  try {
+    const liste = await (await fetch(base + '/api/appels')).json();
+    const sirens = liste.liste.map((x) => x.siren);
+    assert.ok(sirens.includes('900000001'), 'neuf jours sans réponse : à appeler');
+    assert.ok(!sirens.includes('900000002'), 'deux jours : trop tôt');
+    assert.ok(!sirens.includes('900000003'), 'il a répondu : pas d’appel');
+    const f = liste.liste.find((x) => x.siren === '900000001');
+    assert.equal(f.telephone, '04 50 00 00 01'); assert.ok(f.jours >= 9);
+    const e = await (await fetch(base + '/api/etat')).json();
+    assert.ok(e.appels.a_faire >= 1);
+    const noter = (corps, entetes = { 'X-Jarvis': '1' }) => fetch(base + '/api/appels/900000001', { method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...entetes }, body: JSON.stringify(corps) });
+    assert.equal((await noter({ etat: 'appele' }, {})).status, 403, 'écrire exige l’en-tête maison');
+    assert.deepEqual(await (await noter({ etat: 'n_importe' })).json(), { ok: false, erreur: 'état attendu : appele, pas_interesse, plus_tard' });
+    assert.deepEqual(await (await noter({ etat: 'plus_tard', note: 'rappeler lundi', dans_jours: 4 })).json(), { ok: true });
+    assert.ok(!(await (await fetch(base + '/api/appels')).json()).liste.some((x) => x.siren === '900000001'), 'plus tard : sorti pour quatre jours');
+    await b.lire("UPDATE appels SET rappel_le = current_date WHERE siren = '900000001'");
+    assert.ok((await (await fetch(base + '/api/appels')).json()).liste.some((x) => x.siren === '900000001'), 'le jour venu, il revient');
+    assert.deepEqual(await (await noter({ etat: 'appele' })).json(), { ok: true });
+    assert.ok(!(await (await fetch(base + '/api/appels')).json()).liste.some((x) => x.siren === '900000001'), 'appelé : sorti');
+    const { phrase } = require('../../jarvis/appels.cjs');
+    assert.equal(typeof await phrase(), 'string');
+  } finally {
+    await b.lireN8n("DELETE FROM outreach WHERE siren LIKE '90000000_'");
+    await b.lireN8n("DELETE FROM prospects WHERE siren LIKE '90000000_'");
+    await b.lire('DROP TABLE IF EXISTS appels');
+  }
+});
