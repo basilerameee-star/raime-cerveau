@@ -14,6 +14,7 @@ const { creerServeur, PREAMBULE } = await import('../../hermes/executant.js');
 // Faux Hermes : répond, sauf pour une tâche qui contient « panne ».
 const recus = [];
 let lent = null;
+prevoir(/raime-hermes:8642\/v1\/models$/, {});
 prevoir(/raime-hermes:8642\/v1\/chat\/completions$/, (u, o) => {
   const d = JSON.parse(o.body);
   recus.push({ auth: o.headers.Authorization, contenu: d.messages[0].content, provider: d.provider, model: d.model });

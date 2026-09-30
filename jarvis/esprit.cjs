@@ -173,7 +173,7 @@ async function noterCommande(message, reformulation) {
   const r = await lire("INSERT INTO commandes (texte, pour) VALUES ($1, 'harness') RETURNING id", [message]);
   const id = r[0] ? r[0].id : null;
   const reply = id
-    ? `C'est parti, ordre numéro ${id}${reformulation ? ' : ' + reformulation.replace(/\s+$/, '').replace(/([^.!?…])$/, '$1.') : '.'} Je m'y mets dans la minute, et tu verras l'avancement ici, avec le lien du résultat dès qu'il est prêt.`
+    ? `C'est enregistré, ordre numéro ${id}${reformulation ? ' : ' + reformulation.replace(/\s+$/, '').replace(/([^.!?…])$/, '$1.') : '.'} Il est dans la file d'Hermes. Tu verras son état ici, avec le lien du résultat dès qu'il est prêt.`
     : "Je n'ai pas pu noter cet ordre à l'instant. Redis-le-moi dans un moment.";
   await noter('assistant', reply);
   return { voie: 'action', reply, commande: id };

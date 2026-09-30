@@ -117,7 +117,7 @@ async function etat() {
       brouillons: prospection[0] ? prospection[0].brouillons : 0, envoyes: prospection[0] ? prospection[0].envoyes : 0 },
     objectif: { ...revenus, derniers: encaisse },
     rappels: { echus, a_venir: rappels },
-    mains: mains ? { etat: mains.etat || 'inconnu' } : { etat: 'injoignable' },
+    mains: mains ? { etat: mains.etat || 'inconnu', ...(mains.raison ? { raison: mains.raison } : {}) } : { etat: 'injoignable' },
     courriels: { ...(courriels[0] || { non_vus: 0, urgents: 0 }), releve: courrier.etat(), configure: !!(coffre.GMAIL_ADRESSE && coffre.GMAIL_MOT_DE_PASSE_APPLI) },
     voix: coffre.GEMINI_API_KEY ? 'gemini' : 'serveur',
     parole: coffre.GEMINI_API_KEY ? 'Gemini gratuit, puis modèle local' : 'modèle local du serveur (ajoute une clé Gemini gratuite au coffre pour plus de vivacité)',
