@@ -383,3 +383,10 @@ Merci pour le travail de cette nuit : le banc a déjà trouvé un vrai défaut e
 - Routines Claude (abonnement, Sonnet 5.5, sans connecteur) : « Ingénierie » deux fois par jour (chantiers GitHub, pull request sans fusion) ; « Moteur de contenu » chaque lundi (première livraison : l'étude de positionnement, lancée le soir même).
 - Constat : le jeton GitHub du coffre ne voit pas raime-cerveau (404) ; le cerveau ne peut pas encore ouvrir de chantier. Prospection réelle : 212 e-mails depuis le 15/08, 2 réponses ; 94 envois vers des organismes de formation contre 31 vers les cabinets comptables, pourtant cible n° 1.
 - Leçon : une routine autonome reçoit par défaut TOUS les connecteurs du compte (Gmail en écriture compris) ; les retirer à la création.
+
+## 2026-09-30 (nuit, suite) — l'agent des vitrines, le budget publicitaire, les réponses de Basile
+- Basile : le site 500 € (gratuit s'il ne plaît pas ; « 100 € » dit ensuite, à confirmer) ; maquette dans l'e-mail ; lien d'agenda ; publicité 300 €/mois, chaque campagne avec son accord ; Higgsfield : décision à Claude (API à l'usage) ; pas de pixel de suivi ; registrar trouvé seul : OVH (RDAP), DNS chez Cloudflare.
+- Construit : `agents/vitrines.js` (toutes les 2 h, code pur) : Google Places (clé à venir) ou OpenStreetMap ; la Haute-Savoie d'abord ; site ancien reconnu ; e-mail cherché et vérifié ; maquette publique `/demo/<slug>` (seul chemin du Cockpit hors mot de passe, avec /unsub et /porte) ; brouillon au texte de Basile ; sans e-mail → liste d'appels (« e-mail non trouvé »). Fiche pour l'interface : `/api/vitrines/<id>`. Rien n'est envoyé.
+- Évaluation : premier passage réel en échec (Overpass 406 : signature de navigateur refusée) et mauvais ordre (Grenoble avant Annecy) ; corrigés, essai réel : 55 boulangeries d'Annecy, 1 brouillon, 1 à appeler, 3 écartées (site récent), maquette servie (200).
+- Piège évité : `sed -i` sur un fichier monté dans un conteneur (Caddyfile) change son inode ; le conteneur garde l'ancien. Vérifier depuis l'extérieur (401 → 404 attendu) avant de conclure.
+- Mesures : Jarvis répond à une question en 3,8 s (Gemini 3.1 Flash Lite), à l'heure en 0,09 s (code).

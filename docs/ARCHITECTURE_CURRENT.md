@@ -49,6 +49,7 @@ Codex du 28/09 : `REPRISE_CODEX.md`.
 | Croissance et distribution | PARTIEL | clé Meta rangée ; module de publication à livrer |
 | Analyse et apprentissage | PARTIEL | métrologue ; architecte (70 s) et superviseur (26 s) repassés avec succès le 30/09, réflexif et penseur sur la même chaîne |
 | Ventes et administration | PARTIEL | prospection n8n (212 envois, 2 réponses au 30/09), brouillons, tri des e-mails, DocuSeal, appels de relance à J+7 (`jarvis/appels.cjs`) |
+| Vitrines (commerçants sans site) | PARTIEL | `agents/vitrines.js` en service (OpenStreetMap ; Google Places dès la clé) ; maquettes publiques `/demo/<slug>` ; brouillons ; liste d'appels ; l'envoi attend la validation du texte et son canal |
 | Livraison client | PARTIEL | scripts d'audit, d'arbitrage, Score |
 | Finance / CFO | PARTIEL | dépense des modèles seulement ; table `revenus` vide |
 | Ingénierie / DevOps | ACTIF | porte GitHub → serveur (banc, OIDC) |
