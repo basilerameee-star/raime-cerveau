@@ -166,7 +166,8 @@ test('la liste des capacités : servie, honnête (chaque « à brancher » dit c
   assert.ok(toutes.some((x) => /argent/i.test(x.nom) && x.etat === 'interdit'));
   const avant = appelsLocal.length;
   await dire('Qu’est-ce que tu sais faire ?');
-  assert.match(appelsLocal.slice(avant)[0].messages[0].content, /TES CAPACITÉS RÉELLES : en place : .*À brancher : .*Trier tes e-mails/);
+  // Le tri des e-mails tourne depuis le 30/09 (en place) ; la lecture de l'agenda attend son adresse iCal.
+  assert.match(appelsLocal.slice(avant)[0].messages[0].content, /TES CAPACITÉS RÉELLES : en place : .*Trier tes e-mails.*À brancher : .*Lire ton agenda/);
 });
 
 test('Jarvis ne s’attribue aucune action : la consigne le lui interdit, et ses fausses affirmations sortent de la mémoire', async () => {
