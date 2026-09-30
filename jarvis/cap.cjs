@@ -47,4 +47,12 @@ const BOUSSOLE = 'COMPASS (rAIme). Goal 1: 2,000 EUR per month from monetizing B
   + 'never invent facts; prefer deterministic code, reuse, the simplest thing that works; every agent and cost must justify itself. '
   + 'Selling: trust over words; young people buy dreams, older people security, business owners time.';
 
-module.exports = { VERSION, OBJECTIFS, REGLES, GOUT, BONNE_REPONSE, COMMERCIAL, BOUSSOLE, fixe, pourJarvis };
+// Ce que la maison possède déjà : sans cela, JEV jugeait « utile » de demander à Basile l'adresse du site
+// ou l'autorisation de créer un dossier (mesuré le 30/09/2026 : 14 questions sur 14 passaient).
+const MAISON = 'WHAT THE SYSTEM ALREADY HAS (so these are NOT questions for Basile): the website raime.fr and a copy of it in the repository '
+  + '(folder site/, legal pages included); the notes library (Obsidian notes: commercial roadmap, brand charter, offers); the code; the database '
+  + '(sent messages, replies, reply rate); the web. Internal and reversible choices (create a note, a folder, a file, a script, a measurement) '
+  + 'are decided by the system alone. Only Basile can: approve spending, sending or publishing; state facts that exist nowhere else '
+  + '(his contracts, his providers, his intentions); set prices and commitments.';
+
+module.exports = { VERSION, OBJECTIFS, REGLES, GOUT, BONNE_REPONSE, COMMERCIAL, BOUSSOLE, MAISON, fixe, pourJarvis };

@@ -68,6 +68,17 @@ test('sans clé JEV, ou si JEV tombe : les règles seules, et le doute va à la 
   assert.match(panne.motif, /JEV indisponible/);
 });
 
+test('le code d’abord : une question interne ou trouvable n’atteint jamais Basile, ni JEV', async () => {
+  const { decide, vus } = fauxJev({ only_basile: 0.99, unblocks: 0.99, clear: 0.99 });
+  for (const q of ['Autorises-tu la création d’un répertoire technique dans la bibliothèque ?',
+    'Veux-tu que je crée une note dédiée au pipeline d’envoi ?', 'Peux-tu me fournir l’URL du site ?',
+    'Existe-t-il un document de charte graphique ?']) {
+    const r = await avecCle(() => jugerQuestion({ brain, source: 'architecte', question: q.replace(/’/g, "'"), decide }));
+    assert.equal(r.verdict, 'REVUE', q);
+  }
+  assert.equal(vus.length, 0);
+});
+
 test('une question pour Basile : retenue si elle ne lui revient pas, posée sinon ; sans JEV, rien ne change', async () => {
   const inutile = fauxJev({ only_basile: 0.1, unblocks: 0.7, clear: 0.9 });
   const r1 = await avecCle(() => jugerQuestion({ brain, source: 'architecte', question: 'Où sont les pages légales ?', decide: inutile.decide }));

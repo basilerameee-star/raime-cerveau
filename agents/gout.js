@@ -13,7 +13,7 @@
 // à se régler (couche qui évolue par les faits, jamais par une réécriture silencieuse).
 import { decider, disponible } from './decision.js';
 import { createRequire } from 'node:module';
-const { BOUSSOLE } = createRequire(import.meta.url)('../jarvis/cap.cjs');
+const { BOUSSOLE, MAISON } = createRequire(import.meta.url)('../jarvis/cap.cjs');
 
 export const PLAFOND_JOUR = Number(process.env.GOUT_PLAFOND_JOUR || 500); // appels JEV par jour (≈ 0,01 $)
 
@@ -91,26 +91,42 @@ export async function juger({ brain, source, action, contexte = '', decide = dec
 // peut trancher, qui débloque un objectif, et qui se répond en une phrase. Sans JEV : elle passe, comme
 // avant (le goût ne retire rien qu'il ne sait pas juger).
 export const QUESTIONS_BASILE = {
-  only_basile: { type: 'noul', instructions: 'Can only Basile answer this question, because the answer is not in the files, the code, the database or on the web?' },
+  only_basile: { type: 'noul', instructions: 'Is this a question only Basile can answer or decide, given what the system already has?' },
   unblocks: { type: 'noul', instructions: 'Would the answer unblock concrete progress toward Goal 1 or Goal 2?' },
   clear: { type: 'noul', instructions: 'Is the question clear, specific and answerable in one sentence?' },
 };
 export function verdictQuestion(s) {
-  const bas = Object.entries(s).filter(([, p]) => p < 0.5).map(([k, p]) => `${k} ${p.toFixed(2)}`);
+  const seuils = { only_basile: 0.6, unblocks: 0.5, clear: 0.5 };
+  const bas = Object.entries(s).filter(([k, p]) => p < (seuils[k] ?? 0.5)).map(([k, p]) => `${k} ${p.toFixed(2)}`);
   return bas.length ? { verdict: 'REVUE', motif: `question retenue : ${bas.join(', ')}` }
     : { verdict: 'AUTO', motif: 'question utile' };
 }
+
+// Le code d'abord : ce que la maison décide seule (créer une note, un dossier…) ou trouve seule (ses notes,
+// son site, sa charte) n'est jamais une question pour Basile. Mesuré le 30/09/2026 sur les 16 questions
+// en attente : ces deux règles en retiennent 12 ; JEV juge les autres.
+const QUESTION_INTERNE = /^(veux-tu|voulez-vous|autorises-tu|faut-il|dois-je|puis-je)\b.*\b(cr[ée]|r[ée]dig|note|r[ée]pertoire|dossier|fichier|script)/i;
+const QUESTION_TROUVABLE = /(existe-t-il|existent-elles|as-tu des notes|y a-t-il des notes|l'url du site|le chemin des pages|charte graphique|catalogue d'actions|comment puis-je acc[ée]der)/i;
+export function reglesQuestion(question) {
+  const q = String(question || '').trim();
+  if (QUESTION_INTERNE.test(q)) return { verdict: 'REVUE', motif: 'décision interne et réversible : la maison la prend seule' };
+  if (QUESTION_TROUVABLE.test(q)) return { verdict: 'REVUE', motif: 'la réponse est dans les notes, le site ou le dépôt' };
+  return null;
+}
+
 export async function jugerQuestion({ brain, source, question, contexte = '', decide = decider }) {
   const action = `Ask Basile: ${question}`;
+  const r = reglesQuestion(question);
+  if (r) return { ...r, scores: null, id: await garder(brain, { source, action, ...r, modele: 'regles' }) };
   if (!disponible() || (await appelsDuJour(brain)) >= PLAFOND_JOUR) return { verdict: 'AUTO', motif: 'sans JEV : la question passe', id: null };
   try {
-    const d = await decide({ etat: `${BOUSSOLE}\nSITUATION: ${String(contexte).slice(0, 2000)}\nQUESTION FROM ${source} TO BASILE: ${String(question).slice(0, 800)}`,
+    const d = await decide({ etat: `${BOUSSOLE}\n${MAISON}\nSITUATION: ${String(contexte).slice(0, 2000)}\nQUESTION FROM ${source} TO BASILE: ${String(question).slice(0, 800)}`,
       questions: QUESTIONS_BASILE });
     const s = Object.fromEntries(Object.entries(d.reponses).map(([k, v]) => [k, v.probabilite]));
     const v = verdictQuestion(s);
     return { ...v, scores: s, id: await garder(brain, { source, action, ...v, scores: s, modele: d.modele, coutUsd: d.costUsd }) };
   } catch (e) {
-    return { verdict: 'AUTO', motif: `JEV indisponible : la question passe`, id: null };
+    return { verdict: 'AUTO', motif: 'JEV indisponible : la question passe', id: null };
   }
 }
 
