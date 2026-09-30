@@ -183,3 +183,24 @@ test('la synchronisation : validé → file ; essai et envoi reviennent ; répon
   assert.equal((await fiche(2)).statut, 'brouillon', 'les autres brouillons ne bougent pas');
   await brain.query('DROP TABLE IF EXISTS appels');
 });
+
+test('le Cockpit : l’état de l’envoi se lit ; le mode change d’un geste de Basile ; passer en réel envoie ce qui a été essayé', async () => {
+  await preparerEnvoi(n8n);
+  const v = require('../../jarvis/vitrines.cjs');
+  await n8n.query('DELETE FROM vitrines_envoi');
+  await n8n.query(`INSERT INTO vitrines_envoi (id, to_email, sujet, corps, statut, envoye_le) VALUES (301, 'a@x.test', 's', 'c', 'teste', now()),
+    (302, 'b@x.test', 's', 'c', 'envoye', now()), (303, 'c@x.test', 's', 'c', 'a_envoyer', NULL), (-5, 'essai@x.test', 's', 'c', 'teste', now())`);
+  const e = await v.envoi();
+  assert.deepEqual({ mode: e.mode, en_file: e.en_file, envoyes: e.envoyes, essais: e.essais, aujourdhui: e.envoyes_aujourdhui },
+    { mode: 'test', en_file: 1, envoyes: 1, essais: 1, aujourdhui: 1 }, 'l’essai de la chaîne (numéro négatif) ne compte pas');
+  assert.match(await v.phraseEnvoi(), /Vitrines, envoi en essai .* 1 en file, 1 parti\(s\) aujourd'hui \(10 par jour au plus\)/);
+  assert.deepEqual(await v.changerMode('n_importe'), { ok: false, erreur: 'mode attendu : pause, test, live' });
+  const r = await v.changerMode('live');
+  assert.equal(r.ok, true); assert.equal(r.mode, 'live'); assert.equal(r.en_file, 2, 'l’essai lu par Basile part pour de bon');
+  assert.equal((await n8n.query('SELECT statut FROM vitrines_envoi WHERE id = -5')).rows[0].statut, 'teste', 'jamais l’essai de la chaîne');
+  assert.equal((await v.changerMode('pause')).mode, 'pause');
+  assert.match(await v.phraseEnvoi(), /envoi en pause/);
+  const j = await brain.query("SELECT changement FROM journal WHERE acteur = 'basile' AND changement LIKE 'Envoi des vitrines%' ORDER BY created_at DESC LIMIT 1");
+  assert.equal(j.rows[0].changement, 'Envoi des vitrines : mode pause');
+  await n8n.query("DELETE FROM vitrines_envoi; UPDATE vitrines_envoi_config SET mode = 'test'");
+});

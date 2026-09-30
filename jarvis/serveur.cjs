@@ -88,9 +88,9 @@ function livrables(req, res) {
 const NOMS = { bibliothecaire: 'Bibliothèque', veilleur: 'Veille', portes: "Portes d'entrée", sas: 'Sas des modèles',
   architecte: 'Architecte', superviseur: 'Surveillance', porte: 'Livraison', essayeur: 'Essayeur', gardien: 'Gardien', reflexif: 'Réflexif',
   penseur: 'Penseur', publiciste: 'Publicité', reconciliateur: 'Réponses', curieux: 'Curieux', econome: 'Économe',
-  prospective: 'Prospective', applicateur: 'Mise en service', executant: 'Hermes', heraut: 'Héraut', eclaireur: 'Éclaireur des modèles', radar: 'Radar' };
+  prospective: 'Prospective', applicateur: 'Mise en service', executant: 'Hermes', heraut: 'Héraut', eclaireur: 'Éclaireur des modèles', radar: 'Radar', vitrines: 'Vitrines' };
 async function etat() {
-  const [ordres, journal, pensee, questions, agents, biblio, veille, prospection, revenus, mains, encaisse, courriels, echus, rappels, relances] = await Promise.all([
+  const [ordres, journal, pensee, questions, agents, biblio, veille, prospection, revenus, mains, encaisse, courriels, echus, rappels, relances, envoiVitrines] = await Promise.all([
     lire(`SELECT id, texte, etat, pour, round(extract(epoch FROM now() - cree_le) / 60)::int AS minutes, left(coalesce(reponse, ''), 600) AS reponse
       FROM commandes WHERE etat IN ('a_faire','en_cours') OR traite_le > now() - interval '72 hours' ORDER BY cree_le DESC LIMIT 12`),
     lire("SELECT acteur, left(changement, 200) AS changement, created_at FROM journal WHERE created_at > now() - interval '48 hours' ORDER BY created_at DESC LIMIT 12"),
@@ -107,6 +107,7 @@ async function etat() {
       FROM courriels WHERE recu_le > now() - interval '7 days'`),
     outils.rappelsEchus(), outils.rappelsAVenir(),
     appels.aFaire(5).catch(() => ({ total: 0, liste: [] })),
+    vitrines.envoi().catch(() => ({ mode: 'absent' })),
   ]);
   const coffre = lireCoffre();
   return {
@@ -122,6 +123,8 @@ async function etat() {
     rappels: { echus, a_venir: rappels },
     // Les appels de relance à J+7 : pour l'interface (la 3D comprise), le total et les cinq plus anciens.
     appels: { a_faire: relances.total, prochains: relances.liste },
+    // L'envoi des vitrines : le mode (pause, test, live) et combien sont partis.
+    vitrines_envoi: envoiVitrines,
     // La feuille de route (jarvis/feuille_de_route.json) : l'avancement, les prochains points, ce qu'il faut de Basile.
     feuille: require('./feuille.cjs').resume(),
     mains: mains ? { etat: mains.etat || 'inconnu', ...(mains.raison ? { raison: mains.raison } : {}) } : { etat: 'injoignable' },
@@ -216,6 +219,11 @@ async function router(req, res) {
   // La prospection : Basile valide ou refuse chaque brouillon (rien ne part sans lui).
   // Les vitrines (agents/vitrines.js) : la maquette publique, la liste, la fiche d'un commerce, les gestes de Basile.
   if (m === 'GET' && (r = url.match(/^\/demo\/([a-z0-9-]+)\/?$/))) return vitrines.servirDemo(r[1], res);
+  if (m === 'GET' && url === '/api/vitrines/envoi') return envoyer(res, 200, await vitrines.envoi());
+  if (m === 'POST' && url === '/api/vitrines/envoi') {
+    if (!autorise(req)) return envoyer(res, 403, { ok: false });
+    return envoyer(res, 200, await vitrines.changerMode(String((await json(req, 500)).mode || '')));
+  }
   if (m === 'GET' && url === '/api/vitrines') {
     const statut = (req.url.match(/[?&]statut=([a-z_]+)/) || [])[1] || null;
     return envoyer(res, 200, await vitrines.liste({ statut }, relais.ADRESSE));

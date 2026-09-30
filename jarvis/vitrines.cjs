@@ -3,7 +3,7 @@
 // noter une vente). L'agent qui les fabrique et les met en file d'envoi : agents/vitrines.js. Rien n'est envoyé d'ici.
 'use strict';
 
-const { lire } = require('./bases.cjs');
+const { lire, lireN8n } = require('./bases.cjs');
 
 const ACTIONS = { valider: 'valide', ecarter: 'ecarte', client: 'client', pas_interesse: 'pas_interesse' };
 
@@ -59,4 +59,35 @@ async function agir(id, { action, note = null } = {}) {
   return { ok: true };
 }
 
-module.exports = { servirDemo, fiche, liste, uneFiche, agir };
+// L'ENVOI (workflow n8n « Vitrines · Envoi », file vitrines_envoi) : le réglage, les chiffres, et le mode que choisit Basile.
+// pause : rien ne part ; test : tout part vers son adresse de test ; live : vers les commerçants, au plafond du jour.
+const MODES = ['pause', 'test', 'live'];
+async function envoi() {
+  const [c] = await lireN8n('SELECT mode, plafond_jour FROM vitrines_envoi_config WHERE id = 1');
+  if (!c) return { mode: 'absent' };
+  const [n] = await lireN8n(`SELECT count(*) FILTER (WHERE statut = 'a_envoyer')::int AS en_file,
+    count(*) FILTER (WHERE statut = 'envoye' AND envoye_le >= date_trunc('day', now() AT TIME ZONE 'Europe/Paris') AT TIME ZONE 'Europe/Paris')::int AS envoyes_aujourdhui,
+    count(*) FILTER (WHERE statut = 'envoye')::int AS envoyes, count(*) FILTER (WHERE statut = 'teste')::int AS essais,
+    count(*) FILTER (WHERE statut = 'erreur')::int AS refuses FROM vitrines_envoi WHERE id > 0`);
+  return { mode: c.mode, plafond_jour: c.plafond_jour, ...(n || { en_file: 0, envoyes_aujourdhui: 0, envoyes: 0, essais: 0, refuses: 0 }) };
+}
+async function changerMode(mode) {
+  if (!MODES.includes(mode)) return { ok: false, erreur: `mode attendu : ${MODES.join(', ')}` };
+  const r = await lireN8n('UPDATE vitrines_envoi_config SET mode = $1 WHERE id = 1 RETURNING mode', [mode]);
+  if (!r.length) return { ok: false, erreur: 'réglage d’envoi absent' };
+  // En passant en réel, ce qui n'a été qu'essayé (et lu par Basile) part pour de bon, au plafond du jour.
+  if (mode === 'live') await lireN8n("UPDATE vitrines_envoi SET statut = 'a_envoyer', maj_le = now() WHERE statut = 'teste' AND id > 0");
+  await lire(`INSERT INTO journal(acteur, changement, motif) VALUES('basile', $1, $2)`, [`Envoi des vitrines : mode ${mode}`, 'choisi dans le Cockpit']);
+  return { ok: true, ...(await envoi()) };
+}
+// Pour Jarvis, à l'oral.
+async function phraseEnvoi() {
+  const e = await envoi().catch(() => ({ mode: 'absent' }));
+  if (e.mode === 'absent') return '';
+  const mode = { pause: 'en pause', test: 'en essai (tout part vers la boîte de Basile)', live: 'en réel' }[e.mode];
+  return `
+Vitrines, envoi ${mode} : ${e.en_file} en file, ${e.envoyes_aujourdhui} parti(s) aujourd'hui (${e.plafond_jour} par jour au plus), `
+    + `${e.envoyes} en tout, ${e.essais} essai(s)${e.refuses ? `, ${e.refuses} refusé(s)` : ''}.`;
+}
+
+module.exports = { servirDemo, fiche, liste, uneFiche, agir, envoi, changerMode, phraseEnvoi, MODES };
