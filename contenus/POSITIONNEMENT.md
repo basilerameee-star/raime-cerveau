@@ -2,8 +2,8 @@ NICHE RETENUE : (à écrire quand Basile a choisi)
 
 > **01/10/2026, décision de Basile** : la recommandation ci-dessous (« les petites galères du quotidien ») est **refusée** (péjorative et réductrice).
 > Direction retenue : **un personnage, influenceur de la marque**, qui fait lui-même les publicités des produits (« on a envie de lui ressembler »).
-> Un homme au style street, **cagoule blanche**, sweat à capuche noir, **visage jamais montré**, train de vie fastueux, montres de prix au poignet,
-> un univers moderne un peu sulfureux. Personnage 3D à créer (Blender), nom commun à choisir (même nom sur TikTok, Instagram, Facebook, YouTube).
+> Un homme au style street, toujours **cagoulé**, **visage jamais montré**, train de vie fastueux, montres de prix au poignet, un univers moderne
+> un peu sulfureux. Il change de tenue et de couleurs pour rester vivant (exemples : sweat noir et cagoule blanche, sweat rose et cagoule noire). Personnage 3D à créer (Blender), nom commun à choisir (même nom sur TikTok, Instagram, Facebook, YouTube).
 > La niche, le nom et le personnage se définissent ensemble plus tard ; tant que la ligne « NICHE RETENUE » est vide, aucun plan n'est produit.
 > Garde-fous : mention « Image virtuelle » (loi du 9 juin 2023), aucune marque de montre réelle sans accord, aucune promesse de gains, rien d'illégal montré.
 
