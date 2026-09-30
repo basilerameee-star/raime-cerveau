@@ -29,14 +29,26 @@ mcp_servers:
 # (quota du jour, panne), Hermes passe seul au modèle local du
 # serveur (Ollama, Gemma 4 E4B, Apache 2.0 : ni compte, ni quota, ni frais). Prouvé avec le vrai Hermes :
 # 402 sur le principal puis 429 sur le gratuit → le local répond, même sur une tâche à plusieurs étapes.
+# L'adresse est écrite en toutes lettres (base_url) : sans elle, Hermes gardait celle de Gemini et
+# demandait gemma4:e4b à Google (404), si bien que chaque saturation de Gemini faisait échouer
+# l'ordre (constaté du 25 au 30/09/2026 : ordres 14 à 21, 23, 24).
+# Avant le local (plus de 4 minutes par tour sur le processeur, mesuré le 30/09), deux autres modèles
+# Gemini : même clé gratuite, mais chaque modèle a son propre quota et sa propre saturation.
 fallback_providers:
+  - provider: gemini
+    model: gemini-3.7-flash
+  - provider: gemini
+    model: gemini-3.1-flash-lite
   - provider: local
     model: gemma4:e4b
+    base_url: http://raime-ollama:11434/v1
 
 # Le modèle local, nommé : le relais peut le demander directement (hermes/executant.js).
+# Hermes lit base_url ; api reste pour les versions qui le lisaient.
 providers:
   local:
     name: "Modèle local du serveur"
+    base_url: http://raime-ollama:11434/v1
     api: http://raime-ollama:11434/v1
     transport: chat_completions
     default_model: gemma4:e4b

@@ -3,8 +3,29 @@
 // parlent SANS FRAIS : Gemini gratuit, puis le modèle local du serveur (jarvis/parole.cjs, la même parole
 // que Jarvis). OpenRouter ne sert plus que si Basile le rallume (OPENROUTER_PAYANT=1 et une clé).
 import pg from 'pg';
+import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 const { repondreSansFrais } = createRequire(import.meta.url)('../jarvis/parole.cjs');
+
+// Les clés GRATUITES absentes de l'environnement sont lues dans le .env du cerveau. La boucle a été
+// créée avant que la clé Gemini n'y entre : sans elle, architecte, superviseur, penseur et réflexif
+// tombaient sur le modèle local, trop lent pour leurs consignes (coupés à 3 minutes, constaté du 26 au
+// 30/09/2026). Seuls ces quatre noms sont lus ; une valeur déjà présente n'est jamais remplacée ; rien
+// n'est affiché.
+export const CLES_GRATUITES = ['GEMINI_API_KEY', 'GROQ_API_KEY', 'MISTRAL_API_KEY', 'CEREBRAS_API_KEY'];
+export function chargerClesGratuites(chemin = new URL('../.env', import.meta.url), env = process.env) {
+  let texte = '';
+  try { texte = readFileSync(chemin, 'utf8'); } catch { return []; }
+  const chargees = [];
+  for (const ligne of texte.split(/\r?\n/)) {
+    const m = /^\s*(?:export\s+)?([A-Z_]+)\s*=\s*(.*?)\s*$/.exec(ligne);
+    if (!m || !CLES_GRATUITES.includes(m[1]) || env[m[1]]) continue;
+    const valeur = m[2].replace(/^(['"])(.*)\1$/, '$2');
+    if (valeur) { env[m[1]] = valeur; chargees.push(m[1]); }
+  }
+  return chargees;
+}
+chargerClesGratuites();
 
 // Vrai tant que Basile n'a pas rallumé le payant : la boucle ne met alors aucun agent en pause pour le budget.
 export const sansFrais = () => !(process.env.OPENROUTER_PAYANT === '1' && process.env.OPENROUTER_API_KEY);
