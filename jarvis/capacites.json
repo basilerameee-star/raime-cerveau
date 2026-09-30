@@ -32,9 +32,8 @@
         },
         {
           "nom": "Trier tes e-mails",
-          "etat": "a_brancher",
-          "detail": "Lecture seule, classement et résumé toutes les 15 minutes.",
-          "il_faut": "Ranger dans le coffre ton adresse Gmail et un mot de passe d'application Google."
+          "etat": "en_place",
+          "detail": "Lecture seule, classement et résumé toutes les 15 minutes (402 e-mails classés au 30/09, le dernier le jour même)."
         },
         {
           "nom": "Suivre l'objectif de 2 000 € par mois de monétisation des contenus",
