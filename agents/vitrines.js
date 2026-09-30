@@ -127,8 +127,28 @@ async function decouvrir(brain, { env, fetch: f }) {
 }
 
 // ── 2. QUALIFIER : un site ancien, « plus du tout sexy » ─────────────────────
+// Un site se lit à l'adresse donnée, sinon à sa racine : une fiche peut pointer vers une page supprimée d'un site
+// bien vivant (01/10/2026 : la fiche d'une boulangerie menait à une page 404 d'un site récent, lu comme « aucun site »).
+export async function lireSite(f, site) {
+  const essais = [site];
+  try { const racine = `${new URL(site).origin}/`; if (racine !== site) essais.push(racine); } catch { return { ok: false, statut: 404, url: site }; }
+  let dernier = null;
+  for (const u of essais) {
+    try { const p = await texte(f, u); if (p.ok) return p; dernier = p; } catch (e) {
+      dernier = { ok: false, statut: 0, url: u, erreur: String(e?.cause?.code || e?.code || e?.name || e?.message || 'erreur') };
+    }
+  }
+  return dernier;
+}
+
+// aucun : pas de site ; mort : introuvable (404, 410, domaine inexistant) ; illisible : il répond mal (blocage, panne,
+// délai) : rien ne peut en être affirmé, la vitrine est écartée ; ancien ou récent : d'après ses signes.
 export function jugerSite(page, anneeCourante = new Date().getFullYear()) {
-  if (!page || !page.ok) return { etat: 'aucun', signaux: ['site hors ligne'] };
+  if (!page) return { etat: 'aucun', signaux: [] };
+  if (!page.ok) {
+    const mort = [404, 410].includes(page.statut) || /ENOTFOUND/.test(page.erreur || '');
+    return mort ? { etat: 'mort', signaux: ['site hors ligne'] } : { etat: 'illisible', signaux: [`site illisible (${page.statut || page.erreur || 'sans réponse'})`] };
+  }
   const h = page.html, signaux = [];
   if (/^http:\/\//i.test(page.url)) signaux.push('sans HTTPS');
   if (!/<meta[^>]+name=["']?viewport/i.test(h)) signaux.push('pas fait pour le téléphone');
@@ -157,6 +177,31 @@ export function emailsDans(texte, v) {
   return [...new Set((String(texte).match(RE_EMAIL) || []).map((e) => e.toLowerCase().replace(/\.$/, '')))].filter((e) => !EXCLUS.test(e))
     .sort((a, b) => mots.some((m) => b.includes(m)) - mots.some((m) => a.includes(m)));
 }
+// Une adresse trouvée ailleurs que sur la fiche doit être celle du commerce : sur le web, elle porte son nom (hors mots
+// du métier et de la ville) ou le domaine de son site ; sur son propre site, une messagerie grand public est admise aussi.
+// (01/10/2026 : la recherche web avait donné à une boulangerie l'adresse d'une autre maison.)
+const GENERIQUES = new Set(['boulangerie', 'patisserie', 'boucherie', 'charcuterie', 'fleuriste', 'fleurs', 'coiffeur', 'coiffure', 'institut',
+  'beaute', 'garage', 'automobile', 'automobiles', 'plombier', 'plomberie', 'electricien', 'electricite', 'restaurant', 'pizzeria', 'pizza',
+  'fromagerie', 'caviste', 'maison', 'salon', 'atelier', 'boutique', 'cafe', 'brasserie', 'hotel', 'cabinet', 'societe', 'entreprise',
+  'france', 'saint', 'sainte', 'fils', 'freres', 'cave', 'traiteur', 'epicerie', 'pressing', 'cordonnerie', 'opticien', 'pharmacie']);
+const MESSAGERIES = /@(gmail|googlemail|orange|wanadoo|free|sfr|neuf|laposte|hotmail|outlook|live|yahoo|icloud|aol|bbox)\./i;
+const sansAccents = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+export function motsDistinctifs(v) {
+  const ville = new Set(sansAccents(v.ville).split(/[^a-z0-9]+/));
+  return sansAccents(v.nom).split(/[^a-z0-9]+/).filter((m) => m.length >= 4 && !GENERIQUES.has(m) && !ville.has(m));
+}
+export function emailPlausible(email, v, site, source) {
+  const [local, domaine] = String(email).toLowerCase().split('@');
+  if (!domaine) return false;
+  try {
+    const hote = new URL(site).hostname.replace(/^www\./, '');
+    if (domaine === hote || domaine.endsWith(`.${hote}`) || hote.endsWith(`.${domaine}`)) return true;
+  } catch { /* pas de site */ }
+  const mots = motsDistinctifs(v);
+  if (mots.some((m) => local.replace(/[^a-z0-9]/g, '').includes(m) || domaine.replace(/[^a-z0-9]/g, '').includes(m))) return true;
+  return source === 'site' && MESSAGERIES.test(`@${domaine}`);
+}
+
 export async function adresseValide(email, { resoudre = dns.resolveMx } = {}) {
   if (!/^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i.test(email) || EXCLUS.test(email)) return false;
   try { return (await resoudre(email.split('@')[1])).length > 0; } catch { return false; }
@@ -181,7 +226,7 @@ async function chercherEmail(v, { fetch: f, resoudre }) {
       }
     } catch {}
   }
-  for (const [e, source] of candidats) if (await adresseValide(e, { resoudre })) return { email: e, source };
+  for (const [e, source] of candidats) if (emailPlausible(e, v, v.site, source) && await adresseValide(e, { resoudre })) return { email: e, source };
   return null;
 }
 
@@ -223,12 +268,14 @@ footer{padding:36px 20px;border-top:1px solid #eee;font-size:14px;color:#666}</s
 
 // ── 5. LE BROUILLON (texte de Basile, 30/09/2026) ─────────────────────────────
 export function brouillon(v, url) {
-  const constat = v.site_etat === 'ancien'
-    ? `votre site existe, mais il date un peu et s'affiche mal sur téléphone`
-    : `sur Google, aucun site n'y est relié`;
+  // Le constat dit seulement ce qui a été vérifié : « sur Google » quand la fiche vient de Google.
+  const constat = v.site_etat === 'ancien' ? `votre site existe, mais il date un peu et s'affiche mal sur téléphone`
+    : v.site_etat === 'mort' ? `votre site ne s'ouvre plus`
+    : v.source === 'google' ? `sur Google, aucun site n'y est relié`
+    : `je n'ai trouvé aucun site à votre nom`;
   return {
     sujet: `${v.nom} : j'ai préparé votre site`,
-    corps: `Bonjour,\n\nEn cherchant un ${v.metier || 'commerce'} à ${v.ville}, je suis tombé sur ${v.nom} : ${constat}.\n\n`
+    corps: `Bonjour,\n\nEn cherchant ${/(ie|ia)$/.test(v.metier || '') ? 'une' : 'un'} ${v.metier || 'commerce'} à ${v.ville}, je suis tombé sur ${v.nom} : ${constat}.\n\n`
       + `Alors je vous en ai préparé un. Le voici :\n${url}\n\n`
       + `S'il vous plaît, il est à ${PRIX} €. C'est une démo : on prend un appel pour le terminer ensemble, avec vos photos et vos textes. `
       + `S'il ne vous plaît pas, vous ne payez rien.\n\nPour choisir votre créneau d'appel :\n${AGENDA}\n\n`
@@ -241,13 +288,22 @@ async function qualifier(brain, v, deps) {
   const f = deps.fetch;
   let site = v.site;
   if (!site && v.source === 'osm') site = await siteParRecherche(v, f);
-  const juge = site ? jugerSite(await texte(f, site).catch(() => null)) : { etat: 'aucun', signaux: [] };
-  if (juge.etat === 'recent') {
-    await brain.query(`UPDATE vitrines SET site = $2, site_etat = 'recent', site_signaux = $3, statut = 'ecarte', motif = 'site récent', maj_le = now() WHERE id = $1`,
-      [v.id, site, juge.signaux]);
+  const juge = jugerSite(site ? await lireSite(f, site) : null);
+  if (juge.etat === 'recent' || juge.etat === 'illisible') {
+    await brain.query(`UPDATE vitrines SET site = $2, site_etat = $3, site_signaux = $4, statut = 'ecarte', motif = $5, maj_le = now() WHERE id = $1`,
+      [v.id, site, juge.etat, juge.signaux, juge.etat === 'recent' ? 'site récent' : `${juge.signaux[0]} : rien ne peut en être affirmé`]);
     return 'ecarte';
   }
   const m = await chercherEmail({ ...v, site }, deps);
+  // Une adresse, un seul e-mail : deux fiches du même commerce (ou d'une même maison) ne reçoivent pas deux messages.
+  if (m) {
+    const { rows: deja } = await brain.query(`SELECT id FROM vitrines WHERE lower(email) = lower($1) AND id <> $2 AND statut NOT IN ('ecarte', 'nouveau') ORDER BY id LIMIT 1`, [m.email, v.id]);
+    if (deja[0]) {
+      await brain.query(`UPDATE vitrines SET site = $2, site_etat = $3, site_signaux = $4, statut = 'ecarte', motif = $5, maj_le = now() WHERE id = $1`,
+        [v.id, site, juge.etat, juge.signaux, `même e-mail que la vitrine n°${deja[0].id}`]);
+      return 'ecarte';
+    }
+  }
   const slug = slugifier(v), url = `${ADRESSE_DEMO}/demo/${slug}`;
   const w = { ...v, site, site_etat: juge.etat };
   const b = brouillon(w, url);
@@ -322,7 +378,9 @@ export async function synchroniser({ brain, n8n }) {
   const { rows: valides } = await brain.query(`SELECT id, email, sujet, corps FROM vitrines
     WHERE statut = 'valide' AND email IS NOT NULL AND sujet IS NOT NULL AND corps IS NOT NULL`);
   for (const v of valides) {
-    const r = await n8n.query(`INSERT INTO vitrines_envoi (id, to_email, sujet, corps) VALUES ($1, $2, $3, $4)
+    // jamais deux e-mails à la même adresse, même depuis deux fiches
+    const r = await n8n.query(`INSERT INTO vitrines_envoi (id, to_email, sujet, corps) SELECT $1::int, $2::text, $3::text, $4::text
+      WHERE NOT EXISTS (SELECT 1 FROM vitrines_envoi WHERE lower(to_email) = lower($2::text) AND id <> $1::int AND statut NOT IN ('annule', 'erreur'))
       ON CONFLICT (id) DO UPDATE SET statut = 'a_envoyer', to_email = EXCLUDED.to_email, sujet = EXCLUDED.sujet,
         corps = EXCLUDED.corps, erreur = NULL, maj_le = now() WHERE vitrines_envoi.statut = 'annule'`, [v.id, v.email, v.sujet, v.corps]);
     bilan.en_file += r.rowCount;

@@ -4,7 +4,7 @@ import './outils.mjs';
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { db } from '../../agents/lib.js';
-import { passer, jugerSite, emailsDans, adresseValide, maquette, brouillon, PRIX, AGENDA } from '../../agents/vitrines.js';
+import { passer, jugerSite, emailsDans, adresseValide, emailPlausible, maquette, brouillon, PRIX, AGENDA } from '../../agents/vitrines.js';
 
 const brain = db(); await brain.connect();
 after(async () => { for (const t of ['vitrines', 'vitrines_recherches', 'vitrines_villes']) await brain.query(`DROP TABLE IF EXISTS ${t}`); await brain.end(); });
@@ -31,10 +31,14 @@ function internet() {
 }
 const resoudre = async (domaine) => (['gmail.com'].includes(domaine) ? [{ exchange: 'mx' }] : []);
 
-test('un site ancien se reconnaît à ses signes ; un site récent, non ; un site mort compte comme aucun', () => {
+test('un site ancien se reconnaît à ses signes ; un site récent, non ; introuvable = mort ; qui répond mal = illisible', () => {
   assert.equal(jugerSite({ ok: true, url: 'http://x.fr/', html: VIEUX }, 2026).etat, 'ancien');
   assert.equal(jugerSite({ ok: true, url: 'https://x.fr/', html: NEUF }, 2026).etat, 'recent');
   assert.equal(jugerSite(null).etat, 'aucun');
+  assert.equal(jugerSite({ ok: false, statut: 404 }).etat, 'mort');
+  assert.equal(jugerSite({ ok: false, statut: 0, erreur: 'ENOTFOUND' }).etat, 'mort');
+  assert.equal(jugerSite({ ok: false, statut: 403 }).etat, 'illisible', 'un blocage ne prouve pas l’absence de site');
+  assert.equal(jugerSite({ ok: false, statut: 0, erreur: 'TimeoutError' }).etat, 'illisible');
 });
 
 test('les e-mails : les annuaires et les « noreply » écartés ; il faut un serveur de messagerie', async () => {
@@ -86,4 +90,39 @@ test('sans clé Google : OpenStreetMap, et la même recherche n’est jamais ref
   assert.ok(appels.some((a) => a.url.includes('overpass-api.de')));
   const { rows } = await brain.query("SELECT count(*)::int AS n FROM vitrines_recherches WHERE metier = 'boulangerie' AND ville = 'Annecy'");
   assert.equal(rows[0].n, 2, 'une trace par source');
+});
+
+test('01/10/2026 : une page supprimée d’un site vivant n’est pas « aucun site » ; l’adresse d’une autre maison est refusée ; une adresse, un seul e-mail', async () => {
+  const ajouter = (id, nom, plus = {}) => brain.query(`INSERT INTO vitrines (id, source, source_id, nom, metier, ville, telephone, site, email, email_source, statut)
+    VALUES ($1, 'osm', $2, $3, 'boulangerie', 'Annecy', '04 50 00 00 00', $4, $5, $6, 'nouveau')`,
+  [id, `osm:node/test${id}`, nom, plus.site || null, plus.email || null, plus.email ? 'fiche OSM' : null]);
+  await brain.query("UPDATE vitrines SET statut = 'ecarte' WHERE statut = 'nouveau'");
+  await ajouter(901, 'Boulangerie Chevallier', { site: 'https://www.chevallier-test.fr/boutique-plaine/' });
+  await ajouter(902, 'Boulangerie Martin');
+  await ajouter(903, 'Le Fournil Dupuis', { email: 'contact@fournil-dupuis.fr' });
+  await ajouter(904, 'Fournil Dupuis (boutique 2)', { email: 'contact@fournil-dupuis.fr' });
+  const fetch = async (url) => {
+    const u = String(url);
+    if (u.includes('overpass')) return rep({ elements: [] });
+    if (u === 'https://www.chevallier-test.fr/boutique-plaine/') return rep('', 404, u);
+    if (u === 'https://www.chevallier-test.fr/') return rep(NEUF, 200, u);
+    if (u.includes('searxng') && u.includes('email')) return rep({ results: [{ url: 'https://annuaire-x.fr/a', title: 'Boulangerie Martin Annecy', content: 'Contact : autremaison74@gmail.com' }] });
+    if (u.includes('searxng')) return rep({ results: [] });
+    throw new Error('réseau coupé : ' + u);
+  };
+  const mx = async (d) => (['gmail.com', 'fournil-dupuis.fr'].includes(d) ? [{ exchange: 'mx' }] : []);
+  await passer({ brain, env: {}, fetch, resoudre: mx, combien: 10 });
+  const fiche = async (id) => (await brain.query('SELECT statut, site_etat, motif, email, corps FROM vitrines WHERE id = $1', [id])).rows[0];
+  const a = await fiche(901);
+  assert.equal(a.statut, 'ecarte'); assert.equal(a.site_etat, 'recent', 'la racine du site a été lue');
+  const b = await fiche(902);
+  assert.equal(b.statut, 'a_appeler'); assert.equal(b.email, null, 'l’adresse d’une autre maison est refusée');
+  const c = await fiche(903);
+  assert.equal(c.statut, 'brouillon');
+  assert.match(c.corps, /En cherchant une boulangerie à Annecy/);
+  assert.match(c.corps, /je n'ai trouvé aucun site à votre nom/, 'une fiche OSM ne parle pas de Google');
+  assert.ok(!/Google/.test(c.corps));
+  const d = await fiche(904);
+  assert.equal(d.statut, 'ecarte'); assert.equal(d.motif, 'même e-mail que la vitrine n°903');
+  assert.equal(emailPlausible('boulangerie@gmail.com', { nom: 'Boulangerie du Lac', ville: 'Annecy' }, null, 'recherche web'), false, 'un mot du métier ne suffit pas');
 });
