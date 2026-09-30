@@ -106,4 +106,4 @@ function demarrer() {
   setInterval(() => { apprendre().catch(() => {}); }, 10 * 60_000);
 }
 
-module.exports = { demarrer, relayer, relancer, conclure, consigne, LIVRABLES };
+module.exports = { demarrer, relayer, relancer, conclure, consigne, LIVRABLES, ADRESSE };

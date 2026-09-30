@@ -243,3 +243,38 @@ test('appels de relance : un e-mail sans réponse depuis 7 jours met le numéro 
     await b.lire('DROP TABLE IF EXISTS appels');
   }
 });
+
+test('vitrines : la maquette est publique et isolée, la fiche dit « e-mail non trouvé », l’appel se note', async () => {
+  const b = require('../../jarvis/bases.cjs');
+  const { preparer, maquette } = await import('../../agents/vitrines.js');
+  await preparer(b.cerveau);
+  const v = { nom: 'Fleuriste Démo', metier: 'fleuriste', ville: 'Annecy', telephone: '04 50 99 99 99', source_id: 'google:demo1' };
+  const [{ id }] = await b.lire(`INSERT INTO vitrines (source, source_id, nom, metier, ville, telephone, slug, demo_html, statut, motif, site_etat)
+    VALUES ('google', $1, $2, $3, $4, $5, 'fleuriste-demo-abc123', $6, 'a_appeler', 'e-mail non trouvé', 'aucun') RETURNING id`,
+  [v.source_id, v.nom, v.metier, v.ville, v.telephone, maquette(v)]);
+  try {
+    const page = await fetch(base + '/demo/fleuriste-demo-abc123');
+    assert.equal(page.status, 200);
+    assert.match(page.headers.get('content-security-policy'), /^sandbox/);
+    assert.equal(page.headers.get('x-robots-tag'), 'noindex');
+    assert.match(await page.text(), /Fleuriste Démo/);
+    assert.equal((await fetch(base + '/demo/inconnue-000')).status, 404);
+    const f = await (await fetch(`${base}/api/vitrines/${id}`)).json();
+    assert.equal(f.email_message, 'e-mail non trouvé');
+    assert.match(f.maquette, /\/demo\/fleuriste-demo-abc123$/);
+    const l = await (await fetch(base + '/api/vitrines?statut=a_appeler')).json();
+    assert.ok(l.vitrines.some((x) => x.id === id));
+    const appels = await (await fetch(base + '/api/appels')).json();
+    const a = appels.liste.find((x) => x.siren === `v${id}`);
+    assert.equal(a.raison, 'e-mail non trouvé');
+    const noter = await fetch(`${base}/api/appels/v${id}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Jarvis': '1' }, body: JSON.stringify({ etat: 'appele' }) });
+    assert.deepEqual(await noter.json(), { ok: true });
+    assert.ok(!(await (await fetch(base + '/api/appels')).json()).liste.some((x) => x.siren === `v${id}`));
+    const refus = await fetch(`${base}/api/vitrines/${id}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Jarvis': '1' }, body: JSON.stringify({ action: 'valider' }) });
+    assert.deepEqual(await refus.json(), { ok: false, erreur: 'seul un brouillon se valide' });
+    assert.equal((await fetch(`${base}/api/vitrines/${id}`, { method: 'POST', body: '{}' })).status, 403);
+  } finally {
+    await b.lire('DROP TABLE IF EXISTS vitrines'); await b.lire('DROP TABLE IF EXISTS vitrines_recherches'); await b.lire('DROP TABLE IF EXISTS vitrines_villes');
+    await b.lire('DROP TABLE IF EXISTS appels');
+  }
+});

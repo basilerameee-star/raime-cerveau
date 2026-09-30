@@ -18,7 +18,7 @@ const OBJECTIFS = 'OBJECTIFS, dans l\'ordre. N°1 : au moins 2 000 € par mois 
   + '(Instagram, Facebook, TikTok, YouTube : rémunération des créateurs, partenariats, affiliation), la marque MÉDIA. '
   + 'N°2 : rAIme, la marque BUSINESS : le premier client payant, puis des revenus réguliers (formation, audit, arbitrage, automatisation). '
   + 'Toujours : dépense des modèles sous 16 € par mois (Constitution), fonctionnement total sous 150 € par mois ; '
-  + 'la publicité payante dispose d\'un petit budget fixé par Basile, et chaque campagne part avec son accord ; tout reste débranchable.';
+  + 'la publicité payante dispose de 300 € par mois au plus (Basile, 30/09/2026), et chaque campagne part avec son accord ; tout reste débranchable.';
 
 const REGLES = 'RÈGLES (Constitution) : rien ne part à un tiers ni ne se publie sans l\'accord de Basile ; aucun argent déplacé ; '
   + 'rien ne s\'invente (un chiffre est sourcé ou laissé en blanc) ; chaque décision laisse une trace au journal ; une seule identité publique : rAIme.';

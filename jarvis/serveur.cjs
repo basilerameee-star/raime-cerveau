@@ -15,6 +15,7 @@ const courrier = require('./courrier.cjs');
 const outils = require('./outils.cjs');
 const voix = require('./voix.cjs');
 const appels = require('./appels.cjs');
+const vitrines = require('./vitrines.cjs');
 
 const ICI = __dirname;
 const INTERFACE = path.join(ICI, 'interface');
@@ -210,8 +211,22 @@ async function router(req, res) {
   }
 
   // La prospection : Basile valide ou refuse chaque brouillon (rien ne part sans lui).
+  // Les vitrines (agents/vitrines.js) : la maquette publique, la liste, la fiche d'un commerce, les gestes de Basile.
+  if (m === 'GET' && (r = url.match(/^\/demo\/([a-z0-9-]+)\/?$/))) return vitrines.servirDemo(r[1], res);
+  if (m === 'GET' && url === '/api/vitrines') {
+    const statut = (req.url.match(/[?&]statut=([a-z_]+)/) || [])[1] || null;
+    return envoyer(res, 200, await vitrines.liste({ statut }, relais.ADRESSE));
+  }
+  if (m === 'GET' && (r = url.match(/^\/api\/vitrines\/(\d+)$/))) {
+    const f = await vitrines.uneFiche(r[1], relais.ADRESSE);
+    return envoyer(res, f ? 200 : 404, f || { erreur: 'introuvable' });
+  }
+  if (m === 'POST' && (r = url.match(/^\/api\/vitrines\/(\d+)$/))) {
+    if (!autorise(req)) return envoyer(res, 403, { ok: false });
+    return envoyer(res, 200, await vitrines.agir(r[1], await json(req, 2000)));
+  }
   if (m === 'GET' && url === '/api/appels') return envoyer(res, 200, await appels.aFaire(50));
-  if (m === 'POST' && (r = url.match(/^\/api\/appels\/(\d{9})$/))) {
+  if (m === 'POST' && (r = url.match(/^\/api\/appels\/(\d{9}|v\d+)$/))) {
     if (!autorise(req)) return envoyer(res, 403, { ok: false });
     return envoyer(res, 200, await appels.noter(r[1], await json(req, 2000)));
   }

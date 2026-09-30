@@ -31,12 +31,24 @@ async function aFaire(limite = 20) {
   const liste = rows.filter((r) => !traites.has(r.siren)).map((r) => ({
     siren: r.siren, nom: r.nom, segment: r.segment, telephone: r.telephone, ville: r.ville,
     envoye_le: new Date(r.sent_at).toISOString().slice(0, 10), jours: Math.floor((Date.now() - new Date(r.sent_at)) / 86400e3) }));
+  // Les commerçants des vitrines (agents/vitrines.js) : sans e-mail, tout de suite ; avec, sept jours après l'envoi.
+  const vitrines = await lire(`SELECT id, nom, metier, telephone, ville, envoye_le, email FROM vitrines
+    WHERE telephone IS NOT NULL AND nom IS NOT NULL
+      AND (statut = 'a_appeler' OR (statut = 'envoye' AND envoye_le < now() - make_interval(days => $1)))
+    ORDER BY coalesce(envoye_le, cree_le) LIMIT 500`, [DELAI_JOURS]).catch(() => []);
+  for (const v of vitrines) {
+    if (traites.has(`v${v.id}`)) continue;
+    liste.push({ siren: `v${v.id}`, nom: v.nom, segment: `Commerce sans site · ${v.metier}`, telephone: v.telephone, ville: v.ville,
+      envoye_le: v.envoye_le ? new Date(v.envoye_le).toISOString().slice(0, 10) : null,
+      jours: v.envoye_le ? Math.floor((Date.now() - new Date(v.envoye_le)) / 86400e3) : null,
+      raison: v.email ? `e-mail sans réponse depuis ${DELAI_JOURS} jours` : 'e-mail non trouvé', fiche: `/api/vitrines/${v.id}` });
+  }
   return { total: liste.length, liste: liste.slice(0, limite) };
 }
 
 // Basile note un appel. « plus_tard » : le prospect revient dans `dans_jours` jours (3 par défaut).
 async function noter(siren, { etat, note = null, dans_jours = 3 } = {}) {
-  if (!/^\d{9}$/.test(String(siren))) return { ok: false, erreur: 'siren invalide' };
+  if (!/^(\d{9}|v\d+)$/.test(String(siren))) return { ok: false, erreur: 'siren invalide' };
   if (!ETATS.includes(etat)) return { ok: false, erreur: `état attendu : ${ETATS.join(', ')}` };
   await preparer();
   const jours = Math.min(60, Math.max(1, Number(dans_jours) || 3));
@@ -54,7 +66,7 @@ async function phrase() {
     const a = await aFaire(3);
     if (!a.total) return '';
     return `\nAppels de relance : ${a.total} prospect(s) sans réponse depuis au moins ${DELAI_JOURS} jours, à appeler par Basile ; `
-      + a.liste.map((x) => `${x.nom}${x.ville ? ` (${x.ville})` : ''}, ${x.telephone}, e-mail parti il y a ${x.jours} jours`).join(' ; ') + '.';
+      + a.liste.map((x) => `${x.nom}${x.ville ? ` (${x.ville})` : ''}, ${x.telephone}, ${x.jours != null ? `e-mail parti il y a ${x.jours} jours` : x.raison}`).join(' ; ') + '.';
   } catch { return ''; }
 }
 
