@@ -69,7 +69,9 @@ async function envoi() {
     count(*) FILTER (WHERE statut = 'envoye' AND envoye_le >= date_trunc('day', now() AT TIME ZONE 'Europe/Paris') AT TIME ZONE 'Europe/Paris')::int AS envoyes_aujourdhui,
     count(*) FILTER (WHERE statut = 'envoye')::int AS envoyes, count(*) FILTER (WHERE statut = 'teste')::int AS essais,
     count(*) FILTER (WHERE statut = 'erreur')::int AS refuses FROM vitrines_envoi WHERE id > 0`);
-  return { mode: c.mode, plafond_jour: c.plafond_jour, ...(n || { en_file: 0, envoyes_aujourdhui: 0, envoyes: 0, essais: 0, refuses: 0 }) };
+  const [v] = await lire("SELECT count(*)::int AS n FROM vitrines WHERE statut = 'brouillon'");
+  return { mode: c.mode, plafond_jour: c.plafond_jour, a_valider: v ? v.n : 0,
+    ...(n || { en_file: 0, envoyes_aujourdhui: 0, envoyes: 0, essais: 0, refuses: 0 }) };
 }
 async function changerMode(mode) {
   if (!MODES.includes(mode)) return { ok: false, erreur: `mode attendu : ${MODES.join(', ')}` };

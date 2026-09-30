@@ -146,7 +146,12 @@ nav#onglets button:hover{color:var(--cyan2);border-color:var(--trait2)}
 .brouillon h3{margin:0 0 4px;font-size:14px;font-weight:500}
 .brouillon .meta{font-size:12px;color:var(--doux)}
 .brouillon pre{white-space:pre-wrap;font:13px/1.5 Inter,sans-serif;color:var(--texte);background:rgba(0,0,0,.25);padding:10px;border-radius:8px;max-height:220px;overflow:auto}
-.brouillon .actions{display:flex;gap:8px}
+.brouillon .actions{display:flex;gap:8px;flex-wrap:wrap}
+.brouillon a{color:var(--cyan)}
+.modes{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 10px}
+.bouton.actif{border-color:var(--cyan);color:#02060b;background:var(--cyan)}
+.envoi-vitrines{border:1px solid var(--trait);border-radius:12px;padding:12px;margin-bottom:16px;font-size:13.5px}
+.envoi-vitrines small{display:block;color:var(--doux);margin-top:4px}
 .fermer{background:none;border:0;color:var(--doux);font-size:26px;cursor:pointer;line-height:1}
 
 #avis{position:fixed;left:50%;top:70px;transform:translateX(-50%);background:rgba(255,93,115,.12);border:1px solid rgba(255,93,115,.4);color:#ffd0d7;padding:8px 14px;border-radius:10px;font-size:13px;z-index:30;display:none}
@@ -182,6 +187,7 @@ nav#onglets button:hover{color:var(--cyan2);border-color:var(--trait2)}
         <button data-tiroir="t-conversation">CONVERSATION</button>
         <button data-tiroir="t-courriels">E-MAILS <span id="n-courriels"></span></button>
         <button data-tiroir="t-prospection">PROSPECTION <span id="n-brouillons"></span></button>
+        <button data-tiroir="t-vitrines">VITRINES <span id="n-vitrines"></span></button>
         <button data-tiroir="t-capacites">CAPACITÉS</button>
         <button onclick="location.href='/livrables/'">LIVRABLES</button>
         <button onclick="location.href='/coffre'">COFFRE</button>
@@ -194,16 +200,16 @@ nav#onglets button:hover{color:var(--cyan2);border-color:var(--trait2)}
 
   <section class="colonne" aria-label="Ordres et objectif">
     <div class="panneau">
-      <h2>Monétisation <small>objectif 2 000 € / mois</small></h2>
+      <h2>Monétisation <small>2 000 € / mois sur chacune</small></h2>
       <div class="objectif">
         <div class="jauge"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="42" fill="none" stroke="rgba(94,231,255,.12)" stroke-width="7"/>
           <circle id="arc" cx="50" cy="50" r="42" fill="none" stroke="url(#degrade)" stroke-width="7" stroke-linecap="round" stroke-dasharray="0 264"/>
           <defs><linearGradient id="degrade"><stop offset="0" stop-color="#5ee7ff"/><stop offset="1" stop-color="#4dffb0"/></linearGradient></defs></svg>
           <div class="val"><div><span id="o-pct">0 %</span><small>DU MOIS</small></div></div></div>
-        <div class="info"><b id="o-mois">0 €</b> ce mois sur Instagram, Facebook, TikTok, YouTube.<br><span id="o-detail"></span><br><span id="o-reste"></span><br>
+        <div class="info"><b id="o-mois">0 €</b> ce mois sur TikTok, YouTube et Instagram.<br><span id="o-detail"></span><br><span id="o-reste"></span><br>
           <button class="bouton" id="o-ajouter" style="margin-top:8px;white-space:nowrap">+ Revenu</button></div>
       </div>
-      <form class="encaisse" id="f-encaisse"><input name="montant" inputmode="decimal" placeholder="Montant €" required><select name="plateforme" style="flex:1 1 110px;height:34px;background:rgba(2,6,11,.6);border:1px solid var(--trait);border-radius:8px;color:inherit"><option value="instagram">Instagram</option><option value="facebook">Facebook</option><option value="tiktok">TikTok</option><option value="youtube">YouTube</option><option value="autre">Autre contenu</option><option value="raime">Vente rAIme (hors objectif)</option></select><input name="source" placeholder="Détail (ex. bonus Reels, partenariat)" required><button class="bouton">Noter</button></form>
+      <form class="encaisse" id="f-encaisse"><input name="montant" inputmode="decimal" placeholder="Montant €" required><select name="plateforme" style="flex:1 1 110px;height:34px;background:rgba(2,6,11,.6);border:1px solid var(--trait);border-radius:8px;color:inherit"><option value="instagram">Instagram</option><option value="tiktok">TikTok</option><option value="youtube">YouTube</option><option value="facebook">Facebook (hors objectif)</option><option value="boutique">Ventes de produits (hors objectif)</option><option value="autre">Autre contenu (hors objectif)</option><option value="raime">Vente rAIme (hors objectif)</option></select><input name="source" placeholder="Détail (ex. bonus Reels, partenariat)" required><button class="bouton">Noter</button></form>
     </div>
     <div class="panneau" id="bloc-rappels" hidden><h2>Rappels</h2><ul class="fil" id="rappels"></ul></div>
     <div class="panneau" id="bloc-courriels">
@@ -272,6 +278,10 @@ nav#onglets button:hover{color:var(--cyan2);border-color:var(--trait2)}
 <aside class="tiroir" id="t-capacites" aria-label="Capacités">
   <header><div class="marque"><b style="letter-spacing:.2em">CAPACITÉS</b><span>ce qu'il sait faire, pour de vrai</span></div><button class="fermer" aria-label="Fermer">×</button></header>
   <div class="corps" id="capacites"></div>
+</aside>
+<aside class="tiroir" id="t-vitrines" aria-label="Vitrines">
+  <header><div class="marque"><b style="letter-spacing:.2em">VITRINES</b><span>sites à 500 € · rien ne part sans toi</span></div><button class="fermer" aria-label="Fermer">×</button></header>
+  <div class="corps"><div class="envoi-vitrines" id="envoi-vitrines"></div><div id="vitrines"></div></div>
 </aside>
 <aside class="tiroir" id="t-prospection" aria-label="Prospection">
   <header><div class="marque"><b style="letter-spacing:.2em">PROSPECTION</b><span>rien ne part sans toi</span></div><button class="fermer" aria-label="Fermer">×</button></header>
@@ -407,8 +417,8 @@ nav#onglets button:hover{color:var(--cyan2);border-color:var(--trait2)}
     var o = d.objectif || { mois: 0, objectif: 2000 }, pct = Math.min(100, Math.round(100 * o.mois / o.objectif));
     $('arc').setAttribute('stroke-dasharray', (2.64 * pct).toFixed(1) + ' 264');
     $('o-pct').textContent = pct + ' %'; $('o-mois').textContent = o.mois.toLocaleString('fr-FR') + ' €';
-    $('o-detail').textContent = (o.plateformes || []).map(function (p) { return p.plateforme + ' ' + p.montant + ' €'; }).join(' · ');
-    $('o-reste').textContent = o.mois >= o.objectif ? 'Objectif atteint.' : 'Encore ' + (o.objectif - o.mois).toLocaleString('fr-FR') + ' € pour les 2 000 €.';
+    $('o-detail').textContent = (o.plateformes || []).map(function (p) { return ({ tiktok: 'TikTok', youtube: 'YouTube', instagram: 'Instagram' }[p.plateforme] || p.plateforme) + ' ' + p.montant.toLocaleString('fr-FR') + ' / ' + (p.objectif || 2000).toLocaleString('fr-FR') + ' €'; }).join(' · ');
+    $('o-reste').textContent = o.mois >= o.objectif ? 'Objectif atteint.' : 'Encore ' + (o.objectif - o.mois).toLocaleString('fr-FR') + ' € pour les ' + o.objectif.toLocaleString('fr-FR') + ' €.';
     // ordres
     var box = $('ordres'), ordres = d.ordres || [];
     $('o-n').textContent = ordres.filter(function (x) { return x.etat !== 'faite'; }).length ? ordres.filter(function (x) { return x.etat !== 'faite'; }).length + ' actifs' : '';
@@ -453,6 +463,8 @@ nav#onglets button:hover{color:var(--cyan2);border-color:var(--trait2)}
     $('c-agents').textContent = c.agents; $('c-biblio').textContent = (c.bibliotheque || 0).toLocaleString('fr-FR');
     $('c-veille').textContent = c.veille; $('c-brouillons').textContent = c.brouillons;
     $('n-brouillons').textContent = c.brouillons ? '· ' + c.brouillons : '';
+    var ve = d.vitrines_envoi || {};
+    $('n-vitrines').textContent = ve.a_valider ? '· ' + ve.a_valider : '';
     liste($('pensee'), (d.pensee || []).map(function (p) { return [null, p.titre, p.proposition]; }), 'Pas encore de pensée.');
     // L'initiative du cerveau : une idée de la nuit se confie à Hermes d'un geste (Basile garde la main).
     Array.prototype.forEach.call($('pensee').children, function (li, i) {
@@ -501,6 +513,7 @@ nav#onglets button:hover{color:var(--cyan2);border-color:var(--trait2)}
       h.scrollTop = h.scrollHeight;
     });
     if (id === 't-prospection') brouillons();
+    if (id === 't-vitrines') vitrines();
     if (id === 't-courriels') courriels();
     if (id === 't-capacites') capacites();
   }
@@ -557,6 +570,45 @@ nav#onglets button:hover{color:var(--cyan2);border-color:var(--trait2)}
         a.appendChild(ok); a.appendChild(non); c.appendChild(a); b.appendChild(c);
       });
     });
+  }
+  // Les vitrines : le mode d'envoi (pause, essai vers ta boîte, réel vers les commerçants) et les brouillons à valider.
+  var MODES = { pause: 'Pause', test: 'Essai (vers ta boîte)', live: 'Réel' };
+  function vitrines() {
+    fetch('/api/vitrines/envoi').then(function (r) { return r.json(); }).then(function (e) {
+      var box = $('envoi-vitrines'); box.textContent = '';
+      if (e.mode === 'absent') { box.appendChild(el('p', 'vide', 'Le canal d’envoi n’est pas encore en place.')); return; }
+      box.appendChild(el('b', '', 'Envoi des e-mails'));
+      var m = el('div', 'modes');
+      Object.keys(MODES).forEach(function (k) {
+        var b = el('button', 'bouton' + (e.mode === k ? ' actif' : ''), MODES[k]); b.type = 'button';
+        b.onclick = function () {
+          if (k === 'live' && !confirm('Les e-mails validés partiront vers les commerçants, ' + e.plafond_jour + ' par jour au plus, en semaine à 9 h. Confirmer ?')) return;
+          fetch('/api/vitrines/envoi', { method: 'POST', headers: ecrire, body: JSON.stringify({ mode: k }) }).then(function () { vitrines(); charger(); });
+        };
+        m.appendChild(b);
+      });
+      box.appendChild(m);
+      box.appendChild(el('small', '', e.en_file + ' en file · ' + e.envoyes_aujourdhui + ' parti(s) aujourd’hui · ' + e.envoyes + ' en tout · ' + e.essais + ' essai(s)'
+        + (e.refuses ? ' · ' + e.refuses + ' refusé(s)' : '')));
+    });
+    fetch('/api/vitrines?statut=brouillon').then(function (r) { return r.json(); }).then(function (d) {
+      var b = $('vitrines'); b.textContent = '';
+      if (!(d.vitrines || []).length) { b.appendChild(el('p', 'vide', 'Aucun brouillon à valider.')); return; }
+      d.vitrines.forEach(function (x) {
+        var c = el('div', 'brouillon');
+        c.appendChild(el('h3', '', x.nom || 'Commerce'));
+        c.appendChild(el('div', 'meta', [x.metier, x.ville, x.email, x.telephone].filter(Boolean).join(' · ')));
+        if (x.brouillon) { c.appendChild(el('p', '', x.brouillon.sujet)); c.appendChild(el('pre', '', x.brouillon.corps)); }
+        var a = el('div', 'actions');
+        if (x.maquette) { var l = el('a', 'bouton', 'Voir la maquette'); l.href = x.maquette; l.target = '_blank'; l.rel = 'noopener'; l.style.cssText = 'display:inline-flex;align-items:center;text-decoration:none'; a.appendChild(l); }
+        var ok = el('button', 'bouton', '✓ Valider'), non = el('button', 'bouton', '✗ Écarter');
+        ok.onclick = function () { agirVitrine(x.id, 'valider'); }; non.onclick = function () { agirVitrine(x.id, 'ecarter'); };
+        a.appendChild(ok); a.appendChild(non); c.appendChild(a); b.appendChild(c);
+      });
+    });
+  }
+  function agirVitrine(id, action) {
+    fetch('/api/vitrines/' + id, { method: 'POST', headers: ecrire, body: JSON.stringify({ action: action }) }).then(function () { vitrines(); charger(); });
   }
   function decider(id, action) {
     fetch('/api/prospection/' + id, { method: 'POST', headers: ecrire, body: JSON.stringify({ action: action }) }).then(function () { brouillons(); charger(); });
