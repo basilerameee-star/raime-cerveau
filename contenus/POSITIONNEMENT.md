@@ -1,5 +1,12 @@
 NICHE RETENUE : (à écrire quand Basile a choisi)
 
+> **01/10/2026, nom retenu par Basile : « Obito AF »** (le même nom sur TikTok, Instagram, Facebook et YouTube).
+> Le personnage porte le **masque d'Obito** (spirale orange) ; photo de profil fournie par Basile (recadrée sur le masque).
+> Point d'attention signalé à Basile et gardé ici : le nom et le masque viennent du manga *Naruto* (droits de l'éditeur).
+> Pour les contenus, le risque est faible ; pour les publicités payantes et les partenariats de marques, une plateforme ou une marque peut refuser.
+> Une variante de masque dessinée pour la marque (spirale propre, en 3D) lèverait ce risque sans changer l'identité.
+> Reste à choisir : la niche.
+
 > **01/10/2026, décision de Basile** : la recommandation ci-dessous (« les petites galères du quotidien ») est **refusée** (péjorative et réductrice).
 > Direction retenue : **un personnage, influenceur de la marque**, qui fait lui-même les publicités des produits (« on a envie de lui ressembler »).
 > Un homme au style street, toujours **cagoulé**, **visage jamais montré**, train de vie fastueux, montres de prix au poignet, un univers moderne

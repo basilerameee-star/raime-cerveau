@@ -405,3 +405,17 @@ Merci pour le travail de cette nuit : le banc a déjà trouvé un vrai défaut e
 ## 2026-10-01 — le personnage de la marque média
 - Basile refuse la niche « petites galères du quotidien » (péjorative, réductrice). Direction : un personnage influenceur qui fait lui-même les pubs des produits ; homme au style street, cagoule blanche, sweat noir, visage jamais montré, train de vie fastueux, montres ; 3D sous Blender ; nom commun à choisir, le même partout. Organisation TikTok for Developers créée au nom de rAIme.
 - Garde-fous notés : « Image virtuelle », aucune marque de montre réelle sans accord, aucune promesse de gains. `contenus/POSITIONNEMENT.md` et la feuille de route (n° 30, n° 6) mis à jour ; la routine de contenu reste en attente.
+
+## 2026-10-01 (nuit) — Expéditeur corrigé, nom « Obito AF »
+- Constat : en mode « pause », l'Expéditeur n8n envoyait quand même vers l'adresse de test et marquait les lignes « envoye ». 47 faux envois du 27 au 30/09 ; aucun n'est parti vers un prospect.
+- Correction appliquée le 30/09 à 22 h 36 UTC, avec sauvegarde (`/opt/raime/backups/expediteur-avant-correction-*.json`) :
+  - pause : rien ne part ;
+  - test : les lignes passent en « teste », jamais « envoye » ;
+  - seuls les « valide » partent (les brouillons « x IA » ne partent plus) ;
+  - les 47 lignes sont revenues à « valide » (sent_at vide) ;
+  - n8n redémarré, entrée au journal.
+- Vérifié le 01/10 : la version en service contient les trois corrections ; état des lignes : envoye 167 (les vrais envois d'août et septembre), valide 61.
+- Reste à décider par Basile : la signature HTML dit « Amy · rAIme », alors que l'expéditeur est « Basile Rame - rAIme ».
+- Marque média : nom retenu « Obito AF », masque d'Obito. Risque de droits signalé (manga *Naruto*), gardé par Basile.
+- Images des comptes préparées : Bureau, dossier « A TELEVERSER - comptes ». Guide dans le coffre, note 15.
+- Les comptes (Gmail, YouTube, Instagram, Page, TikTok) sont créés par Basile : aucune création de compte ni saisie de mot de passe par Claude.
