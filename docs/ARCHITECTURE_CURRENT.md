@@ -40,10 +40,10 @@ Codex du 28/09 : `REPRISE_CODEX.md`.
 | Données et intelligence | ACTIF | veilleur, radar, portes CCI, chiffres officiels, répertoire public-apis (1 848 API, `apis_publiques`, outil MCP) |
 | PostgreSQL | ACTIF | |
 | RAG | PARTIEL | 10 708 extraits, recherche par mots (tsvector), pas de recherche sémantique |
-| Obsidian | ACTIF | agent `sync` |
+| Obsidian | PARTIEL | les notes entrent par le dossier `bibliotheque/` que range le bibliothécaire ; leur synchronisation depuis le PC reste à vérifier (l'agent `sync` était celui du catalogue OpenRouter, retiré) |
 | Stockage objet | PARTIEL | Cloudflare R2 pour les sauvegardes |
 | Bus d'événements | NON IMPLÉMENTÉ | des tables servent de files |
-| n8n | ACTIF | 11 flux actifs sur 20 |
+| n8n | ACTIF | 9 flux actifs sur 20 (« Cortex · Chat » et « Vigie » désactivés le 30/09) |
 | Moteur de contenu | PARTIEL | images, brouillons ; aucune publication en service |
 | Influenceur IA / clip farming | PLANIFIÉ / NON IMPLÉMENTÉ | |
 | Croissance et distribution | PARTIEL | clé Meta rangée ; module de publication à livrer |
@@ -52,7 +52,7 @@ Codex du 28/09 : `REPRISE_CODEX.md`.
 | Livraison client | PARTIEL | scripts d'audit, d'arbitrage, Score |
 | Finance / CFO | PARTIEL | dépense des modèles seulement ; table `revenus` vide |
 | Ingénierie / DevOps | ACTIF | porte GitHub → serveur (banc, OIDC) |
-| Crons applicateur, déposeur, installeur de compétences | HÉRITAGE | servaient l'ancien exécutant (retiré le 26/09) ; plus rien depuis le 28/09 |
+| Crons applicateur, déposeur, installeur de compétences | RETIRÉS le 30/09 | crontab sauvegardée ; scripts rangés dans `/opt/raime/scripts/retires-20260930/` |
 | Passerelle du Trésor | NON IMPLÉMENTÉ | voulu |
 | Studio, factories | NON IMPLÉMENTÉ | App Factory partielle via Hermes |
 | Interface vocale | ACTIF | Jarvis (Whisper, voix Gemini, repli Piper) |
@@ -71,7 +71,7 @@ Codex du 28/09 : `REPRISE_CODEX.md`.
 - **Bruit retiré** : sur 16 questions en attente pour Basile, 13 étaient internes ou trouvables (closes par le
   goût, motif gardé) ; restent 3 : suivi des ouvertures (n° 11), taux de réponse de 1,2 % (n° 14),
   prestataires réels (n° 27).
-- **Doublons à retirer (accord de Basile demandé)** : `chasseur` et la partie payante du `metrologue`
+- **Doublons RETIRÉS le 30/09 avec l'accord de Basile** : `chasseur` et la partie payante du `metrologue`
   (modèles OpenRouter, coupé depuis le 26/09 ; l'éclaireur couvre le gratuit) ; flux n8n « Cortex · Chat »
   (l'ancien chat, remplacé par Jarvis) et « Vigie — Veille IA (RAG) » (sources mortes, remplacée par veilleur
   et radar) ; crons applicateur, déposeur, installeur ; documents périmés `ARCHITECTURE.md`,
@@ -100,4 +100,5 @@ Codex du 28/09 : `REPRISE_CODEX.md`.
 2. Pont vers les routines Claude Code (demande d'outil → routine → branche → banc → porte) : il faut que
    Basile crée la routine et range son jeton d'appel dans le coffre.
 3. Faire poser la configuration d'Hermes par la porte à chaque livraison (aujourd'hui : à la main).
-4. Retirer les crons hérités après accord ; relancer ou clore les anciens ordres échoués (14 à 21).
+4. Relancer ou clore les anciens ordres échoués (14 à 21).
+5. Requêtes automatiques vers les API publiques : en service le 30/09 pour les ordres d'Hermes et les chantiers (`jarvis/apis_utiles.cjs`).

@@ -17,14 +17,11 @@ const RYTHMES = [
   { nom: 'cordon', module: './cordon.js', fn: 'cordon', toutes: 1 * H, besoinN8n: true },
   // Les instruments passent en premier : les agents de jugement lisent ce qu'ils posent.
   { nom: 'instruments', module: './instruments.js', fn: 'relever', toutes: 1 * H, besoinN8n: true },
-  // Le sas : ce que le radar rapporte passe par la porte avant d'entrer.
-  { nom: 'sas', module: './sas.js', fn: 'balayer', toutes: 12 * H, besoinN8n: false },
   // Le radar de mesure : ce qui sort, à quel prix, et ce que des acheteurs paient.
   { nom: 'radar', module: './radar.js', fn: 'scruter', toutes: 6 * H, besoinN8n: true },
   // Le plus fréquent : une réponse non réconciliée est une réponse invisible.
   { nom: 'reconciliateur', module: './reconciliateur.js', fn: 'reconcilier', toutes: 2 * H, besoinN8n: true },
   { nom: 'superviseur',  module: './superviseur.js', fn: 'superviser', toutes: 4 * H,   besoinN8n: true },
-  { nom: 'sync',         module: null,               fn: null,          toutes: 12 * H, besoinN8n: false, cmd: 'sync' },
   // EN PAUSE depuis le 2026-09-23, sur la parole de Basile : « on ne s'est pas mis d'accord
   // sur l'e-mail ». Le Heraut ne redige plus de brouillons tant que le nouveau message n'est
   // pas valide. Pour le relancer : retirer les deux barres de commentaire ci-dessous.
@@ -34,11 +31,9 @@ const RYTHMES = [
   // Le reflexif passe chaque jour : il mesure les agents, designe le maillon faible et propose
   // une version de prompt INACTIVE, jamais activee par lui-meme. Mesure du 2026-09-23 : 0,0028 $.
   { nom: 'reflexif',     module: './reflexif.js',    fn: 'reflechir',   toutes: 24 * H, besoinN8n: true },
-  // Le chasseur ferme la chaine de la veille : il mesure les candidats que le sas a reperes,
-  // puis rouvre le sas. Deux modeles neufs par jour, trois passages chacun.
-  { nom: 'chasseur',     module: './chasseur.js',    fn: 'chasser',     toutes: 24 * H, besoinN8n: false },
   // L'éclaireur : les modèles GRATUITS, repérés, mesurés par la batterie de métrologie, et les meilleurs
-  // adoptés par la parole (jarvis/parole.cjs). Il remplace le chasseur tant que tout tourne sans frais.
+  // adoptés par la parole (jarvis/parole.cjs). Le 30/09/2026, la chaîne des modèles PAYANTS (sync du
+  // catalogue OpenRouter, sas.balayer, chasseur, métrologue) est retirée : OpenRouter est coupé depuis le 26/09.
   { nom: 'eclaireur',    module: './eclaireur.js',   fn: 'eclairer',    toutes: 24 * H, besoinN8n: false },
   // La bibliotheque avale ce qu on depose dans bibliotheque/ : notes, offres, sources.
   // Recherche en francais dans Postgres, sans appeler personne et sans depenser un centime.
@@ -53,7 +48,7 @@ const RYTHMES = [
   // plus, pour 131 Go libres. Le disque tient plus de cinq ans a ce rythme.
   // EN PAUSE depuis le 2026-09-25, sur la parole de Basile : « on évite les sources comme
   // Wikipédia, c'est un peu du slop ». Le savoir viendra de la recherche Internet classique
-  // (moteur souverain + Gemini) et des sources premières (FEUILLE_DE_ROUTE.md).
+  // (moteur souverain + Gemini) et des sources premières.
   // { nom: 'encyclopediste', module: './encyclopediste.js', fn: 'nourrir', toutes: 24 * H, besoinN8n: false, args: { combien: 60 } },
   // Ce que Basile demande a Cortex et que la bibliotheque ignorait y entre dans l'heure.
   { nom: 'curieux',      module: './encyclopediste.js', fn: 'apprendreDemandes', toutes: 1 * H, besoinN8n: false },
@@ -70,12 +65,9 @@ const RYTHMES = [
   // Le répertoire des API publiques (public-apis, MIT) : relu chaque semaine, reversé seulement si le
   // dépôt a changé. Du code, aucun modèle : coût zéro. Demande de Basile, 30/09/2026.
   { nom: 'apis',         module: './apis_publiques.js', fn: 'actualiser', toutes: 7 * 24 * H, besoinN8n: false },
-  // La courbe de prix se construit un releve a la fois. C'est le temps l'ingredient.
   // Le penseur : la pensée de la nuit (au plus trois idées sourcées, sans conseil de placement),
   // relue par Jarvis au matin. Entre 2 h et 5 h, heure de Paris, une fois par nuit.
   { nom: 'penseur',      module: './penseur.js',     fn: 'penser',      toutes: 12 * H, besoinN8n: false, args: { garder: true }, heures: [2, 5] },
-  { nom: 'metrologue', module: './metrologue.js', fn: 'mesurer', toutes: 7 * 24 * H, besoinN8n: false,
-    args: { modeles: ['upstage/solar-pro4', 'deepseek/deepseek-v4-flash-0731', 'nex-agi/nex-n2-mini'] } },
 ];
 
 const dernier = {};
@@ -118,10 +110,7 @@ async function executer(tache, brain, n8n) {
     agent: tache.nom, action: tache.fn || tache.cmd || tache.nom, arguments: tache.args || {},
     avant, apres: await experience.photographier(brain), succes, resultat, duree_ms: Date.now() - t0 });
   try {
-    if (tache.cmd === 'sync') {
-      const { execSync } = await import('node:child_process');
-      execSync('node sync/openrouter_sync.js', { stdio: 'inherit', cwd: '/app' });
-    } else if (tache.cmd === 'heraut') {
+    if (tache.cmd === 'heraut') {
       const { execSync } = await import('node:child_process');
       execSync('node agents/heraut.js 14', { stdio: 'inherit', cwd: '/app' });
     } else {

@@ -6,6 +6,7 @@
 const fs = require('fs');
 const path = require('path');
 const { lire } = require('./bases.cjs');
+const { blocApis } = require('./apis_utiles.cjs');
 
 const EXECUTANT = process.env.EXECUTANT_URL || 'http://harness:8201';
 const LIVRABLES = process.env.LIVRABLES_DIR || '/travail';
@@ -34,7 +35,7 @@ async function relancer(id) {
   return r.length > 0;
 }
 
-function consigne(c) {
+function consigne(c, apis = '') {
   return `Tu es les mains du cerveau rAIme (le cabinet de conseil en IA de Basile Ramé). Tu as Internet, GitHub, git, npm, pnpm, pip, Python 3 et Node 22 : `
     + `cherche, clone, installe, construis, teste et fais tourner ce qu'il faut, dans le dossier courant. Crée le sous-dossier demande-${c.id} et mets-y tout ton travail. `
     + `Une application web se livre construite et prête à ouvrir : demande-${c.id}/app/index.html (fichiers statiques, chemins relatifs) ; elle sera visible à ${ADRESSE}/livrables/demande-${c.id}/app/index.html. `
@@ -48,7 +49,7 @@ function consigne(c) {
     + `N'écris jamais une clé ou un mot de passe dans un fichier ni dans ta réponse. Ce que tu ne peux pas faire : publier, envoyer à des personnes, payer. `
     + `Ta réponse finale ne contient QUE le compte rendu, en français : trois phrases au plus, ce que tu as fait, où est le résultat (avec l'adresse), ce qui reste.`
     // Le cap commun (jarvis/cap.cjs, 30/09/2026) : objectifs, règles, goût, bonne réponse, règles commerciales.
-    + `\n\n${require('./cap.cjs').fixe()}\n\nDemande de Basile : ${c.texte}`;
+    + `\n\n${require('./cap.cjs').fixe()}${apis ? `\n\n${apis}` : ''}\n\nDemande de Basile : ${c.texte}`;
 }
 
 async function relayer({ fetch = globalThis.fetch } = {}) {
@@ -76,7 +77,8 @@ async function relayer({ fetch = globalThis.fetch } = {}) {
     if (!c) return;
     try {
       const r = await fetch(EXECUTANT + '/tache', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tache: consigne(c), id: c.id }), signal: AbortSignal.timeout(46 * 60_000) });
+        // Les API publiques qui rendent déjà le service demandé, jointes d'office (jarvis/apis_utiles.cjs, 30/09/2026).
+        body: JSON.stringify({ tache: consigne(c, await blocApis(c.texte, { lire })), id: c.id }), signal: AbortSignal.timeout(46 * 60_000) });
       if (r.status === 409) { await conclure(c.id, null); return; } // occupé : on attend, on n'abandonne pas
       await conclure(c.id, await r.json());
     } catch (e) { /* fil coupé : l'ordre reste en cours et se conclura au tour suivant */ }

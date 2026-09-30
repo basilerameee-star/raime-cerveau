@@ -182,7 +182,7 @@ const ACTIONS = {
   async ouvrir_chantier({ brain, args }) {
     const { ouvrirChantier } = await import('./chantiers.js');
     const r = await ouvrirChantier({ titre: args.titre, constat: args.constat, mesure: args.mesure, attendu: args.attendu,
-      piste: args.piste });
+      piste: args.piste }, { brain });
     await brain.query(`INSERT INTO journal(acteur, changement, motif) VALUES($1,$2,$3)`,
       ['architecte', r.ouvert ? `Chantier ouvert : n° ${r.numero} « ${String(args.titre).slice(0, 120)} »`
         : `Chantier non ouvert : « ${String(args.titre || '').slice(0, 120)} »`, r.url || r.motif]);

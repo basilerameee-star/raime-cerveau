@@ -26,14 +26,14 @@ Le cerveau appartient à rAIme. Tout composant doit pouvoir partir ailleurs en u
 
 ## Choisir un modèle, et en essayer un nouveau
 
-Le choix se fait **par tâche** (`ROUTER` dans `agents/lib.js`) : extraction, raisonnement, contradiction, rédaction. Les prix viennent du catalogue synchronisé chaque nuit (`sync/openrouter_sync.js` → table `models`), jamais d'une copie figée.
+Depuis le 26/09/2026, tout tourne **sans frais** (`jarvis/parole.cjs`) : Gemini gratuit (plusieurs modèles, chacun son quota), puis le modèle local du serveur ; l'`eclaireur` adopte les meilleurs gratuits. Le routage payant par tâche (`ROUTER` dans `agents/lib.js`) ne sert que si Basile rallume OpenRouter (`OPENROUTER_PAYANT=1`).
 
 Pour intégrer un modèle dont on a entendu parler :
 
 1. vérifier qu'il existe sur OpenRouter (table `models` après la synchronisation) ;
 2. le passer au `sas` : la batterie d'essais le note face au modèle en place, sur plusieurs passages ;
 3. il remplace le sortant **seulement** s'il fait mieux, ou aussi bien pour moins cher ; le motif va dans `journal` avec le chemin de retour en arrière ;
-4. le `metrologue` suit ensuite sa courbe de prix, parce qu'un prix bouge en silence.
+4. l'`eclaireur` le remesure chaque jour avec la batterie de `metrologie/`, parce qu'un modèle gratuit change en silence.
 
 Automatiser un **fait** (un prix) est sûr. Automatiser un **jugement** sans mesure de qualité ne l'est pas.
 

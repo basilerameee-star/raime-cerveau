@@ -17,7 +17,7 @@ verifie('rythme un peu trop fort : économe, deux fois moins souvent', r.mode ==
 r = regime({ depenseMoisEur: 10, rythmeJourEur: 1, joursRestants: 10 });
 verifie('rythme bien trop fort (> 1,5 × permis) : réserve', r.mode === 'reserve' && r.facteur === 4);
 verifie('réserve : la surveillance et l’architecte restent, les autres attendent',
-  r.pauses.every((a) => PAYANTS.has(a) && !ESSENTIELS.has(a)) && !r.pauses.includes('superviseur') && r.pauses.includes('chasseur'));
+  r.pauses.every((a) => PAYANTS.has(a) && !ESSENTIELS.has(a)) && !r.pauses.includes('superviseur') && r.pauses.includes('prospective'));
 r = regime({ depenseMoisEur: 14.8, rythmeJourEur: 0.01, joursRestants: 20 });
 verifie('moins de 10 % du plafond : réserve même à petit rythme', r.mode === 'reserve');
 r = regime({ depenseMoisEur: 16.2, rythmeJourEur: 0.1, joursRestants: 3 });

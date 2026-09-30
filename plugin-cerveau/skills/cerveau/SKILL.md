@@ -18,7 +18,7 @@ Une seule machine porte la firme. Tout le reste s'y branche.
 
 `raime-boucle` (conteneur `node:20-alpine`, `agents/boucle.js`, redémarrage automatique) réveille chaque agent à son rythme, vérifie toutes les 5 minutes, garde la trace dans `agent_runs` et écrit ses échecs dans `journal`. Il survit aux redémarrages du serveur : **le cron système reste inutile**.
 
-Sous rythme aujourd'hui : `cordon` (1 h), `instruments` (1 h), `reconciliateur` (2 h), `superviseur` (4 h), `radar` (6 h), `sas` (12 h), `sync` OpenRouter (12 h), `heraut` (24 h), `prospective` (7 j), `metrologue` (7 j).
+Sous rythme (30/09/2026, `agents/boucle.js` fait foi) : `cordon` et `instruments` (1 h), `curieux` (1 h), `reconciliateur` (2 h), `superviseur` (4 h), `radar` et `architecte` (6 h), `bibliothecaire` et `penseur` (12 h), `heraut`, `reflexif`, `eclaireur`, `veilleur`, `portes` (24 h), `prospective`, `publiciste`, `apis` (7 j).
 
 Présents et **en sommeil** (hors boucle) : `auditeur`, `analyste`, `annuaire`, `cartographe`, `contradicteur`, `garde_audit`, `mission`, `redacteur`, `reflexif`, `score`.
 

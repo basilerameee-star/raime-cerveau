@@ -91,9 +91,9 @@ export const OUTILS = {
       attendu: { type: 'string' }, piste: { type: 'string' } }, required: ['titre', 'constat', 'mesure', 'attendu'] },
     // Interne et réversible (une issue se ferme) : zone 1 de la Constitution.
     action: (a) => ({ type: 'ouvrir_chantier', cible: 'issue', contenu: `${a.titre} ${a.constat} ${a.mesure} ${a.attendu} ${a.piste || ''}` }),
-    async faire({ a }) {
+    async faire({ brain, a }) {
       const { ouvrirChantier } = await import('./chantiers.js');
-      const r = await ouvrirChantier({ ...a, source: 'hermes' });
+      const r = await ouvrirChantier({ ...a, source: 'hermes' }, { brain });
       return r.ouvert ? `Chantier n° ${r.numero} ouvert : ${r.url}` : `Chantier non ouvert : ${r.motif}`;
     },
   },

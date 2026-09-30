@@ -1,6 +1,6 @@
 # Runbook — déployer, vérifier, revenir en arrière
 
-*Les gestes, dans l'ordre. L'architecture est décrite dans [`ARCHITECTURE.md`](ARCHITECTURE.md).*
+*Les gestes, dans l'ordre. L'état réel est décrit dans [`docs/ARCHITECTURE_CURRENT.md`](docs/ARCHITECTURE_CURRENT.md).*
 
 ## Faire un changement
 
@@ -67,4 +67,3 @@ Caddy (2), DNS `*.raime.fr` (3), premier envoi (4), jeton des chantiers (5), mot
 (`rk_test_…`, écriture sur produits, prix, liens de paiement) dans le secret GitHub et le `.env` : `STRIPE_CLE_TEST`.
 
 ## Mise en service autonome (25/09/2026)
-Les améliorations que le cerveau fait à son propre code passent par l applicateur (briques/applicateur/applicateur.sh) : zones protégées refusées, cas figés sans réseau, puis la porte avec retour arrière automatique.

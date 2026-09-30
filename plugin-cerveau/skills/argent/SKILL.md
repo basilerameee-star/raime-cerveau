@@ -20,7 +20,7 @@ Chaque mouvement se prépare, se chiffre, se justifie — et **Basile clique**.
 ## Ce que le cerveau fait, lui
 
 1. **Inventaire mensuel des services** (`/opt/raime/scripts/inventaire.py`, le 1er du mois) : chaque service, son état, son coût. Le rapport du matin le porte.
-2. **Plafonds** : le cerveau dépense au plus **16 €/mois** de modèles, le prix du serveur. Il mesure (`metrologue`, table `models`) et alerte avant, jamais après.
+2. **Plafonds** : le cerveau dépense au plus **16 €/mois** de modèles, le prix du serveur. L'économe (`agents/econome.js`) mesure et alerte avant, jamais après ; depuis le 26/09/2026 la parole et les agents tournent sans frais.
 3. **La chasse au gaspillage** : tout abonnement sans usage depuis 30 jours passe en proposition d'arrêt, avec le montant annuel récupéré.
 4. **Le prix de revient** d'une journée de formation, d'un audit, d'un arbitrage : temps passé, coût des modèles, coût de l'envoi. Une offre se défend avec ce chiffre.
 5. **La règle du reste** : ce qui rentre se range en trois parts — ce qui fait tourner (serveur, outils), ce qui fait grandir (prospection, certification), ce qui reste et dort. Le cerveau montre les trois, Basile décide des proportions.
@@ -28,7 +28,7 @@ Chaque mouvement se prépare, se chiffre, se justifie — et **Basile clique**.
 ## Signaux à lever tout de suite
 
 - un service payant apparu sans motif dans `journal` ;
-- un modèle dont le prix a bougé de plus de 20 % (le `metrologue` le voit) ;
+- une dépense qui apparaît alors que tout doit tourner sans frais (l'économe la voit) ;
 - un coût mensuel qui dépasse le plafond ;
 - une facture d'un fournisseur qui double.
 

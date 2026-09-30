@@ -83,9 +83,9 @@ function livrables(req, res) {
 }
 
 // ── Le tableau de bord : tout ce que Jarvis affiche autour de lui, en une lecture ───────────────
-const NOMS = { bibliothecaire: 'Bibliothèque', veilleur: 'Veille', portes: "Portes d'entrée", sas: 'Sas des modèles', chasseur: 'Chasseur de modèles',
+const NOMS = { bibliothecaire: 'Bibliothèque', veilleur: 'Veille', portes: "Portes d'entrée", sas: 'Sas des modèles',
   architecte: 'Architecte', superviseur: 'Surveillance', porte: 'Livraison', essayeur: 'Essayeur', gardien: 'Gardien', reflexif: 'Réflexif',
-  penseur: 'Penseur', publiciste: 'Publicité', reconciliateur: 'Réponses', curieux: 'Curieux', econome: 'Économe', metrologue: 'Mesure des prix',
+  penseur: 'Penseur', publiciste: 'Publicité', reconciliateur: 'Réponses', curieux: 'Curieux', econome: 'Économe',
   prospective: 'Prospective', applicateur: 'Mise en service', executant: 'Hermes', heraut: 'Héraut', eclaireur: 'Éclaireur des modèles', radar: 'Radar' };
 async function etat() {
   const [ordres, journal, pensee, questions, agents, biblio, veille, prospection, revenus, mains, encaisse, courriels, echus, rappels] = await Promise.all([

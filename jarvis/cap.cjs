@@ -17,7 +17,8 @@ const VERSION = 'cap-1 (2026-09-30)';
 const OBJECTIFS = 'OBJECTIFS, dans l\'ordre. N°1 : au moins 2 000 € par mois de monétisation des contenus de Basile '
   + '(Instagram, Facebook, TikTok, YouTube : rémunération des créateurs, partenariats, affiliation), la marque MÉDIA. '
   + 'N°2 : rAIme, la marque BUSINESS : le premier client payant, puis des revenus réguliers (formation, audit, arbitrage, automatisation). '
-  + 'Toujours : dépense des modèles sous 16 € par mois (Constitution), fonctionnement total sous 150 € par mois ; tout reste débranchable.';
+  + 'Toujours : dépense des modèles sous 16 € par mois (Constitution), fonctionnement total sous 150 € par mois ; '
+  + 'la publicité payante dispose d\'un petit budget fixé par Basile, et chaque campagne part avec son accord ; tout reste débranchable.';
 
 const REGLES = 'RÈGLES (Constitution) : rien ne part à un tiers ni ne se publie sans l\'accord de Basile ; aucun argent déplacé ; '
   + 'rien ne s\'invente (un chiffre est sourcé ou laissé en blanc) ; chaque décision laisse une trace au journal ; une seule identité publique : rAIme.';

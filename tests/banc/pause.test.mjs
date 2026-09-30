@@ -8,8 +8,10 @@ import fs from 'node:fs';
 const lire = (f) => fs.readFileSync(new URL(`../../${f}`, import.meta.url), 'utf8');
 const actives = (texte) => texte.split('\n').filter((l) => !/^\s*(#|\/\/)/.test(l));
 
-test('le cron ne lance pas le héraut', () => {
-  assert.ok(!actives(lire('cron.raime')).some((l) => /heraut\.js/.test(l)));
+// cron.raime (jamais installé) est retiré le 30/09/2026 : le héraut n'a plus qu'un lanceur, la boucle.
+test('aucun cron ne lance le héraut : seule la boucle le fait', () => {
+  assert.ok(!fs.existsSync(new URL('../../cron.raime', import.meta.url)));
+  assert.match(lire('agents/boucle.js'), /nom: 'heraut'/);
 });
 
 test('le héraut ne rédige que des brouillons : il ne valide ni n’envoie jamais lui-même', () => {

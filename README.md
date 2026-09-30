@@ -22,9 +22,9 @@ Cette phrase gouverne tout le reste : le choix des modèles, la réécriture des
 |---|---|
 | `boucle` | le cœur battant : les rythmes, la survie, la trace |
 | `instruments` · `superviseur` | relève les chiffres, lit l'écart entre le prévu et le réel |
-| `metrologue` | rejoue une batterie de tâches figées et mesure coût, durée, qualité — **notée par du code**, jamais par un modèle juge |
-| `chasseur` | prend les modèles candidats, les passe à la batterie, puis rouvre la porte |
-| `sas` | la porte : promeut seulement ce qui est mesuré et moins cher |
+| `eclaireur` | repère les modèles gratuits, les mesure avec la batterie de `metrologie/` (notée par du code), et la parole adopte les meilleurs |
+| `cap` · `gout` | la boussole commune de toutes les consignes, et le contrôle de la justesse des décisions (règles, puis JEV de TypeSafe) |
+| `apis_publiques` | le répertoire public-apis en base : l'existant avant de construire |
 | `reflexif` | mesure les agents, désigne le maillon faible, propose une consigne meilleure — créée **inactive** |
 | `contradicteur` | cherche ce qui casse avant que la réalité s'en charge |
 | `bibliothecaire` | la mémoire longue : range les textes, les retrouve en français, sans appeler personne |
@@ -55,7 +55,7 @@ Un plugin de compétences décrit la maison à qui veut l'aider : la carte du ce
 
 `npm test` fait tourner le banc d'essai (bases fictives, modèle factice, réseau coupé) ; la CI le rejoue sur chaque
 pull request. Chaque fusion sur `main` part en ligne par la porte de déploiement, qui revient seule en arrière si la
-vérification échoue. Détails : [`ARCHITECTURE.md`](ARCHITECTURE.md) et [`RUNBOOK.md`](RUNBOOK.md).
+vérification échoue. Détails : [`docs/ARCHITECTURE_CURRENT.md`](docs/ARCHITECTURE_CURRENT.md) (l'état réel) et [`RUNBOOK.md`](RUNBOOK.md).
 
 ## Ce que ce dépôt ne contient jamais
 

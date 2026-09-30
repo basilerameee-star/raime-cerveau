@@ -11,6 +11,7 @@
 //   - pas deux fois le même chantier ouvert ;
 //   - trois chantiers ouverts par l'architecte au plus : il demande, il n'inonde pas ;
 //   - le jeton (GITHUB_CHANTIER_TOKEN) n'ouvre que des issues sur ce dépôt ; absent, rien ne part.
+import { createRequire } from 'node:module';
 const API = 'https://api.github.com';
 export const ETIQUETTE = 'chantier';
 export const OUVERTS_MAX = 3;
@@ -50,10 +51,17 @@ export function preparer({ titre, constat, mesure, attendu, piste = null, source
   return { titre: t, corps };
 }
 
-export async function ouvrirChantier(demande) {
+// brain (facultatif) : les API publiques qui rendent déjà le service sont jointes au chantier (30/09/2026),
+// pour que l'ingénierie intègre l'existant avant de construire.
+export async function ouvrirChantier(demande, { brain = null, blocApis = null } = {}) {
   const p = preparer(demande);
   if (p.refus) return { ouvert: false, motif: p.refus };
   if (!process.env.GITHUB_CHANTIER_TOKEN) return { ouvert: false, motif: 'jeton GITHUB_CHANTIER_TOKEN absent : chantier gardé au journal' };
+  if (brain) {
+    const bloc = blocApis || createRequire(import.meta.url)('../jarvis/apis_utiles.cjs').blocApis;
+    const apis = await bloc(`${p.titre}\n${demande.attendu || ''}`, { lire: async (sql, v) => (await brain.query(sql, v)).rows });
+    if (apis) p.corps = p.corps.replace('\n---\n', `\n## ${apis.replace(/^API PUBLIQUES/, 'API publiques')}\n\n---\n`);
+  }
   const ouverts = await github(`issues?state=open&labels=${ETIQUETTE}&per_page=100`);
   const memes = ouverts.find((i) => normaliser(i.title) === normaliser(p.titre));
   if (memes) return { ouvert: false, motif: `déjà ouvert : n° ${memes.number}`, numero: memes.number, url: memes.html_url };

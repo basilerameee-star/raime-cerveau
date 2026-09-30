@@ -6,7 +6,6 @@
   "description": "Cerveau souverain rAIme : agents, mémoire, veille, banc d'essai.",
   "scripts": {
     "seed": "node seed/load_seed.js",
-    "sync": "node sync/openrouter_sync.js",
     "pretest": "bash tests/banc/preparer_bases.sh",
     "test": "node --test --test-concurrency=1 'tests/banc/*.test.mjs'"
   },
