@@ -84,8 +84,9 @@ async function etatDuCerveau(message = '') {
   const questions = await lire("SELECT question FROM demandes WHERE etat = 'ouverte' ORDER BY bloquant DESC, cree_le LIMIT 5");
   const pr = await lireN8n("SELECT count(*) FILTER (WHERE status = 'brouillon')::int AS b, count(*) FILTER (WHERE sent_at > now() - interval '24 hours')::int AS e FROM outreach");
   const rev = await revenusDuMois();
-  let t = `\nObjectif n°1 (monétisation des contenus) : ${rev.objectif} € par mois ; ce mois : ${rev.mois} €`
-    + (rev.plateformes.length ? ` (${rev.plateformes.map((p) => `${p.plateforme} ${p.montant} €`).join(', ')})` : '') + `. Ventes de rAIme ce mois (à part) : ${rev.raime} €.`;
+  let t = `\nObjectif n°1 (monétisation seulement, 2 000 € par mois sur chacune de TikTok, YouTube et Instagram, soit ${rev.objectif} €) : ce mois ${rev.mois} €`
+    + ` (${rev.plateformes.map((p) => `${p.plateforme} ${p.montant} € sur ${p.objectif}`).join(', ')}). `
+    + `À part : ventes de produits de la niche ${rev.produits} € ; ventes de rAIme ${rev.raime} €.`;
   if (journal.length) t += "\nCe qui a changé (48 h) :\n" + journal.map((j) => `- ${j.acteur} : ${j.c}`).join('\n');
   if (actifs[0] && actifs[0].a) t += "\nAgents qui ont réellement travaillé ces 24 h : " + actifs[0].a + ".";
   if (pr[0]) t += `\nProspection : ${pr[0].b} brouillons d'e-mails à valider par Basile ; ${pr[0].e} envoyés ces 24 h.`;
@@ -104,17 +105,22 @@ async function etatDuCerveau(message = '') {
   return t;
 }
 
-// L'objectif n°1 de Basile (précisé le 26/09/2026) : 2 000 € par mois de MONÉTISATION DE SES CONTENUS
-// (Instagram, Facebook, TikTok, YouTube). Les ventes de rAIme, son cabinet, sont une autre affaire et se
-// comptent à part. Les revenus sont notés dans la table revenus, par plateforme ; rien n'est inventé.
-const OBJECTIF_EUR = 2000;
-const PLATEFORMES = ['instagram', 'facebook', 'tiktok', 'youtube', 'autre'];
+// L'objectif n°1 de Basile (précisé le 30/09/2026) : 2 000 € par mois de MONÉTISATION sur CHACUNE des trois
+// plateformes TikTok, YouTube et Instagram, soit 6 000 € par mois ; uniquement la monétisation. Les ventes des
+// produits de la niche (« boutique ») et celles de rAIme (sites à 500 € compris) se comptent à part.
+// Les revenus sont notés dans la table revenus, par plateforme ; rien n'est inventé.
+const OBJECTIF_PAR_PLATEFORME = 2000;
+const PLATEFORMES_OBJECTIF = ['tiktok', 'youtube', 'instagram'];
+const OBJECTIF_EUR = OBJECTIF_PAR_PLATEFORME * PLATEFORMES_OBJECTIF.length;
+const PLATEFORMES = ['instagram', 'facebook', 'tiktok', 'youtube', 'boutique', 'autre'];
 async function revenusDuMois() {
   const r = await lire(`SELECT coalesce(plateforme, 'autre') AS plateforme, round(sum(montant_eur))::int AS montant FROM revenus
     WHERE le >= date_trunc('month', now()) GROUP BY 1 ORDER BY 2 DESC`);
-  const contenus = r.filter((x) => x.plateforme !== 'raime');
-  return { objectif: OBJECTIF_EUR, mois: contenus.reduce((s, x) => s + x.montant, 0), plateformes: contenus,
-    raime: (r.find((x) => x.plateforme === 'raime') || { montant: 0 }).montant };
+  const montant = (p) => (r.find((x) => x.plateforme === p) || { montant: 0 }).montant;
+  const plateformes = PLATEFORMES_OBJECTIF.map((p) => ({ plateforme: p, montant: montant(p), objectif: OBJECTIF_PAR_PLATEFORME }));
+  return { objectif: OBJECTIF_EUR, mois: plateformes.reduce((s, x) => s + x.montant, 0), plateformes,
+    produits: montant('boutique'), autres: r.filter((x) => !['raime', 'boutique', ...PLATEFORMES_OBJECTIF].includes(x.plateforme)),
+    raime: montant('raime') };
 }
 
 // ── La consigne ────────────────────────────────────────────────────────────────────────────
@@ -127,8 +133,12 @@ const SYSTEME = "Tu es Jarvis, le cerveau de rAIme, le cabinet de conseil en int
   + "Ne dis jamais qu'une tâche attend une recharge, un crédit ou le 1er du mois ; ne parle du budget que si Basile te le demande. "
   + "TES LIMITES RÉELLES, les seules : pas d'argent déplacé, pas de publication ni d'envoi à des personnes sans l'accord de Basile, pas de compte créé à son nom, "
   + "pas de mise en production de ton propre code sans les tests. "
-  + "L'OBJECTIF N°1 DE BASILE : au moins 2 000 € par mois de revenus de MONÉTISATION de ses contenus sur Instagram, Facebook, TikTok et YouTube "
-  + "(programmes de rémunération des créateurs, partenariats, affiliation). C'est distinct de rAIme, son cabinet de conseil, dont les ventes se comptent à part. "
+  // 30/09/2026 (Basile) : la marque média et le dropshipping ne font qu'une niche : une audience, deux revenus.
+  + "L'OBJECTIF N°1 DE BASILE : la MONÉTISATION de la marque MÉDIA, 2 000 € par mois sur CHACUNE des trois plateformes TikTok, YouTube et Instagram "
+  + "(6 000 € par mois au total ; programmes de rémunération des créateurs, partenariats, affiliation). Les ventes des produits de la même niche "
+  + "(une audience, deux revenus) et celles de rAIme, son cabinet de conseil (formations, audits, sites à 500 €), se comptent à part. "
+  + "ORDRE DES MOTEURS : les sites à 500 € d'abord, puis la niche (contenus et produits), "
+  + "puis rAIme avec une preuve avant le prix. "
   + "Rapporte-y tes conseils quand c'est utile, avec des actions concrètes. "
   + "SAVOIR : appuie-toi d'abord sur les passages fournis (bibliothèque, pages web) ; complète avec tes connaissances en le signalant. "
   + "HONNÊTETÉ : si tu ne sais pas, ou si quelque chose n'est pas en place, dis-le. N'invente aucun chiffre : seulement ceux de l'état ci-dessous. "

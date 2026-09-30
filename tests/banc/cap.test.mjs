@@ -14,7 +14,9 @@ after(async () => { await brain.query('DROP TABLE IF EXISTS cap'); await brain.e
 
 test('le cap fixe porte les objectifs, les règles, le goût, la bonne réponse et les règles commerciales de Basile', () => {
   const t = FIXE.fixe();
-  assert.match(t, /N°1 : au moins 2 000 € par mois de monétisation/);
+  assert.match(t, /N°1 : la monétisation de la marque MÉDIA, 2 000 € par mois sur CHACUNE de TikTok, YouTube et Instagram, soit 6 000 €/);
+  assert.match(t, /UN MOTEUR À LA FOIS : les sites à 500 € d'abord/);
+  assert.match(t, /la preuve avant le prix/);
   assert.match(t, /N°2 : rAIme/);
   assert.match(t, /LA BONNE RÉPONSE/);
   assert.match(t, /20 % de l'impact passe par les mots, 80 % par la confiance/);
@@ -51,7 +53,7 @@ test('rédaction : un agent en échec, des revenus et des jugements entrent dans
     buts: [{ horizon: 'court', enonce: 'Premier client' }], lecons: ['Chercher avant de créer'], regime: 'normal',
     jugements: [{ verdict: 'AUTO', n: 3 }] });
   assert.match(t, /agents en échec depuis 24 h : architecte/);
-  assert.match(t, /120 € sur 2 000 €/);
+  assert.match(t, /120 € sur 6 000 €/);
   assert.match(t, /jugements du goût en 7 jours : AUTO 3/);
   assert.match(t, /CE QUE LA MAISON A APPRIS : Chercher avant de créer/);
 });

@@ -95,7 +95,7 @@ test('une question : réponse du modèle local (aucune clé), sans budget ni Ope
   assert.equal(r.reply, 'Réponse du modèle local.');
   const consigne = appelsLocal.slice(avant)[0].messages[0].content;
   assert.match(consigne, /LE BUDGET NE LIMITE RIEN/);
-  assert.match(consigne, /Objectif n°1 \(monétisation des contenus\) : 2000 €/);
+  assert.match(consigne, /Objectif n°1 \(monétisation seulement, 2 000 € par mois sur chacune de TikTok, YouTube et Instagram, soit 6000 €\) : ce mois/);
   assert.doesNotMatch(consigne, /Arrêt des dépenses|recharge est à prévoir/);
 });
 
@@ -109,14 +109,15 @@ test('le budget se dit sans frais ; les anciennes réponses sur le crédit sorte
   assert.ok(!PERIME.test('Je crée le site Mercedes, je te donne le lien dès qu’il est prêt.'));
 });
 
-test('objectif 2 000 € : un encaissement noté compte ; écrire exige l’en-tête maison', async () => {
+test('objectif 6 000 € : un encaissement YouTube noté compte ; écrire exige l’en-tête maison', async () => {
   const noter = (entetes) => fetch(base + '/api/revenus', { method: 'POST', headers: { 'Content-Type': 'application/json', ...entetes },
-    body: JSON.stringify({ montant: '690', source: 'formation Dirigeant' }) });
+    body: JSON.stringify({ montant: '690', source: 'programme partenaire', plateforme: 'youtube' }) });
   assert.equal((await noter({})).status, 403, 'un autre site ne peut pas écrire');
   assert.deepEqual(await (await noter({ 'X-Jarvis': '1' })).json(), { ok: true });
   const e = await (await fetch(base + '/api/etat')).json();
   assert.equal(e.objectif.mois, 690);
-  assert.equal(e.objectif.objectif, 2000);
+  assert.equal(e.objectif.objectif, 6000);
+  assert.equal(e.objectif.plateformes.find((p) => p.plateforme === 'youtube').montant, 690);
 });
 
 test('un ordre bloqué se relance d’un geste, une seule fois', async () => {
@@ -184,16 +185,21 @@ test('le modèle local voit l’état réel du cerveau : il tient dans la partie
   await dire('Où en est-on ?');
   const lu = resserrer(appelsLocal.slice(avant)[0].messages)[0].content;
   assert.match(lu, /ÉTAT DU CERVEAU/);
-  assert.match(lu, /Objectif n°1 \(monétisation des contenus\) : 2000 €/);
+  assert.match(lu, /Objectif n°1 \(monétisation seulement, 2 000 € par mois sur chacune de TikTok, YouTube et Instagram, soit 6000 €\) : ce mois/);
 });
 
 test('l’objectif de 2 000 € compte la monétisation des contenus, pas les ventes de rAIme', async () => {
   const noter = (montant, plateforme) => fetch(base + '/api/revenus', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Jarvis': '1' },
     body: JSON.stringify({ montant, source: 'test', plateforme }) }).then((r) => r.json());
   const avant = (await (await fetch(base + '/api/etat')).json()).objectif.mois;
-  await noter('120', 'tiktok'); await noter('990', 'raime');
+  await noter('120', 'tiktok'); await noter('990', 'raime'); await noter('45', 'boutique');
   const o = (await (await fetch(base + '/api/etat')).json()).objectif;
-  assert.equal(o.mois, avant + 120, 'une vente rAIme ne compte pas dans l’objectif');
+  // Basile, 30/09/2026 : 2 000 € de monétisation sur chacune de TikTok, YouTube et Instagram ; les ventes se comptent à part.
+  assert.equal(o.objectif, 6000);
+  assert.equal(o.mois, avant + 120, 'ni une vente rAIme ni une vente de produit ne comptent dans l’objectif');
+  assert.equal(o.produits, 45);
+  assert.deepEqual(o.plateformes.map((p) => p.plateforme), ['tiktok', 'youtube', 'instagram']);
+  assert.ok(o.plateformes.every((p) => p.objectif === 2000));
   assert.equal(o.raime, 990);
   assert.ok(o.plateformes.some((p) => p.plateforme === 'tiktok' && p.montant === 120));
 });

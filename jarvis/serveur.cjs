@@ -144,7 +144,8 @@ async function rapport() {
     { titre: 'Le cerveau cette nuit : sa pensée', lignes: pensee.length ? pensee.map((p) => `${p.titre} — ${court(p.proposition, 220)}`) : ['Pas de pensée cette nuit.'] },
     { titre: 'Tes ordres faits (24 h)', lignes: faites.length ? faites.map((c) => `n°${c.id} — ${court(c.texte, 90)} → ${court(c.reponse, 200)}`) : ['Aucun.'] },
     { titre: 'Améliorations mises en service seul (24 h)', lignes: mep.length ? mep.map((j) => court(j.changement, 160)) : ['Aucune.'] },
-    { titre: 'Monétisation des contenus', lignes: [`${rev.mois} € ce mois sur ${rev.objectif} €.`, ...rev.plateformes.map((p) => `${p.plateforme} : ${p.montant} €`)] },
+    { titre: 'Monétisation (2 000 € par plateforme)', lignes: [`${rev.mois} € ce mois sur ${rev.objectif} €.`,
+      ...rev.plateformes.map((p) => `${p.plateforme} : ${p.montant} € sur ${p.objectif} €`), `À part : produits ${rev.produits} €, rAIme ${rev.raime} €.`] },
     { titre: 'Ce qui attend ta décision', lignes: [`${br ? br.n : 0} brouillons d’e-mails à valider dans le Cockpit.`, ...qs.map((x) => court(x.question, 200))] },
   ] };
 }

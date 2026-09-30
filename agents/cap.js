@@ -28,7 +28,7 @@ export async function faitsDuMoment({ brain }) {
   const enEchec = await lignes(brain, `SELECT agent FROM boucle_passages WHERE fin_le > now() - interval '24 hours'
     GROUP BY agent HAVING bool_and(statut <> 'ok') ORDER BY agent`);
   const [revenus] = await lignes(brain, `SELECT coalesce(sum(montant_eur), 0)::float AS contenus FROM revenus
-    WHERE le >= date_trunc('month', now()) AND coalesce(plateforme, '') <> ''`);
+    WHERE le >= date_trunc('month', now()) AND plateforme IN ('tiktok', 'youtube', 'instagram')`);
   const buts = await lignes(brain, `SELECT id, horizon, enonce FROM buts WHERE etat = 'ouvert'
     ORDER BY CASE horizon WHEN 'court' THEN 0 WHEN 'moyen' THEN 1 ELSE 2 END, id LIMIT 6`);
   const lecons = await lignes(brain, `SELECT enonce FROM croyances WHERE confiance >= 0.9
@@ -47,7 +47,7 @@ export function rediger(f) {
   const passe = [];
   if (f.ordres) passe.push(`${f.ordres.faits} ordre(s) fait(s) en 7 jours, ${f.ordres.echoues} en échec, ${f.ordres.en_file} en file`);
   passe.push(f.enEchec.length ? `agents en échec depuis 24 h : ${f.enEchec.join(', ')}` : 'aucun agent en échec depuis 24 h');
-  if (f.revenus != null) passe.push(`monétisation des contenus ce mois : ${Math.round(f.revenus)} € sur 2 000 €`);
+  if (f.revenus != null) passe.push(`monétisation ce mois (TikTok, YouTube, Instagram) : ${Math.round(f.revenus)} € sur 6 000 €`);
   if (f.jugements.length) passe.push('jugements du goût en 7 jours : ' + f.jugements.map((j) => `${j.verdict} ${j.n}`).join(', '));
   const futur = f.buts.map((b) => `[${b.horizon}] ${court(b.enonce, 110)}`);
   const vivant = [
