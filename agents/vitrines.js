@@ -31,6 +31,13 @@ export const METIERS = ['boulangerie', 'boucherie', 'fleuriste', 'coiffeur', 'in
   'toiletteur', 'photographe', 'peintre en bâtiment', 'paysagiste'];
 // La Haute-Savoie de Basile d'abord, puis les départements voisins dans cet ordre, puis la France par taille de ville.
 const REGION = ['74', '73', '01', '38'];
+// Une page de réseau social ou une fiche d'annuaire n'est pas un site à soi : ce commerçant-là est la cible.
+const RESEAUX = /(^|\.)(facebook|fb|instagram|linktr|pagesjaunes|tripadvisor|yelp|justacote|mappy|123fleurs|interflora|aquarelle|leboncoin|planity|treatwell|doctolib|ubereats|deliveroo|lafourchette|thefork|google)\./i;
+export function plateformeDe(site) {
+  let h = ''; try { h = new URL(site).hostname.toLowerCase(); } catch { return null; }
+  if (!RESEAUX.test(h) || /^sites\.google\./.test(h)) return null;
+  return /facebook|fb\./.test(h) ? 'une page Facebook' : /instagram/.test(h) ? 'une page Instagram' : "une fiche d'annuaire";
+}
 const ANNUAIRES = /(pagesjaunes|facebook|instagram|google|tripadvisor|yelp|societe\.com|pappers|infogreffe|linkedin|mappy|justacote|118712|annuaire|kompass|verif\.com|manageo|youtube|tiktok|wikipedia|leboncoin|doctolib|planity|treatwell|ubereats|deliveroo|lafourchette|thefork)/i;
 
 export async function preparer(brain) {
@@ -271,6 +278,8 @@ export function brouillon(v, url) {
   // Le constat dit seulement ce qui a été vérifié : « sur Google » quand la fiche vient de Google.
   const constat = v.site_etat === 'ancien' ? `votre site existe, mais il date un peu et s'affiche mal sur téléphone`
     : v.site_etat === 'mort' ? `votre site ne s'ouvre plus`
+    : plateformeDe(v.site) ? (v.source === 'google' ? `sur Google, votre fiche renvoie vers ${plateformeDe(v.site)}, pas vers un site`
+      : `je n'ai trouvé qu'${plateformeDe(v.site)}, et aucun site à votre nom`)
     : v.source === 'google' ? `sur Google, aucun site n'y est relié`
     : `je n'ai trouvé aucun site à votre nom`;
   return {
@@ -288,13 +297,13 @@ async function qualifier(brain, v, deps) {
   const f = deps.fetch;
   let site = v.site;
   if (!site && v.source === 'osm') site = await siteParRecherche(v, f);
-  const juge = jugerSite(site ? await lireSite(f, site) : null);
+  const juge = site && plateformeDe(site) ? { etat: 'aucun', signaux: [`${plateformeDe(site)} seulement`] } : jugerSite(site ? await lireSite(f, site) : null);
   if (juge.etat === 'recent' || juge.etat === 'illisible') {
     await brain.query(`UPDATE vitrines SET site = $2, site_etat = $3, site_signaux = $4, statut = 'ecarte', motif = $5, maj_le = now() WHERE id = $1`,
       [v.id, site, juge.etat, juge.signaux, juge.etat === 'recent' ? 'site récent' : `${juge.signaux[0]} : rien ne peut en être affirmé`]);
     return 'ecarte';
   }
-  const m = await chercherEmail({ ...v, site }, deps);
+  const m = await chercherEmail({ ...v, site: plateformeDe(site) ? null : site }, deps);
   // Une adresse, un seul e-mail : deux fiches du même commerce (ou d'une même maison) ne reçoivent pas deux messages.
   if (m) {
     const { rows: deja } = await brain.query(`SELECT id FROM vitrines WHERE lower(email) = lower($1) AND id <> $2 AND statut NOT IN ('ecarte', 'nouveau') ORDER BY id LIMIT 1`, [m.email, v.id]);

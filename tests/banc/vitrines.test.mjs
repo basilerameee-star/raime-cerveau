@@ -101,6 +101,7 @@ test('01/10/2026 : une page supprimée d’un site vivant n’est pas « aucun s
   await ajouter(902, 'Boulangerie Martin');
   await ajouter(903, 'Le Fournil Dupuis', { email: 'contact@fournil-dupuis.fr' });
   await ajouter(904, 'Fournil Dupuis (boutique 2)', { email: 'contact@fournil-dupuis.fr' });
+  await ajouter(905, 'Fleurs Évasion', { site: 'https://www.facebook.com/fleursevasion/', email: 'fleurs.evasion@gmail.com' });
   const fetch = async (url) => {
     const u = String(url);
     if (u.includes('overpass')) return rep({ elements: [] });
@@ -124,5 +125,8 @@ test('01/10/2026 : une page supprimée d’un site vivant n’est pas « aucun s
   assert.ok(!/Google/.test(c.corps));
   const d = await fiche(904);
   assert.equal(d.statut, 'ecarte'); assert.equal(d.motif, 'même e-mail que la vitrine n°903');
+  const e = await fiche(905);
+  assert.equal(e.statut, 'brouillon', 'une page Facebook n’est pas un site : c’est la cible');
+  assert.match(e.corps, /je n'ai trouvé qu'une page Facebook, et aucun site à votre nom/);
   assert.equal(emailPlausible('boulangerie@gmail.com', { nom: 'Boulangerie du Lac', ville: 'Annecy' }, null, 'recherche web'), false, 'un mot du métier ne suffit pas');
 });
