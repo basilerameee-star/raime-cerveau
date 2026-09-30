@@ -375,3 +375,8 @@ Merci pour le travail de cette nuit : le banc a déjà trouvé un vrai défaut e
 - Évaluation honnête : JEV seul jugeait « utiles » 14 questions sur 14. Deux règles écrites (interne ou trouvable) et la liste de ce que la maison possède corrigent : 13 questions sur 16 retenues, 3 restent pour Basile.
 - Vérifié : banc complet (Postgres, conteneurs jetables sur le serveur) avant chaque livraison, 242/242 ; en production : cap compilé, jugements JEV réels, architecte en 78 s à 0 $ avec une question retenue.
 - Leçon : un juge ne tranche bien que ce qu'on lui a montré ; lui dire ce que la maison possède vaut mieux qu'abaisser un seuil.
+
+## 2026-09-30 — routine contenu — positionnement de la marque MÉDIA
+- Action : première exécution du moteur de contenu ; `contenus/POSITIONNEMENT.md` n'existait pas, donc livré seul, sans plan de semaine (le choix de la niche revient à Basile).
+- Résultat : trois niches comparées (IA pratique, argent du quotidien, astuces pratiques) ; recommandation : l'IA pratique pour débutants, adossée à rAIme.
+- Limite : les pages officielles YouTube, TikTok et Meta étaient bloquées par le proxy ; les conditions viennent de sources secondaires, avec lien officiel à relire. Aucun chiffre de gain mesuré. À noter : TikTok Creator Rewards exige des vidéos de plus d'une minute.
