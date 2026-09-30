@@ -390,3 +390,8 @@ Merci pour le travail de cette nuit : le banc a déjà trouvé un vrai défaut e
 - Évaluation : premier passage réel en échec (Overpass 406 : signature de navigateur refusée) et mauvais ordre (Grenoble avant Annecy) ; corrigés, essai réel : 55 boulangeries d'Annecy, 1 brouillon, 1 à appeler, 3 écartées (site récent), maquette servie (200).
 - Piège évité : `sed -i` sur un fichier monté dans un conteneur (Caddyfile) change son inode ; le conteneur garde l'ancien. Vérifier depuis l'extérieur (401 → 404 attendu) avant de conclure.
 - Mesures : Jarvis répond à une question en 3,8 s (Gemini 3.1 Flash Lite), à l'heure en 0,09 s (code).
+
+## 2026-09-30 (nuit, fin) — la feuille de route, source unique
+- Demande de Basile : tout ce qui reste (avec et sans son intervention) dans une feuille de route reprise jusqu'à la fin du projet, facile d'accès pour le gouverneur ; l'argent pour le contenu en tout dernier, après vérification ; WanGP retiré (API Higgsfield) ; comptes Meta, TikTok, YouTube à brancher ensemble, étape par étape.
+- Fait : `jarvis/feuille_de_route.json` (41 points, rang, groupe « seul » ou « basile », « il faut », « fini quand », état) ; copies `docs/FEUILLE_DE_ROUTE.md` et note Obsidian 14 (générées par `tools/feuille_vers_markdown.mjs`, un test garde la copie à jour) ; lue par Jarvis (état, `/api/feuille`, `/api/etat`), par le cap des agents (prochains points) et par Hermes (`feuille_de_route_lire`). La routine « Ingénierie » prend aussi les points marqués « routine ». Jarvis : « Parfait. » n'est plus un ordre (vérifié en production).
+- Règle : un point passe « fait » par une livraison qui cite sa preuve.

@@ -122,6 +122,8 @@ async function etat() {
     rappels: { echus, a_venir: rappels },
     // Les appels de relance à J+7 : pour l'interface (la 3D comprise), le total et les cinq plus anciens.
     appels: { a_faire: relances.total, prochains: relances.liste },
+    // La feuille de route (jarvis/feuille_de_route.json) : l'avancement, les prochains points, ce qu'il faut de Basile.
+    feuille: require('./feuille.cjs').resume(),
     mains: mains ? { etat: mains.etat || 'inconnu', ...(mains.raison ? { raison: mains.raison } : {}) } : { etat: 'injoignable' },
     courriels: { ...(courriels[0] || { non_vus: 0, urgents: 0 }), releve: courrier.etat(), configure: !!(coffre.GMAIL_ADRESSE && coffre.GMAIL_MOT_DE_PASSE_APPLI) },
     voix: coffre.GEMINI_API_KEY ? 'gemini' : 'serveur',
@@ -225,6 +227,7 @@ async function router(req, res) {
     if (!autorise(req)) return envoyer(res, 403, { ok: false });
     return envoyer(res, 200, await vitrines.agir(r[1], await json(req, 2000)));
   }
+  if (m === 'GET' && url === '/api/feuille') return envoyer(res, 200, require('./feuille.cjs').F);
   if (m === 'GET' && url === '/api/appels') return envoyer(res, 200, await appels.aFaire(50));
   if (m === 'POST' && (r = url.match(/^\/api\/appels\/(\d{9}|v\d+)$/))) {
     if (!autorise(req)) return envoyer(res, 403, { ok: false });

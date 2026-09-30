@@ -95,12 +95,7 @@ Codex du 28/09 : `REPRISE_CODEX.md`.
 | Meta Muse / Muse for Small Business | REGARDER | États-Unis et Canada seulement ; en France, l'API Graph de Meta reste la voie |
 | Connecteur claude.ai vers le serveur MCP du cerveau | PLUS TARD | exposer le cerveau sur Internet avec OAuth : sécurité d'abord |
 
-## Prochaines tâches, dans l'ordre
+## Prochaines tâches
 
-1. Fait le 30/09 : ordre 25 (Gemini 3.8 saturé → 3.7 Flash, fichier relu), architecte et superviseur passés. À surveiller : les passages de la nuit dans `boucle_passages`.
-2. Routines Claude créées le 30/09 (Sonnet 5.5, abonnement, sans connecteur) : « Ingénierie » (chantiers GitHub,
-   deux fois par jour, pull request sans fusion) et « Moteur de contenu » (chaque lundi). Il manque au cerveau un
-   jeton GitHub qui voie raime-cerveau (droit Issues) pour ouvrir lui-même les chantiers.
-3. Faire poser la configuration d'Hermes par la porte à chaque livraison (aujourd'hui : à la main).
-4. Relancer ou clore les anciens ordres échoués (14 à 21).
-5. Requêtes automatiques vers les API publiques : en service le 30/09 pour les ordres d'Hermes et les chantiers (`jarvis/apis_utiles.cjs`).
+Elles vivent dans la feuille de route : `jarvis/feuille_de_route.json` (source), copie lisible `docs/FEUILLE_DE_ROUTE.md`,
+et dans le coffre Obsidian (note 14). Jarvis, le cap des agents et Hermes (outil `feuille_de_route_lire`) la lisent.

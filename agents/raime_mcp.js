@@ -75,6 +75,15 @@ export const OUTILS = {
       return (await capActuel({ brain })).texte;
     },
   },
+  feuille_de_route_lire: {
+    description: 'La feuille de route du cerveau rAIme décidée avec Basile : chaque point, son rang, ce qu\'il faut de Basile, quand il est fini, et son état.',
+    inputSchema: { type: 'object', properties: {} },
+    action: () => ({ type: 'lire', cible: 'feuille_de_route' }),
+    async faire() {
+      const { versMarkdown } = await import('../tools/feuille_vers_markdown.mjs');
+      return versMarkdown();
+    },
+  },
   api_publique_chercher: {
     description: 'Cherche une API publique existante pour un besoin (répertoire public-apis, près de 2 000 API, en anglais) avant de construire un outil. Rend le nom, la description, la clé exigée ou non, et le lien.',
     inputSchema: { type: 'object', properties: { besoin: { type: 'string', minLength: 3 }, sans_cle: { type: 'boolean' } }, required: ['besoin'] },

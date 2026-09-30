@@ -10,8 +10,9 @@
 import crypto from 'node:crypto';
 import { createRequire } from 'node:module';
 const FIXE = createRequire(import.meta.url)('../jarvis/cap.cjs');
+const FEUILLE = createRequire(import.meta.url)('../jarvis/feuille.cjs');
 
-export const TAILLE_MAX = 2600; // caractères : le cap part avec chaque consigne, il reste court
+export const TAILLE_MAX = 3000; // caractères : le cap part avec chaque consigne, il reste court
 const RAFRAICHIR_MS = 30 * 60_000;
 
 async function lignes(brain, sql, params = []) {
@@ -52,6 +53,8 @@ export function rediger(f) {
   const vivant = [
     'LE PASSÉ : ' + passe.join(' ; ') + '.',
     futur.length ? 'LE FUTUR (buts ouverts, le plus proche d\'abord) : ' + futur.join(' ; ') + '.' : '',
+    (() => { const r = FEUILLE.resume(); return `LA FEUILLE DE ROUTE (${r.faits}/${r.total} faits) : prochains points : `
+      + r.prochains.map((p) => `n°${p.n} ${p.titre}`).join(' ; ') + '.'; })(),
     f.lecons.length ? 'CE QUE LA MAISON A APPRIS : ' + f.lecons.map((l) => court(l, 140)).join(' ; ') + '.' : '',
     f.regime ? `ÉTAT : régime de dépense « ${f.regime} ».` : '',
   ].filter(Boolean).join('\n');
