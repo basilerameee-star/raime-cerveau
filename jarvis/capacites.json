@@ -61,6 +61,21 @@
           "detail": "« Retiens que… », et toutes les heures il retient seul les faits durables de vos échanges."
         },
         {
+          "nom": "Garder un cap commun",
+          "etat": "en_place",
+          "detail": "Objectifs, règles, goût, bonne réponse, règles commerciales, passé et futur : en tête de chaque consigne (30/09)."
+        },
+        {
+          "nom": "Juger la justesse d'une décision (le goût, avec JEV)",
+          "etat": "en_place",
+          "detail": "Règles en code puis JEV de TypeSafe : décide seul, revue, ton accord ou jamais ; filtre déjà les questions qu'on te pose."
+        },
+        {
+          "nom": "Trouver une API publique existante avant de construire",
+          "etat": "en_place",
+          "detail": "Répertoire public-apis (1 848 API, licence MIT), relu chaque semaine."
+        },
+        {
           "nom": "Lire ton agenda",
           "etat": "a_brancher",
           "il_faut": "L'adresse secrète iCal de ton Google Agenda (Paramètres de l'agenda → Adresse secrète au format iCal), rangée dans le coffre."
