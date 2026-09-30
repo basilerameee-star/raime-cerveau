@@ -4,7 +4,7 @@ import './outils.mjs';
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { db } from '../../agents/lib.js';
-import { passer, jugerSite, emailsDans, adresseValide, emailPlausible, maquette, brouillon, PRIX, AGENDA } from '../../agents/vitrines.js';
+import { passer, jugerSite, emailsDans, adresseValide, emailPlausible, maquette, brouillon, chercherOsm, PRIX, AGENDA } from '../../agents/vitrines.js';
 
 const brain = db(); await brain.connect();
 after(async () => { for (const t of ['vitrines', 'vitrines_recherches', 'vitrines_villes']) await brain.query(`DROP TABLE IF EXISTS ${t}`); await brain.end(); });
@@ -101,12 +101,14 @@ test('01/10/2026 : une page supprimée d’un site vivant n’est pas « aucun s
   await ajouter(902, 'Boulangerie Martin');
   await ajouter(903, 'Le Fournil Dupuis', { email: 'contact@fournil-dupuis.fr' });
   await ajouter(904, 'Fournil Dupuis (boutique 2)', { email: 'contact@fournil-dupuis.fr' });
+  await ajouter(906, 'Onglerie Sans Schéma', { site: 'www.onglerie-test.fr/' });
   await ajouter(905, 'Fleurs Évasion', { site: 'https://www.facebook.com/fleursevasion/', email: 'fleurs.evasion@gmail.com' });
   const fetch = async (url) => {
     const u = String(url);
     if (u.includes('overpass')) return rep({ elements: [] });
     if (u === 'https://www.chevallier-test.fr/boutique-plaine/') return rep('', 404, u);
     if (u === 'https://www.chevallier-test.fr/') return rep(NEUF, 200, u);
+    if (u === 'https://www.onglerie-test.fr/') return rep(NEUF, 200, u);
     if (u.includes('searxng') && u.includes('email')) return rep({ results: [{ url: 'https://annuaire-x.fr/a', title: 'Boulangerie Martin Annecy', content: 'Contact : autremaison74@gmail.com' }] });
     if (u.includes('searxng')) return rep({ results: [] });
     throw new Error('réseau coupé : ' + u);
@@ -128,5 +130,15 @@ test('01/10/2026 : une page supprimée d’un site vivant n’est pas « aucun s
   const e = await fiche(905);
   assert.equal(e.statut, 'brouillon', 'une page Facebook n’est pas un site : c’est la cible');
   assert.match(e.corps, /je n'ai trouvé qu'une page Facebook, et aucun site à votre nom/);
+  assert.equal((await fiche(906)).site_etat, 'recent', 'une adresse sans https:// se lit quand même');
   assert.equal(emailPlausible('boulangerie@gmail.com', { nom: 'Boulangerie du Lac', ville: 'Annecy' }, null, 'recherche web'), false, 'un mot du métier ne suffit pas');
+});
+
+test('OpenStreetMap : une enseigne (étiquette « brand ») n’est pas un commerçant à démarcher', async () => {
+  const f = async () => rep({ elements: [
+    { type: 'node', id: 1, tags: { name: 'Carrefour fleurs', shop: 'florist', brand: 'Carrefour' } },
+    { type: 'node', id: 2, tags: { name: 'Monceau Fleurs', shop: 'florist', 'brand:wikidata': 'Q1' } },
+    { type: 'node', id: 3, tags: { name: 'Les Fleurs de Léa', shop: 'florist', phone: '04 50 00 00 03' } }] });
+  const r = await chercherOsm({ metier: 'fleuriste', ville: 'Annecy', fetch: f });
+  assert.deepEqual(r.map((x) => x.nom), ['Les Fleurs de Léa']);
 });

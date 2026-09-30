@@ -102,7 +102,8 @@ export async function chercherOsm({ metier, ville, fetch: f = globalThis.fetch }
   const d = await lireJson(f, 'https://overpass-api.de/api/interpreter', { method: 'POST', body: 'data=' + encodeURIComponent(q),
     // Overpass refuse (406) une signature de navigateur : il veut celle d'un programme (constaté le 30/09/2026).
     headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': 'raime-cerveau/1.0 (+https://raime.fr)' }, delai: 60000 });
-  return (d.elements || []).map((e) => { const t = e.tags || {}; return {
+  // Une enseigne (étiquette « brand » : Carrefour, Jean Louis David…) a son site national : ce n'est pas la cible.
+  return (d.elements || []).filter((e) => !(e.tags || {}).brand && !(e.tags || {})['brand:wikidata']).map((e) => { const t = e.tags || {}; return {
     source: 'osm', source_id: `osm:${e.type}/${e.id}`, nom: t.name, metier, ville,
     adresse: [t['addr:housenumber'], t['addr:street'], t['addr:postcode'], t['addr:city']].filter(Boolean).join(' ') || null,
     telephone: t.phone || t['contact:phone'] || null, site: t.website || t['contact:website'] || null, carte: null,
@@ -136,7 +137,9 @@ async function decouvrir(brain, { env, fetch: f }) {
 // ── 2. QUALIFIER : un site ancien, « plus du tout sexy » ─────────────────────
 // Un site se lit à l'adresse donnée, sinon à sa racine : une fiche peut pointer vers une page supprimée d'un site
 // bien vivant (01/10/2026 : la fiche d'une boulangerie menait à une page 404 d'un site récent, lu comme « aucun site »).
+export const normaliserSite = (s) => (s && !/^https?:\/\//i.test(String(s).trim()) ? `https://${String(s).trim().replace(/^\/+/, '')}` : s);
 export async function lireSite(f, site) {
+  site = normaliserSite(site);
   const essais = [site];
   try { const racine = `${new URL(site).origin}/`; if (racine !== site) essais.push(racine); } catch { return { ok: false, statut: 404, url: site }; }
   let dernier = null;
@@ -295,7 +298,7 @@ export function brouillon(v, url) {
 // ── LE PASSAGE ────────────────────────────────────────────────────────────────
 async function qualifier(brain, v, deps) {
   const f = deps.fetch;
-  let site = v.site;
+  let site = normaliserSite(v.site); // une fiche note parfois « www.exemple.fr » sans https://
   if (!site && v.source === 'osm') site = await siteParRecherche(v, f);
   const juge = site && plateformeDe(site) ? { etat: 'aucun', signaux: [`${plateformeDe(site)} seulement`] } : jugerSite(site ? await lireSite(f, site) : null);
   if (juge.etat === 'recent' || juge.etat === 'illisible') {
