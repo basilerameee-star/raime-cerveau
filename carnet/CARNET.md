@@ -401,3 +401,7 @@ Merci pour le travail de cette nuit : le banc a déjà trouvé un vrai défaut e
 - Fait : cap, consigne et calcul de Jarvis (objectif par plateforme, « boutique » comptée à part), but 14 en base, feuille de route réordonnée (41 points, trois moteurs, règles), étude de positionnement v2 (`contenus/POSITIONNEMENT.md` : « les objets et astuces qui suppriment une petite galère du quotidien », en attente du choix de Basile), consignes des deux routines mises à jour.
 - Constat : la pull request de la routine (étude v1) a fait échouer le contrôle « Résumé pour Basile » (section « ## Pour Basile » absente) : les consignes des routines l'exigent désormais.
 - Clip farming : des sous-titres ne donnent pas le droit de republier la vidéo d'un autre en France ; sources retenues : vidéos de Basile, campagnes de clipping autorisées, licences libres commerciales.
+
+## 2026-10-01 — le personnage de la marque média
+- Basile refuse la niche « petites galères du quotidien » (péjorative, réductrice). Direction : un personnage influenceur qui fait lui-même les pubs des produits ; homme au style street, cagoule blanche, sweat noir, visage jamais montré, train de vie fastueux, montres ; 3D sous Blender ; nom commun à choisir, le même partout. Organisation TikTok for Developers créée au nom de rAIme.
+- Garde-fous notés : « Image virtuelle », aucune marque de montre réelle sans accord, aucune promesse de gains. `contenus/POSITIONNEMENT.md` et la feuille de route (n° 30, n° 6) mis à jour ; la routine de contenu reste en attente.

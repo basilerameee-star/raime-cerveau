@@ -1,6 +1,13 @@
 NICHE RETENUE : (à écrire quand Basile a choisi)
 
-# Positionnement de la marque MÉDIA, version 2 : une niche, deux revenus
+> **01/10/2026, décision de Basile** : la recommandation ci-dessous (« les petites galères du quotidien ») est **refusée** (péjorative et réductrice).
+> Direction retenue : **un personnage, influenceur de la marque**, qui fait lui-même les publicités des produits (« on a envie de lui ressembler »).
+> Un homme au style street, **cagoule blanche**, sweat à capuche noir, **visage jamais montré**, train de vie fastueux, montres de prix au poignet,
+> un univers moderne un peu sulfureux. Personnage 3D à créer (Blender), nom commun à choisir (même nom sur TikTok, Instagram, Facebook, YouTube).
+> La niche, le nom et le personnage se définissent ensemble plus tard ; tant que la ligne « NICHE RETENUE » est vide, aucun plan n'est produit.
+> Garde-fous : mention « Image virtuelle » (loi du 9 juin 2023), aucune marque de montre réelle sans accord, aucune promesse de gains, rien d'illégal montré.
+
+# Positionnement de la marque MÉDIA, version 2 : une niche, deux revenus (recommandation refusée le 01/10/2026)
 
 Version du 30/09/2026 (soir), après les décisions de Basile :
 - **objectif n° 1** : la MONÉTISATION seule, 2 000 € par mois sur **chacune** de TikTok, YouTube et Instagram (6 000 € au total) ;
