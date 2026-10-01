@@ -33,6 +33,9 @@ services:
       HERMES_UID: "${HERMES_UID:-10000}"             # le propriétaire de /travail, pour qu'Hermes puisse y écrire
       HERMES_GID: "${HERMES_GID:-10000}"
       API_SERVER_HOST: "0.0.0.0"                     # réseau interne seulement : aucun port publié
+      # L'outil d'écriture d'Hermes est borné à /opt/data par son image : sans /travail, chaque livrable était refusé
+      # (01/10/2026, demande 30 : « Write denied… outside HERMES_WRITE_SAFE_ROOT ») et l'ordre se disait fait quand même.
+      HERMES_WRITE_SAFE_ROOT: "/opt/data:/travail"
     mem_limit: 2g
     cpus: 2
     networks: [raime_default]
