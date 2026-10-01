@@ -4,7 +4,7 @@ import './outils.mjs';
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { db } from '../../agents/lib.js';
-import { passer, jugerSite, emailsDans, adresseValide, emailPlausible, maquette, brouillon, chercherOsm, PRIX, AGENDA } from '../../agents/vitrines.js';
+import { passer, jugerSite, emailsDans, adresseValide, emailPlausible, maquette, brouillon, chercherOsm, enseigne, PRIX, AGENDA } from '../../agents/vitrines.js';
 
 const brain = db(); await brain.connect();
 after(async () => { for (const t of ['vitrines', 'vitrines_recherches', 'vitrines_villes']) await brain.query(`DROP TABLE IF EXISTS ${t}`); await brain.end(); });
@@ -142,3 +142,23 @@ test('OpenStreetMap : une enseigne (étiquette « brand ») n’est pas un comme
   const r = await chercherOsm({ metier: 'fleuriste', ville: 'Annecy', fetch: f });
   assert.deepEqual(r.map((x) => x.nom), ['Les Fleurs de Léa']);
 });
+
+test('point 18 : aucune enseigne nationale n’arrive en brouillon ni dans les appels ; un artisan qui porte un prénom, si', async () => {
+  const oui = ['Paul', "PAUL - Gare d'Annecy", 'Boulangerie Paul', 'Brioche Dorée', 'Marie Blachère', 'Jean Louis David', 'Carrefour fleurs',
+    'Coiff&Co', 'Monceau Fleurs', 'Speedy Annecy', 'La Mie Câline', 'Ange Annecy Centre'];
+  const non = ['Boulangerie Paul Martin', 'Le Fournil de Paul', 'Chez Nicolas', 'Aux Délices de Louise', 'Techni Nails', 'Au Puits Savoyard'];
+  for (const nom of oui) assert.ok(enseigne({ nom, ville: 'Annecy' }), `${nom} est une enseigne`);
+  for (const nom of non) assert.equal(enseigne({ nom, ville: 'Annecy' }), null, `${nom} n’est pas une enseigne`);
+  await brain.query("UPDATE vitrines SET statut = 'ecarte' WHERE statut = 'nouveau'");
+  await brain.query(`INSERT INTO vitrines (id, source, source_id, nom, metier, ville, telephone, email, email_source, statut)
+    VALUES (950, 'osm', 'osm:node/test950', 'Brioche Dorée', 'boulangerie', 'Annecy', '04 50 00 00 50', 'annecy@exemple-chaine.fr', 'fiche OSM', 'nouveau')`);
+  await passer({ brain, env: {}, fetch: async (u) => (String(u).includes('overpass') ? rep({ elements: [{ type: 'node', id: 7, tags: { name: 'Paul', shop: 'bakery' } }] }) : rep({ results: [] })),
+    resoudre: async () => [{ exchange: 'mx' }], combien: 5 });
+  const { rows } = await brain.query("SELECT statut, motif FROM vitrines WHERE id = 950");
+  await brain.query(`INSERT INTO vitrines (id, source, source_id, nom, metier, ville, telephone, statut) VALUES (951, 'osm', 'osm:node/test951', 'Ange', 'boulangerie', 'Annecy', '04', 'a_appeler')`);
+  await passer({ brain, env: {}, fetch: async (u) => rep(String(u).includes('overpass') ? { elements: [] } : { results: [] }), resoudre: async () => [], combien: 1 });
+  assert.equal((await brain.query('SELECT statut FROM vitrines WHERE id = 951')).rows[0].statut, 'ecarte', 'déjà dans les appels : écartée quand même');
+  assert.deepEqual(rows[0], { statut: 'ecarte', motif: 'enseigne nationale (brioche doree)' });
+  assert.equal((await brain.query("SELECT count(*)::int AS n FROM vitrines WHERE nom = 'Paul' AND source_id = 'osm:node/7'")).rows[0].n, 0, 'une enseigne découverte n’entre même pas');
+});
+

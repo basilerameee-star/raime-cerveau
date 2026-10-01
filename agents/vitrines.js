@@ -123,7 +123,7 @@ async function decouvrir(brain, { env, fetch: f }) {
   const trouves = source === 'google' ? await chercherPlaces({ cle, ...p, fetch: f }) : await chercherOsm({ ...p, fetch: f });
   let neufs = 0;
   for (const c of trouves) {
-    if (!c.nom) continue;
+    if (!c.nom || enseigne(c)) continue;
     const r = await brain.query(`INSERT INTO vitrines (source, source_id, nom, metier, adresse, ville, telephone, carte, site, email, email_source)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) ON CONFLICT (source_id) DO NOTHING RETURNING id`,
     [c.source, c.source_id, c.nom, c.metier, c.adresse, c.ville, c.telephone, c.carte, c.site, c.email, c.email ? 'fiche OSM' : null]);
@@ -196,6 +196,28 @@ const GENERIQUES = new Set(['boulangerie', 'patisserie', 'boucherie', 'charcuter
   'france', 'saint', 'sainte', 'fils', 'freres', 'cave', 'traiteur', 'epicerie', 'pressing', 'cordonnerie', 'opticien', 'pharmacie']);
 const MESSAGERIES = /@(gmail|googlemail|orange|wanadoo|free|sfr|neuf|laposte|hotmail|outlook|live|yahoo|icloud|aol|bbox)\./i;
 const sansAccents = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+// ── Les enseignes nationales (point 18) : elles ont leur site national, ce ne sont pas des clients à 500 €.
+// Un nom ambigu (Paul, Ange, Nicolas…) n'est une enseigne que s'il est seul (hors mots du métier et de la ville) :
+// « Boulangerie Paul » l'est, « Boulangerie Paul Martin » non. Un nom distinctif l'est où qu'il apparaisse.
+const ENSEIGNES_SEULES = ['paul', 'ange', 'louise', 'nicolas', 'quick', 'kfc', 'subway', 'midas', 'speedy', 'norauto', 'feu vert',
+  'point s', 'carglass', 'dessange', 'tchip', 'sephora', 'nocibe', 'marionnaud', 'picard', 'leclerc', 'auchan', 'casino', 'spar', 'lidl',
+  'aldi', 'cavavin', 'v and b', 'v b', '5 a sec', 'yves rocher', 'body minute', 'provost', 'feuillette', 'marie blachere'];
+const ENSEIGNES_PARTOUT = ['brioche doree', 'marie blachere', 'boulangerie louise', 'boulangeries louise', 'boulangerie ange', 'boulangeries ange',
+  'la mie caline', 'carrefour', 'intermarche', 'super u', 'hyper u', 'jean louis david', 'franck provost', 'jacques dessange', 'saint algue',
+  'camille albane', 'coiff and co', 'coiff co', 'monceau fleurs', 'rapid flore', 'au nom de la rose', 'interflora', 'dominos pizza', 'domino s pizza',
+  'pizza hut', 'speed rabbit', 'mcdonald', 'burger king', 'mister minit', 'tout chien', 'esthetic center', 'euromaster', 'eurorepar', 'five a sec',
+  'grand frais', 'yves rocher', 'body minute', 'point s', 'feu vert'];
+const LIEUX = new Set(['gare', 'centre', 'ville', 'aeroport', 'route', 'avenue', 'rue', 'place', 'zone', 'commercial', 'commerciale', 'galerie',
+  'marche', 'cc', 'zi', 'za', 'le', 'la', 'les', 'de', 'du', 'des', 'd', 'l', 'et', 'au', 'aux', 'en', 'sur']);
+export function enseigne(v) {
+  const nom = ` ${sansAccents(v.nom).replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ').trim()} `;
+  const partout = ENSEIGNES_PARTOUT.find((e) => nom.includes(` ${e} `));
+  if (partout) return partout;
+  const ville = new Set(sansAccents(v.ville).split(/[^a-z0-9]+/));
+  const reste = nom.trim().split(' ').filter((m) => m && !GENERIQUES.has(m) && !ville.has(m) && !LIEUX.has(m)).join(' ');
+  return ENSEIGNES_SEULES.includes(reste) ? reste : null;
+}
+
 export function motsDistinctifs(v) {
   const ville = new Set(sansAccents(v.ville).split(/[^a-z0-9]+/));
   return sansAccents(v.nom).split(/[^a-z0-9]+/).filter((m) => m.length >= 4 && !GENERIQUES.has(m) && !ville.has(m));
@@ -298,6 +320,11 @@ export function brouillon(v, url) {
 // ── LE PASSAGE ────────────────────────────────────────────────────────────────
 async function qualifier(brain, v, deps) {
   const f = deps.fetch;
+  const marque = enseigne(v);
+  if (marque) {
+    await brain.query(`UPDATE vitrines SET statut = 'ecarte', motif = $2, maj_le = now() WHERE id = $1`, [v.id, `enseigne nationale (${marque})`]);
+    return 'ecarte';
+  }
   let site = normaliserSite(v.site); // une fiche note parfois « www.exemple.fr » sans https://
   if (!site && v.source === 'osm') site = await siteParRecherche(v, f);
   const juge = site && plateformeDe(site) ? { etat: 'aucun', signaux: [`${plateformeDe(site)} seulement`] } : jugerSite(site ? await lireSite(f, site) : null);
@@ -340,6 +367,12 @@ export async function passer({ brain, env = process.env, fetch = globalThis.fetc
       bilan.erreurs++;
       await brain.query(`UPDATE vitrines SET statut = 'ecarte', motif = $2, maj_le = now() WHERE id = $1`, [v.id, `erreur : ${e.message.slice(0, 150)}`]);
     }
+  }
+  // Une enseigne ajoutée à la liste écarte aussi les fiches déjà qualifiées (jamais une vitrine validée ou envoyée).
+  const { rows: qualifiees } = await brain.query(`SELECT id, nom, ville FROM vitrines WHERE statut IN ('brouillon', 'a_appeler') AND nom IS NOT NULL`);
+  for (const q of qualifiees) {
+    const marque = enseigne(q);
+    if (marque) { await brain.query(`UPDATE vitrines SET statut = 'ecarte', motif = $2, maj_le = now() WHERE id = $1`, [q.id, `enseigne nationale (${marque})`]); bilan.ecartes++; }
   }
   // Conditions de Google : 30 jours au plus pour ce qu'on n'utilise pas ; l'identifiant du lieu seul reste.
   await brain.query(`UPDATE vitrines SET nom = NULL, adresse = NULL, telephone = NULL, carte = NULL, demo_html = NULL, corps = NULL
