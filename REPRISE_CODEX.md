@@ -46,3 +46,9 @@ Références officielles pour les accès : [authentification Codex](https://lear
 ## Points à garder visibles
 
 Les anciens ordres bloqués gardent leur numéro et leur état ; leur reprise doit tenir compte des doublons et de la pertinence actuelle. Un dossier contenant quelques fichiers ne suffit pas à prouver qu'une tâche a réussi. Les erreurs de base silencieusement transformées en listes vides rendent certains diagnostics trompeurs. Les fichiers d'architecture antérieurs à Jarvis doivent être réalignés progressivement sur le code et les observations du serveur.
+
+## Interface 3D : à garder absolument (demande de Basile, 01/10/2026)
+
+- Le tiroir **VITRINES** de l'interface actuelle (`jarvis/interface/index.html`) : pour chaque brouillon, le texte de l'e-mail, et les boutons **Voir la maquette**, **Valider** et **Écarter**. Basile veut retrouver exactement ce geste dans la centrale de commande 3D.
+- Aussi : la section « Ont répondu : à appeler » (fiche, téléphone, maquette) et le choix d'envoi **Pause / Essai / Réel**.
+- Les données viennent de `/api/vitrines?statut=…`, `/api/vitrines/:id` (POST `{ action }`) et `/api/vitrines/envoi`.
