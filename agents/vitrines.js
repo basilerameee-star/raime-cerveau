@@ -18,6 +18,7 @@
 // Conditions de Google : les données d'un lieu écarté sont effacées au bout de 30 jours (seul son identifiant reste).
 import crypto from 'node:crypto';
 import dns from 'node:dns/promises';
+import { maquettePremium } from './maquette_premium.js';
 
 export const PRIX = Number(process.env.VITRINE_PRIX || 500);
 export const AGENDA = process.env.VITRINE_AGENDA || 'https://calendar.app.google/HdhqAt3BaQFWfx2g7'; // le lien de raime.fr
@@ -50,7 +51,8 @@ export async function preparer(brain) {
     trouves int, fait_le timestamptz NOT NULL DEFAULT now(), PRIMARY KEY (metier, ville, source))`);
   await brain.query(`CREATE TABLE IF NOT EXISTS vitrines_villes (nom text PRIMARY KEY, departement text, population int, rang int)`);
   // La maquette premium (point 16) : l'ordre confié à Hermes, et le jour où Basile l'a publiée à la place de la simple.
-  await brain.query('ALTER TABLE vitrines ADD COLUMN IF NOT EXISTS premium_commande int, ADD COLUMN IF NOT EXISTS premium_le timestamptz, ADD COLUMN IF NOT EXISTS demo_simple text');
+  await brain.query('ALTER TABLE vitrines ADD COLUMN IF NOT EXISTS premium_commande int, ADD COLUMN IF NOT EXISTS premium_le timestamptz, ADD COLUMN IF NOT EXISTS demo_simple text')
+  await brain.query('ALTER TABLE vitrines ADD COLUMN IF NOT EXISTS lat double precision, ADD COLUMN IF NOT EXISTS lon double precision, ADD COLUMN IF NOT EXISTS maquette_v int');
 }
 
 const lireJson = async (f, url, o = {}) => { const r = await f(url, { ...o, signal: AbortSignal.timeout(o.delai || 30000) }); if (!r.ok) throw new Error(`${url.split('?')[0]} : ${r.status}`); return r.json(); };
@@ -85,11 +87,12 @@ async function prochaine(brain, source) {
 export async function chercherPlaces({ cle, metier, ville, fetch: f = globalThis.fetch }) {
   const d = await lireJson(f, 'https://places.googleapis.com/v1/places:searchText', { method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': cle,
-      'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.websiteUri,places.businessStatus,places.googleMapsUri' },
+      'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.websiteUri,places.businessStatus,places.googleMapsUri,places.location' },
     body: JSON.stringify({ textQuery: `${metier} ${ville}`, languageCode: 'fr', regionCode: 'FR', pageSize: 20 }) });
   return (d.places || []).filter((p) => !p.businessStatus || p.businessStatus === 'OPERATIONAL').map((p) => ({
     source: 'google', source_id: `google:${p.id}`, nom: p.displayName && p.displayName.text, metier, ville, adresse: p.formattedAddress || null,
-    telephone: p.nationalPhoneNumber || null, site: p.websiteUri || null, carte: p.googleMapsUri || null, email: null }));
+    telephone: p.nationalPhoneNumber || null, site: p.websiteUri || null, carte: p.googleMapsUri || null, email: null,
+    lat: p.location ? p.location.latitude : null, lon: p.location ? p.location.longitude : null }));
 }
 
 export async function chercherOsm({ metier, ville, fetch: f = globalThis.fetch }) {
@@ -109,7 +112,7 @@ export async function chercherOsm({ metier, ville, fetch: f = globalThis.fetch }
     source: 'osm', source_id: `osm:${e.type}/${e.id}`, nom: t.name, metier, ville,
     adresse: [t['addr:housenumber'], t['addr:street'], t['addr:postcode'], t['addr:city']].filter(Boolean).join(' ') || null,
     telephone: t.phone || t['contact:phone'] || null, site: t.website || t['contact:website'] || null, carte: null,
-    email: t.email || t['contact:email'] || null }; });
+    email: t.email || t['contact:email'] || null, lat: e.lat ?? (e.center && e.center.lat) ?? null, lon: e.lon ?? (e.center && e.center.lon) ?? null }; });
 }
 
 async function decouvrir(brain, { env, fetch: f }) {
@@ -126,9 +129,9 @@ async function decouvrir(brain, { env, fetch: f }) {
   let neufs = 0;
   for (const c of trouves) {
     if (!c.nom || enseigne(c)) continue;
-    const r = await brain.query(`INSERT INTO vitrines (source, source_id, nom, metier, adresse, ville, telephone, carte, site, email, email_source)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) ON CONFLICT (source_id) DO NOTHING RETURNING id`,
-    [c.source, c.source_id, c.nom, c.metier, c.adresse, c.ville, c.telephone, c.carte, c.site, c.email, c.email ? 'fiche OSM' : null]);
+    const r = await brain.query(`INSERT INTO vitrines (source, source_id, nom, metier, adresse, ville, telephone, carte, site, email, email_source, lat, lon)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) ON CONFLICT (source_id) DO NOTHING RETURNING id`,
+    [c.source, c.source_id, c.nom, c.metier, c.adresse, c.ville, c.telephone, c.carte, c.site, c.email, c.email ? 'fiche OSM' : null, c.lat ?? null, c.lon ?? null]);
     neufs += r.rowCount;
   }
   await brain.query(`INSERT INTO vitrines_recherches (metier, ville, source, trouves) VALUES ($1,$2,$3,$4)
@@ -293,39 +296,34 @@ async function chercherEmail(v, { fetch: f, resoudre }) {
 }
 
 // ── 4. MAQUETTE ───────────────────────────────────────────────────────────────
-const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const TEINTES = { boulangerie: ['#c47a2c', '#f6e7d3'], boucherie: ['#9b2226', '#f5e1dc'], fleuriste: ['#d6336c', '#fbe4ec'], coiffeur: ['#5f3dc4', '#ece6fb'],
-  'institut de beauté': ['#c2255c', '#fce4ee'], restaurant: ['#e8590c', '#fdebdc'], pizzeria: ['#d9480f', '#fdebdc'], fromagerie: ['#e0a800', '#fff6d6'],
-  caviste: ['#7b1e3a', '#f6e1e7'], 'garage automobile': ['#1864ab', '#e1ecf7'], plombier: ['#1971c2', '#e1eefa'], électricien: ['#f08c00', '#fff1dc'] };
 export const slugifier = (v) => `${String(v.nom).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40)}-${crypto.createHash('sha1').update(v.source_id).digest('hex').slice(0, 6)}`;
 
+// Les coordonnées du commerce, pour la carte : OpenStreetMap (le point lui-même) ou la Base Adresse Nationale (l'adresse).
+export async function localiser(v, f) {
+  if (v.lat !== null && v.lat !== undefined && Number.isFinite(Number(v.lat))) return { lat: Number(v.lat), lon: Number(v.lon) };
+  try {
+    const m = /^osm:(node|way|relation)\/(\d+)$/.exec(v.source_id || '');
+    if (m) {
+      const d = await lireJson(f, 'https://overpass-api.de/api/interpreter', { method: 'POST', body: 'data=' + encodeURIComponent(`[out:json][timeout:20];${m[1]}(${m[2]});out center;`),
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': 'raime-cerveau/1.0 (+https://raime.fr)' }, delai: 30000 });
+      const e = (d.elements || [])[0];
+      const lat = e && (e.lat ?? (e.center && e.center.lat)), lon = e && (e.lon ?? (e.center && e.center.lon));
+      if (Number.isFinite(lat)) return { lat, lon };
+    }
+    if (v.adresse) {
+      const d = await lireJson(f, `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(`${v.adresse} ${v.ville || ''}`)}&limit=1`, { delai: 15000 });
+      const p = (d.features || [])[0];
+      if (p && p.properties.score >= 0.5) return { lat: p.geometry.coordinates[1], lon: p.geometry.coordinates[0] };
+    }
+  } catch { /* pas de carte : le repère seul la remplace */ }
+  return { lat: null, lon: null };
+}
+
+// La maquette (gabarit v2 du 01/10/2026, agents/maquette_premium.js) : photos d'exemple servies par le Cockpit, carte
+// OpenStreetMap quand les coordonnées sont connues.
+export const MAQUETTE_V = 2;
 export function maquette(v) {
-  const [fort, doux] = TEINTES[v.metier] || ['#2b2d42', '#e9ecef'];
-  const tel = v.telephone ? String(v.telephone).replace(/[^\d+]/g, '') : '';
-  const metier = v.metier ? v.metier.charAt(0).toUpperCase() + v.metier.slice(1) : 'Commerce';
-  const itineraire = v.carte || `https://www.google.com/maps/search/${encodeURIComponent(`${v.nom} ${v.adresse || v.ville}`)}`;
-  return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="robots" content="noindex"><title>${esc(v.nom)} · ${esc(metier)} à ${esc(v.ville)}</title><style>
-:root{--f:${fort};--d:${doux}}*{box-sizing:border-box;margin:0}body{font:17px/1.6 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#1d1d1f;background:#fff}
-.demo{background:#111;color:#fff;font-size:13px;text-align:center;padding:8px 12px}
-header{min-height:78vh;display:flex;align-items:center;background:radial-gradient(1200px 600px at 80% -10%,var(--d),transparent),linear-gradient(160deg,#fff 40%,var(--d));padding:48px 20px}
-.w{max-width:1040px;margin:0 auto;width:100%}.k{color:var(--f);font-weight:600;letter-spacing:.08em;text-transform:uppercase;font-size:13px}
-h1{font-size:clamp(40px,8vw,84px);line-height:1.02;margin:14px 0 18px;letter-spacing:-.02em}p.l{font-size:clamp(18px,2.4vw,22px);max-width:560px;color:#444}
-.b{display:flex;gap:12px;flex-wrap:wrap;margin-top:28px}.b a{padding:14px 22px;border-radius:999px;text-decoration:none;font-weight:600}
-.p{background:var(--f);color:#fff;box-shadow:0 10px 30px -10px var(--f)}.s{border:1.5px solid var(--f);color:var(--f)}
-section{padding:64px 20px}.g{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;margin-top:24px}
-.c{background:var(--d);border-radius:18px;padding:22px;animation:m .8s ease both}.c:nth-child(2){animation-delay:.1s}.c:nth-child(3){animation-delay:.2s}
-@keyframes m{from{opacity:0;transform:translateY(14px)}to{opacity:1}}h2{font-size:clamp(28px,4vw,40px);letter-spacing:-.01em}
-footer{padding:36px 20px;border-top:1px solid #eee;font-size:14px;color:#666}</style></head><body>
-<div class="demo">Maquette de démonstration préparée par rAIme pour ${esc(v.nom)}, à compléter ensemble avec vos photos et vos textes.</div>
-<header><div class="w"><div class="k">${esc(metier)} · ${esc(v.ville)}</div><h1>${esc(v.nom)}</h1>
-<p class="l">Votre ${esc(v.metier || 'commerce')} à ${esc(v.ville)}. Retrouvez nos horaires, notre adresse et appelez-nous en un geste.</p>
-<div class="b">${tel ? `<a class="p" href="tel:${esc(tel)}">Appeler</a>` : ''}<a class="s" href="${esc(itineraire)}" rel="noopener">Itinéraire</a></div></div></header>
-<section><div class="w"><h2>Ce que vous trouverez ici</h2><div class="g">
-<div class="c"><strong>Nos services</strong><p>Les prestations et les produits de la maison, avec leurs prix.</p></div>
-<div class="c"><strong>Nos photos</strong><p>La boutique, l'équipe, le savoir-faire.</p></div>
-<div class="c"><strong>Nous trouver</strong><p>${esc(v.adresse || v.ville)}${v.telephone ? `<br>${esc(v.telephone)}` : ''}</p></div></div></div></section>
-<footer><div class="w">${esc(v.nom)} · ${esc(v.adresse || v.ville)}. Démonstration réalisée par rAIme (raime.fr).</div></footer></body></html>`;
+  return maquettePremium(v, { images: `${ADRESSE_DEMO}/demo/img` });
 }
 
 // ── 5. LE BROUILLON (texte de Basile, 30/09/2026) ─────────────────────────────
@@ -371,6 +369,7 @@ async function qualifier(brain, v, deps) {
       [v.id, site, juge.etat, juge.signaux, juge.etat === 'recent' ? 'site récent' : `${juge.signaux[0]} : rien ne peut en être affirmé`]);
     return 'ecarte';
   }
+  v = { ...v, ...(await localiser(v, f)) };
   const m = await chercherEmail({ ...v, site: plateformeDe(site) ? null : site }, deps);
   // Une adresse, un seul e-mail : deux fiches du même commerce (ou d'une même maison) ne reçoivent pas deux messages.
   if (m) {
@@ -386,9 +385,9 @@ async function qualifier(brain, v, deps) {
   const b = brouillon(w, url);
   const statut = m ? 'brouillon' : 'a_appeler';
   await brain.query(`UPDATE vitrines SET site = $2, site_etat = $3, site_signaux = $4, email = $5, email_source = $6, slug = $7,
-    demo_html = $8, sujet = $9, corps = $10, statut = $11, motif = $12, maj_le = now() WHERE id = $1`,
+    demo_html = $8, sujet = $9, corps = $10, statut = $11, motif = $12, lat = $13, lon = $14, maquette_v = $15, maj_le = now() WHERE id = $1`,
   [v.id, site, juge.etat, juge.signaux, m ? m.email : null, m ? m.source : null, slug, maquette(w), b.sujet, b.corps, statut,
-    m ? null : 'e-mail non trouvé']);
+    m ? null : 'e-mail non trouvé', v.lat, v.lon, MAQUETTE_V]);
   return statut;
 }
 
@@ -406,6 +405,14 @@ export async function passer({ brain, env = process.env, fetch = globalThis.fetc
       bilan.erreurs++;
       await brain.query(`UPDATE vitrines SET statut = 'ecarte', motif = $2, maj_le = now() WHERE id = $1`, [v.id, `erreur : ${e.message.slice(0, 150)}`]);
     }
+  }
+  // Les maquettes d'un ancien gabarit sont refaites (jamais une maquette premium publiée par Basile), 15 par passage.
+  const { rows: anciennes } = await brain.query(`SELECT * FROM vitrines WHERE demo_html IS NOT NULL AND premium_le IS NULL
+    AND coalesce(maquette_v, 0) < $1 AND statut IN ('brouillon', 'valide', 'envoye', 'repondu', 'a_appeler') ORDER BY id LIMIT 15`, [MAQUETTE_V]);
+  for (const a of anciennes) {
+    const w = { ...a, ...(await localiser(a, fetch)) };
+    await brain.query('UPDATE vitrines SET demo_html = $2, lat = $3, lon = $4, maquette_v = $5 WHERE id = $1', [a.id, maquette(w), w.lat, w.lon, MAQUETTE_V]);
+    bilan.maquettes = (bilan.maquettes || 0) + 1;
   }
   // Une enseigne ajoutée à la liste écarte aussi les fiches déjà qualifiées (jamais une vitrine validée ou envoyée).
   const { rows: qualifiees } = await brain.query(`SELECT id, nom, ville FROM vitrines WHERE statut IN ('nouveau', 'brouillon', 'a_appeler') AND nom IS NOT NULL`);

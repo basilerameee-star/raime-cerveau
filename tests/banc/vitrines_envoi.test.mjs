@@ -15,7 +15,8 @@ import { preparer, preparerEnvoi, synchroniser, lireReponse } from '../../agents
 // La liste d'appels du Cockpit lit les mêmes bases de test.
 Object.assign(process.env, { PGDATABASE: process.env.BANC_BASE_N8N || 'n8n_test', PGDATABASE_CERVEAU: process.env.BANC_BASE_BRAIN || 'raime_brain_test',
   PGHOST: process.env.PGHOST || 'localhost', PGUSER: process.env.PGUSER || 'raime',
-  LIVRABLES_DIR: fs.mkdtempSync(path.join(os.tmpdir(), 'banc-livrables-')) });
+  LIVRABLES_DIR: fs.mkdtempSync(path.join(os.tmpdir(), 'banc-livrables-')),
+  COFFRE_FICHIER: path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'banc-coffre-')), 'coffre.env') });
 const require = createRequire(import.meta.url);
 const brain = db(); await brain.connect();
 const n8n = new pg.Client({ connectionString: process.env.DATABASE_URL_N8N }); await n8n.connect();
@@ -250,3 +251,24 @@ test('point 16 : un commerçant qui répond reçoit une maquette premium command
   await n8n.query('DELETE FROM vitrines_envoi');
 });
 
+
+test('les photos d’exemple : cherchées une fois sur Pixabay par métier, gardées, puis servies par le Cockpit', async () => {
+  const v = require('../../jarvis/vitrines.cjs');
+  fs.writeFileSync(process.env.COFFRE_FICHIER, 'PIXABAY_API_KEY=cle-test\n');
+  const appels = [];
+  let id = 0;
+  const fetch = async (url) => { appels.push(String(url));
+    if (String(url).startsWith('https://pixabay.com/api/')) return { ok: true, json: async () => ({ hits: Array.from({ length: 6 }, () => ({ id: ++id, largeImageURL: `https://cdn.test/${id}.jpg`, pageURL: `https://pixabay.com/p/${id}` })) }) };
+    return { ok: true, headers: { get: () => 'image/jpeg' }, arrayBuffer: async () => new TextEncoder().encode('JPEG' + url).buffer };
+  };
+  const res = () => { const r = { statut: 0, entetes: null, corps: null }; return Object.assign(r, { writeHead: (s, h) => { r.statut = s; r.entetes = h; }, end: (c) => { r.corps = c; } }); };
+  let r = res(); await v.servirImage('boulangerie', 1, r, { fetch });
+  assert.equal(r.statut, 200); assert.equal(r.entetes['Content-Type'], 'image/jpeg');
+  const nbRecherches = appels.filter((u) => u.startsWith('https://pixabay.com/api/')).length;
+  assert.equal(nbRecherches, 5, 'en-tête, trois rubriques, galerie');
+  r = res(); await v.servirImage('boulangerie', 9, r, { fetch });
+  assert.equal(r.statut, 200);
+  assert.equal(appels.filter((u) => u.startsWith('https://pixabay.com/api/')).length, nbRecherches, 'gardées : aucune nouvelle recherche');
+  r = res(); await v.servirImage('inconnu', 1, r, { fetch }); assert.equal(r.statut, 404);
+  r = res(); await v.servirImage('_lisezmoi', 1, r, { fetch }); assert.equal(r.statut, 404);
+});

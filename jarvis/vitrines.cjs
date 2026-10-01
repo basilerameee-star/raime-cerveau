@@ -5,7 +5,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { lire, lireN8n } = require('./bases.cjs');
+const { lire, lireN8n, lireCoffre } = require('./bases.cjs');
 
 // La maquette premium (point 16) : Hermes la livre dans son dossier de travail, lu ici en lecture seule.
 const LIVRABLES = process.env.LIVRABLES_DIR || '/travail';
@@ -17,12 +17,64 @@ const LIEN_PAIEMENT = process.env.VITRINE_PAIEMENT || 'https://buy.stripe.com/28
 
 const ACTIONS = { valider: 'valide', ecarter: 'ecarte', client: 'client', pas_interesse: 'pas_interesse' };
 
+// ── LES PHOTOS D'EXEMPLE DES MAQUETTES (Pixabay, libres de droits, clé PIXABAY_API_KEY au coffre) ──
+// Pixabay demande d'héberger soi-même ses images : à la première demande d'un métier, ses 9 photos (en-tête, trois
+// rubriques, galerie) sont cherchées, téléchargées et gardées en base ; ensuite, servies d'ici à toutes les maquettes.
+const PHOTOS = require('./vitrines_photos.json');
+const enCours = new Map();
+async function remplirPhotos(metier, { fetch = globalThis.fetch } = {}) {
+  const cle = (lireCoffre() || {}).PIXABAY_API_KEY;
+  const q = PHOTOS[metier];
+  if (!cle || !q) return 0;
+  await lire(`CREATE TABLE IF NOT EXISTS vitrines_images (metier text NOT NULL, n int NOT NULL, image bytea NOT NULL, type text NOT NULL,
+    source text, pixabay_id int, cree_le timestamptz NOT NULL DEFAULT now(), PRIMARY KEY (metier, n))`);
+  const chercher = async (recherche) => {
+    const u = `https://pixabay.com/api/?key=${encodeURIComponent(cle)}&q=${encodeURIComponent(recherche)}&image_type=photo&orientation=horizontal&safesearch=true&order=popular&min_width=1600&per_page=30`;
+    const r = await fetch(u, { signal: AbortSignal.timeout(20000) });
+    return r.ok ? ((await r.json()).hits || []) : [];
+  };
+  const pris = new Set(), plan = [];
+  const garder = (hits, combien) => {
+    for (const h of hits) { if (combien <= 0) break; if (!pris.has(h.id)) { pris.add(h.id); plan.push(h); combien--; } }
+  };
+  garder(await chercher(q.entete), 1);
+  for (const r of q.rubriques) garder(await chercher(r), 1);
+  garder(await chercher(q.galerie), 5);
+  let n = 0;
+  for (const h of plan.slice(0, 9)) {
+    try {
+      const r = await fetch(h.largeImageURL, { signal: AbortSignal.timeout(30000) });
+      if (!r.ok) continue;
+      n++;
+      await lire(`INSERT INTO vitrines_images (metier, n, image, type, source, pixabay_id) VALUES ($1, $2, $3, $4, $5, $6)
+        ON CONFLICT (metier, n) DO UPDATE SET image = EXCLUDED.image, type = EXCLUDED.type, source = EXCLUDED.source, pixabay_id = EXCLUDED.pixabay_id`,
+      [metier, n, Buffer.from(await r.arrayBuffer()), r.headers.get('content-type') || 'image/jpeg', h.pageURL, h.id]);
+    } catch { /* la suivante */ }
+  }
+  return n;
+}
+async function servirImage(metier, n, res, o = {}) {
+  const pasLa = () => { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end('Image introuvable.'); };
+  if (!PHOTOS[metier] || metier.startsWith('_') || !(n >= 1 && n <= 9)) return pasLa();
+  const lireImage = () => lire('SELECT image, type FROM vitrines_images WHERE metier = $1 AND n = $2', [metier, n]);
+  let r = await lireImage();
+  if (!r[0]) {
+    if (!enCours.has(metier)) enCours.set(metier, remplirPhotos(metier, o).finally(() => enCours.delete(metier)));
+    await enCours.get(metier);
+    r = await lireImage();
+  }
+  if (!r[0]) return pasLa();
+  res.writeHead(200, { 'Content-Type': r[0].type, 'Cache-Control': 'public, max-age=604800', 'X-Content-Type-Options': 'nosniff' });
+  res.end(r[0].image);
+}
+
 // La maquette, servie à tous (le chemin /demo/ est hors du mot de passe du Cockpit), isolée comme un livrable.
 // La simple n'a aucun script. La premium peut animer (scripts en ligne), mais dans une origine opaque (sandbox sans
 // allow-same-origin) et sans aucun accès au réseau : elle ne lit rien du Cockpit et ne charge rien dehors.
-const CSP_SIMPLE = "sandbox allow-popups allow-popups-to-escape-sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src data:";
+const IMAGES = "img-src data: https://cockpit.raime.fr https://tile.openstreetmap.org";
+const CSP_SIMPLE = `sandbox allow-popups allow-popups-to-escape-sandbox; default-src 'none'; style-src 'unsafe-inline'; ${IMAGES}`;
 const CSP_PREMIUM = "sandbox allow-scripts allow-popups allow-popups-to-escape-sandbox; default-src 'none'; script-src 'unsafe-inline'; "
-  + "style-src 'unsafe-inline'; img-src data:; font-src data:; media-src data:";
+  + `style-src 'unsafe-inline'; ${IMAGES}; font-src data:; media-src data:`;
 async function servirDemo(slug, res) {
   let r = [];
   if (/^[a-z0-9-]{3,60}$/.test(slug)) {
@@ -133,4 +185,4 @@ Vitrines, envoi ${mode} : ${e.en_file} en file, ${e.envoyes_aujourdhui} parti(s)
     + `${e.envoyes} en tout, ${e.essais} essai(s)${e.refuses ? `, ${e.refuses} refusé(s)` : ''}.`;
 }
 
-module.exports = { LIEN_PAIEMENT, servirDemo, fiche, liste, uneFiche, agir, envoi, changerMode, phraseEnvoi, MODES };
+module.exports = { LIEN_PAIEMENT, servirDemo, servirImage, remplirPhotos, fiche, liste, uneFiche, agir, envoi, changerMode, phraseEnvoi, MODES };

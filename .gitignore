@@ -25,3 +25,7 @@ site/apercu-*/
 site/**/__pycache__/
 # les essais de code rapatries par l essayeur : quarantaine, jamais versionnes
 essais/
+
+# aperçus locaux des maquettes (jamais livrés)
+.apercu/
+.claude/launch.json

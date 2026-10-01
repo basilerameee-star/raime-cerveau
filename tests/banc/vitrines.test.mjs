@@ -52,7 +52,9 @@ test('la maquette neutralise le nom (aucune injection) et porte l’appel en un 
   const h = maquette(v);
   assert.ok(!h.includes('<script>x'));
   assert.match(h, /href="tel:0450000000"/);
-  assert.match(h, /Maquette de démonstration préparée par rAIme/);
+  assert.match(h, /Maquette de démonstration<\/b> préparée par rAIme/);
+  assert.match(h, /https:\/\/cockpit\.raime\.fr\/demo\/img\/restaurant\/1\.jpg/, 'les photos d’exemple du métier, servies par le Cockpit');
+  assert.ok(!/<script/i.test(h), 'aucun script');
   const b = brouillon({ ...v, nom: 'Chez Lulu', site_etat: 'aucun' }, 'https://cockpit.raime.fr/demo/chez-lulu-abc');
   assert.match(b.corps, /Le voici :\nhttps:\/\/cockpit\.raime\.fr\/demo\/chez-lulu-abc/);
   assert.match(b.corps, new RegExp(`il est à ${PRIX} €`));
@@ -200,4 +202,15 @@ test('01/10/2026 : une recherche web bloquée ne prouve rien ; la fiche reste à
   const b = await passer({ brain, env: {}, fetch, resoudre: async () => [{ exchange: 'mx' }], combien: 5 });
   assert.equal(b.reportes, 1);
   assert.equal((await brain.query('SELECT statut FROM vitrines WHERE id = 970')).rows[0].statut, 'nouveau', 'rien d’affirmé : pas de brouillon « aucun site »');
+});
+
+test('la maquette v2 : la carte OpenStreetMap quand les coordonnées sont connues, crédit compris ; sinon le repère seul', async () => {
+  const { maquettePremium, carte } = await import('../../agents/maquette_premium.js');
+  const avec = maquettePremium({ nom: 'Le Fournil', metier: 'boulangerie', ville: 'Annecy', telephone: '04 50 00 00 01', lat: 45.8992, lon: 6.1294 }, { images: 'https://cockpit.raime.fr/demo/img' });
+  assert.match(avec, /https:\/\/tile\.openstreetmap\.org\/16\/\d+\/\d+\.png/);
+  assert.match(avec, /© OpenStreetMap/);
+  assert.match(avec, /Commander/, 'le bouton d’action du métier');
+  const sans = maquettePremium({ nom: 'Le Fournil', metier: 'boulangerie', ville: 'Annecy' }, {});
+  assert.ok(!/tile\.openstreetmap/.test(sans));
+  assert.equal(carte(NaN, 1), null);
 });
