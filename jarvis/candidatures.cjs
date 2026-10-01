@@ -207,7 +207,9 @@ async function file(max = 300) {
 
 async function resultat(d) {
   if (!d || !d.id) return { ok: false };
-  const statut = d.statut === 'envoye' || d.statut === 'deja' ? 'envoye' : (d.statut === 'erreur' ? 'valide' : 'a_toi');
+  // envoyée (ou déjà envoyée) ; erreur passagère = reste dans la file ; annonce retirée = rangée ; le reste revient à Basile
+  const statut = d.statut === 'envoye' || d.statut === 'deja' ? 'envoye'
+    : d.statut === 'erreur' ? 'valide' : d.statut === 'expiree' ? 'ecartee' : 'a_toi';
   await lire('UPDATE candidatures SET statut = $2, envoi = $3, maj = now() WHERE id = $1',
     [String(d.id), statut, { ...d, recu_le: new Date().toISOString() }]);
   return { ok: true, statut };
