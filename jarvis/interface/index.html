@@ -281,7 +281,7 @@ nav#onglets button:hover{color:var(--cyan2);border-color:var(--trait2)}
 </aside>
 <aside class="tiroir" id="t-vitrines" aria-label="Vitrines">
   <header><div class="marque"><b style="letter-spacing:.2em">VITRINES</b><span>sites à 500 € · rien ne part sans toi</span></div><button class="fermer" aria-label="Fermer">×</button></header>
-  <div class="corps"><div class="envoi-vitrines" id="envoi-vitrines"></div><div id="vitrines"></div></div>
+  <div class="corps"><div class="envoi-vitrines" id="envoi-vitrines"></div><div id="vitrines-reponses"></div><div id="vitrines"></div></div>
 </aside>
 <aside class="tiroir" id="t-prospection" aria-label="Prospection">
   <header><div class="marque"><b style="letter-spacing:.2em">PROSPECTION</b><span>rien ne part sans toi</span></div><button class="fermer" aria-label="Fermer">×</button></header>
@@ -591,8 +591,10 @@ nav#onglets button:hover{color:var(--cyan2);border-color:var(--trait2)}
       box.appendChild(el('small', '', e.en_file + ' en file · ' + e.envoyes_aujourdhui + ' parti(s) aujourd’hui · ' + e.envoyes + ' en tout · ' + e.essais + ' essai(s)'
         + (e.refuses ? ' · ' + e.refuses + ' refusé(s)' : '')));
     });
+    reponsesVitrines();
     fetch('/api/vitrines?statut=brouillon').then(function (r) { return r.json(); }).then(function (d) {
       var b = $('vitrines'); b.textContent = '';
+      if ((d.vitrines || []).length) b.appendChild(el('h3', '', 'Brouillons à valider'));
       if (!(d.vitrines || []).length) { b.appendChild(el('p', 'vide', 'Aucun brouillon à valider.')); return; }
       d.vitrines.forEach(function (x) {
         var c = el('div', 'brouillon');
@@ -604,6 +606,34 @@ nav#onglets button:hover{color:var(--cyan2);border-color:var(--trait2)}
         var ok = el('button', 'bouton', '✓ Valider'), non = el('button', 'bouton', '✗ Écarter');
         ok.onclick = function () { agirVitrine(x.id, 'valider'); }; non.onclick = function () { agirVitrine(x.id, 'ecarter'); };
         a.appendChild(ok); a.appendChild(non); c.appendChild(a); b.appendChild(c);
+      });
+    });
+  }
+  // Ceux qui ont répondu : à appeler d'abord ; leur maquette premium (Hermes) se regarde puis se publie d'un clic.
+  function reponsesVitrines() {
+    fetch('/api/vitrines?statut=repondu').then(function (r) { return r.json(); }).then(function (d) {
+      var b = $('vitrines-reponses'); b.textContent = '';
+      if (!(d.vitrines || []).length) return;
+      b.appendChild(el('h3', '', 'Ont répondu : à appeler'));
+      d.vitrines.forEach(function (x) {
+        var c = el('div', 'brouillon');
+        c.appendChild(el('h3', '', x.nom || 'Commerce'));
+        c.appendChild(el('div', 'meta', [x.metier, x.ville, x.telephone].filter(Boolean).join(' · ')));
+        if (x.motif) c.appendChild(el('p', '', x.motif));
+        var a = el('div', 'actions'), p = x.premium;
+        var lien = function (texte, href) { var l = el('a', 'bouton', texte); l.href = href; l.target = '_blank'; l.rel = 'noopener'; l.style.cssText = 'display:inline-flex;align-items:center;text-decoration:none'; return l; };
+        if (x.maquette) a.appendChild(lien('Maquette en ligne', x.maquette));
+        if (!p) a.appendChild(el('span', 'meta', 'Maquette premium : pas commandée'));
+        else if (!p.prete) a.appendChild(el('span', 'meta', 'Maquette premium : en préparation par Hermes'));
+        else {
+          a.appendChild(lien('Voir la premium', p.apercu));
+          var pub = el('button', 'bouton', p.publiee_le ? 'Rétablir la simple' : 'Publier la premium');
+          pub.onclick = function () { agirVitrine(x.id, p.publiee_le ? 'retablir_simple' : 'publier_premium'); };
+          a.appendChild(pub);
+        }
+        var oui = el('button', 'bouton', '✓ Client'), non = el('button', 'bouton', '✗ Pas intéressé');
+        oui.onclick = function () { agirVitrine(x.id, 'client'); }; non.onclick = function () { agirVitrine(x.id, 'pas_interesse'); };
+        a.appendChild(oui); a.appendChild(non); c.appendChild(a); b.appendChild(c);
       });
     });
   }

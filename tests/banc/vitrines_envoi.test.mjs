@@ -5,6 +5,8 @@ import './outils.mjs';
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import pg from 'pg';
 import { createRequire } from 'node:module';
 import { db } from '../../agents/lib.js';
@@ -12,7 +14,8 @@ import { preparer, preparerEnvoi, synchroniser, lireReponse } from '../../agents
 
 // La liste d'appels du Cockpit lit les mêmes bases de test.
 Object.assign(process.env, { PGDATABASE: process.env.BANC_BASE_N8N || 'n8n_test', PGDATABASE_CERVEAU: process.env.BANC_BASE_BRAIN || 'raime_brain_test',
-  PGHOST: process.env.PGHOST || 'localhost', PGUSER: process.env.PGUSER || 'raime' });
+  PGHOST: process.env.PGHOST || 'localhost', PGUSER: process.env.PGUSER || 'raime',
+  LIVRABLES_DIR: fs.mkdtempSync(path.join(os.tmpdir(), 'banc-livrables-')) });
 const require = createRequire(import.meta.url);
 const brain = db(); await brain.connect();
 const n8n = new pg.Client({ connectionString: process.env.DATABASE_URL_N8N }); await n8n.connect();
@@ -163,6 +166,7 @@ test('la synchronisation : validé → file ; essai et envoi reviennent ; répon
   b = await synchroniser({ brain, n8n });
   assert.equal(b.reponses, 1);
   assert.equal((await fiche(1)).statut, 'repondu'); assert.match((await fiche(1)).motif, /^a répondu : Veut un appel jeudi/);
+  assert.equal((await brain.query('SELECT premium_commande FROM vitrines WHERE id = 1')).rows[0].premium_commande, null, 'sans maquette, rien à commander');
   const appels = require('../../jarvis/appels.cjs');
   const liste = await appels.aFaire(50);
   assert.equal(liste.liste[0].siren, 'v1', 'qui a répondu passe en tête des appels');
@@ -204,3 +208,45 @@ test('le Cockpit : l’état de l’envoi se lit ; le mode change d’un geste d
   assert.equal(j.rows[0].changement, 'Envoi des vitrines : mode pause');
   await n8n.query("DELETE FROM vitrines_envoi; UPDATE vitrines_envoi_config SET mode = 'test'");
 });
+
+test('point 16 : un commerçant qui répond reçoit une maquette premium commandée à Hermes ; Basile la publie, puis peut rétablir la simple', async () => {
+  await preparer(brain); await preparerEnvoi(n8n);
+  await n8n.query('DELETE FROM vitrines_envoi');
+  await brain.query(`INSERT INTO vitrines (id, source, source_id, nom, metier, ville, telephone, email, slug, demo_html, sujet, corps, statut, envoye_le)
+    VALUES (61, 'osm', 'osm:node/t61', 'Fleurs de Léa', 'fleuriste', 'Annecy', '04 50 61 61 61', 'lea@x.test', 'fleurs-de-lea-abc123',
+      '<p>maquette simple</p>', 'S', 'C', 'envoye', now() - interval '1 day')`);
+  await n8n.query(`INSERT INTO vitrines_envoi (id, to_email, sujet, corps, statut, envoye_le) VALUES (61, 'lea@x.test', 'S', 'C', 'envoye', now() - interval '1 day')`);
+  await n8n.query(`INSERT INTO replies (from_email, body) VALUES ('lea@x.test', '[question] Demande le prix final || Bonjour, combien ?')`);
+  await synchroniser({ brain, n8n }); await synchroniser({ brain, n8n });
+  const ordres = (await brain.query("SELECT id, texte, pour, etat FROM commandes WHERE source = 'vitrines'")).rows;
+  assert.equal(ordres.length, 1, 'une seule commande, même après deux passages');
+  assert.equal(ordres[0].pour, 'harness'); assert.equal(ordres[0].etat, 'a_faire');
+  assert.match(ordres[0].texte, /« Fleurs de Léa », fleuriste à Annecy/);
+  assert.match(ordres[0].texte, /AUCUN chargement extérieur/); assert.match(ordres[0].texte, /RIEN D'INVENTÉ/);
+  assert.match(ordres[0].texte, /\/demo\/fleurs-de-lea-abc123/);
+
+  const v = require('../../jarvis/vitrines.cjs');
+  let f = await v.uneFiche(61, 'https://cockpit.test');
+  assert.deepEqual(f.premium, { commande: ordres[0].id, prete: false, apercu: `https://cockpit.test/livrables/demande-${ordres[0].id}/app/index.html`, publiee_le: null });
+  assert.deepEqual(await v.agir(61, { action: 'publier_premium' }), { ok: false, erreur: 'maquette premium pas encore prête' });
+
+  // Hermes a livré.
+  const dossier = path.join(process.env.LIVRABLES_DIR, `demande-${ordres[0].id}`, 'app');
+  fs.mkdirSync(dossier, { recursive: true });
+  fs.writeFileSync(path.join(dossier, 'index.html'), '<h1>Fleurs de Léa, version premium</h1><script>document.body.dataset.anime = 1</script>');
+  assert.equal((await v.uneFiche(61, 'https://cockpit.test')).premium.prete, true);
+  assert.deepEqual(await v.agir(61, { action: 'publier_premium' }), { ok: true });
+  const servir = async () => { const r = { entetes: null, corps: '' }; await v.servirDemo('fleurs-de-lea-abc123', { writeHead: (s, h) => { r.statut = s; r.entetes = h; }, end: (c) => { r.corps = c; } }); return r; };
+  let page = await servir();
+  assert.match(page.corps, /version premium/);
+  assert.match(page.entetes['Content-Security-Policy'], /sandbox allow-scripts/, 'la premium peut animer');
+  assert.ok(!/allow-same-origin/.test(page.entetes['Content-Security-Policy']), 'mais dans une origine opaque');
+  assert.match(page.entetes['Content-Security-Policy'], /default-src 'none'/, 'et sans réseau');
+  assert.deepEqual(await v.agir(61, { action: 'retablir_simple' }), { ok: true });
+  page = await servir();
+  assert.equal(page.corps, '<p>maquette simple</p>');
+  assert.ok(!/allow-scripts/.test(page.entetes['Content-Security-Policy']), 'la simple n’a aucun script');
+  await brain.query("DELETE FROM commandes WHERE source = 'vitrines'");
+  await n8n.query('DELETE FROM vitrines_envoi');
+});
+

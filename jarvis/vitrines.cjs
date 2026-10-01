@@ -3,18 +3,31 @@
 // noter une vente). L'agent qui les fabrique et les met en file d'envoi : agents/vitrines.js. Rien n'est envoyé d'ici.
 'use strict';
 
+const fs = require('fs');
+const path = require('path');
 const { lire, lireN8n } = require('./bases.cjs');
+
+// La maquette premium (point 16) : Hermes la livre dans son dossier de travail, lu ici en lecture seule.
+const LIVRABLES = process.env.LIVRABLES_DIR || '/travail';
+const fichierPremium = (n) => path.join(LIVRABLES, `demande-${Number(n)}`, 'app', 'index.html');
+const COLONNES = 'ALTER TABLE vitrines ADD COLUMN IF NOT EXISTS premium_commande int, ADD COLUMN IF NOT EXISTS premium_le timestamptz, ADD COLUMN IF NOT EXISTS demo_simple text';
 
 const ACTIONS = { valider: 'valide', ecarter: 'ecarte', client: 'client', pas_interesse: 'pas_interesse' };
 
 // La maquette, servie à tous (le chemin /demo/ est hors du mot de passe du Cockpit), isolée comme un livrable.
+// La simple n'a aucun script. La premium peut animer (scripts en ligne), mais dans une origine opaque (sandbox sans
+// allow-same-origin) et sans aucun accès au réseau : elle ne lit rien du Cockpit et ne charge rien dehors.
+const CSP_SIMPLE = "sandbox allow-popups allow-popups-to-escape-sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src data:";
+const CSP_PREMIUM = "sandbox allow-scripts allow-popups allow-popups-to-escape-sandbox; default-src 'none'; script-src 'unsafe-inline'; "
+  + "style-src 'unsafe-inline'; img-src data:; font-src data:; media-src data:";
 async function servirDemo(slug, res) {
   let r = [];
-  if (/^[a-z0-9-]{3,60}$/.test(slug)) r = await lire('SELECT demo_html FROM vitrines WHERE slug = $1 AND demo_html IS NOT NULL', [slug]).catch(() => []);
+  if (/^[a-z0-9-]{3,60}$/.test(slug)) {
+    r = await lire(`SELECT demo_html, to_jsonb(v) ->> 'premium_le' AS premium FROM vitrines v WHERE slug = $1 AND demo_html IS NOT NULL`, [slug]).catch(() => []);
+  }
   if (!r[0]) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end('Cette page n’existe pas ou plus.'); return; }
   res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex',
-    'Content-Security-Policy': "sandbox allow-popups allow-popups-to-escape-sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src data:",
-    'X-Content-Type-Options': 'nosniff' });
+    'Content-Security-Policy': r[0].premium ? CSP_PREMIUM : CSP_SIMPLE, 'X-Content-Type-Options': 'nosniff' });
   res.end(r[0].demo_html);
 }
 
@@ -28,6 +41,8 @@ function fiche(v, adresse) {
     maquette: v.slug ? `${adresse}/demo/${v.slug}` : null, carte: v.carte,
     statut: v.statut, motif: v.motif, envoye_le: v.envoye_le, jours_depuis_envoi: jours, note: v.note,
     brouillon: v.sujet ? { sujet: v.sujet, corps: v.corps } : null, source: v.source === 'google' ? 'Google' : 'OpenStreetMap',
+    premium: v.premium_commande ? { commande: v.premium_commande, prete: fs.existsSync(fichierPremium(v.premium_commande)),
+      apercu: `${adresse}/livrables/demande-${v.premium_commande}/app/index.html`, publiee_le: v.premium_le || null } : null,
   };
 }
 
@@ -46,12 +61,35 @@ async function uneFiche(id, adresse) {
 // Les gestes de Basile. « valider » met le brouillon dans la file du workflow n8n « Vitrines · Envoi » (agents/vitrines.js,
 // synchroniser) : rien ne part d'ici, et le réglage d'envoi (test ou live) reste dans la base n8n.
 async function agir(id, { action, note = null } = {}) {
+  // La maquette premium remplace la simple sur la même adresse publique (le commerçant garde son lien) ; la simple est gardée.
+  if (action === 'publier_premium' || action === 'retablir_simple') {
+    await lire(COLONNES);
+    const [v] = await lire('SELECT premium_commande, demo_simple FROM vitrines WHERE id = $1', [Number(id)]);
+    if (!v) return { ok: false, erreur: 'commerce introuvable' };
+    if (action === 'retablir_simple') {
+      if (!v.demo_simple) return { ok: false, erreur: 'la maquette simple est déjà en ligne' };
+      await lire('UPDATE vitrines SET demo_html = demo_simple, premium_le = NULL, maj_le = now() WHERE id = $1', [Number(id)]);
+    } else {
+      if (!v.premium_commande) return { ok: false, erreur: 'aucune maquette premium commandée' };
+      let html;
+      try {
+        const f = fichierPremium(v.premium_commande);
+        if (fs.statSync(f).size > 3e6) return { ok: false, erreur: 'maquette premium trop lourde (plus de 3 Mo)' };
+        html = fs.readFileSync(f, 'utf8');
+      } catch { return { ok: false, erreur: 'maquette premium pas encore prête' }; }
+      await lire(`UPDATE vitrines SET demo_simple = coalesce(demo_simple, demo_html), demo_html = $2, premium_le = now(), maj_le = now()
+        WHERE id = $1`, [Number(id), html]);
+    }
+    await lire(`INSERT INTO journal(acteur, changement, motif) VALUES('basile', $1, NULL)`,
+      [`Vitrine n°${id} : ${action === 'publier_premium' ? 'maquette premium publiée' : 'maquette simple rétablie'}`]);
+    return { ok: true };
+  }
   if (action === 'note') {
     await lire('UPDATE vitrines SET note = $2, maj_le = now() WHERE id = $1', [Number(id), note ? String(note).slice(0, 500) : null]);
     return { ok: true };
   }
   const etat = ACTIONS[action];
-  if (!etat) return { ok: false, erreur: `action attendue : ${[...Object.keys(ACTIONS), 'note'].join(', ')}` };
+  if (!etat) return { ok: false, erreur: `action attendue : ${[...Object.keys(ACTIONS), 'note', 'publier_premium', 'retablir_simple'].join(', ')}` };
   const r = await lire(`UPDATE vitrines SET statut = $2, note = coalesce($3, note), maj_le = now()
     WHERE id = $1 AND ($2 <> 'valide' OR statut = 'brouillon') RETURNING id`, [Number(id), etat, note ? String(note).slice(0, 500) : null]);
   if (!r.length) return { ok: false, erreur: action === 'valider' ? 'seul un brouillon se valide' : 'commerce introuvable' };

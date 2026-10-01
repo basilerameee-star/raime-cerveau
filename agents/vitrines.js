@@ -49,6 +49,8 @@ export async function preparer(brain) {
   await brain.query(`CREATE TABLE IF NOT EXISTS vitrines_recherches (metier text NOT NULL, ville text NOT NULL, source text NOT NULL,
     trouves int, fait_le timestamptz NOT NULL DEFAULT now(), PRIMARY KEY (metier, ville, source))`);
   await brain.query(`CREATE TABLE IF NOT EXISTS vitrines_villes (nom text PRIMARY KEY, departement text, population int, rang int)`);
+  // La maquette premium (point 16) : l'ordre confié à Hermes, et le jour où Basile l'a publiée à la place de la simple.
+  await brain.query('ALTER TABLE vitrines ADD COLUMN IF NOT EXISTS premium_commande int, ADD COLUMN IF NOT EXISTS premium_le timestamptz, ADD COLUMN IF NOT EXISTS demo_simple text');
 }
 
 const lireJson = async (f, url, o = {}) => { const r = await f(url, { ...o, signal: AbortSignal.timeout(o.delai || 30000) }); if (!r.ok) throw new Error(`${url.split('?')[0]} : ${r.status}`); return r.json(); };
@@ -415,6 +417,36 @@ export function lireReponse(corps) {
   return { statut: 'repondu', motif: `a répondu${resume ? ` : ${resume}` : ''}` };
 }
 
+// ── LA MAQUETTE PREMIUM (point 16) ───────────────────────────────────────────
+// Un commerçant qui répond mérite mieux que la maquette simple : Hermes (compétence site-premium) en fabrique une
+// soignée, aux mêmes contraintes que la page publique (un seul fichier, rien de chargé dehors, rien d'inventé).
+// Basile la regarde dans le tiroir VITRINES et la publie d'un clic ; rien ne remplace la maquette sans lui.
+export function textePremium(v) {
+  const infos = [v.adresse || v.ville, v.telephone ? `téléphone ${v.telephone}` : null].filter(Boolean).join(', ');
+  return `Maquette premium d'une vitrine (n°${v.id}) : un commerçant a répondu à notre e-mail, Basile va l'appeler. `
+    + `Avec la compétence site-premium, construis la page vitrine soignée de « ${v.nom} », ${v.metier || 'commerce'} à ${v.ville} (${infos}). `
+    + `Point de départ : la maquette simple ${ADRESSE_DEMO}/demo/${v.slug}. `
+    + 'CONTRAINTES, prioritaires sur la compétence : UN SEUL fichier, demande-N/app/index.html ; tout dedans (styles et scripts en ligne) ; '
+    + 'AUCUN chargement extérieur (ni CDN, ni police distante, ni image distante : la page est servie sans réseau) ; images en SVG ou en data: ; '
+    + "RIEN D'INVENTÉ : ni avis, ni prix, ni horaires, ni photo d'une vraie personne, ni chiffre ; les textes restent génériques et disent « à compléter avec vous » ; "
+    + 'en haut, la bannière « Maquette de démonstration préparée par rAIme, à compléter ensemble avec vos photos et vos textes » ; '
+    + 'un bouton Appeler (lien tel:) et un bouton Itinéraire ; parfaite sur téléphone ; poids total sous 1 Mo.';
+}
+
+export async function commanderPremium(brain, id) {
+  await preparer(brain);
+  const { rows: [v] } = await brain.query('SELECT * FROM vitrines WHERE id = $1', [id]);
+  if (!v || !v.nom || !v.slug) return null;
+  if (v.premium_commande) return v.premium_commande;
+  // La table des ordres (migrations/021) : créée si elle manque, pour qu'un ordre ne se perde jamais.
+  await brain.query(`CREATE TABLE IF NOT EXISTS commandes (id serial PRIMARY KEY, cree_le timestamptz NOT NULL DEFAULT now(), texte text NOT NULL,
+    source text NOT NULL DEFAULT 'jarvis', pour text NOT NULL DEFAULT 'claude',
+    etat text NOT NULL DEFAULT 'a_faire' CHECK (etat IN ('a_faire','en_cours','faite','refusee')), reponse text, traite_le timestamptz)`);
+  const { rows: [c] } = await brain.query(`INSERT INTO commandes (texte, source, pour) VALUES ($1, 'vitrines', 'harness') RETURNING id`, [textePremium(v)]);
+  await brain.query('UPDATE vitrines SET premium_commande = $2, maj_le = now() WHERE id = $1', [id, c.id]);
+  return c.id;
+}
+
 export async function synchroniser({ brain, n8n }) {
   await preparer(brain); await preparerEnvoi(n8n);
   const bilan = { en_file: 0, annules: 0, envoyes: 0, essais: 0, erreurs: 0, reponses: 0, desinscrits: 0 };
@@ -462,6 +494,7 @@ export async function synchroniser({ brain, n8n }) {
     const n = (await brain.query(`UPDATE vitrines SET statut = $2, motif = $3, maj_le = now() WHERE id = $1 AND statut = 'envoye'`,
       [r.id, suite.statut, `${suite.motif} (${jourMois(r.received_at)})`])).rowCount;
     bilan.reponses += n;
+    if (n && suite.statut === 'repondu') await commanderPremium(brain, r.id);
     if (n && suite.stop) await n8n.query(`INSERT INTO suppression (email, reason) VALUES ($1, 'reply_stop') ON CONFLICT DO NOTHING`, [r.to_email]).catch(() => {});
   }
 
