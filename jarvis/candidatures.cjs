@@ -198,7 +198,7 @@ async function importer(fiches) {
   return { ok: true, n };
 }
 
-async function file(max = 30) {
+async function file(max = 300) {
   const l = await lire("SELECT id, offre, fiche FROM candidatures WHERE statut = 'valide' ORDER BY maj LIMIT $1", [max]);
   return l.map((x) => ({ id: x.id, source: x.offre.source, methode: x.offre.methode || '', url_externe: x.offre.url_externe || '',
     titre: x.offre.titre, entreprise: x.offre.entreprise, lien: x.offre.lien, pays: x.offre.pays || 'CH',
