@@ -253,6 +253,23 @@ async function router(req, res) {
     return pageSimple(res, r.ok ? 'C’est fait.' : 'Pas encore.', r.message);
   }
   if (m === 'GET' && url === '/api/tiktok') return envoyer(res, 200, await tiktok.etat());
+  if (m === 'GET' && url === '/tiktok') return fichierInterface(res, 'tiktok.html');
+  const sansEchec = async (f) => { try { return await f(); } catch (e) { return { erreur: e.message }; } };
+  if (m === 'GET' && url === '/api/tiktok/createur') return envoyer(res, 200, await sansEchec(() => tiktok.creatorInfo()));
+  if (m === 'GET' && url === '/api/tiktok/videos') return envoyer(res, 200, await sansEchec(() => tiktok.videos()));
+  if (m === 'GET' && url === '/api/tiktok/medias') return envoyer(res, 200, tiktok.medias());
+  if (m === 'GET' && url === '/api/tiktok/statut') {
+    return envoyer(res, 200, await sansEchec(() => tiktok.statut(new URL(req.url, 'http://x').searchParams.get('id'))));
+  }
+  if (m === 'GET' && (r = url.match(/^\/api\/tiktok\/media\/([\w.-]+\.mp4)$/i)) && tiktok.medias().includes(r[1])) {
+    const f = path.join(process.env.TIKTOK_MEDIAS || '/travail/tiktok', r[1]);
+    res.writeHead(200, { 'Content-Type': 'video/mp4', 'Content-Length': fs.statSync(f).size, 'Cache-Control': 'no-store' });
+    return fs.createReadStream(f).pipe(res);
+  }
+  if (m === 'POST' && url === '/api/tiktok/publier') {
+    if (!autorise(req)) return envoyer(res, 403, { ok: false });
+    return envoyer(res, 200, await sansEchec(async () => tiktok.publier(await json(req, 5000))));
+  }
   if (m === 'GET' && url === '/api/vitrines/envoi') return envoyer(res, 200, await vitrines.envoi());
   if (m === 'POST' && url === '/api/vitrines/envoi') {
     if (!autorise(req)) return envoyer(res, 403, { ok: false });

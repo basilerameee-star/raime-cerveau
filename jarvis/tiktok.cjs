@@ -100,4 +100,60 @@ async function etat({ fetch, maintenant = Date.now(), profil = true } = {}) {
   return e;
 }
 
-module.exports = { adresseConnexion, retour, acces, etat, PORTEES, RETOUR, _etats: etats };
+// ── PUBLIER (Content Posting API, publication directe) ─────────────────────────────────────
+// Doc : developers.tiktok.com/doc/content-posting-api-reference-direct-post. Tant que TikTok n'a pas audité
+// l'application, seule la confidentialité SELF_ONLY (privée) est acceptée.
+const API = 'https://open.tiktokapis.com/v2';
+const fs = require('fs');
+const path = require('path');
+const MEDIAS = process.env.TIKTOK_MEDIAS || '/travail/tiktok';
+
+async function appeler(chemin, corps, { fetch = globalThis.fetch, maintenant } = {}) {
+  const jeton = await acces({ fetch, maintenant });
+  if (!jeton) throw new Error('compte TikTok non connecté');
+  const r = await fetch(API + chemin, { method: 'POST', headers: { Authorization: `Bearer ${jeton}`, 'Content-Type': 'application/json; charset=UTF-8' },
+    body: JSON.stringify(corps || {}), signal: AbortSignal.timeout(30000) });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || (d.error && d.error.code && d.error.code !== 'ok')) throw new Error((d.error && d.error.message) || `TikTok a répondu ${r.status}`);
+  return d.data || {};
+}
+
+// Ce que TikTok autorise pour ce créateur (pseudo, avatar, niveaux de confidentialité, interactions permises).
+const creatorInfo = (o) => appeler('/post/publish/creator_info/query/', {}, o);
+
+// Les vidéos du compte, avec leurs vues (video.list).
+async function videos(o = {}) {
+  const d = await appeler('/video/list/?fields=id,title,view_count,like_count,comment_count,create_time,share_url', { max_count: 10 }, o);
+  return d.videos || [];
+}
+
+// Les vidéos prêtes à publier : les fichiers mp4 du dossier des médias (aucun chemin venu de dehors).
+function medias() {
+  try { return fs.readdirSync(MEDIAS).filter((f) => /^[\w.-]+\.mp4$/i.test(f)); } catch { return []; }
+}
+
+// Publier un fichier : init, envoi en un morceau (moins de 64 Mo), puis l'identifiant à suivre.
+async function publier({ fichier, titre, confidentialite, commentaires = false, duo = false, collage = false, marquePropre = false, contenuDeMarque = false }, o = {}) {
+  const f = path.join(MEDIAS, path.basename(String(fichier || '')));
+  if (!medias().includes(path.basename(String(fichier || '')))) throw new Error('vidéo inconnue');
+  const info = await creatorInfo(o);
+  if (!(info.privacy_level_options || []).includes(confidentialite)) throw new Error('confidentialité non proposée par TikTok pour ce compte');
+  const taille = fs.statSync(f).size;
+  if (taille > 64 * 1024 * 1024) throw new Error('vidéo trop lourde pour un envoi en un morceau');
+  const init = await appeler('/post/publish/video/init/', {
+    post_info: { title: String(titre || '').slice(0, 2200), privacy_level: confidentialite,
+      disable_comment: !commentaires || !!info.comment_disabled, disable_duet: !duo || !!info.duet_disabled, disable_stitch: !collage || !!info.stitch_disabled,
+      video_cover_timestamp_ms: 1000, brand_content_toggle: !!contenuDeMarque, brand_organic_toggle: !!marquePropre },
+    source_info: { source: 'FILE_UPLOAD', video_size: taille, chunk_size: taille, total_chunk_count: 1 },
+  }, o);
+  const r = await (o.fetch || globalThis.fetch)(init.upload_url, { method: 'PUT',
+    headers: { 'Content-Type': 'video/mp4', 'Content-Length': String(taille), 'Content-Range': `bytes 0-${taille - 1}/${taille}` },
+    body: fs.readFileSync(f), signal: AbortSignal.timeout(120000) });
+  if (!r.ok) throw new Error(`envoi du fichier refusé (${r.status})`);
+  await lire(`INSERT INTO journal(acteur, changement, motif) VALUES('basile', 'TikTok : vidéo publiée depuis le Cockpit', $1)`, [`${path.basename(f)} · ${confidentialite}`]);
+  return { publish_id: init.publish_id };
+}
+
+const statut = (publishId, o) => appeler('/post/publish/status/fetch/', { publish_id: String(publishId) }, o);
+
+module.exports = { adresseConnexion, retour, acces, etat, creatorInfo, videos, medias, publier, statut, PORTEES, RETOUR, _etats: etats };

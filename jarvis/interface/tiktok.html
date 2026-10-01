@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex"><title>rAIme · TikTok publishing</title>
+<style>
+:root{--fond:#02060b;--carte:rgba(255,255,255,.04);--trait:rgba(94,231,255,.18);--texte:#d8f6ff;--doux:#7fa7b8;--cyan:#5ee7ff;--rose:#fe2c55}
+*{box-sizing:border-box}body{margin:0;font:15px/1.55 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--fond);color:var(--texte)}
+main{max-width:760px;margin:0 auto;padding:28px 18px 60px}h1{font-size:26px;margin:0 0 4px}h2{font-size:16px;margin:0 0 12px;letter-spacing:.04em}
+.sous{color:var(--doux);margin:0 0 22px}.carte{background:var(--carte);border:1px solid var(--trait);border-radius:16px;padding:18px;margin-bottom:16px}
+.bouton{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 18px;border-radius:999px;border:1px solid var(--trait);background:rgba(94,231,255,.08);color:var(--texte);font-weight:600;cursor:pointer;text-decoration:none;font-size:14px}
+.bouton.tt{background:#000;border-color:#333}.bouton.tt b{color:var(--rose)}.bouton:disabled{opacity:.45;cursor:not-allowed}
+.profil{display:flex;gap:14px;align-items:center}.profil img{width:56px;height:56px;border-radius:50%;object-fit:cover;border:1px solid var(--trait)}
+.chiffres{display:flex;gap:22px;flex-wrap:wrap;margin-top:12px}.chiffres div b{display:block;font-size:20px}.chiffres div span{color:var(--doux);font-size:12.5px}
+label{display:block;margin:12px 0 6px;font-weight:600;font-size:13.5px}input[type=text],select,textarea{width:100%;background:rgba(0,0,0,.35);border:1px solid var(--trait);border-radius:10px;color:var(--texte);padding:10px;font:inherit}
+.ligne{display:flex;gap:18px;flex-wrap:wrap}.ligne label{display:flex;align-items:center;gap:8px;font-weight:500;margin:6px 0}
+.note{color:var(--doux);font-size:12.5px}.etat{font-family:ui-monospace,monospace;font-size:13px;white-space:pre-wrap}
+table{width:100%;border-collapse:collapse;font-size:13.5px}td,th{text-align:left;padding:7px 4px;border-top:1px solid rgba(94,231,255,.08)}th{color:var(--doux);font-weight:500}
+.ok{color:#4dffb0}.ko{color:#ff5d73}video{width:180px;border-radius:12px;border:1px solid var(--trait)}
+</style></head><body><main>
+<h1>rAIme · TikTok publishing</h1>
+<p class="sous">The private publishing tool of the creator account. Only its owner uses it.</p>
+
+<div class="carte" id="c-connexion"><h2>1 · Account</h2><div id="connexion">Loading…</div></div>
+<div class="carte" id="c-stats" hidden><h2>2 · Account statistics</h2><div id="stats"></div></div>
+<div class="carte" id="c-publier" hidden><h2>3 · Publish a video</h2>
+  <div class="profil" id="createur"></div>
+  <label for="video">Video</label><select id="video"></select>
+  <div style="margin-top:10px"><video id="apercu" controls muted playsinline></video></div>
+  <label for="titre">Caption</label><textarea id="titre" rows="3" maxlength="2200" placeholder="Write the caption…"></textarea>
+  <label for="confidentialite">Who can view this video</label><select id="confidentialite"><option value="" selected disabled>Choose…</option></select>
+  <label>Allow users to</label>
+  <div class="ligne"><label><input type="checkbox" id="commentaires"> Comment</label><label><input type="checkbox" id="duo"> Duet</label><label><input type="checkbox" id="collage"> Stitch</label></div>
+  <label><input type="checkbox" id="divulguer"> Disclose video content (this video promotes a brand, product or service)</label>
+  <div class="ligne" id="choix-marque" hidden><label><input type="checkbox" id="marquePropre"> Your brand</label><label><input type="checkbox" id="contenuDeMarque"> Branded content</label></div>
+  <p class="note" id="declaration">By posting, you agree to TikTok's <a style="color:var(--cyan)" href="https://www.tiktok.com/legal/page/global/music-usage-confirmation/en" target="_blank" rel="noopener">Music Usage Confirmation</a>.</p>
+  <button class="bouton" id="publier" disabled>Publish to TikTok</button>
+  <p class="etat" id="resultat"></p>
+</div>
+<div class="carte" id="c-videos" hidden><h2>4 · Published videos</h2><div id="videos"></div></div>
+
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var H = { 'Content-Type': 'application/json', 'X-Jarvis': '1' };
+  var fmt = function (n) { return (Number(n) || 0).toLocaleString('en-US'); };
+  function texte(el, t) { el.textContent = t; return el; }
+  function charger() {
+    fetch('/api/tiktok').then(function (r) { return r.json(); }).then(function (e) {
+      var c = $('connexion'); c.textContent = '';
+      if (!e.application) { texte(c, 'The app keys are not configured yet.'); return; }
+      if (!e.connecte) {
+        var a = document.createElement('a'); a.className = 'bouton tt'; a.href = '/tiktok/connecter'; a.innerHTML = 'Continue with <b>TikTok</b>';
+        c.appendChild(a); c.appendChild(texte(document.createElement('p'), 'Sign in with the creator account to connect it to rAIme.')).className = 'note';
+        return;
+      }
+      var p = e.profil || {};
+      var box = document.createElement('div'); box.className = 'profil';
+      if (p.avatar_url) { var i = document.createElement('img'); i.src = p.avatar_url; i.alt = ''; box.appendChild(i); }
+      var d = document.createElement('div'); d.appendChild(texte(document.createElement('b'), p.display_name || 'Connected account'));
+      d.appendChild(texte(document.createElement('div'), 'Connected · scopes: ' + (e.portees || []).join(', '))).className = 'note';
+      box.appendChild(d); c.appendChild(box);
+      if (e.erreur) c.appendChild(texte(document.createElement('p'), e.erreur)).className = 'ko';
+      $('c-stats').hidden = false;
+      $('stats').innerHTML = '<div class="chiffres"><div><b>' + fmt(p.follower_count) + '</b><span>followers</span></div><div><b>' + fmt(p.following_count)
+        + '</b><span>following</span></div><div><b>' + fmt(p.likes_count) + '</b><span>likes</span></div><div><b>' + fmt(p.video_count) + '</b><span>videos</span></div></div>';
+      $('c-publier').hidden = false; $('c-videos').hidden = false;
+      createur(); medias(); videos();
+    });
+  }
+  var info = null;
+  function createur() {
+    fetch('/api/tiktok/createur').then(function (r) { return r.json(); }).then(function (d) {
+      info = d; var c = $('createur'); c.textContent = '';
+      if (d.erreur) { c.appendChild(texte(document.createElement('span'), d.erreur)).className = 'ko'; return; }
+      if (d.creator_avatar_url) { var i = document.createElement('img'); i.src = d.creator_avatar_url; i.alt = ''; c.appendChild(i); }
+      c.appendChild(texte(document.createElement('div'), 'Posting as ' + (d.creator_nickname || d.creator_username || '')));
+      var s = $('confidentialite'); (d.privacy_level_options || []).forEach(function (o) { var op = document.createElement('option'); op.value = o; op.textContent = {
+        PUBLIC_TO_EVERYONE: 'Everyone', MUTUAL_FOLLOW_FRIENDS: 'Friends', FOLLOWER_OF_CREATOR: 'Followers', SELF_ONLY: 'Only me' }[o] || o; s.appendChild(op); });
+      ['commentaires', 'duo', 'collage'].forEach(function (k, j) { if (d[['comment_disabled', 'duet_disabled', 'stitch_disabled'][j]]) { $(k).disabled = true; $(k).checked = false; } });
+      verifier();
+    });
+  }
+  function medias() {
+    fetch('/api/tiktok/medias').then(function (r) { return r.json(); }).then(function (l) {
+      var s = $('video'); s.textContent = '';
+      (l || []).forEach(function (f) { var o = document.createElement('option'); o.value = f; o.textContent = f; s.appendChild(o); });
+      apercu();
+    });
+  }
+  function apercu() { var f = $('video').value; $('apercu').src = f ? '/api/tiktok/media/' + encodeURIComponent(f) : ''; }
+  function videos() {
+    fetch('/api/tiktok/videos').then(function (r) { return r.json(); }).then(function (l) {
+      var b = $('videos'); b.textContent = '';
+      if (!Array.isArray(l) || !l.length) { b.appendChild(texte(document.createElement('p'), Array.isArray(l) ? 'No video yet.' : (l.erreur || ''))).className = 'note'; return; }
+      var t = document.createElement('table'); t.innerHTML = '<tr><th>Video</th><th>Views</th><th>Likes</th><th>Comments</th></tr>';
+      l.forEach(function (v) { var tr = document.createElement('tr'); [v.title || v.id, fmt(v.view_count), fmt(v.like_count), fmt(v.comment_count)].forEach(function (x) { tr.appendChild(texte(document.createElement('td'), x)); }); t.appendChild(tr); });
+      b.appendChild(t);
+    });
+  }
+  function verifier() {
+    var div = $('divulguer').checked, ok = $('confidentialite').value && $('video').value && (!div || $('marquePropre').checked || $('contenuDeMarque').checked);
+    $('choix-marque').hidden = !div; $('publier').disabled = !ok;
+    var pol = $('contenuDeMarque').checked && div;
+    $('declaration').innerHTML = 'By posting, you agree to TikTok\'s ' + (pol ? '<a style="color:var(--cyan)" href="https://www.tiktok.com/legal/page/global/bc-policy/en" target="_blank" rel="noopener">Branded Content Policy</a> and ' : '')
+      + '<a style="color:var(--cyan)" href="https://www.tiktok.com/legal/page/global/music-usage-confirmation/en" target="_blank" rel="noopener">Music Usage Confirmation</a>.';
+    if (pol && $('confidentialite').value === 'SELF_ONLY') { $('publier').disabled = true; $('declaration').innerHTML += ' Branded content cannot be private.'; }
+  }
+  ['confidentialite', 'divulguer', 'marquePropre', 'contenuDeMarque', 'video'].forEach(function (k) { $(k).addEventListener('change', function () { if (k === 'video') apercu(); verifier(); }); });
+  $('publier').onclick = function () {
+    $('publier').disabled = true; texte($('resultat'), 'Uploading…');
+    fetch('/api/tiktok/publier', { method: 'POST', headers: H, body: JSON.stringify({ fichier: $('video').value, titre: $('titre').value, confidentialite: $('confidentialite').value,
+      commentaires: $('commentaires').checked, duo: $('duo').checked, collage: $('collage').checked, marquePropre: $('divulguer').checked && $('marquePropre').checked,
+      contenuDeMarque: $('divulguer').checked && $('contenuDeMarque').checked }) })
+      .then(function (r) { return r.json(); }).then(function (d) {
+        if (!d.publish_id) { texte($('resultat'), 'Error: ' + (d.erreur || 'unknown')); verifier(); return; }
+        texte($('resultat'), 'Sent to TikTok. Processing… (it may take a few minutes to appear on your profile)');
+        var n = 0, suivre = function () { fetch('/api/tiktok/statut?id=' + encodeURIComponent(d.publish_id)).then(function (r) { return r.json(); }).then(function (s) {
+          texte($('resultat'), 'Status: ' + (s.status || s.erreur || '…'));
+          if (s.status === 'PUBLISH_COMPLETE') { videos(); verifier(); return; }
+          if (s.status === 'FAILED') { texte($('resultat'), 'Failed: ' + (s.fail_reason || '')); verifier(); return; }
+          if (++n < 40) setTimeout(suivre, 5000);
+        }); }; suivre();
+      });
+  };
+  charger();
+})();
+</script></main></body></html>
