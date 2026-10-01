@@ -162,3 +162,31 @@ test('point 18 : aucune enseigne nationale n’arrive en brouillon ni dans les a
   assert.equal((await brain.query("SELECT count(*)::int AS n FROM vitrines WHERE nom = 'Paul' AND source_id = 'osm:node/7'")).rows[0].n, 0, 'une enseigne découverte n’entre même pas');
 });
 
+
+test('01/10/2026 : un nom court (« RNP ») retrouve son site par la recherche ; un site mort fait chercher un site actuel', async () => {
+  const { siteDuCommerce } = await import('../../agents/vitrines.js');
+  assert.equal(siteDuCommerce([{ url: 'https://fr.mappy.com/poi/1' }, { url: 'https://www.garage-rnp.fr/' }], { nom: 'RNP', ville: 'Annecy' }), 'https://www.garage-rnp.fr/');
+  assert.equal(siteDuCommerce([{ url: 'https://placeauto.fr/' }], { nom: 'Garage du Lac', ville: 'Annecy' }), null, 'un mot court ne se lit pas au milieu d’un autre');
+  await brain.query("UPDATE vitrines SET statut = 'ecarte' WHERE statut = 'nouveau'");
+  await brain.query(`INSERT INTO vitrines (id, source, source_id, nom, metier, ville, telephone, site, email, email_source, statut) VALUES
+    (960, 'osm', 'osm:node/t960', 'RNP', 'garage automobile', 'Annecy', '06 00 00 00 60', NULL, 'contact@garage-rnp.fr', 'fiche OSM', 'nouveau'),
+    (961, 'osm', 'osm:node/t961', 'Auto Form', 'garage automobile', 'Annecy', '06 00 00 00 61', 'https://www.ancien-autoform.fr/', 'autoform@gmail.com', 'fiche OSM', 'nouveau')`);
+  const fetch = async (url) => {
+    const u = String(url);
+    if (u.includes('overpass')) return rep({ elements: [] });
+    if (u.includes('searxng') && u.includes('RNP')) return rep({ results: [{ url: 'https://www.pagesjaunes.fr/x' }, { url: 'https://www.garage-rnp.fr/' }] });
+    if (u.includes('searxng') && u.includes('Auto%20Form')) return rep({ results: [{ url: 'https://www.auto-form-annecy.fr/' }] });
+    if (u.includes('searxng')) return rep({ results: [] });
+    if (u.startsWith('https://www.garage-rnp.fr')) return rep(VIEUX, 200, 'https://www.garage-rnp.fr/');
+    if (u.startsWith('https://www.ancien-autoform.fr')) return rep('', 404, u);
+    if (u.startsWith('https://www.auto-form-annecy.fr')) return rep(NEUF, 200, u);
+    throw new Error('réseau coupé : ' + u);
+  };
+  await passer({ brain, env: {}, fetch, resoudre: async () => [{ exchange: 'mx' }], combien: 5 });
+  const f = async (id) => (await brain.query('SELECT statut, site, site_etat, corps FROM vitrines WHERE id = $1', [id])).rows[0];
+  const rnp = await f(960);
+  assert.equal(rnp.site, 'https://www.garage-rnp.fr/'); assert.equal(rnp.site_etat, 'ancien');
+  assert.match(rnp.corps, /votre site existe, mais il date un peu/); assert.ok(!/aucun site/.test(rnp.corps));
+  const af = await f(961);
+  assert.equal(af.statut, 'ecarte', 'l’ancien site est mort, mais le nouveau est récent : rien à vendre'); assert.equal(af.site, 'https://www.auto-form-annecy.fr/');
+});

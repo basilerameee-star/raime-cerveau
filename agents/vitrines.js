@@ -171,14 +171,38 @@ export function jugerSite(page, anneeCourante = new Date().getFullYear()) {
   return { etat: signaux.length >= 2 ? 'ancien' : 'recent', signaux };
 }
 
-// Un site propre trouvé par la recherche web (pas un annuaire), quand la fiche n'en donne pas.
+// Un site propre trouvé par la recherche web (pas un annuaire), quand la fiche n'en donne pas ou que le sien est mort.
+// Le nom du commerce doit se lire dans l'adresse du site (mots d'au moins 3 lettres, hors métier, ville et petits mots) :
+// le 01/10/2026, « RNP » (3 lettres) était ignoré et garage-rnp.fr, premier résultat, passait inaperçu.
+export function motsDuNom(v) {
+  const ville = new Set(sansAccents(v.ville).split(/[^a-z0-9]+/));
+  return sansAccents(v.nom).split(/[^a-z0-9]+/).filter((m) => m.length >= 3 && !GENERIQUES.has(m) && !ville.has(m) && !LIEUX.has(m));
+}
+export function siteDuCommerce(resultats, v) {
+  const mots = motsDuNom(v);
+  if (!mots.length) return null;
+  const r = (resultats || []).find((x) => {
+    try {
+      const h = new URL(x.url).hostname.toLowerCase();
+      if (ANNUAIRES.test(h) || plateformeDe(x.url)) return false;
+      const parts = h.replace(/^www\./, '').split(/[^a-z0-9]+/);
+      // un mot court (moins de 5 lettres) doit être un morceau entier de l'adresse (garage-rnp) ; un long peut y être collé
+      const entier = sansAccents(v.nom).replace(/[^a-z0-9]/g, ''); // « Garage du Lac » → garagedulac
+      return mots.some((m) => (m.length >= 5 ? parts.some((p) => p.includes(m)) : parts.includes(m)))
+        || (entier.length >= 6 && parts.some((p) => p.includes(entier)));
+    } catch { return false; }
+  });
+  return r ? new URL(r.url).origin + '/' : null;
+}
 async function siteParRecherche(v, f) {
-  try {
-    const d = await lireJson(f, `${RECHERCHE}/search?q=${encodeURIComponent(`"${v.nom}" ${v.ville}`)}&format=json`, { delai: 20000 });
-    const mots = v.nom.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').split(/[^a-z0-9]+/).filter((m) => m.length >= 4);
-    const r = (d.results || []).find((x) => { try { const h = new URL(x.url).hostname; return !ANNUAIRES.test(h) && mots.some((m) => h.includes(m)); } catch { return false; } });
-    return r ? new URL(r.url).origin : null;
-  } catch { return null; }
+  for (const q of [`"${v.nom}" ${v.metier || ''} ${v.ville}`, `"${v.nom}" ${v.ville}`]) {
+    try {
+      const d = await lireJson(f, `${RECHERCHE}/search?q=${encodeURIComponent(q.replace(/\s+/g, ' ').trim())}&format=json`, { delai: 20000 });
+      const s = siteDuCommerce(d.results, v);
+      if (s) return s;
+    } catch { /* la recherche suivante */ }
+  }
+  return null;
 }
 
 // ── 3. E-MAIL ─────────────────────────────────────────────────────────────────
@@ -328,8 +352,15 @@ async function qualifier(brain, v, deps) {
     return 'ecarte';
   }
   let site = normaliserSite(v.site); // une fiche note parfois « www.exemple.fr » sans https://
-  if (!site && v.source === 'osm') site = await siteParRecherche(v, f);
-  const juge = site && plateformeDe(site) ? { etat: 'aucun', signaux: [`${plateformeDe(site)} seulement`] } : jugerSite(site ? await lireSite(f, site) : null);
+  let juge = site && plateformeDe(site) ? { etat: 'aucun', signaux: [`${plateformeDe(site)} seulement`] } : jugerSite(site ? await lireSite(f, site) : null);
+  // Avant d'écrire « aucun site » ou « votre site ne s'ouvre plus », chercher un site actuel sur le web.
+  if (juge.etat === 'aucun' || juge.etat === 'mort') {
+    const trouve = await siteParRecherche(v, f);
+    if (trouve && trouve !== site) {
+      const autre = jugerSite(await lireSite(f, trouve));
+      if (autre.etat !== 'mort') { site = trouve; juge = autre; }
+    }
+  }
   if (juge.etat === 'recent' || juge.etat === 'illisible') {
     await brain.query(`UPDATE vitrines SET site = $2, site_etat = $3, site_signaux = $4, statut = 'ecarte', motif = $5, maj_le = now() WHERE id = $1`,
       [v.id, site, juge.etat, juge.signaux, juge.etat === 'recent' ? 'site récent' : `${juge.signaux[0]} : rien ne peut en être affirmé`]);
