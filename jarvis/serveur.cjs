@@ -42,12 +42,12 @@ function corps(req, max) {
   });
 }
 // Une page courte (retour de TikTok…), sans rien de dynamique hors du texte échappé.
-function pageSimple(res, titre, texte) {
+function pageSimple(res, titre, texte, retour = '/jarvis') {
   const e = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' });
   res.end(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${e(titre)}</title>`
     + `<body style="font-family:system-ui,sans-serif;background:#02060b;color:#d8f6ff;display:grid;place-items:center;min-height:100vh;margin:0">`
-    + `<div style="max-width:520px;padding:24px;text-align:center"><h2>${e(titre)}</h2><p>${e(texte)}</p><p><a style="color:#5ee7ff" href="/jarvis">Retour au Cockpit</a></p></div></body>`);
+    + `<div style="max-width:520px;padding:24px;text-align:center"><h2>${e(titre)}</h2><p>${e(texte)}</p><p><a style="color:#5ee7ff" href="${e(retour)}">Continuer</a></p></div></body>`);
 }
 async function json(req, max = 1e5) { try { return JSON.parse((await corps(req, max)).toString('utf8')); } catch (e) { return {}; } }
 function envoyer(res, code, donnees) {
@@ -250,7 +250,7 @@ async function router(req, res) {
   if (m === 'GET' && url === '/tiktok/retour') {
     const q = Object.fromEntries(new URL(req.url, 'http://x').searchParams);
     const r = await tiktok.retour(q);
-    return pageSimple(res, r.ok ? 'C’est fait.' : 'Pas encore.', r.message);
+    return pageSimple(res, r.ok ? 'C’est fait.' : 'Pas encore.', r.message, '/tiktok');
   }
   if (m === 'GET' && url === '/api/tiktok') return envoyer(res, 200, await tiktok.etat());
   if (m === 'GET' && url === '/tiktok') return fichierInterface(res, 'tiktok.html');
