@@ -16,6 +16,7 @@ const outils = require('./outils.cjs');
 const voix = require('./voix.cjs');
 const appels = require('./appels.cjs');
 const vitrines = require('./vitrines.cjs');
+const tiktok = require('./tiktok.cjs');
 const { repondreSansFrais } = require('./parole.cjs');
 
 const ICI = __dirname;
@@ -39,6 +40,14 @@ function corps(req, max) {
     req.on('end', () => ok(Buffer.concat(morceaux)));
     req.on('error', ko);
   });
+}
+// Une page courte (retour de TikTok…), sans rien de dynamique hors du texte échappé.
+function pageSimple(res, titre, texte) {
+  const e = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' });
+  res.end(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${e(titre)}</title>`
+    + `<body style="font-family:system-ui,sans-serif;background:#02060b;color:#d8f6ff;display:grid;place-items:center;min-height:100vh;margin:0">`
+    + `<div style="max-width:520px;padding:24px;text-align:center"><h2>${e(titre)}</h2><p>${e(texte)}</p><p><a style="color:#5ee7ff" href="/jarvis">Retour au Cockpit</a></p></div></body>`);
 }
 async function json(req, max = 1e5) { try { return JSON.parse((await corps(req, max)).toString('utf8')); } catch (e) { return {}; } }
 function envoyer(res, code, donnees) {
@@ -232,6 +241,18 @@ async function router(req, res) {
   // La prospection : Basile valide ou refuse chaque brouillon (rien ne part sans lui).
   // Les vitrines (agents/vitrines.js) : la maquette publique, la liste, la fiche d'un commerce, les gestes de Basile.
   if (m === 'GET' && (r = url.match(/^\/demo\/([a-z0-9-]+)\/?$/))) return vitrines.servirDemo(r[1], res);
+  // TikTok (Login Kit) : Basile connecte le compte de la marque ; l'accès va au coffre, jamais à l'écran.
+  if (m === 'GET' && url === '/tiktok/connecter') {
+    const a = tiktok.adresseConnexion();
+    if (a) { res.writeHead(302, { Location: a, 'Cache-Control': 'no-store' }); return res.end(); }
+    return pageSimple(res, 'Clés de l’application manquantes', 'Range d’abord TIKTOK_CLIENT_KEY et TIKTOK_CLIENT_SECRET au coffre, puis reviens ici.');
+  }
+  if (m === 'GET' && url === '/tiktok/retour') {
+    const q = Object.fromEntries(new URL(req.url, 'http://x').searchParams);
+    const r = await tiktok.retour(q);
+    return pageSimple(res, r.ok ? 'C’est fait.' : 'Pas encore.', r.message);
+  }
+  if (m === 'GET' && url === '/api/tiktok') return envoyer(res, 200, await tiktok.etat());
   if (m === 'GET' && url === '/api/vitrines/envoi') return envoyer(res, 200, await vitrines.envoi());
   if (m === 'POST' && url === '/api/vitrines/envoi') {
     if (!autorise(req)) return envoyer(res, 403, { ok: false });
