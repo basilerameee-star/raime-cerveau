@@ -16,6 +16,7 @@ const outils = require('./outils.cjs');
 const voix = require('./voix.cjs');
 const appels = require('./appels.cjs');
 const vitrines = require('./vitrines.cjs');
+const { repondreSansFrais } = require('./parole.cjs');
 
 const ICI = __dirname;
 const INTERFACE = path.join(ICI, 'interface');
@@ -185,6 +186,18 @@ async function router(req, res) {
   }
   if (m === 'GET' && url === '/api/etat') return envoyer(res, 200, await etat());
   if (m === 'GET' && url === '/api/rapport') return envoyer(res, 200, await rapport());
+  // Les workflows n8n (le Réceptionniste qui classe les réponses…) parlent sans frais : même forme qu'OpenAI,
+  // servie par les modèles gratuits puis le local (01/10/2026 : OpenRouter n'a plus de crédit). n8n appelle cockpit:8090
+  // sur le réseau interne ; de dehors, /api/ reste derrière le mot de passe du Cockpit.
+  if (m === 'POST' && url === '/api/interne/chat') {
+    const d = await json(req, 2e5);
+    const messages = (Array.isArray(d.messages) ? d.messages : []).slice(-12)
+      .map((x) => ({ role: ['system', 'user', 'assistant'].includes(x && x.role) ? x.role : 'user', content: String((x && x.content) || '').slice(0, 12000) }));
+    if (!messages.length) return envoyer(res, 400, { erreur: 'messages attendus' });
+    const r = await repondreSansFrais({ messages, json: !!(d.response_format && d.response_format.type === 'json_object'), coffre: lireCoffre(),
+      maxTokens: Math.min(Number(d.max_tokens) || 800, 2000), temperature: d.temperature != null ? Number(d.temperature) : undefined });
+    return envoyer(res, r.texte ? 200 : 503, { model: r.source, choices: [{ message: { role: 'assistant', content: r.texte } }], usage: r.usage });
+  }
   if (m === 'GET' && url === '/api/capacites') {
     try { return envoyer(res, 200, JSON.parse(fs.readFileSync(path.join(ICI, 'capacites.json'), 'utf8'))); } catch (e) { return envoyer(res, 500, { erreur: 'liste illisible' }); }
   }

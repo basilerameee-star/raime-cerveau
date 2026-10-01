@@ -156,6 +156,18 @@ test('aucun appel payant dans le code du Cockpit', () => {
     assert.doesNotMatch(fs.readFileSync(path.join(dir, f), 'utf8'), /openrouter\.ai/, f);
 });
 
+test('les workflows n8n parlent sans frais : /api/interne/chat répond en forme OpenAI, par le modèle gratuit ou local', async () => {
+  const appel = (corps) => fetch(base + '/api/interne/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corps) });
+  const r = await appel({ model: 'openai/gpt-4o-mini', max_tokens: 600, response_format: { type: 'json_object' },
+    messages: [{ role: 'system', content: 'Classe la réponse.' }, { role: 'user', content: 'Bonjour, oui je veux bien en parler.' }] });
+  assert.equal(r.status, 200);
+  const d = await r.json();
+  assert.equal(d.choices[0].message.content, 'Réponse du modèle local.');
+  assert.match(d.model, /^local/);
+  assert.equal(appelsLocal.at(-1).format, 'json', 'le JSON demandé est transmis au modèle');
+  assert.equal((await appel({ messages: [] })).status, 400);
+});
+
 test('la liste des capacités : servie, honnête (chaque « à brancher » dit ce qu’il faut), connue de Jarvis', async () => {
   const c = await (await fetch(base + '/api/capacites')).json();
   const toutes = c.domaines.flatMap((d) => d.capacites);
