@@ -23,7 +23,7 @@ test('connexion : bonne adresse, état à usage unique, code échangé et rangé
   assert.equal(a.origin + a.pathname, 'https://www.tiktok.com/v2/auth/authorize/');
   assert.equal(a.searchParams.get('client_key'), 'cle-app');
   assert.equal(a.searchParams.get('redirect_uri'), 'https://cockpit.raime.fr/tiktok/retour');
-  assert.match(a.searchParams.get('scope'), /video\.publish/);
+  assert.equal(a.searchParams.get('scope'), 'user.info.basic,user.info.profile,user.info.stats,video.list,video.upload');
   const state = a.searchParams.get('state');
 
   assert.equal((await tiktok.retour({ code: 'c', state: 'faux' })).ok, false, 'état inconnu : refusé');

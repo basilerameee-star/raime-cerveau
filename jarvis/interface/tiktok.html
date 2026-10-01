@@ -21,18 +21,12 @@ table{width:100%;border-collapse:collapse;font-size:13.5px}td,th{text-align:left
 
 <div class="carte" id="c-connexion"><h2>1 · Account</h2><div id="connexion">Loading…</div></div>
 <div class="carte" id="c-stats" hidden><h2>2 · Account statistics</h2><div id="stats"></div></div>
-<div class="carte" id="c-publier" hidden><h2>3 · Publish a video</h2>
-  <div class="profil" id="createur"></div>
+<div class="carte" id="c-publier" hidden><h2>3 · Send a video to TikTok</h2>
+  <p class="note">The video goes to the creator's TikTok inbox (drafts). The creator then opens the TikTok app, adds the caption, chooses who can view it and posts it.</p>
   <label for="video">Video</label><select id="video"></select>
   <div style="margin-top:10px"><video id="apercu" controls muted playsinline></video></div>
-  <label for="titre">Caption</label><textarea id="titre" rows="3" maxlength="2200" placeholder="Write the caption…"></textarea>
-  <label for="confidentialite">Who can view this video</label><select id="confidentialite"><option value="" selected disabled>Choose…</option></select>
-  <label>Allow users to</label>
-  <div class="ligne"><label><input type="checkbox" id="commentaires"> Comment</label><label><input type="checkbox" id="duo"> Duet</label><label><input type="checkbox" id="collage"> Stitch</label></div>
-  <label><input type="checkbox" id="divulguer"> Disclose video content (this video promotes a brand, product or service)</label>
-  <div class="ligne" id="choix-marque" hidden><label><input type="checkbox" id="marquePropre"> Your brand</label><label><input type="checkbox" id="contenuDeMarque"> Branded content</label></div>
-  <p class="note" id="declaration">By posting, you agree to TikTok's <a style="color:var(--cyan)" href="https://www.tiktok.com/legal/page/global/music-usage-confirmation/en" target="_blank" rel="noopener">Music Usage Confirmation</a>.</p>
-  <button class="bouton" id="publier" disabled>Publish to TikTok</button>
+  <p class="note">By sending, you agree to TikTok's <a style="color:var(--cyan)" href="https://www.tiktok.com/legal/page/global/music-usage-confirmation/en" target="_blank" rel="noopener">Music Usage Confirmation</a>.</p>
+  <button class="bouton" id="publier" disabled>Send to TikTok drafts</button>
   <p class="etat" id="resultat"></p>
 </div>
 <div class="carte" id="c-videos" hidden><h2>4 · Published videos</h2><div id="videos"></div></div>
@@ -64,27 +58,14 @@ table{width:100%;border-collapse:collapse;font-size:13.5px}td,th{text-align:left
       $('stats').innerHTML = '<div class="chiffres"><div><b>' + fmt(p.follower_count) + '</b><span>followers</span></div><div><b>' + fmt(p.following_count)
         + '</b><span>following</span></div><div><b>' + fmt(p.likes_count) + '</b><span>likes</span></div><div><b>' + fmt(p.video_count) + '</b><span>videos</span></div></div>';
       $('c-publier').hidden = false; $('c-videos').hidden = false;
-      createur(); medias(); videos();
-    });
-  }
-  var info = null;
-  function createur() {
-    fetch('/api/tiktok/createur').then(function (r) { return r.json(); }).then(function (d) {
-      info = d; var c = $('createur'); c.textContent = '';
-      if (d.erreur) { c.appendChild(texte(document.createElement('span'), d.erreur)).className = 'ko'; return; }
-      if (d.creator_avatar_url) { var i = document.createElement('img'); i.src = d.creator_avatar_url; i.alt = ''; c.appendChild(i); }
-      c.appendChild(texte(document.createElement('div'), 'Posting as ' + (d.creator_nickname || d.creator_username || '')));
-      var s = $('confidentialite'); (d.privacy_level_options || []).forEach(function (o) { var op = document.createElement('option'); op.value = o; op.textContent = {
-        PUBLIC_TO_EVERYONE: 'Everyone', MUTUAL_FOLLOW_FRIENDS: 'Friends', FOLLOWER_OF_CREATOR: 'Followers', SELF_ONLY: 'Only me' }[o] || o; s.appendChild(op); });
-      ['commentaires', 'duo', 'collage'].forEach(function (k, j) { if (d[['comment_disabled', 'duet_disabled', 'stitch_disabled'][j]]) { $(k).disabled = true; $(k).checked = false; } });
-      verifier();
+      medias(); videos();
     });
   }
   function medias() {
     fetch('/api/tiktok/medias').then(function (r) { return r.json(); }).then(function (l) {
       var s = $('video'); s.textContent = '';
       (l || []).forEach(function (f) { var o = document.createElement('option'); o.value = f; o.textContent = f; s.appendChild(o); });
-      apercu();
+      apercu(); verifier();
     });
   }
   function apercu() { var f = $('video').value; $('apercu').src = f ? '/api/tiktok/media/' + encodeURIComponent(f) : ''; }
@@ -97,26 +78,17 @@ table{width:100%;border-collapse:collapse;font-size:13.5px}td,th{text-align:left
       b.appendChild(t);
     });
   }
-  function verifier() {
-    var div = $('divulguer').checked, ok = $('confidentialite').value && $('video').value && (!div || $('marquePropre').checked || $('contenuDeMarque').checked);
-    $('choix-marque').hidden = !div; $('publier').disabled = !ok;
-    var pol = $('contenuDeMarque').checked && div;
-    $('declaration').innerHTML = 'By posting, you agree to TikTok\'s ' + (pol ? '<a style="color:var(--cyan)" href="https://www.tiktok.com/legal/page/global/bc-policy/en" target="_blank" rel="noopener">Branded Content Policy</a> and ' : '')
-      + '<a style="color:var(--cyan)" href="https://www.tiktok.com/legal/page/global/music-usage-confirmation/en" target="_blank" rel="noopener">Music Usage Confirmation</a>.';
-    if (pol && $('confidentialite').value === 'SELF_ONLY') { $('publier').disabled = true; $('declaration').innerHTML += ' Branded content cannot be private.'; }
-  }
-  ['confidentialite', 'divulguer', 'marquePropre', 'contenuDeMarque', 'video'].forEach(function (k) { $(k).addEventListener('change', function () { if (k === 'video') apercu(); verifier(); }); });
+  function verifier() { $('publier').disabled = !$('video').value; }
+  $('video').addEventListener('change', function () { apercu(); verifier(); });
   $('publier').onclick = function () {
     $('publier').disabled = true; texte($('resultat'), 'Uploading…');
-    fetch('/api/tiktok/publier', { method: 'POST', headers: H, body: JSON.stringify({ fichier: $('video').value, titre: $('titre').value, confidentialite: $('confidentialite').value,
-      commentaires: $('commentaires').checked, duo: $('duo').checked, collage: $('collage').checked, marquePropre: $('divulguer').checked && $('marquePropre').checked,
-      contenuDeMarque: $('divulguer').checked && $('contenuDeMarque').checked }) })
+    fetch('/api/tiktok/publier', { method: 'POST', headers: H, body: JSON.stringify({ fichier: $('video').value }) })
       .then(function (r) { return r.json(); }).then(function (d) {
         if (!d.publish_id) { texte($('resultat'), 'Error: ' + (d.erreur || 'unknown')); verifier(); return; }
-        texte($('resultat'), 'Sent to TikTok. Processing… (it may take a few minutes to appear on your profile)');
+        texte($('resultat'), 'Sent to TikTok. Processing…');
         var n = 0, suivre = function () { fetch('/api/tiktok/statut?id=' + encodeURIComponent(d.publish_id)).then(function (r) { return r.json(); }).then(function (s) {
           texte($('resultat'), 'Status: ' + (s.status || s.erreur || '…'));
-          if (s.status === 'PUBLISH_COMPLETE') { videos(); verifier(); return; }
+          if (s.status === 'SEND_TO_USER_INBOX' || s.status === 'PUBLISH_COMPLETE') { texte($('resultat'), 'Done: the video is in your TikTok inbox. Open the TikTok app to post it.'); verifier(); return; }
           if (s.status === 'FAILED') { texte($('resultat'), 'Failed: ' + (s.fail_reason || '')); verifier(); return; }
           if (++n < 40) setTimeout(suivre, 5000);
         }); }; suivre();

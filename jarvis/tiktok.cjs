@@ -13,7 +13,9 @@ const { lireCoffre, rangerCoffre, lire } = require('./bases.cjs');
 const AUTORISER = 'https://www.tiktok.com/v2/auth/authorize/';
 const JETON = 'https://open.tiktokapis.com/v2/oauth/token/';
 const PROFIL = 'https://open.tiktokapis.com/v2/user/info/?fields=open_id,display_name,avatar_url,follower_count,following_count,likes_count,video_count';
-const PORTEES = 'user.info.basic,user.info.profile,user.info.stats,video.list,video.upload,video.publish';
+// Les autorisations ouvertes à l'application (01/10/2026 : TikTok ne propose pas video.publish ; la vidéo part dans les
+// brouillons du compte et Basile la publie depuis l'application TikTok).
+const PORTEES = 'user.info.basic,user.info.profile,user.info.stats,video.list,video.upload';
 const RETOUR = (process.env.COCKPIT_ADRESSE || 'https://cockpit.raime.fr') + '/tiktok/retour';
 
 // Les « state » donnés à TikTok (protection contre la falsification de requête) : à usage unique, 10 minutes.
@@ -132,25 +134,20 @@ function medias() {
   try { return fs.readdirSync(MEDIAS).filter((f) => /^[\w.-]+\.mp4$/i.test(f)); } catch { return []; }
 }
 
-// Publier un fichier : init, envoi en un morceau (moins de 64 Mo), puis l'identifiant à suivre.
-async function publier({ fichier, titre, confidentialite, commentaires = false, duo = false, collage = false, marquePropre = false, contenuDeMarque = false }, o = {}) {
-  const f = path.join(MEDIAS, path.basename(String(fichier || '')));
-  if (!medias().includes(path.basename(String(fichier || '')))) throw new Error('vidéo inconnue');
-  const info = await creatorInfo(o);
-  if (!(info.privacy_level_options || []).includes(confidentialite)) throw new Error('confidentialité non proposée par TikTok pour ce compte');
+// Envoyer un fichier dans les brouillons TikTok du compte (video.upload) : init, envoi en un morceau (moins de 64 Mo).
+// TikTok prévient le créateur dans l'application, où il finit la publication (légende, confidentialité).
+async function publier({ fichier }, o = {}) {
+  const nom = path.basename(String(fichier || ''));
+  if (!medias().includes(nom)) throw new Error('vidéo inconnue');
+  const f = path.join(MEDIAS, nom);
   const taille = fs.statSync(f).size;
   if (taille > 64 * 1024 * 1024) throw new Error('vidéo trop lourde pour un envoi en un morceau');
-  const init = await appeler('/post/publish/video/init/', {
-    post_info: { title: String(titre || '').slice(0, 2200), privacy_level: confidentialite,
-      disable_comment: !commentaires || !!info.comment_disabled, disable_duet: !duo || !!info.duet_disabled, disable_stitch: !collage || !!info.stitch_disabled,
-      video_cover_timestamp_ms: 1000, brand_content_toggle: !!contenuDeMarque, brand_organic_toggle: !!marquePropre },
-    source_info: { source: 'FILE_UPLOAD', video_size: taille, chunk_size: taille, total_chunk_count: 1 },
-  }, o);
+  const init = await appeler('/post/publish/inbox/video/init/', { source_info: { source: 'FILE_UPLOAD', video_size: taille, chunk_size: taille, total_chunk_count: 1 } }, o);
   const r = await (o.fetch || globalThis.fetch)(init.upload_url, { method: 'PUT',
     headers: { 'Content-Type': 'video/mp4', 'Content-Length': String(taille), 'Content-Range': `bytes 0-${taille - 1}/${taille}` },
     body: fs.readFileSync(f), signal: AbortSignal.timeout(120000) });
   if (!r.ok) throw new Error(`envoi du fichier refusé (${r.status})`);
-  await lire(`INSERT INTO journal(acteur, changement, motif) VALUES('basile', 'TikTok : vidéo publiée depuis le Cockpit', $1)`, [`${path.basename(f)} · ${confidentialite}`]);
+  await lire(`INSERT INTO journal(acteur, changement, motif) VALUES('basile', 'TikTok : vidéo envoyée dans les brouillons', $1)`, [nom]);
   return { publish_id: init.publish_id };
 }
 
