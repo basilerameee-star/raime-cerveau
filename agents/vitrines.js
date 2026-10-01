@@ -194,15 +194,19 @@ export function siteDuCommerce(resultats, v) {
   });
   return r ? new URL(r.url).origin + '/' : null;
 }
+// Rend { site, fiable } : fiable est faux quand le moteur n'a rien pu chercher (moteurs suspendus, captcha, panne) :
+// le 01/10/2026, des recherches vides par blocage ont fait écrire « aucun site » à un garage qui en avait un.
 async function siteParRecherche(v, f) {
+  let fiable = false;
   for (const q of [`"${v.nom}" ${v.metier || ''} ${v.ville}`, `"${v.nom}" ${v.ville}`]) {
     try {
       const d = await lireJson(f, `${RECHERCHE}/search?q=${encodeURIComponent(q.replace(/\s+/g, ' ').trim())}&format=json`, { delai: 20000 });
+      if ((d.results || []).length || !(d.unresponsive_engines || []).length) fiable = true;
       const s = siteDuCommerce(d.results, v);
-      if (s) return s;
+      if (s) return { site: s, fiable: true };
     } catch { /* la recherche suivante */ }
   }
-  return null;
+  return { site: null, fiable };
 }
 
 // ── 3. E-MAIL ─────────────────────────────────────────────────────────────────
@@ -355,7 +359,8 @@ async function qualifier(brain, v, deps) {
   let juge = site && plateformeDe(site) ? { etat: 'aucun', signaux: [`${plateformeDe(site)} seulement`] } : jugerSite(site ? await lireSite(f, site) : null);
   // Avant d'écrire « aucun site » ou « votre site ne s'ouvre plus », chercher un site actuel sur le web.
   if (juge.etat === 'aucun' || juge.etat === 'mort') {
-    const trouve = await siteParRecherche(v, f);
+    const { site: trouve, fiable } = await siteParRecherche(v, f);
+    if (!fiable) return 'reporte'; // la recherche est en panne : rien n'est affirmé, la fiche repassera
     if (trouve && trouve !== site) {
       const autre = jugerSite(await lireSite(f, trouve));
       if (autre.etat !== 'mort') { site = trouve; juge = autre; }
@@ -389,12 +394,13 @@ async function qualifier(brain, v, deps) {
 
 export async function passer({ brain, env = process.env, fetch = globalThis.fetch, resoudre = dns.resolveMx, combien = 8 } = {}) {
   await preparer(brain);
-  const bilan = { neufs: 0, brouillons: 0, a_appeler: 0, ecartes: 0, erreurs: 0 };
+  const bilan = { neufs: 0, brouillons: 0, a_appeler: 0, ecartes: 0, reportes: 0, erreurs: 0 };
   try { bilan.neufs = await decouvrir(brain, { env, fetch }); } catch (e) { bilan.erreurs++; bilan.decouverte = e.message.slice(0, 120); }
   const { rows } = await brain.query(`SELECT * FROM vitrines WHERE statut = 'nouveau' AND (telephone IS NOT NULL OR email IS NOT NULL) ORDER BY id LIMIT $1`, [combien]);
   for (const v of rows) {
     try {
       const s = await qualifier(brain, v, { fetch, resoudre });
+      if (s === 'reporte') { bilan.reportes++; break; } // la recherche est bloquée : on n'insiste pas, on repassera
       bilan[s === 'brouillon' ? 'brouillons' : s === 'a_appeler' ? 'a_appeler' : 'ecartes']++;
     } catch (e) {
       bilan.erreurs++;
@@ -412,7 +418,7 @@ export async function passer({ brain, env = process.env, fetch = globalThis.fetc
     WHERE source = 'google' AND statut IN ('ecarte', 'pas_interesse') AND maj_le < now() - interval '30 days' AND nom IS NOT NULL`);
   await brain.query(`INSERT INTO journal(acteur, changement, motif) VALUES ('vitrines', $1, $2)`,
     [`Vitrines : ${bilan.neufs} commerces repérés, ${bilan.brouillons} brouillons, ${bilan.a_appeler} à appeler (sans e-mail), ${bilan.ecartes} écartés`,
-      bilan.decouverte || `erreurs : ${bilan.erreurs}`]);
+      bilan.decouverte || `erreurs : ${bilan.erreurs}${bilan.reportes ? ' ; recherche web bloquée : fiches reportées' : ''}`]);
   return bilan;
 }
 

@@ -190,3 +190,14 @@ test('01/10/2026 : un nom court (« RNP ») retrouve son site par la recherche ;
   const af = await f(961);
   assert.equal(af.statut, 'ecarte', 'l’ancien site est mort, mais le nouveau est récent : rien à vendre'); assert.equal(af.site, 'https://www.auto-form-annecy.fr/');
 });
+
+test('01/10/2026 : une recherche web bloquée ne prouve rien ; la fiche reste à traiter', async () => {
+  await brain.query("UPDATE vitrines SET statut = 'ecarte' WHERE statut = 'nouveau'");
+  await brain.query(`INSERT INTO vitrines (id, source, source_id, nom, metier, ville, telephone, email, email_source, statut) VALUES
+    (970, 'osm', 'osm:node/t970', 'Garage Bloqué', 'garage automobile', 'Annecy', '06 00 00 00 70', 'garage.bloque@gmail.com', 'fiche OSM', 'nouveau')`);
+  const fetch = async (url) => (String(url).includes('overpass') ? rep({ elements: [] })
+    : rep({ results: [], unresponsive_engines: [['brave', 'Suspended: too many requests'], ['duckduckgo', 'CAPTCHA']] }));
+  const b = await passer({ brain, env: {}, fetch, resoudre: async () => [{ exchange: 'mx' }], combien: 5 });
+  assert.equal(b.reportes, 1);
+  assert.equal((await brain.query('SELECT statut FROM vitrines WHERE id = 970')).rows[0].statut, 'nouveau', 'rien d’affirmé : pas de brouillon « aucun site »');
+});
