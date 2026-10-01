@@ -253,6 +253,10 @@ test('01/10/2026 : un annuaire ou la page d’un réseau n’est pas le site du 
   assert.equal(siteASonNom('https://tif.hair/', v("Nouvel'hair")), false);
   assert.equal(siteASonNom('https://www.garagemouthon.com/', v('Garage Mouthon - Peugeot')), true);
   assert.equal(siteASonNom('https://garage-rnp.fr/', v('RNP')), true);
+  assert.equal(siteASonNom('https://mobilite.jeanlain.com/concessions/x/', v('Jean Lain Carrosserie')), true, 'les mots collés');
+  const { pageDeReseau } = await import('../../agents/vitrines.js');
+  assert.equal(pageDeReseau('https://www.franckprovost.com/salons/18-boulevard', v('Adapt Hair Concept')), true);
+  assert.equal(pageDeReseau('https://www.idgarages.com/', v('Garage C.L. AUTO')), false, 'un annuaire n’est pas un réseau');
   assert.equal(siteASonNom('https://www.maison-chevallier.fr/', v('Boulangerie Chevallier')), true);
   assert.equal(siteASonNom('https://www.boulangeriedelagare.fr/', v('Boulangerie de la Gare')), true, 'que des mots du métier : rien n’est affirmé');
   const b = brouillon({ nom: 'Garage C.L. AUTO', metier: 'garage automobile', ville: 'Annecy', source: 'google', site: 'https://www.idgarages.com/', site_etat: 'aucun' }, 'https://x/demo/y');

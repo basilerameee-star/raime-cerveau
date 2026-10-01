@@ -213,8 +213,9 @@ export function siteDuCommerce(resultats, v) {
       const parts = h.replace(/^www\./, '').split(/[^a-z0-9]+/);
       // un mot court (moins de 5 lettres) doit être un morceau entier de l'adresse (garage-rnp) ; un long peut y être collé
       const entier = sansAccents(v.nom).replace(/[^a-z0-9]/g, ''); // « Garage du Lac » → garagedulac
+      const colles = mots.join(''); // « Jean Lain » → jeanlain.com
       return mots.some((m) => (m.length >= 5 ? parts.some((p) => p.includes(m)) : parts.includes(m)))
-        || (entier.length >= 6 && parts.some((p) => p.includes(entier)));
+        || (entier.length >= 6 && parts.some((p) => p.includes(entier))) || (mots.length > 1 && colles.length >= 6 && parts.some((p) => p.includes(colles)));
     } catch { return false; }
   });
   return r ? new URL(r.url).origin + '/' : null;
@@ -227,6 +228,8 @@ export function siteASonNom(site, v) {
   try { if (ANNUAIRES.test(new URL(site).hostname)) return false; } catch { return false; }
   return !motsDuNom(v).length || !!siteDuCommerce([{ url: site }], v);
 }
+// La page d'un réseau (reseau.citroen.fr, franckprovost.com/salons/…) : souvent un franchisé, appelé plutôt qu'écrit.
+export const pageDeReseau = (site, v) => !!site && !plateformeDe(site) && !!hoteDe(site) && !ANNUAIRES.test(hoteDe(site)) && !siteASonNom(site, v);
 export const hoteDe = (site) => { try { return new URL(site).hostname.replace(/^www\./, ''); } catch { return null; } };
 // Rend { site, fiable } : fiable est faux quand le moteur n'a rien pu chercher (moteurs suspendus, captcha, panne) :
 // le 01/10/2026, des recherches vides par blocage ont fait écrire « aucun site » à un garage qui en avait un.
@@ -422,11 +425,13 @@ async function qualifier(brain, v, deps) {
   const w = { ...v, site, site_etat: juge.etat };
   const b = brouillon(w, url);
   const suisse = v.pays === 'CH';
-  const statut = m && !suisse ? 'brouillon' : 'a_appeler';
+  const reseau = pageDeReseau(site, v);
+  const statut = m && !suisse && !reseau ? 'brouillon' : 'a_appeler';
   await brain.query(`UPDATE vitrines SET site = $2, site_etat = $3, site_signaux = $4, email = $5, email_source = $6, slug = $7,
     demo_html = $8, sujet = $9, corps = $10, statut = $11, motif = $12, lat = $13, lon = $14, maquette_v = $15, horaires = $16, maj_le = now() WHERE id = $1`,
   [v.id, site, juge.etat, juge.signaux, m ? m.email : null, m ? m.source : null, slug, maquette(w), b.sujet, b.corps, statut,
-    suisse ? 'Suisse : par téléphone seulement (pas d’e-mail sans accord, loi suisse)' : m ? null : 'e-mail non trouvé', v.lat, v.lon, MAQUETTE_V, v.horaires || null]);
+    suisse ? 'Suisse : par téléphone seulement (pas d’e-mail sans accord, loi suisse)'
+      : reseau ? `fiche reliée à ${hoteDe(site)} (réseau ou enseigne) : par téléphone` : m ? null : 'e-mail non trouvé', v.lat, v.lon, MAQUETTE_V, v.horaires || null]);
   return statut;
 }
 
