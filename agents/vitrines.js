@@ -333,6 +333,39 @@ async function chercherEmail(v, { fetch: f, resoudre }) {
   return null;
 }
 
+// Le téléphone d'un commerce que sa fiche OpenStreetMap ne donne pas (01/10/2026 : 161 fiches sur 168 sans téléphone
+// ni e-mail restaient en file pour toujours). D'abord son propre site (liens tel:), puis la recherche web : seuls comptent
+// les résultats qui portent un mot propre au nom ; le numéro le plus cité l'emporte. Jamais un 08 (numéros surtaxés des
+// annuaires). Rend { telephone, source } ou null.
+const RE_TEL = /(?:\+33\s?|0)[1-79](?:[\s.-]?\d{2}){4}|\+41\s?\d{2}(?:[\s.-]?\d{3})(?:[\s.-]?\d{2}){2}/g;
+export function telephonesDans(texte) {
+  return (String(texte).match(RE_TEL) || []).map((n) => n.replace(/[\s.-]/g, '').replace(/^\+33/, '0'))
+    .filter((n) => !/^08/.test(n) && (n.startsWith('+41') || n.length === 10))
+    .map((n) => (n.startsWith('+41') ? n : n.replace(/(\d{2})(?=\d)/g, '$1 ')));
+}
+export async function chercherTelephone(v, f, site) {
+  if (site && siteASonNom(site, v)) {
+    for (const chemin of ['', '/contact']) {
+      try {
+        const p = await texte(f, new URL(chemin || '/', site).href, 8000);
+        const tels = p.ok ? telephonesDans((p.html.match(/href=["']tel:[^"']+/gi) || []).join(' ').replace(/href=["']tel:/gi, ' ')) : [];
+        if (tels.length) return { telephone: tels[0], source: 'site' };
+      } catch {}
+    }
+  }
+  const mots = motsDuNom(v).length ? motsDuNom(v) : sansAccents(v.nom).split(/[^a-z0-9]+/).filter((m) => m.length >= 4);
+  if (!mots.length) return null;
+  const d = await lireJson(f, `${RECHERCHE}/search?q=${encodeURIComponent(`"${v.nom}" ${villeSansCanton(v.ville)} téléphone`)}&format=json`, { delai: 20000 });
+  const compte = new Map();
+  for (const r of d.results || []) {
+    const bloc = `${r.title || ''} ${r.content || ''}`;
+    if (!mots.some((m) => sansAccents(bloc).includes(m))) continue;
+    for (const n of new Set(telephonesDans(bloc))) compte.set(n, (compte.get(n) || 0) + 1);
+  }
+  const [premier] = [...compte.entries()].sort((a, b) => b[1] - a[1]);
+  return premier ? { telephone: premier[0], source: 'recherche web' } : null;
+}
+
 // ── 4. MAQUETTE ───────────────────────────────────────────────────────────────
 export const slugifier = (v) => `${String(v.nom).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40)}-${crypto.createHash('sha1').update(v.source_id).digest('hex').slice(0, 6)}`;
 
@@ -414,6 +447,16 @@ async function qualifier(brain, v, deps) {
   }
   v = { ...v, ...(await localiser(v, f)) };
   const m = await chercherEmail({ ...v, site: plateformeDe(site) ? null : site }, deps);
+  if (!v.telephone) {
+    let t = null;
+    try { t = await chercherTelephone(v, f, plateformeDe(site) ? null : site); } catch { if (!m) return 'reporte'; }
+    if (t) v = { ...v, telephone: t.telephone };
+  }
+  if (!m && !v.telephone) { // ni e-mail ni téléphone, même après recherche : personne à joindre, la fiche sort de la file
+    await brain.query(`UPDATE vitrines SET site = $2, site_etat = $3, site_signaux = $4, statut = 'ecarte', motif = 'ni téléphone ni e-mail trouvés', maj_le = now() WHERE id = $1`,
+      [v.id, site, juge.etat, juge.signaux]);
+    return 'ecarte';
+  }
   // Une adresse, un seul e-mail : deux fiches du même commerce (ou d'une même maison) ne reçoivent pas deux messages.
   if (m) {
     const { rows: deja } = await brain.query(`SELECT id FROM vitrines WHERE lower(email) = lower($1) AND id <> $2 AND statut NOT IN ('ecarte', 'nouveau') ORDER BY id LIMIT 1`, [m.email, v.id]);
@@ -430,10 +473,10 @@ async function qualifier(brain, v, deps) {
   const reseau = pageDeReseau(site, v);
   const statut = m && !suisse && !reseau ? 'brouillon' : 'a_appeler';
   await brain.query(`UPDATE vitrines SET site = $2, site_etat = $3, site_signaux = $4, email = $5, email_source = $6, slug = $7,
-    demo_html = $8, sujet = $9, corps = $10, statut = $11, motif = $12, lat = $13, lon = $14, maquette_v = $15, horaires = $16, maj_le = now() WHERE id = $1`,
+    demo_html = $8, sujet = $9, corps = $10, statut = $11, motif = $12, lat = $13, lon = $14, maquette_v = $15, horaires = $16, telephone = $17, maj_le = now() WHERE id = $1`,
   [v.id, site, juge.etat, juge.signaux, m ? m.email : null, m ? m.source : null, slug, maquette(w), b.sujet, b.corps, statut,
     suisse ? 'Suisse : par téléphone seulement (pas d’e-mail sans accord, loi suisse)'
-      : reseau ? `fiche reliée à ${hoteDe(site)} (réseau ou enseigne) : par téléphone` : m ? null : 'e-mail non trouvé', v.lat, v.lon, MAQUETTE_V, v.horaires || null]);
+      : reseau ? `fiche reliée à ${hoteDe(site)} (réseau ou enseigne) : par téléphone` : m ? null : 'e-mail non trouvé', v.lat, v.lon, MAQUETTE_V, v.horaires || null, v.telephone || null]);
   return statut;
 }
 
@@ -441,7 +484,7 @@ export async function passer({ brain, env = process.env, fetch = globalThis.fetc
   await preparer(brain);
   const bilan = { neufs: 0, brouillons: 0, a_appeler: 0, ecartes: 0, reportes: 0, erreurs: 0 };
   try { bilan.neufs = await decouvrir(brain, { env, fetch }); } catch (e) { bilan.erreurs++; bilan.decouverte = e.message.slice(0, 120); }
-  const { rows } = await brain.query(`SELECT * FROM vitrines WHERE statut = 'nouveau' AND (telephone IS NOT NULL OR email IS NOT NULL) ORDER BY id LIMIT $1`, [combien]);
+  const { rows } = await brain.query(`SELECT * FROM vitrines WHERE statut = 'nouveau' ORDER BY (telephone IS NULL AND email IS NULL), id LIMIT $1`, [combien]);
   for (const v of rows) {
     try {
       const s = await qualifier(brain, v, { fetch, resoudre });

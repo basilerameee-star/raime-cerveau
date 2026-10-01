@@ -264,3 +264,25 @@ test('01/10/2026 : un annuaire ou la page d’un réseau n’est pas le site du 
   const b = brouillon({ nom: 'Garage C.L. AUTO', metier: 'garage automobile', ville: 'Annecy', source: 'google', site: 'https://www.idgarages.com/', site_etat: 'aucun' }, 'https://x/demo/y');
   assert.match(b.corps, /sur Google, votre fiche renvoie vers idgarages\.com, pas vers un site à votre nom/);
 });
+
+test('01/10/2026 : une fiche sans téléphone ni e-mail cherche son numéro sur le web ; sans rien, elle sort de la file', async () => {
+  const { telephonesDans } = await import('../../agents/vitrines.js');
+  assert.deepEqual(telephonesDans('Tél. : 04.50.45.12.34 ou +33 6 12 34 56 78 ; annuaire 0892 68 01 02'), ['04 50 45 12 34', '06 12 34 56 78']);
+  await brain.query("UPDATE vitrines SET statut = 'ecarte' WHERE statut = 'nouveau'");
+  await brain.query(`INSERT INTO vitrines (id, source, source_id, nom, metier, ville, statut) VALUES
+    (990, 'osm', 'osm:node/t990', 'Le Fournil de Marcelin', 'boulangerie', 'Annecy', 'nouveau'),
+    (991, 'osm', 'osm:node/t991', 'Salon Introuvable', 'coiffeur', 'Annecy', 'nouveau')`);
+  const fetch = async (url) => {
+    const u = decodeURIComponent(String(url));
+    if (u.includes('overpass')) return rep({ elements: [] });
+    if (u.includes('Marcelin') && u.includes('téléphone')) return rep({ results: [
+      { url: 'https://annuaire.test/a', title: 'Le Fournil de Marcelin - Annecy', content: 'Boulangerie. Tél 04 50 11 22 33' },
+      { url: 'https://autre.test/b', title: 'Fournil de Marcelin', content: 'Appelez le 04.50.11.22.33' },
+      { url: 'https://hors-sujet.test/c', title: 'Une autre boulangerie', content: '04 50 99 99 99' }] });
+    return rep({ results: [{ url: 'https://x.test', title: 'rien', content: 'rien' }] });
+  };
+  await passer({ brain, env: {}, fetch, resoudre: async () => [], combien: 5 });
+  const { rows } = await brain.query('SELECT id, statut, telephone, motif FROM vitrines WHERE id IN (990, 991) ORDER BY id');
+  assert.deepEqual([rows[0].statut, rows[0].telephone], ['a_appeler', '04 50 11 22 33']);
+  assert.deepEqual([rows[1].statut, rows[1].motif], ['ecarte', 'ni téléphone ni e-mail trouvés']);
+});
