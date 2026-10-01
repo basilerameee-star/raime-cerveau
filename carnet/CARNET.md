@@ -445,3 +445,9 @@ Merci pour le travail de cette nuit : le banc a déjà trouvé un vrai défaut e
   - une adresse sans https:// se lit ;
   - les enseignes ne sont pas démarchées.
 - Panneau Monétisation corrigé : 2 000 € sur chacune de TikTok, YouTube et Instagram, « pour les 6 000 € » ; Facebook et produits hors objectif.
+
+## 2026-10-01 — point 17 (n°29) : stratégie de campagne, en cours
+- Action : `agents/campagne.js` (code seul, sans modèle) : pour un produit ou une offre, publics, questions de ciblage, deux variantes A/B (seule l'accroche change), règle d'arrêt des perdants, modèle de rapport ; budget borné par les 300 € du cap. Rien n'est lancé ni dépensé. Test : `tests/banc/campagne.test.mjs`.
+- Résultat : 5 tests passent en local ; pull request ouverte, point passé « en_cours » (pas « fait » : la preuve se fait en production).
+- Évaluation : le point 10 (rentabilité) avait déjà sa pull request n°31, pris le suivant. Les seuils d'arrêt sont des réglages de méthode, à confirmer par Basile avant tout lancement.
+- Leçon : brancher plus tard la marge nette du point 10 sur `marge_nette_eur` ; sans marge, le plan n'invente aucun seuil.
