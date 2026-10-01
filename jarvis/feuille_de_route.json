@@ -72,9 +72,9 @@
       "groupe": "basile",
       "moteur": "Moteur 1 : sites à 500 €",
       "titre": "Parcours de vente des sites à 500 €",
-      "il_faut": "Un lien de paiement Stripe à 500 €, créé une fois par Basile.",
+      "il_faut": "Lien Stripe à 500 € créé par Basile le 01/10/2026 (dans la fiche de chaque commerçant). Reste : le bon de commande DocuSeal (signature.raime.fr), selon ses règles : livraison 7 jours, 100 % à la commande, 2 séries de retouches, hébergement inclus, nom de domaine inclus s'il existe déjà sinon au prix coûtant, pas de suivi mensuel.",
       "fini_quand": "Oui → rendez-vous → lien de paiement → site du client en ligne ; un premier site vendu.",
-      "etat": "attend_basile"
+      "etat": "en_cours"
     },
     {
       "n": 16,
@@ -101,7 +101,7 @@
       "groupe": "basile",
       "moteur": "Moteur 2 : la niche (contenus et produits)",
       "titre": "Le personnage influenceur et sa niche (marque média et produits)",
-      "il_faut": "Nom retenu le 01/10/2026 : « Obito AF », masque d'Obito (spirale orange), photo de profil prête. Reste avec Basile : la niche, et le personnage 3D (Blender) : homme au style street, toujours masqué, visage jamais montré, train de vie fastueux, montres ; tenues et couleurs qui changent.",
+      "il_faut": "Nom « Obito AF » (01/10/2026). Niche pressentie : accessoires street-luxe (montres sans marque, bijoux acier, coques, pistolets de massage…) mis en scène par le personnage ; à peaufiner. Boutique : site à part obitoaf.fr (fond blanc, premium, une page par produit), nom de domaine à acheter par Basile.",
       "fini_quand": "Le nom, la niche et la fiche du personnage sont écrits en tête de contenus/POSITIONNEMENT.md ; le personnage 3D existe ; le plan de la semaine et la recherche de produits les suivent.",
       "etat": "attend_basile"
     },
@@ -433,7 +433,7 @@
       "groupe": "basile",
       "moteur": "Contenu",
       "titre": "Clip farming",
-      "il_faut": "Des sources autorisées : les vidéos de Basile, des campagnes de clipping rémunérées où le créateur autorise la découpe, ou des vidéos sous licence libre qui permet l'usage commercial (CC BY).",
+      "il_faut": "Décidé le 01/10/2026 : comptes séparés (TikTok, Instagram, YouTube, Page) ; sources = uniquement les créateurs qui lancent une campagne de clipping officielle et rémunérée (Whop « Content Rewards » et équivalents), jamais leurs vidéos sans accord. Reste : les comptes du clip farming.",
       "fini_quand": "D'une vidéo autorisée : moments forts repérés, clips verticaux sous-titrés, source et autorisation notées, en file de publication.",
       "etat": "attend_basile"
     }

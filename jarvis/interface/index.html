@@ -631,6 +631,7 @@ nav#onglets button:hover{color:var(--cyan2);border-color:var(--trait2)}
           pub.onclick = function () { agirVitrine(x.id, p.publiee_le ? 'retablir_simple' : 'publier_premium'); };
           a.appendChild(pub);
         }
+        if (x.paiement) { var pay = el('button', 'bouton', 'Copier le lien de paiement (500 €)'); pay.onclick = function () { navigator.clipboard.writeText(x.paiement); pay.textContent = 'Lien copié'; }; a.appendChild(pay); }
         var oui = el('button', 'bouton', '✓ Client'), non = el('button', 'bouton', '✗ Pas intéressé');
         oui.onclick = function () { agirVitrine(x.id, 'client'); }; non.onclick = function () { agirVitrine(x.id, 'pas_interesse'); };
         a.appendChild(oui); a.appendChild(non); c.appendChild(a); b.appendChild(c);

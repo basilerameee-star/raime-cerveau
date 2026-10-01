@@ -12,6 +12,9 @@ const LIVRABLES = process.env.LIVRABLES_DIR || '/travail';
 const fichierPremium = (n) => path.join(LIVRABLES, `demande-${Number(n)}`, 'app', 'index.html');
 const COLONNES = 'ALTER TABLE vitrines ADD COLUMN IF NOT EXISTS premium_commande int, ADD COLUMN IF NOT EXISTS premium_le timestamptz, ADD COLUMN IF NOT EXISTS demo_simple text';
 
+// Le lien de paiement du site à 500 € (Stripe, créé par Basile le 01/10/2026), envoyé après l'appel.
+const LIEN_PAIEMENT = process.env.VITRINE_PAIEMENT || 'https://buy.stripe.com/28EaEWgGB4E63527OOfw401';
+
 const ACTIONS = { valider: 'valide', ecarter: 'ecarte', client: 'client', pas_interesse: 'pas_interesse' };
 
 // La maquette, servie à tous (le chemin /demo/ est hors du mot de passe du Cockpit), isolée comme un livrable.
@@ -40,7 +43,7 @@ function fiche(v, adresse) {
     site: { etat: v.site_etat, url: v.site, signaux: v.site_signaux || [] },
     maquette: v.slug ? `${adresse}/demo/${v.slug}` : null, carte: v.carte,
     statut: v.statut, motif: v.motif, envoye_le: v.envoye_le, jours_depuis_envoi: jours, note: v.note,
-    brouillon: v.sujet ? { sujet: v.sujet, corps: v.corps } : null, source: v.source === 'google' ? 'Google' : 'OpenStreetMap',
+    brouillon: v.sujet ? { sujet: v.sujet, corps: v.corps } : null, paiement: LIEN_PAIEMENT, source: v.source === 'google' ? 'Google' : 'OpenStreetMap',
     premium: v.premium_commande ? { commande: v.premium_commande, prete: fs.existsSync(fichierPremium(v.premium_commande)),
       apercu: `${adresse}/livrables/demande-${v.premium_commande}/app/index.html`, publiee_le: v.premium_le || null } : null,
   };
@@ -130,4 +133,4 @@ Vitrines, envoi ${mode} : ${e.en_file} en file, ${e.envoyes_aujourdhui} parti(s)
     + `${e.envoyes} en tout, ${e.essais} essai(s)${e.refuses ? `, ${e.refuses} refusé(s)` : ''}.`;
 }
 
-module.exports = { servirDemo, fiche, liste, uneFiche, agir, envoi, changerMode, phraseEnvoi, MODES };
+module.exports = { LIEN_PAIEMENT, servirDemo, fiche, liste, uneFiche, agir, envoi, changerMode, phraseEnvoi, MODES };
