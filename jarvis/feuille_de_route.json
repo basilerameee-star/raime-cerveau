@@ -121,7 +121,7 @@
       "moteur": "Moteur 2 : la niche (contenus et produits)",
       "titre": "Calcul de rentabilité d'un produit",
       "fini_quand": "Pour chaque produit proposé : prix d'achat, livraison, frais de paiement, pub par vente, marge nette ; estimation signalée tant qu'AliExpress n'est pas branché.",
-      "etat": "a_faire",
+      "etat": "en_cours",
       "routine": true
     },
     {
