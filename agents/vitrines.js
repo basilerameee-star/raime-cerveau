@@ -47,7 +47,7 @@ export function plateformeDe(site) {
   if (!RESEAUX.test(h) || /^sites\.google\./.test(h)) return null;
   return /facebook|fb\./.test(h) ? 'une page Facebook' : /instagram/.test(h) ? 'une page Instagram' : "une fiche d'annuaire";
 }
-const ANNUAIRES = /(pagesjaunes|facebook|instagram|google|tripadvisor|yelp|societe\.com|pappers|infogreffe|linkedin|mappy|justacote|118712|annuaire|kompass|verif\.com|manageo|youtube|tiktok|wikipedia|leboncoin|doctolib|planity|treatwell|ubereats|deliveroo|lafourchette|thefork)/i;
+const ANNUAIRES = /(pagesjaunes|facebook|instagram|google|tripadvisor|yelp|societe\.com|pappers|infogreffe|linkedin|mappy|justacote|118712|annuaire|kompass|verif\.com|manageo|youtube|tiktok|wikipedia|leboncoin|doctolib|planity|treatwell|ubereats|deliveroo|lafourchette|thefork|idgarages|garageauto\.net|nosavis|top-garage|icarrosserie|vroomly|boulangeries\.top|compagnonsdugout)/i;
 
 export async function preparer(brain) {
   await brain.query(`CREATE TABLE IF NOT EXISTS vitrines (
@@ -149,7 +149,7 @@ async function decouvrir(brain, { env, fetch: f }) {
   const trouves = source === 'google' ? await chercherPlaces({ cle, ...p, fetch: f }) : await chercherOsm({ ...p, fetch: f });
   let neufs = 0;
   for (const c of trouves) {
-    if (!c.nom || enseigne(c)) continue;
+    if (!c.nom) continue;
     const r = await brain.query(`INSERT INTO vitrines (source, source_id, nom, metier, adresse, ville, telephone, carte, site, email, email_source, lat, lon, horaires, pays, departement)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) ON CONFLICT (source_id) DO NOTHING RETURNING id`,
     [c.source, c.source_id, c.nom, c.metier, c.adresse, c.ville, c.telephone, c.carte, c.site, c.email, c.email ? 'fiche OSM' : null, c.lat ?? null, c.lon ?? null,
@@ -219,6 +219,15 @@ export function siteDuCommerce(resultats, v) {
   });
   return r ? new URL(r.url).origin + '/' : null;
 }
+// Un site lié à la fiche n'est pas forcément le sien : le 01/10/2026, 54 commerces étaient écartés pour « site récent »
+// alors que Google renvoyait vers un annuaire (idgarages, garageauto.net, nosavis), la page d'un réseau (reseau.citroen.fr)
+// ou le site d'une autre ville. Sans aucun mot propre au nom (que des mots du métier), rien n'est affirmé : le site est gardé.
+export function siteASonNom(site, v) {
+  if (!site) return false;
+  try { if (ANNUAIRES.test(new URL(site).hostname)) return false; } catch { return false; }
+  return !motsDuNom(v).length || !!siteDuCommerce([{ url: site }], v);
+}
+export const hoteDe = (site) => { try { return new URL(site).hostname.replace(/^www\./, ''); } catch { return null; } };
 // Rend { site, fiable } : fiable est faux quand le moteur n'a rien pu chercher (moteurs suspendus, captcha, panne) :
 // le 01/10/2026, des recherches vides par blocage ont fait écrire « aucun site » à un garage qui en avait un.
 async function siteParRecherche(v, f) {
@@ -248,7 +257,10 @@ export function emailsDans(texte, v) {
 const GENERIQUES = new Set(['boulangerie', 'patisserie', 'boucherie', 'charcuterie', 'fleuriste', 'fleurs', 'coiffeur', 'coiffure', 'institut',
   'beaute', 'garage', 'automobile', 'automobiles', 'plombier', 'plomberie', 'electricien', 'electricite', 'restaurant', 'pizzeria', 'pizza',
   'fromagerie', 'caviste', 'maison', 'salon', 'atelier', 'boutique', 'cafe', 'brasserie', 'hotel', 'cabinet', 'societe', 'entreprise',
-  'france', 'saint', 'sainte', 'fils', 'freres', 'cave', 'traiteur', 'epicerie', 'pressing', 'cordonnerie', 'opticien', 'pharmacie']);
+  'france', 'saint', 'sainte', 'fils', 'freres', 'cave', 'traiteur', 'epicerie', 'pressing', 'cordonnerie', 'opticien', 'pharmacie',
+  // les marques d'un réseau : « Garage Perret - Citroën » n'a pas son site sur reseau.citroen.fr
+  'carrosserie', 'auto', 'autos', 'citroen', 'peugeot', 'renault', 'dacia', 'toyota', 'volkswagen', 'ford', 'fiat', 'opel', 'nissan', 'kia',
+  'hyundai', 'skoda', 'seat', 'audi', 'bmw', 'mercedes', 'motorcraft', 'eurorepar', 'hair', 'coiff', 'spa', 'nails', 'beauty']);
 const MESSAGERIES = /@(gmail|googlemail|orange|wanadoo|free|sfr|neuf|laposte|hotmail|outlook|live|yahoo|icloud|aol|bbox)\./i;
 const sansAccents = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 // ── Les enseignes nationales (point 18) : elles ont leur site national, ce ne sont pas des clients à 500 €.
@@ -264,6 +276,7 @@ const ENSEIGNES_PARTOUT = ['brioche doree', 'marie blachere', 'boulangerie louis
   'grand frais', 'yves rocher', 'body minute', 'point s', 'feu vert'];
 const LIEUX = new Set(['gare', 'centre', 'ville', 'aeroport', 'route', 'avenue', 'rue', 'place', 'zone', 'commercial', 'commerciale', 'galerie',
   'marche', 'cc', 'zi', 'za', 'le', 'la', 'les', 'de', 'du', 'des', 'd', 'l', 'et', 'au', 'aux', 'en', 'sur']);
+export const enseigneMotif = (marque) => `enseigne (${marque}) : par téléphone seulement, jamais d’e-mail`;
 export function enseigne(v) {
   const nom = ` ${sansAccents(v.nom).replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ').trim()} `;
   const partout = ENSEIGNES_PARTOUT.find((e) => nom.includes(` ${e} `));
@@ -343,7 +356,7 @@ export async function localiser(v, f) {
 
 // La maquette (gabarit v2 du 01/10/2026, agents/maquette_premium.js) : photos d'exemple servies par le Cockpit, carte
 // OpenStreetMap quand les coordonnées sont connues.
-export const MAQUETTE_V = 4;
+export const MAQUETTE_V = 5;
 export function maquette(v) {
   return maquettePremium(v, { images: `${ADRESSE_DEMO}/demo/img` });
 }
@@ -353,6 +366,7 @@ export function brouillon(v, url) {
   // Le constat dit seulement ce qui a été vérifié : « sur Google » quand la fiche vient de Google.
   const constat = v.site_etat === 'ancien' ? `votre site existe, mais il date un peu et s'affiche mal sur téléphone`
     : v.site_etat === 'mort' ? `votre site ne s'ouvre plus`
+    : v.site && !plateformeDe(v.site) && hoteDe(v.site) ? `${v.source === 'google' ? 'sur Google, votre fiche' : 'votre fiche'} renvoie vers ${hoteDe(v.site)}, pas vers un site à votre nom`
     : plateformeDe(v.site) ? (v.source === 'google' ? `sur Google, votre fiche renvoie vers ${plateformeDe(v.site)}, pas vers un site`
       : `je n'ai trouvé qu'${plateformeDe(v.site)}, et aucun site à votre nom`)
     : v.source === 'google' ? `sur Google, aucun site n'y est relié`
@@ -371,12 +385,14 @@ export function brouillon(v, url) {
 async function qualifier(brain, v, deps) {
   const f = deps.fetch;
   const marque = enseigne(v);
-  if (marque) {
-    await brain.query(`UPDATE vitrines SET statut = 'ecarte', motif = $2, maj_le = now() WHERE id = $1`, [v.id, `enseigne nationale (${marque})`]);
-    return 'ecarte';
+  if (marque) { // Basile, 01/10/2026 : les franchisés restent dans les appels avec leur fiche, jamais d'e-mail
+    await brain.query(`UPDATE vitrines SET statut = 'a_appeler', motif = $2, maj_le = now() WHERE id = $1`, [v.id, enseigneMotif(marque)]);
+    return 'a_appeler';
   }
   let site = normaliserSite(v.site); // une fiche note parfois « www.exemple.fr » sans https://
-  let juge = site && plateformeDe(site) ? { etat: 'aucun', signaux: [`${plateformeDe(site)} seulement`] } : jugerSite(site ? await lireSite(f, site) : null);
+  let juge = site && plateformeDe(site) ? { etat: 'aucun', signaux: [`${plateformeDe(site)} seulement`] }
+    : site && !siteASonNom(site, v) ? { etat: 'aucun', signaux: [`${hoteDe(site)} : pas un site à son nom`] }
+    : jugerSite(site ? await lireSite(f, site) : null);
   // Avant d'écrire « aucun site » ou « votre site ne s'ouvre plus », chercher un site actuel sur le web.
   if (juge.etat === 'aucun' || juge.etat === 'mort') {
     const { site: trouve, fiable } = await siteParRecherche(v, f);
@@ -437,11 +453,17 @@ export async function passer({ brain, env = process.env, fetch = globalThis.fetc
     await brain.query('UPDATE vitrines SET demo_html = $2, lat = $3, lon = $4, maquette_v = $5, horaires = $6 WHERE id = $1', [a.id, maquette(w), w.lat, w.lon, MAQUETTE_V, w.horaires || null]);
     bilan.maquettes = (bilan.maquettes || 0) + 1;
   }
-  // Une enseigne ajoutée à la liste écarte aussi les fiches déjà qualifiées (jamais une vitrine validée ou envoyée).
-  const { rows: qualifiees } = await brain.query(`SELECT id, nom, ville FROM vitrines WHERE statut IN ('nouveau', 'brouillon', 'a_appeler') AND nom IS NOT NULL`);
+  // Une enseigne ajoutée à la liste passe aussi aux appels (jamais une vitrine validée ou envoyée) ; une enseigne écartée
+  // avant le 01/10/2026 y revient. Jamais d'e-mail : le brouillon est retiré.
+  const { rows: qualifiees } = await brain.query(`SELECT id, nom, ville, statut, motif FROM vitrines WHERE nom IS NOT NULL
+    AND (statut IN ('nouveau', 'brouillon') OR (statut = 'ecarte' AND motif LIKE 'enseigne%'))`);
   for (const q of qualifiees) {
     const marque = enseigne(q);
-    if (marque) { await brain.query(`UPDATE vitrines SET statut = 'ecarte', motif = $2, maj_le = now() WHERE id = $1`, [q.id, `enseigne nationale (${marque})`]); bilan.ecartes++; }
+    if (marque || /^enseigne nationale/.test(q.motif || '')) {
+      await brain.query(`UPDATE vitrines SET statut = 'a_appeler', motif = $2, sujet = NULL, corps = NULL, maj_le = now() WHERE id = $1`,
+        [q.id, enseigneMotif(marque || q.motif.replace(/^enseigne nationale \((.*)\)$/, '$1'))]);
+      bilan.a_appeler++;
+    }
   }
   // Conditions de Google : 30 jours au plus pour ce qu'on n'utilise pas ; l'identifiant du lieu seul reste.
   await brain.query(`UPDATE vitrines SET nom = NULL, adresse = NULL, telephone = NULL, carte = NULL, demo_html = NULL, corps = NULL

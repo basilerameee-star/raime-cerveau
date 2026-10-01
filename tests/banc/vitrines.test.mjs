@@ -146,7 +146,7 @@ test('OpenStreetMap : une enseigne (étiquette « brand ») n’est pas un comme
   assert.deepEqual(r.map((x) => x.nom), ['Les Fleurs de Léa']);
 });
 
-test('point 18 : aucune enseigne nationale n’arrive en brouillon ni dans les appels ; un artisan qui porte un prénom, si', async () => {
+test('point 18, revu le 01/10/2026 : une enseigne va aux appels avec sa fiche, jamais en brouillon ni par e-mail ; un artisan qui porte un prénom est un commerçant', async () => {
   const oui = ['Paul', "PAUL - Gare d'Annecy", 'Boulangerie Paul', 'Brioche Dorée', 'Marie Blachère', 'Jean Louis David', 'Carrefour fleurs',
     'Coiff&Co', 'Monceau Fleurs', 'Speedy Annecy', 'La Mie Câline', 'Ange Annecy Centre'];
   const non = ['Boulangerie Paul Martin', 'Le Fournil de Paul', 'Chez Nicolas', 'Aux Délices de Louise', 'Techni Nails', 'Au Puits Savoyard'];
@@ -160,9 +160,9 @@ test('point 18 : aucune enseigne nationale n’arrive en brouillon ni dans les a
   const { rows } = await brain.query("SELECT statut, motif FROM vitrines WHERE id = 950");
   await brain.query(`INSERT INTO vitrines (id, source, source_id, nom, metier, ville, telephone, statut) VALUES (951, 'osm', 'osm:node/test951', 'Ange', 'boulangerie', 'Annecy', '04', 'a_appeler')`);
   await passer({ brain, env: {}, fetch: async (u) => rep(String(u).includes('overpass') ? { elements: [] } : { results: [] }), resoudre: async () => [], combien: 1 });
-  assert.equal((await brain.query('SELECT statut FROM vitrines WHERE id = 951')).rows[0].statut, 'ecarte', 'déjà dans les appels : écartée quand même');
-  assert.deepEqual(rows[0], { statut: 'ecarte', motif: 'enseigne nationale (brioche doree)' });
-  assert.equal((await brain.query("SELECT count(*)::int AS n FROM vitrines WHERE nom = 'Paul' AND source_id = 'osm:node/7'")).rows[0].n, 0, 'une enseigne découverte n’entre même pas');
+  assert.equal((await brain.query('SELECT statut FROM vitrines WHERE id = 951')).rows[0].statut, 'a_appeler', 'déjà dans les appels : elle y reste');
+  assert.deepEqual(rows[0], { statut: 'a_appeler', motif: 'enseigne (brioche doree) : par téléphone seulement, jamais d’e-mail' });
+  assert.equal((await brain.query("SELECT count(*)::int AS n FROM vitrines WHERE nom = 'Paul' AND source_id = 'osm:node/7'")).rows[0].n, 1, 'une enseigne découverte entre, pour les appels');
 });
 
 
@@ -208,11 +208,11 @@ test('01/10/2026 : une recherche web bloquée ne prouve rien ; la fiche reste à
 test('la maquette v2 : la carte OpenStreetMap quand les coordonnées sont connues, crédit compris ; sinon le repère seul', async () => {
   const { maquettePremium, carte } = await import('../../agents/maquette_premium.js');
   const avec = maquettePremium({ nom: 'Le Fournil', metier: 'boulangerie', ville: 'Annecy', telephone: '04 50 00 00 01', lat: 45.8992, lon: 6.1294 }, { images: 'https://cockpit.raime.fr/demo/img' });
-  assert.match(avec, /https:\/\/tile\.openstreetmap\.org\/16\/\d+\/\d+\.png/);
+  assert.match(avec, /https:\/\/cockpit\.raime\.fr\/demo\/tuile\/16\/\d+\/\d+\.png/);
   assert.match(avec, /© OpenStreetMap/);
   assert.match(avec, /Commander/, 'le bouton d’action du métier');
   const sans = maquettePremium({ nom: 'Le Fournil', metier: 'boulangerie', ville: 'Annecy' }, {});
-  assert.ok(!/tile\.openstreetmap/.test(sans));
+  assert.ok(!/demo\/tuile/.test(sans));
   assert.equal(carte(NaN, 1), null);
 });
 
@@ -242,4 +242,19 @@ test('Genève : la recherche passe par l’identifiant officiel suisse ; un comm
   await passer({ brain, env: {}, fetch, resoudre: async () => [{ exchange: 'mx' }], combien: 3 });
   const { rows: [f] } = await brain.query('SELECT statut, motif FROM vitrines WHERE id = 980');
   assert.equal(f.statut, 'a_appeler'); assert.match(f.motif, /Suisse : par téléphone seulement/);
+});
+
+test('01/10/2026 : un annuaire ou la page d’un réseau n’est pas le site du commerce ; le brouillon le dit, sans rien inventer', async () => {
+  const { siteASonNom } = await import('../../agents/vitrines.js');
+  const v = (nom) => ({ nom, ville: 'Annecy', metier: 'garage automobile' });
+  assert.equal(siteASonNom('https://www.idgarages.com', v('Garage C.L. AUTO')), false);
+  assert.equal(siteASonNom('https://reseau.citroen.fr/reparateur-annecy-1', v('Garage Perret - Citroën')), false);
+  assert.equal(siteASonNom('https://boulangeries.nosavis.com', v('Boulangerie des Haras')), false);
+  assert.equal(siteASonNom('https://tif.hair/', v("Nouvel'hair")), false);
+  assert.equal(siteASonNom('https://www.garagemouthon.com/', v('Garage Mouthon - Peugeot')), true);
+  assert.equal(siteASonNom('https://garage-rnp.fr/', v('RNP')), true);
+  assert.equal(siteASonNom('https://www.maison-chevallier.fr/', v('Boulangerie Chevallier')), true);
+  assert.equal(siteASonNom('https://www.boulangeriedelagare.fr/', v('Boulangerie de la Gare')), true, 'que des mots du métier : rien n’est affirmé');
+  const b = brouillon({ nom: 'Garage C.L. AUTO', metier: 'garage automobile', ville: 'Annecy', source: 'google', site: 'https://www.idgarages.com/', site_etat: 'aucun' }, 'https://x/demo/y');
+  assert.match(b.corps, /sur Google, votre fiche renvoie vers idgarages\.com, pas vers un site à votre nom/);
 });

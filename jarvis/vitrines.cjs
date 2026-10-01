@@ -68,10 +68,37 @@ async function servirImage(metier, n, res, o = {}) {
   res.end(r[0].image);
 }
 
+// ── LA CARTE DES MAQUETTES (tuiles OpenStreetMap) ──
+// Le 01/10/2026, chez Basile, les tuiles chargées directement affichaient « 403 Access blocked » : une maquette isolée
+// (sandbox, origine opaque) n'envoie pas de Referer, ce que la règle d'usage d'OpenStreetMap exige. Le Cockpit les
+// demande donc lui-même, avec un User-Agent qui le nomme, et les garde 30 jours en base : chaque tuile n'est
+// téléchargée qu'une fois pour toutes les maquettes d'un quartier.
+const TUILE_UA = 'raime-cerveau/1.0 (+https://raime.fr; maquettes de sites vitrines)';
+async function servirTuile(z, x, y, res, { fetch = globalThis.fetch } = {}) {
+  const pasLa = () => { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end('Tuile introuvable.'); };
+  if (z !== 16 || !(x >= 0 && x < 2 ** z) || !(y >= 0 && y < 2 ** z)) return pasLa();
+  await lire(`CREATE TABLE IF NOT EXISTS vitrines_tuiles (z int NOT NULL, x int NOT NULL, y int NOT NULL, image bytea NOT NULL,
+    le timestamptz NOT NULL DEFAULT now(), PRIMARY KEY (z, x, y))`);
+  let r = await lire(`SELECT image FROM vitrines_tuiles WHERE z = $1 AND x = $2 AND y = $3 AND le > now() - interval '30 days'`, [z, x, y]);
+  if (!r[0]) {
+    try {
+      const t = await fetch(`https://tile.openstreetmap.org/${z}/${x}/${y}.png`,
+        { headers: { 'User-Agent': TUILE_UA, Referer: 'https://cockpit.raime.fr/' }, signal: AbortSignal.timeout(15000) });
+      if (!t.ok || !/image\/png/.test(t.headers.get('content-type') || '')) return pasLa();
+      const image = Buffer.from(await t.arrayBuffer());
+      await lire(`INSERT INTO vitrines_tuiles (z, x, y, image) VALUES ($1, $2, $3, $4)
+        ON CONFLICT (z, x, y) DO UPDATE SET image = EXCLUDED.image, le = now()`, [z, x, y, image]);
+      r = [{ image }];
+    } catch { return pasLa(); }
+  }
+  res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=604800', 'X-Content-Type-Options': 'nosniff' });
+  res.end(r[0].image);
+}
+
 // La maquette, servie à tous (le chemin /demo/ est hors du mot de passe du Cockpit), isolée comme un livrable.
 // La simple n'a aucun script. La premium peut animer (scripts en ligne), mais dans une origine opaque (sandbox sans
 // allow-same-origin) et sans aucun accès au réseau : elle ne lit rien du Cockpit et ne charge rien dehors.
-const IMAGES = "img-src data: https://cockpit.raime.fr https://tile.openstreetmap.org";
+const IMAGES = "img-src data: https://cockpit.raime.fr";
 const CSP_SIMPLE = `sandbox allow-popups allow-popups-to-escape-sandbox; default-src 'none'; style-src 'unsafe-inline'; ${IMAGES}`;
 const CSP_PREMIUM = "sandbox allow-scripts allow-popups allow-popups-to-escape-sandbox; default-src 'none'; script-src 'unsafe-inline'; "
   + `style-src 'unsafe-inline'; ${IMAGES}; font-src data:; media-src data:`;
@@ -189,4 +216,4 @@ Vitrines, envoi ${mode} : ${e.en_file} en file, ${e.envoyes_aujourdhui} parti(s)
     + `${e.envoyes} en tout, ${e.essais} essai(s)${e.refuses ? `, ${e.refuses} refusé(s)` : ''}.`;
 }
 
-module.exports = { LIEN_PAIEMENT, servirDemo, servirImage, remplirPhotos, fiche, liste, uneFiche, agir, envoi, changerMode, phraseEnvoi, MODES };
+module.exports = { LIEN_PAIEMENT, servirDemo, servirImage, servirTuile, remplirPhotos, fiche, liste, uneFiche, agir, envoi, changerMode, phraseEnvoi, MODES };

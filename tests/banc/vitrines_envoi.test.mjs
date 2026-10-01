@@ -272,3 +272,22 @@ test('les photos d’exemple : cherchées une fois sur Pixabay par métier, gard
   r = res(); await v.servirImage('inconnu', 1, r, { fetch }); assert.equal(r.statut, 404);
   r = res(); await v.servirImage('_lisezmoi', 1, r, { fetch }); assert.equal(r.statut, 404);
 });
+
+test('la carte : le Cockpit demande les tuiles à OpenStreetMap en se nommant, les garde, et la maquette ne les charge jamais en direct', async () => {
+  const v = require('../../jarvis/vitrines.cjs');
+  const appels = [];
+  const fetch = async (url, o) => { appels.push({ url: String(url), ua: o.headers['User-Agent'], ref: o.headers.Referer });
+    return { ok: true, headers: { get: () => 'image/png' }, arrayBuffer: async () => new TextEncoder().encode('PNG').buffer }; };
+  const res = () => { const r = { statut: 0, entetes: null, corps: null }; return Object.assign(r, { writeHead: (s, h) => { r.statut = s; r.entetes = h; }, end: (c) => { r.corps = c; } }); };
+  let r = res(); await v.servirTuile(16, 33964, 23153, r, { fetch });
+  assert.equal(r.statut, 200); assert.equal(r.entetes['Content-Type'], 'image/png');
+  assert.equal(appels[0].url, 'https://tile.openstreetmap.org/16/33964/23153.png');
+  assert.match(appels[0].ua, /raime/); assert.match(appels[0].ref, /cockpit\.raime\.fr/);
+  r = res(); await v.servirTuile(16, 33964, 23153, r, { fetch });
+  assert.equal(r.statut, 200); assert.equal(appels.length, 1, 'gardée : pas de seconde demande');
+  r = res(); await v.servirTuile(19, 1, 1, r, { fetch }); assert.equal(r.statut, 404, 'un seul niveau de zoom');
+  const { maquettePremium } = await import('../../agents/maquette_premium.js');
+  const html = maquettePremium({ nom: 'Test', metier: 'fleuriste', ville: 'Annecy', lat: 45.9, lon: 6.12 }, { images: 'https://cockpit.raime.fr/demo/img' });
+  assert.ok(html.includes('https://cockpit.raime.fr/demo/tuile/16/') && !html.includes('tile.openstreetmap.org/'));
+  assert.match(html, /--ton:#56664a/, 'le fleuriste a son ton, sourd');
+});
