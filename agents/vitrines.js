@@ -412,6 +412,7 @@ export function brouillon(v, url) {
   return {
     sujet: `${v.nom} : j'ai préparé votre site`,
     corps: `Bonjour,\n\nEn cherchant ${/(ie|ia)$/.test(v.metier || '') ? 'une' : 'un'} ${v.metier || 'commerce'} à ${v.ville}, je suis tombé sur ${v.nom} : ${constat}.\n\n`
+      + `Aujourd'hui, la plupart des clients regardent sur leur téléphone avant de se déplacer : sans site clair, ils choisissent souvent le commerce d'à côté.\n\n` // validée par Basile le 01/10/2026
       + `Alors je vous en ai préparé un. Le voici :\n${url}\n\n`
       + `S'il vous plaît, il est à ${PRIX} €. C'est une démo : on prend un appel pour le terminer ensemble, avec vos photos et vos textes. `
       + `S'il ne vous plaît pas, vous ne payez rien.\n\nPour choisir votre créneau d'appel :\n${AGENDA}\n\n`
