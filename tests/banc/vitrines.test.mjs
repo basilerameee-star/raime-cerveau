@@ -199,10 +199,16 @@ test('01/10/2026 : une recherche web bloquée ne prouve rien ; la fiche reste à
   await brain.query(`INSERT INTO vitrines (id, source, source_id, nom, metier, ville, telephone, email, email_source, statut) VALUES
     (970, 'osm', 'osm:node/t970', 'Garage Bloqué', 'garage automobile', 'Annecy', '06 00 00 00 70', 'garage.bloque@gmail.com', 'fiche OSM', 'nouveau')`);
   const fetch = async (url) => (String(url).includes('overpass') ? rep({ elements: [] })
-    : rep({ results: [], unresponsive_engines: [['brave', 'Suspended: too many requests'], ['duckduckgo', 'CAPTCHA']] }));
+    : rep({ results: [], unresponsive_engines: [['bing', 'Suspended: too many requests'], ['yahoo', 'CAPTCHA'], ['mojeek', 'Suspended: access denied']] }));
   const b = await passer({ brain, env: {}, fetch, resoudre: async () => [{ exchange: 'mx' }], combien: 5 });
   assert.equal(b.reportes, 1);
   assert.equal((await brain.query('SELECT statut FROM vitrines WHERE id = 970')).rows[0].statut, 'nouveau', 'rien d’affirmé : pas de brouillon « aucun site »');
+  // Une source secondaire muette (mojeek, wikidata) ne bloque plus rien quand bing ou yahoo ont répondu.
+  const secondaire = async (url) => (String(url).includes('overpass') ? rep({ elements: [] })
+    : rep({ results: [], unresponsive_engines: [['mojeek', 'Suspended: access denied'], ['wikidata', 'Suspended: too many requests']] }));
+  const b2 = await passer({ brain, env: {}, fetch: secondaire, resoudre: async () => [{ exchange: 'mx' }], combien: 5 });
+  assert.equal(b2.reportes, 0);
+  assert.notEqual((await brain.query('SELECT statut FROM vitrines WHERE id = 970')).rows[0].statut, 'nouveau');
 });
 
 test('la maquette v2 : la carte OpenStreetMap quand les coordonnées sont connues, crédit compris ; sinon le repère seul', async () => {

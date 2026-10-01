@@ -233,12 +233,16 @@ export const pageDeReseau = (site, v) => !!site && !plateformeDe(site) && !!hote
 export const hoteDe = (site) => { try { return new URL(site).hostname.replace(/^www\./, ''); } catch { return null; } };
 // Rend { site, fiable } : fiable est faux quand le moteur n'a rien pu chercher (moteurs suspendus, captcha, panne) :
 // le 01/10/2026, des recherches vides par blocage ont fait écrire « aucun site » à un garage qui en avait un.
+const SOURCES_PRINCIPALES = ['bing', 'yahoo']; // les sources web de SearXNG (settings.yml du serveur)
 async function siteParRecherche(v, f) {
   let fiable = false;
   for (const q of [`"${v.nom}" ${v.metier || ''} ${v.ville}`, `"${v.nom}" ${v.ville}`]) {
     try {
       const d = await lireJson(f, `${RECHERCHE}/search?q=${encodeURIComponent(q.replace(/\s+/g, ' ').trim())}&format=json`, { delai: 20000 });
-      if ((d.results || []).length || !(d.unresponsive_engines || []).length) fiable = true;
+      // Fiable : des résultats, ou une source principale qui a répondu (01/10/2026 : mojeek et wikidata suspendus
+      // suffisaient à tout reporter alors que bing et yahoo avaient répondu « rien »).
+      const muets = new Set((d.unresponsive_engines || []).map((e) => e[0]));
+      if ((d.results || []).length || SOURCES_PRINCIPALES.some((s) => !muets.has(s))) fiable = true;
       const s = siteDuCommerce(d.results, v);
       if (s) return { site: s, fiable: true };
     } catch { /* la recherche suivante */ }
