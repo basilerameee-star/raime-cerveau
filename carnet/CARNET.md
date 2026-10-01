@@ -445,3 +445,9 @@ Merci pour le travail de cette nuit : le banc a déjà trouvé un vrai défaut e
   - une adresse sans https:// se lit ;
   - les enseignes ne sont pas démarchées.
 - Panneau Monétisation corrigé : 2 000 € sur chacune de TikTok, YouTube et Instagram, « pour les 6 000 € » ; Facebook et produits hors objectif.
+
+## 2026-10-01 (routine Ingénierie) — point 21 : calcul de rentabilité d'un produit
+- Action : `agents/rentabilite.js` (code pur, sans modèle) : TVA, prix d'achat, livraison, frais Stripe (1,5 % + 0,25 €, à confirmer), pub par vente → marge nette, plafond de pub par vente, « estimation » signalée ; un chiffre manquant bloque le calcul. Test : `tests/banc/rentabilite.test.mjs`.
+- Résultat : 4 tests verts en local ; le point passe « en_cours » (le « fini quand » demande de brancher le calcul à chaque produit proposé : suit l'agent du point 19).
+- Évaluation : brique utile et simple ; pas encore appelée par un agent, donc rien de visible en ligne.
+- Leçon : `npm ci` d'abord, sinon `tests/banc/outils.mjs` ne charge pas `pg`.
