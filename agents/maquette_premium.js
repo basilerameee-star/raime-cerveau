@@ -98,7 +98,8 @@ export function maquettePremium(v, o = {}) {
   const itineraire = v.carte || `https://www.google.com/maps/search/${encodeURIComponent(`${v.nom} ${lieu}`)}`;
   const base = o.images ? `${o.images}/${cleMetier(v.metier)}` : null;
   const photo = (i) => (base ? ` style="background-image:url('${base}/${i}.jpg')"` : '');
-  const plan = carte(Number(v.lat), Number(v.lon), 16, String(o.images || '/demo/img').replace(/\/img$/, '/tuile'));
+  const coord = (x) => (x === null || x === undefined || x === '' ? NaN : Number(x)); // Number(null) vaudrait 0 : le golfe de Guinée
+  const plan = carte(coord(v.lat), coord(v.lon), 16, String(o.images || '/demo/img').replace(/\/img$/, '/tuile'));
   const horaires = Array.isArray(v.horaires) ? v.horaires : horairesLisibles(v.horaires);
   const appel = tel ? `<a class="btn" href="tel:${esc(tel)}">${esc(f.action)}</a>` : '';
   const route = `<a class="lien" href="${esc(itineraire)}" target="_blank" rel="noopener">Itinéraire</a>`;

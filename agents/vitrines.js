@@ -348,6 +348,8 @@ export async function localiser(v, f) {
       const lat = e && (e.lat ?? (e.center && e.center.lat)), lon = e && (e.lon ?? (e.center && e.center.lon));
       if (Number.isFinite(lat)) return { lat, lon, horaires: v.horaires || (e.tags && e.tags.opening_hours) || null };
     }
+  } catch { /* Overpass saturé (504) : l'adresse prend le relais, 01/10/2026 */ }
+  try {
     if (v.adresse) {
       const d = await lireJson(f, `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(`${v.adresse} ${v.ville || ''}`)}&limit=1`, { delai: 15000 });
       const p = (d.features || [])[0];
@@ -369,7 +371,7 @@ export function brouillon(v, url) {
   // Le constat dit seulement ce qui a été vérifié : « sur Google » quand la fiche vient de Google.
   const constat = v.site_etat === 'ancien' ? `votre site existe, mais il date un peu et s'affiche mal sur téléphone`
     : v.site_etat === 'mort' ? `votre site ne s'ouvre plus`
-    : v.site && !plateformeDe(v.site) && hoteDe(v.site) ? `${v.source === 'google' ? 'sur Google, votre fiche' : 'votre fiche'} renvoie vers ${hoteDe(v.site)}, pas vers un site à votre nom`
+    : v.site && !plateformeDe(v.site) && hoteDe(v.site) ? `${v.source === 'google' ? 'sur Google, votre fiche' : 'votre fiche en ligne'} renvoie vers ${hoteDe(v.site)}, pas vers un site à votre nom`
     : plateformeDe(v.site) ? (v.source === 'google' ? `sur Google, votre fiche renvoie vers ${plateformeDe(v.site)}, pas vers un site`
       : `je n'ai trouvé qu'${plateformeDe(v.site)}, et aucun site à votre nom`)
     : v.source === 'google' ? `sur Google, aucun site n'y est relié`

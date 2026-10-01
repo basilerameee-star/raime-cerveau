@@ -213,6 +213,8 @@ test('la maquette v2 : la carte OpenStreetMap quand les coordonnées sont connue
   assert.match(avec, /Commander/, 'le bouton d’action du métier');
   const sans = maquettePremium({ nom: 'Le Fournil', metier: 'boulangerie', ville: 'Annecy' }, {});
   assert.ok(!/demo\/tuile/.test(sans));
+  const nulles = maquettePremium({ nom: 'Le Fournil', metier: 'boulangerie', ville: 'Annecy', lat: null, lon: null }, {});
+  assert.ok(!/demo\/tuile/.test(nulles), 'coordonnées absentes : pas de carte du point 0,0');
   assert.equal(carte(NaN, 1), null);
 });
 
