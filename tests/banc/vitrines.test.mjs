@@ -52,7 +52,8 @@ test('la maquette neutralise le nom (aucune injection) et porte l’appel en un 
   const h = maquette(v);
   assert.ok(!h.includes('<script>x'));
   assert.match(h, /href="tel:0450000000"/);
-  assert.match(h, /Maquette de démonstration<\/b> préparée par rAIme/);
+  assert.match(h, /Maquette de démonstration préparée par rAIme/);
+  assert.ok(!/border-radius:[1-9]/.test(h) && !/box-shadow/.test(h), 'ni arrondi ni relief');
   assert.match(h, /https:\/\/cockpit\.raime\.fr\/demo\/img\/restaurant\/1\.jpg/, 'les photos d’exemple du métier, servies par le Cockpit');
   assert.ok(!/<script/i.test(h), 'aucun script');
   const b = brouillon({ ...v, nom: 'Chez Lulu', site_etat: 'aucun' }, 'https://cockpit.raime.fr/demo/chez-lulu-abc');
@@ -214,3 +215,13 @@ test('la maquette v2 : la carte OpenStreetMap quand les coordonnées sont connue
   assert.ok(!/tile\.openstreetmap/.test(sans));
   assert.equal(carte(NaN, 1), null);
 });
+
+test('v3 : les vrais horaires d’OpenStreetMap en français ; illisibles, ils ne sont pas inventés', async () => {
+  const { horairesLisibles, maquetteComplete } = await import('../../agents/maquette_premium.js');
+  assert.deepEqual(horairesLisibles('Mo-Fr 08:00-12:00,14:00-18:30; Sa 08:00-12:00; Su off'), ['Lun. au ven. : 8 h–12 h, 14 h–18 h 30', 'Sam. : 8 h–12 h', 'Dim. : fermé']);
+  assert.equal(horairesLisibles('sunrise-sunset'), null);
+  assert.equal(maquetteComplete({ nom: 'X', ville: 'Annecy', telephone: '04' }, '<div style="background-image:url(https://cockpit.raime.fr/demo/img/boulangerie/1.jpg)">'), true);
+  assert.equal(maquetteComplete({ nom: 'X', ville: 'Annecy', telephone: '04' }, '<p>sans photo</p>'), false, 'jamais sans photos d’exemple');
+  assert.equal(maquetteComplete({ nom: 'X', ville: 'Annecy' }, '/demo/img/'), false, 'jamais sans téléphone ni adresse');
+});
+

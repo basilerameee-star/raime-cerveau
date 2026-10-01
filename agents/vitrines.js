@@ -18,7 +18,7 @@
 // Conditions de Google : les données d'un lieu écarté sont effacées au bout de 30 jours (seul son identifiant reste).
 import crypto from 'node:crypto';
 import dns from 'node:dns/promises';
-import { maquettePremium } from './maquette_premium.js';
+import { maquettePremium, maquetteComplete } from './maquette_premium.js';
 
 export const PRIX = Number(process.env.VITRINE_PRIX || 500);
 export const AGENDA = process.env.VITRINE_AGENDA || 'https://calendar.app.google/HdhqAt3BaQFWfx2g7'; // le lien de raime.fr
@@ -52,7 +52,7 @@ export async function preparer(brain) {
   await brain.query(`CREATE TABLE IF NOT EXISTS vitrines_villes (nom text PRIMARY KEY, departement text, population int, rang int)`);
   // La maquette premium (point 16) : l'ordre confié à Hermes, et le jour où Basile l'a publiée à la place de la simple.
   await brain.query('ALTER TABLE vitrines ADD COLUMN IF NOT EXISTS premium_commande int, ADD COLUMN IF NOT EXISTS premium_le timestamptz, ADD COLUMN IF NOT EXISTS demo_simple text')
-  await brain.query('ALTER TABLE vitrines ADD COLUMN IF NOT EXISTS lat double precision, ADD COLUMN IF NOT EXISTS lon double precision, ADD COLUMN IF NOT EXISTS maquette_v int');
+  await brain.query('ALTER TABLE vitrines ADD COLUMN IF NOT EXISTS lat double precision, ADD COLUMN IF NOT EXISTS lon double precision, ADD COLUMN IF NOT EXISTS maquette_v int, ADD COLUMN IF NOT EXISTS horaires text');
 }
 
 const lireJson = async (f, url, o = {}) => { const r = await f(url, { ...o, signal: AbortSignal.timeout(o.delai || 30000) }); if (!r.ok) throw new Error(`${url.split('?')[0]} : ${r.status}`); return r.json(); };
@@ -112,7 +112,7 @@ export async function chercherOsm({ metier, ville, fetch: f = globalThis.fetch }
     source: 'osm', source_id: `osm:${e.type}/${e.id}`, nom: t.name, metier, ville,
     adresse: [t['addr:housenumber'], t['addr:street'], t['addr:postcode'], t['addr:city']].filter(Boolean).join(' ') || null,
     telephone: t.phone || t['contact:phone'] || null, site: t.website || t['contact:website'] || null, carte: null,
-    email: t.email || t['contact:email'] || null, lat: e.lat ?? (e.center && e.center.lat) ?? null, lon: e.lon ?? (e.center && e.center.lon) ?? null }; });
+    email: t.email || t['contact:email'] || null, lat: e.lat ?? (e.center && e.center.lat) ?? null, lon: e.lon ?? (e.center && e.center.lon) ?? null, horaires: t.opening_hours || null }; });
 }
 
 async function decouvrir(brain, { env, fetch: f }) {
@@ -129,9 +129,9 @@ async function decouvrir(brain, { env, fetch: f }) {
   let neufs = 0;
   for (const c of trouves) {
     if (!c.nom || enseigne(c)) continue;
-    const r = await brain.query(`INSERT INTO vitrines (source, source_id, nom, metier, adresse, ville, telephone, carte, site, email, email_source, lat, lon)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) ON CONFLICT (source_id) DO NOTHING RETURNING id`,
-    [c.source, c.source_id, c.nom, c.metier, c.adresse, c.ville, c.telephone, c.carte, c.site, c.email, c.email ? 'fiche OSM' : null, c.lat ?? null, c.lon ?? null]);
+    const r = await brain.query(`INSERT INTO vitrines (source, source_id, nom, metier, adresse, ville, telephone, carte, site, email, email_source, lat, lon, horaires)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) ON CONFLICT (source_id) DO NOTHING RETURNING id`,
+    [c.source, c.source_id, c.nom, c.metier, c.adresse, c.ville, c.telephone, c.carte, c.site, c.email, c.email ? 'fiche OSM' : null, c.lat ?? null, c.lon ?? null, c.horaires ?? null]);
     neufs += r.rowCount;
   }
   await brain.query(`INSERT INTO vitrines_recherches (metier, ville, source, trouves) VALUES ($1,$2,$3,$4)
@@ -300,28 +300,28 @@ export const slugifier = (v) => `${String(v.nom).toLowerCase().normalize('NFD').
 
 // Les coordonnées du commerce, pour la carte : OpenStreetMap (le point lui-même) ou la Base Adresse Nationale (l'adresse).
 export async function localiser(v, f) {
-  if (v.lat !== null && v.lat !== undefined && Number.isFinite(Number(v.lat))) return { lat: Number(v.lat), lon: Number(v.lon) };
+  if (v.lat !== null && v.lat !== undefined && Number.isFinite(Number(v.lat)) && (v.horaires || !/^osm:/.test(v.source_id || ''))) return { lat: Number(v.lat), lon: Number(v.lon), horaires: v.horaires || null };
   try {
     const m = /^osm:(node|way|relation)\/(\d+)$/.exec(v.source_id || '');
     if (m) {
-      const d = await lireJson(f, 'https://overpass-api.de/api/interpreter', { method: 'POST', body: 'data=' + encodeURIComponent(`[out:json][timeout:20];${m[1]}(${m[2]});out center;`),
+      const d = await lireJson(f, 'https://overpass-api.de/api/interpreter', { method: 'POST', body: 'data=' + encodeURIComponent(`[out:json][timeout:20];${m[1]}(${m[2]});out tags center;`),
         headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': 'raime-cerveau/1.0 (+https://raime.fr)' }, delai: 30000 });
       const e = (d.elements || [])[0];
       const lat = e && (e.lat ?? (e.center && e.center.lat)), lon = e && (e.lon ?? (e.center && e.center.lon));
-      if (Number.isFinite(lat)) return { lat, lon };
+      if (Number.isFinite(lat)) return { lat, lon, horaires: v.horaires || (e.tags && e.tags.opening_hours) || null };
     }
     if (v.adresse) {
       const d = await lireJson(f, `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(`${v.adresse} ${v.ville || ''}`)}&limit=1`, { delai: 15000 });
       const p = (d.features || [])[0];
-      if (p && p.properties.score >= 0.5) return { lat: p.geometry.coordinates[1], lon: p.geometry.coordinates[0] };
+      if (p && p.properties.score >= 0.5) return { lat: p.geometry.coordinates[1], lon: p.geometry.coordinates[0], horaires: v.horaires || null };
     }
   } catch { /* pas de carte : le repère seul la remplace */ }
-  return { lat: null, lon: null };
+  return { lat: v.lat ?? null, lon: v.lon ?? null, horaires: v.horaires || null };
 }
 
 // La maquette (gabarit v2 du 01/10/2026, agents/maquette_premium.js) : photos d'exemple servies par le Cockpit, carte
 // OpenStreetMap quand les coordonnées sont connues.
-export const MAQUETTE_V = 2;
+export const MAQUETTE_V = 3;
 export function maquette(v) {
   return maquettePremium(v, { images: `${ADRESSE_DEMO}/demo/img` });
 }
@@ -385,9 +385,9 @@ async function qualifier(brain, v, deps) {
   const b = brouillon(w, url);
   const statut = m ? 'brouillon' : 'a_appeler';
   await brain.query(`UPDATE vitrines SET site = $2, site_etat = $3, site_signaux = $4, email = $5, email_source = $6, slug = $7,
-    demo_html = $8, sujet = $9, corps = $10, statut = $11, motif = $12, lat = $13, lon = $14, maquette_v = $15, maj_le = now() WHERE id = $1`,
+    demo_html = $8, sujet = $9, corps = $10, statut = $11, motif = $12, lat = $13, lon = $14, maquette_v = $15, horaires = $16, maj_le = now() WHERE id = $1`,
   [v.id, site, juge.etat, juge.signaux, m ? m.email : null, m ? m.source : null, slug, maquette(w), b.sujet, b.corps, statut,
-    m ? null : 'e-mail non trouvé', v.lat, v.lon, MAQUETTE_V]);
+    m ? null : 'e-mail non trouvé', v.lat, v.lon, MAQUETTE_V, v.horaires || null]);
   return statut;
 }
 
@@ -411,7 +411,7 @@ export async function passer({ brain, env = process.env, fetch = globalThis.fetc
     AND coalesce(maquette_v, 0) < $1 AND statut IN ('brouillon', 'valide', 'envoye', 'repondu', 'a_appeler') ORDER BY id LIMIT 15`, [MAQUETTE_V]);
   for (const a of anciennes) {
     const w = { ...a, ...(await localiser(a, fetch)) };
-    await brain.query('UPDATE vitrines SET demo_html = $2, lat = $3, lon = $4, maquette_v = $5 WHERE id = $1', [a.id, maquette(w), w.lat, w.lon, MAQUETTE_V]);
+    await brain.query('UPDATE vitrines SET demo_html = $2, lat = $3, lon = $4, maquette_v = $5, horaires = $6 WHERE id = $1', [a.id, maquette(w), w.lat, w.lon, MAQUETTE_V, w.horaires || null]);
     bilan.maquettes = (bilan.maquettes || 0) + 1;
   }
   // Une enseigne ajoutée à la liste écarte aussi les fiches déjà qualifiées (jamais une vitrine validée ou envoyée).
@@ -496,8 +496,10 @@ export async function synchroniser({ brain, n8n }) {
   const bilan = { en_file: 0, annules: 0, envoyes: 0, essais: 0, erreurs: 0, reponses: 0, desinscrits: 0 };
 
   // ① Les brouillons validés par Basile entrent dans la file (une seule fois ; une vitrine re-validée y revient).
-  const { rows: valides } = await brain.query(`SELECT id, email, sujet, corps FROM vitrines
-    WHERE statut = 'valide' AND email IS NOT NULL AND sujet IS NOT NULL AND corps IS NOT NULL`);
+  // Une maquette ne part jamais sans ses photos d'exemple ni sans les informations du commerce (règle de Basile).
+  const { rows: valides } = (await brain.query(`SELECT id, email, sujet, corps, nom, ville, telephone, adresse, demo_html FROM vitrines
+    WHERE statut = 'valide' AND email IS NOT NULL AND sujet IS NOT NULL AND corps IS NOT NULL`));
+  for (let i = valides.length - 1; i >= 0; i--) if (!maquetteComplete(valides[i], valides[i].demo_html)) valides.splice(i, 1);
   for (const v of valides) {
     // jamais deux e-mails à la même adresse, même depuis deux fiches
     const r = await n8n.query(`INSERT INTO vitrines_envoi (id, to_email, sujet, corps) SELECT $1::int, $2::text, $3::text, $4::text

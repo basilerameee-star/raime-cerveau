@@ -133,8 +133,8 @@ test('la lecture d’une réponse : « stop », pas intéressé, rebond, absence
 
 test('la synchronisation : validé → file ; essai et envoi reviennent ; réponse et « stop » ; désinscrit écarté ; écarté annulé', async () => {
   await preparer(brain); await preparerEnvoi(n8n);
-  const ajouter = async (id, statut, email) => brain.query(`INSERT INTO vitrines (id, source, source_id, nom, email, sujet, corps, statut, telephone)
-    VALUES ($1, 'osm', $2, $3, $4, 'Sujet', 'Corps', $5, '04 50 00 00 00')`, [id, `osm:${id}`, `Commerce ${id}`, email, statut]);
+  const ajouter = async (id, statut, email) => brain.query(`INSERT INTO vitrines (id, source, source_id, nom, ville, email, sujet, corps, statut, telephone, demo_html)
+    VALUES ($1, 'osm', $2, $3, 'Annecy', $4, 'Sujet', 'Corps', $5, '04 50 00 00 00', '<div style="background-image:url(/demo/img/boulangerie/1.jpg)"></div>')`, [id, `osm:${id}`, `Commerce ${id}`, email, statut]);
   await ajouter(1, 'valide', 'un@x.test'); await ajouter(2, 'brouillon', 'deux@x.test'); await ajouter(3, 'valide', 'trois@x.test');
   await ajouter(4, 'valide', 'quatre@x.test'); await ajouter(5, 'valide', 'cinq@x.test'); await ajouter(6, 'brouillon', 'six@x.test');
   await n8n.query(`INSERT INTO vitrines_envoi (id, to_email, sujet, corps) VALUES (-1, 'essai@x.test', 'Essai de la chaîne', 'c')`);
