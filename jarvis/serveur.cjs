@@ -17,6 +17,7 @@ const voix = require('./voix.cjs');
 const appels = require('./appels.cjs');
 const vitrines = require('./vitrines.cjs');
 const tiktok = require('./tiktok.cjs');
+const candidatures = require('./candidatures.cjs');
 const { repondreSansFrais } = require('./parole.cjs');
 
 const ICI = __dirname;
@@ -177,6 +178,8 @@ async function router(req, res) {
   const url = req.url.split('?')[0];
   const m = req.method;
   if (url === '/healthz') { res.writeHead(200, { 'Content-Type': 'text/plain' }); res.end('ok ' + VERSION); return; }
+  // La recherche d'emploi de Basile : le Bureau des candidatures et l'Envoyeur de son PC (jarvis/candidatures.cjs).
+  if (await candidatures.router(req, res, { url, m, envoyer, json, autorise, fichierInterface })) return;
   if (m === 'GET' && (url === '/' || url === '/jarvis' || url === '/index.html')) return fichierInterface(res, 'index.html');
   if (m === 'GET' && /^\/(coffre\.html|manifest\.webmanifest|icone\.svg)$/.test(url)) return fichierInterface(res, url.slice(1));
   if (m === 'GET' && url === '/coffre') return fichierInterface(res, 'coffre.html');
@@ -387,6 +390,7 @@ const serveur = http.createServer((req, res) => {
 if (require.main === module) {
   Promise.all([preparer(), courrier.preparer(), outils.preparer()]).finally(() => {
     serveur.listen(PORT, () => console.log(`[jarvis] en service sur :${PORT}, version ${VERSION}`));
+    candidatures.demarrer();
     if (process.env.RELAIS !== '0') { relais.demarrer(); courrier.demarrer(); setInterval(() => { outils.memoriser().catch(() => {}); }, 3600e3); }
     // Le classement des modèles gratuits mesurés par l'éclaireur (agents/eclaireur.js), relu toutes les heures.
     const adopter = async () => {

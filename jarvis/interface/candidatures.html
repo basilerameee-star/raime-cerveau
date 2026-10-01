@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bureau des candidatures</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+body{margin:0}
+/* Layout: tableau de tri — bandeau de compteurs, onglets par étape, une fiche par offre (résumé replié, dossier déplié). */
+:root {
+  --bg: #f2f5f9; --surface: #ffffff; --ink: #14243a; --muted: #5b6b80; --line: #d8e0ea;
+  --accent: #2f6db5; --accent-ink: #ffffff; --navy: #17345c;
+  --go: #1f7a4d; --go-bg: #e3f3ea; --ask: #9a6400; --ask-bg: #fbf0d9; --no: #a33a3a; --no-bg: #f8e4e4; --sent: #4b4fb0; --sent-bg: #e7e8fa;
+  --f-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0d1724; --surface: #142236; --ink: #e6edf6; --muted: #9aabbf; --line: #24364e;
+  --accent: #6ea4e6; --accent-ink: #0d1724; --navy: #0a1422;
+  --go: #6fd3a0; --go-bg: #173a2b; --ask: #f0c060; --ask-bg: #3a2f15; --no: #f08c8c; --no-bg: #3e1d1f; --sent: #a9adf5; --sent-bg: #262a55;
+  color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0d1724; --surface: #142236; --ink: #e6edf6; --muted: #9aabbf; --line: #24364e;
+  --accent: #6ea4e6; --accent-ink: #0d1724; --navy: #0a1422;
+  --go: #6fd3a0; --go-bg: #173a2b; --ask: #f0c060; --ask-bg: #3a2f15; --no: #f08c8c; --no-bg: #3e1d1f; --sent: #a9adf5; --sent-bg: #262a55;
+  color-scheme: dark }
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--f-body); }
+.wrap { max-width: 1060px; margin: 0 auto; padding-inline: 16px; padding-block: 0 48px }
+header.top { background: var(--navy); color: #fff; padding-block: 22px 18px; }
+header.top .wrap { padding-block: 0; display: grid; gap: 14px }
+h1 { font: 700 clamp(26px, 4vw, 36px)/1.05 var(--f-display); margin: 0; text-wrap: balance; letter-spacing: -.01em }
+.sub { color: #b9cbe2; margin: 0; font-size: 14px }
+.counts { display: flex; flex-wrap: wrap; gap: 10px }
+.count { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14); border-radius: 10px; padding: 8px 12px; min-width: 112px }
+.count b { display: block; font: 500 22px/1 var(--f-mono); font-variant-numeric: tabular-nums }
+.count span { font-size: 12px; color: #b9cbe2; text-transform: uppercase; letter-spacing: .06em }
+nav.tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-block: 18px 12px }
+nav.tabs button, .tool button, .actions button, .bulk button { font: 600 14px var(--f-body); border-radius: 8px; cursor: pointer; padding: 8px 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink) }
+nav.tabs button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent) }
+nav.tabs button .n { font: 500 12px var(--f-mono); opacity: .8; margin-left: 4px }
+.tool { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px }
+.tool input, .tool select { font: 14px var(--f-body); padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); min-width: 0 }
+.tool input { flex: 1 1 220px }
+.bulk { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px }
+.bulk p { margin: 0; flex: 1 1 260px; font-size: 14px }
+button:focus-visible, a:focus-visible, textarea:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px }
+.list { display: grid; gap: 10px }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden }
+.card summary { list-style: none; cursor: pointer; display: grid; grid-template-columns: 54px 1fr auto; gap: 12px; align-items: center; padding: 12px 14px }
+.card summary::-webkit-details-marker { display: none }
+.score { font: 500 20px/1 var(--f-mono); text-align: center; border-radius: 8px; padding: 10px 0; background: var(--bg); font-variant-numeric: tabular-nums }
+.score small { display: block; font-size: 10px; color: var(--muted); margin-top: 3px }
+.head { min-width: 0 }
+.head h2 { font: 600 16px/1.3 var(--f-body); margin: 0 0 2px; overflow-wrap: anywhere }
+.meta { color: var(--muted); font-size: 13px; overflow-wrap: anywhere }
+.pill { font: 600 12px var(--f-body); padding: 4px 9px; border-radius: 999px; white-space: nowrap }
+.p-postuler { color: var(--go); background: var(--go-bg) } .p-avis { color: var(--ask); background: var(--ask-bg) } .p-ecarte { color: var(--no); background: var(--no-bg) }
+.p-valide { color: var(--go); background: var(--go-bg) } .p-refuse { color: var(--no); background: var(--no-bg) } .p-envoye, .p-entretien { color: var(--sent); background: var(--sent-bg) }
+.body { border-top: 1px solid var(--line); padding: 14px; display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr) 230px }
+.col { min-width: 0; display: grid; gap: 12px; align-content: start }
+.why { margin: 0; font-size: 14px }
+.chips { display: flex; flex-wrap: wrap; gap: 6px }
+.chip { font-size: 12px; padding: 3px 8px; border-radius: 6px; background: var(--ask-bg); color: var(--ask) }
+label { font: 600 12px var(--f-body); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); display: block; margin-bottom: 4px }
+textarea { width: 100%; font: 14px/1.55 var(--f-body); padding: 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); resize: vertical }
+textarea.lettre { min-height: 260px }
+.side { display: grid; gap: 10px; align-content: start }
+.side a { color: var(--accent); font-weight: 600; text-decoration: none }
+.side a:hover { text-decoration: underline }
+.kv { font-size: 13px } .kv b { display: block; color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .06em }
+.cvthumb { border: 1px solid var(--line); border-radius: 6px; cursor: zoom-in; width: 100%; display: block; background: #fff }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; grid-column: 1 / -1 }
+.actions .go { background: var(--go); color: #fff; border-color: var(--go) }
+.actions .no { color: var(--no) }
+.saved { font-size: 12px; color: var(--muted); align-self: center }
+.empty { background: var(--surface); border: 1px dashed var(--line); border-radius: 12px; padding: 28px; text-align: center; color: var(--muted) }
+.desc { font-size: 13px; color: var(--muted); white-space: pre-wrap; max-height: 220px; overflow: auto; background: var(--bg); border-radius: 8px; padding: 10px }
+dialog { border: none; border-radius: 12px; padding: 0; max-width: min(760px, 94vw); background: var(--surface) }
+dialog img { display: block; width: 100% }
+.ok { padding: 18px; display: grid; gap: 12px; max-height: 88vh; overflow: auto; color: var(--ink) }
+.ok h3 { font: 700 20px/1.2 var(--f-display); margin: 0 }
+.ok .recap { display: grid; grid-template-columns: minmax(0, 1fr) 170px; gap: 14px }
+.ok .lt { white-space: pre-wrap; font-size: 13px; background: var(--bg); border-radius: 8px; padding: 10px; max-height: 300px; overflow: auto }
+.ok ul { margin: 0; padding-left: 18px; font-size: 14px } .ok li { margin: 3px 0 }
+.ok .btns { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end }
+.ok .btns button { font: 600 14px var(--f-body); border-radius: 8px; padding: 9px 14px; cursor: pointer; border: 1px solid var(--line); background: var(--surface); color: var(--ink) }
+.ok .btns .go { background: var(--go); border-color: var(--go); color: #fff }
+@media (max-width: 720px) { .ok .recap { grid-template-columns: 1fr } }
+dialog::backdrop { background: rgba(5,12,22,.7) }
+dialog form { display: flex; justify-content: flex-end; padding: 8px }
+.toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 8px; font-size: 14px }
+@media (max-width: 720px) {
+  .body { grid-template-columns: 1fr }
+  .card summary { grid-template-columns: 46px 1fr; }
+  .card summary .pill { grid-column: 2; justify-self: start }
+}
+@media (prefers-reduced-motion: no-preference) { .card { transition: border-color .15s } .card:hover { border-color: var(--accent) } }
+</style>
+
+</head><body>
+<header class="top"><div class="wrap">
+  <h1>Bureau des candidatures</h1>
+  <p class="sub" id="maj">Offres de Genève à Lausanne, triées et préparées. Tu valides, Claude envoie.</p>
+  <div class="counts" id="counts"></div>
+</div></header>
+
+<main class="wrap">
+  <nav class="tabs" id="tabs" aria-label="Étapes"></nav>
+  <div class="tool">
+    <input id="q" type="search" placeholder="Chercher un poste, une entreprise, un lieu" aria-label="Chercher">
+    <select id="avisf" aria-label="Recommandation">
+      <option value="">Toutes les recommandations</option>
+      <option value="postuler">Claude conseille de postuler</option>
+      <option value="avis">Claude veut ton avis</option>
+    </select>
+  </div>
+  <div class="bulk" id="bulk" hidden>
+    <p id="bulktxt"></p>
+    <button id="bulkgo" type="button">Valider ces candidatures</button>
+    
+  </div>
+  <div class="list" id="list"><div class="empty">Chargement des offres…</div></div>
+</main>
+
+<dialog id="cvdlg"><img id="cvimg" alt="Aperçu du CV joint"><form method="dialog"><button>Fermer</button></form></dialog>
+<dialog id="okdlg"><div class="ok" id="okbody"></div></dialog>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+// Suisse : format suisse (modèle de Basile, 100 % des envois en Suisse). France : ancien modèle.
+const CV = {
+  "Vente": "/candidatures/cv/CV_Suisse_Vente.png",
+  "Commercial": "/candidatures/cv/CV_Suisse_Commercial.png",
+  "Sales EN": "/candidatures/cv/CV_Suisse_Sales_EN.png",
+  "Vente + IA": "/candidatures/cv/CV_Suisse_Vente_IA.png",
+  "Commercial (France)": "/candidatures/cv/CV_Basile_Rame_Commercial.png",
+};
+const ETAPES = [
+  ["a_valider", "À valider"], ["valide", "Validées"], ["envoye", "Envoyées"],
+  ["a_toi", "À toi"], ["entretien", "Entretiens"], ["refuse", "Refusées"], ["tout", "Tout"],
+];
+const AVIS = { postuler: "Postuler", avis: "Ton avis", ecarte: "Écartée" };
+const STATUT = { a_valider: "À valider", valide: "Validée", envoye: "Envoyée", a_toi: "À toi", entretien: "Entretien", refuse: "Refusée" };
+let offres = [], etape = "a_valider", meta = null;
+const ouverts = new Set();
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+try { etape = localStorage.getItem("etape") || etape } catch (e) {}
+
+function toast(t) { const el = $("toast"); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => el.hidden = true, 2200) }
+
+function compte(s) { return offres.filter((o) => s === "tout" || o.statut === s).length }
+
+function filtrees() {
+  const q = $("q").value.trim().toLowerCase(), a = $("avisf").value;
+  return offres
+    .filter((o) => etape === "tout" || o.statut === etape)
+    .filter((o) => !a || o.avis === a)
+    .filter((o) => !q || [o.titre, o.entreprise, o.lieu].join(" ").toLowerCase().includes(q))
+    .sort((x, y) => (y.score || 0) - (x.score || 0));
+}
+
+function renderHead() {
+  const c = [["À valider", compte("a_valider")], ["Validées", compte("valide")], ["Envoyées", compte("envoye")], ["À toi", compte("a_toi")], ["Entretiens", compte("entretien")]];
+  $("counts").innerHTML = c.map(([l, n]) => `<div class="count"><b>${n}</b><span>${l}</span></div>`).join("");
+  $("tabs").innerHTML = ETAPES.map(([k, l]) => `<button type="button" data-k="${k}" aria-pressed="${k === etape}">${l}<span class="n">${compte(k)}</span></button>`).join("");
+  if (meta) $("maj").textContent = `${meta} · Tu valides, l'Envoyeur postule tout seul.`;
+}
+
+function card(o) {
+  const alertes = (o.alertes || []).map((a) => `<span class="chip">${esc(a)}</span>`).join("");
+  const pill = o.statut === "a_valider" ? `<span class="pill p-${o.avis}">${AVIS[o.avis] || ""}</span>` : `<span class="pill p-${o.statut}">${STATUT[o.statut] || ""}</span>`;
+  const cv = CV[o.cv] ? `<div><label>CV joint · ${esc(o.cv)}</label><img class="cvthumb" data-cv="${esc(o.cv)}" src="${CV[o.cv]}" alt="CV ${esc(o.cv)}" loading="lazy"></div>` : "";
+  return `<details class="card" data-id="${esc(o.id)}" ${ouverts.has(o.id) ? "open" : ""}>
+  <summary><div class="score">${o.score ?? "–"}<small>/100</small></div>
+    <div class="head"><h2>${esc(o.titre)}</h2><div class="meta">${esc(o.entreprise)} · ${esc(o.lieu)} · ${esc(o.taux)} · ${esc(o.contrat)} · publiée le ${esc(o.publie)}</div></div>${pill}</summary>
+  <div class="body">
+    <div class="col">
+      <p class="why"><b>Avis de Claude :</b> ${esc(o.pourquoi)}</p>
+      ${alertes ? `<div class="chips">${alertes}</div>` : ""}
+      <div><label for="l-${esc(o.id)}">Lettre de motivation (modifiable)</label><textarea class="lettre" id="l-${esc(o.id)}" data-f="lettre">${esc(o.lettre)}</textarea></div>
+      <div><label for="n-${esc(o.id)}">Ta note pour Claude</label><textarea id="n-${esc(o.id)}" data-f="note" rows="2" placeholder="Une précision, une question, une consigne…">${esc(o.note)}</textarea></div>
+      ${o.extrait ? `<div><label>Extrait de l'annonce</label><div class="desc">${esc(o.extrait)}</div></div>` : ""}
+    </div>
+    <div class="side">
+      <a href="${esc(o.lien)}" target="_blank" rel="noopener">Voir l'annonce sur ${esc(o.source)} ↗</a>
+      <div class="kv"><b>Canal</b>${esc(o.methode && o.methode.endsWith("FORMULAR") ? "Candidature simplifiée " + o.source + " (Envoyeur)" : (o.source || ""))}</div>
+      <div class="kv"><b>Langue</b>${esc(o.langue)}</div>
+      ${o.envoi ? `<div class="kv"><b>${o.statut === "a_toi" ? "À toi" : "Preuve d'envoi"}</b>${esc(o.envoi.quand || o.envoi.recu_le || "")} ${esc(o.envoi.source || "")}${o.envoi.detail ? "<br>" + esc(o.envoi.detail) : ""}${o.envoi.reponses ? "<br>" + esc(o.envoi.reponses) : ""}${o.envoi.url ? `<br><a href="${esc(o.envoi.url)}" target="_blank" rel="noopener">page de confirmation ↗</a>` : ""}</div>` : ""}
+      ${cv}
+    </div>
+    <div class="actions">
+      ${o.statut !== "valide" && o.statut !== "envoye" ? `<button class="go" type="button" data-s="valide">Valider l'envoi</button>` : ""}
+      ${o.statut !== "a_valider" && o.statut !== "envoye" ? `<button type="button" data-s="a_valider">Remettre à valider</button>` : ""}
+      ${o.statut === "envoye" ? `<button type="button" data-s="entretien">J'ai un entretien</button>` : ""}
+      ${o.statut !== "refuse" ? `<button class="no" type="button" data-s="refuse">Refuser</button>` : ""}
+      <span class="saved" id="s-${esc(o.id)}"></span>
+    </div>
+  </div></details>`;
+}
+
+function renderList() {
+  const l = filtrees();
+  $("list").innerHTML = l.length ? l.map(card).join("") :
+    `<div class="empty">${offres.length ? "Aucune offre à cette étape avec ces filtres." : "Les offres apparaîtront ici dès la première collecte."}</div>`;
+  const reco = offres.filter((o) => o.statut === "a_valider" && o.avis === "postuler");
+  $("bulk").hidden = !(etape === "a_valider" && reco.length);
+  $("bulktxt").textContent = `${reco.length} candidature${reco.length > 1 ? "s" : ""} recommandée${reco.length > 1 ? "s" : ""} par Claude : tu peux toutes les valider d'un coup, ou les ouvrir une par une.`;
+}
+
+function render() { renderHead(); renderList() }
+
+async function ecrire(id, data, msg) {
+  try {
+    const r = await fetch("/api/candidatures/" + encodeURIComponent(id), { method: "POST", headers: { "Content-Type": "application/json", "x-jarvis": "1" }, body: JSON.stringify(data) });
+    if (!r.ok) throw new Error(r.status);
+    const o = offres.find((x) => x.id === id); if (o) Object.assign(o, data);
+    if (msg) toast(msg);
+    if (document.activeElement?.tagName !== "TEXTAREA") render(); else renderHead();
+  } catch (e) { toast("Enregistrement impossible (" + e.message + ") : réessaie dans un instant.") }
+}
+
+$("tabs").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-k]"); if (!b) return;
+  etape = b.dataset.k; try { localStorage.setItem("etape", etape) } catch (er) {} render();
+});
+$("q").addEventListener("input", renderList);
+$("avisf").addEventListener("change", renderList);
+$("list").addEventListener("toggle", (e) => {
+  const d = e.target; if (!d.dataset?.id) return;
+  d.open ? ouverts.add(d.dataset.id) : ouverts.delete(d.dataset.id);
+}, true);
+$("list").addEventListener("click", (e) => {
+  const img = e.target.closest(".cvthumb");
+  if (img) { $("cvimg").src = CV[img.dataset.cv]; $("cvdlg").showModal(); return }
+  const b = e.target.closest("button[data-s]"); if (!b) return;
+  const id = b.closest(".card").dataset.id;
+  if (b.dataset.s === "valide") { ouvrirValidation([offres.find((o) => o.id === id)]); return }
+  const msgs = { valide: "Validée : Claude l'enverra", refuse: "Refusée", a_valider: "Remise à valider", entretien: "Bravo, entretien noté" };
+  ecrire(id, { statut: b.dataset.s }, msgs[b.dataset.s]);
+});
+$("list").addEventListener("change", (e) => {
+  const t = e.target.closest("textarea[data-f]"); if (!t) return;
+  const id = t.closest(".card").dataset.id;
+  ecrire(id, { [t.dataset.f]: t.value }).then(() => { const s = $("s-" + id); if (s) s.textContent = "Modification enregistrée" });
+});
+$("bulkgo").addEventListener("click", () => ouvrirValidation(offres.filter((o) => o.statut === "a_valider" && o.avis === "postuler").sort((x, y) => (y.score || 0) - (x.score || 0))));
+
+// Fenêtre de validation : montre exactement ce qui partira (poste, canal, CV, lettre) avant de valider.
+let aValider = [];
+function ouvrirValidation(liste) {
+  aValider = liste.filter(Boolean);
+  if (!aValider.length) return;
+  const un = aValider.length === 1 ? aValider[0] : null;
+  $("okbody").innerHTML = un ? `
+    <h3>Valider cette candidature ?</h3>
+    <div class="meta">${esc(un.titre)} · ${esc(un.entreprise)} · ${esc(un.lieu)} · ${esc(un.taux)}</div>
+    <div class="kv"><b>Envoi par</b>${esc(un.envoi)} · <a href="${esc(un.lien)}" target="_blank" rel="noopener">annonce ↗</a></div>
+    <div class="recap"><div><label>Lettre qui sera jointe</label><div class="lt">${esc(un.lettre)}</div></div>
+      <div><label>CV joint · ${esc(un.cv)}</label>${CV[un.cv] ? `<img class="cvthumb" src="${CV[un.cv]}" alt="CV">` : ""}</div></div>
+    <p class="why">Rien ne part maintenant : Claude t'affichera la liste finale et attendra ton « oui » avant d'envoyer.</p>
+    <div class="btns"><button type="button" id="okno">Annuler</button><button type="button" class="go" id="okgo">Valider pour l'envoi</button></div>` : `
+    <h3>Valider ${aValider.length} candidatures ?</h3>
+    <ul>${aValider.map((o) => `<li><b>${esc(o.titre)}</b> · ${esc(o.entreprise)} · ${esc(o.lieu)} · CV ${esc(o.cv)} · ${o.envoi && o.envoi.startsWith("Candidature simplifiée") ? "candidature simplifiée" : "site ou e-mail de l'annonce"}</li>`).join("")}</ul>
+    <p class="why">Chaque lettre est visible dans sa fiche. Rien ne part maintenant : Claude t'affichera la liste finale et attendra ton « oui » avant d'envoyer.</p>
+    <div class="btns"><button type="button" id="okno">Annuler</button><button type="button" class="go" id="okgo">Valider ces ${aValider.length} candidatures</button></div>`;
+  $("okdlg").showModal();
+}
+$("okbody").addEventListener("click", async (e) => {
+  if (e.target.id === "okno") { $("okdlg").close(); return }
+  if (e.target.id !== "okgo") return;
+  e.target.disabled = true;
+  for (const o of aValider) await ecrire(o.id, { statut: "valide" });
+  $("okdlg").close();
+  toast(aValider.length > 1 ? `${aValider.length} candidatures validées` : "Validée : Claude te demandera ton oui avant l'envoi");
+});
+
+render();
+async function charger() {
+  try {
+    const r = await fetch("/api/candidatures", { cache: "no-store" });
+    const d = await r.json();
+    offres = d.offres || [];
+    const c = d.compte || {};
+    meta = `${Object.values(c).reduce((a, b) => a + b, 0)} offres reçues · ${c.nouvelle || 0} en préparation · ${c.ecartee || 0} écartées par Jarvis`;
+    if (document.activeElement?.tagName === "TEXTAREA" || $("okdlg").open) { renderHead(); return }
+    render();
+  } catch (e) { $("list").innerHTML = `<div class="empty">Jarvis ne répond pas pour l'instant : nouvel essai dans 30 secondes.</div>` }
+}
+charger();
+setInterval(charger, 30000);
+</script>
+</body></html>
