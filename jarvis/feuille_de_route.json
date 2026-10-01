@@ -158,9 +158,9 @@
       "groupe": "basile",
       "moteur": "Moteur 2 : la niche (contenus et produits)",
       "titre": "Publier sur Facebook et Instagram",
-      "il_faut": "Comptes de la marque (au nom du personnage) : nouvelle Page Facebook et nouveau compte Instagram professionnel (Créateur) reliés, dans le portefeuille Bahet, assignés à cerveau-raime (étapes données le 01/10/2026) ; Page RAIME assignée aussi.",
+      "il_faut": "Fait le 01/10/2026 : Page Obito AF, Instagram @obitoooaf (Créateur, relié), partagés à Bahet ; clé META_SYSTEM_TOKEN au coffre, vérifiée. Reste : l'accord de Basile pour une première publication.",
       "fini_quand": "Une publication (image puis Reel) part par l'API officielle et ses statistiques se lisent.",
-      "etat": "attend_basile"
+      "etat": "en_cours"
     },
     {
       "n": 10,
@@ -221,7 +221,7 @@
       "groupe": "basile",
       "moteur": "Moteur 2 : la niche (contenus et produits)",
       "titre": "Campagnes Meta Ads gérées par le cerveau",
-      "il_faut": "Moyen de paiement du compte publicitaire ; accord de Basile par campagne.",
+      "il_faut": "Compte publicitaire Obito AF Ads créé le 01/10/2026 et confié au cerveau. Reste : le moyen de paiement (le jour de la première campagne) et l'accord de Basile par campagne.",
       "depend_de": [
         6,
         29
@@ -262,9 +262,9 @@
       "groupe": "basile",
       "moteur": "Moteur 2 : la niche (contenus et produits)",
       "titre": "Publier sur TikTok",
-      "il_faut": "Compte TikTok ; application développeur à faire valider (ou passage par le connecteur Higgsfield).",
+      "il_faut": "Application TikTok « rAIme » soumise le 01/10/2026 (en examen) ; en attendant, clés Sandbox au coffre et envoi en brouillons par cockpit.raime.fr/tiktok (testé). Reste : la validation de TikTok, puis les clés Production au coffre.",
       "fini_quand": "Une vidéo publiée sur TikTok par le cerveau, statistiques lues.",
-      "etat": "attend_basile"
+      "etat": "en_cours"
     },
     {
       "n": 9,
@@ -279,17 +279,16 @@
     {
       "n": 31,
       "rang": 25,
-      "groupe": "basile",
+      "groupe": "seul",
       "moteur": "Moteur 2 : la niche (contenus et produits)",
       "titre": "Statistiques des plateformes",
-      "il_faut": "Les comptes des points 6, 8 et 9 branchés.",
       "depend_de": [
         6,
         8,
         9
       ],
       "fini_quand": "Vues, abonnés, clics, ventes et coût par vente relevés chaque jour en base.",
-      "etat": "attend_basile"
+      "etat": "a_faire"
     },
     {
       "n": 35,
@@ -388,8 +387,8 @@
       "groupe": "seul",
       "moteur": "Fiabilité",
       "titre": "Page de confidentialité : retirer Oracle Cloud",
-      "fini_quand": "raime.fr ne cite plus de prestataire retiré.",
-      "etat": "a_faire"
+      "fini_quand": "raime.fr ne cite plus de prestataire retiré (Oracle : vérifié absent le 01/10/2026) et décrit juste l'hébergement (Hetzner en Finlande, pas en Allemagne).",
+      "etat": "en_cours"
     },
     {
       "n": 38,
