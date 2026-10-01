@@ -31,7 +31,15 @@ export const METIERS = ['boulangerie', 'boucherie', 'fleuriste', 'coiffeur', 'in
   'électricien', 'serrurier', 'menuisier', 'restaurant', 'pizzeria', 'pressing', 'cordonnier', 'fromagerie', 'caviste',
   'toiletteur', 'photographe', 'peintre en bâtiment', 'paysagiste'];
 // La Haute-Savoie de Basile d'abord, puis les départements voisins dans cet ordre, puis la France par taille de ville.
-const REGION = ['74', '73', '01', '38'];
+const REGION = ['74', 'GE', '01', '73', '38'];
+// Le canton de Genève (Basile, 01/10/2026 : « la Suisse, Genève et les environs, Carouge… et la frontière France »).
+// Les communes y sont notées « Nom (GE) » : Bernex existe aussi en Haute-Savoie. En Suisse, la loi contre la concurrence
+// déloyale (LCD, art. 3 al. 1 let. o) interdit la publicité de masse par e-mail sans accord : par téléphone seulement.
+export const GENEVE = ['Genève', 'Vernier', 'Lancy', 'Meyrin', 'Carouge', 'Onex', 'Thônex', 'Versoix', 'Le Grand-Saconnex', 'Chêne-Bougeries',
+  'Plan-les-Ouates', 'Bernex', 'Veyrier', 'Chêne-Bourg', 'Collonge-Bellerive', 'Bellevue', 'Pregny-Chambésy', 'Satigny', 'Cologny', 'Confignon',
+  'Vandœuvres', 'Puplinge', 'Troinex', 'Bardonnex', 'Perly-Certoux', 'Genthod', 'Collex-Bossy', 'Meinier', 'Anières', 'Corsier', 'Hermance',
+  'Choulex', 'Presinge', 'Jussy', 'Gy', 'Avully', 'Avusy', 'Cartigny', 'Chancy', 'Aire-la-Ville', 'Russin', 'Dardagny', 'Soral', 'Laconnex', 'Céligny'];
+export const villeSansCanton = (v) => String(v || '').replace(/ \(GE\)$/, '');
 // Une page de réseau social ou une fiche d'annuaire n'est pas un site à soi : ce commerçant-là est la cible.
 const RESEAUX = /(^|\.)(facebook|fb|instagram|linktr|pagesjaunes|tripadvisor|yelp|justacote|mappy|123fleurs|interflora|aquarelle|leboncoin|planity|treatwell|doctolib|ubereats|deliveroo|lafourchette|thefork|google)\./i;
 export function plateformeDe(site) {
@@ -52,7 +60,10 @@ export async function preparer(brain) {
   await brain.query(`CREATE TABLE IF NOT EXISTS vitrines_villes (nom text PRIMARY KEY, departement text, population int, rang int)`);
   // La maquette premium (point 16) : l'ordre confié à Hermes, et le jour où Basile l'a publiée à la place de la simple.
   await brain.query('ALTER TABLE vitrines ADD COLUMN IF NOT EXISTS premium_commande int, ADD COLUMN IF NOT EXISTS premium_le timestamptz, ADD COLUMN IF NOT EXISTS demo_simple text')
-  await brain.query('ALTER TABLE vitrines ADD COLUMN IF NOT EXISTS lat double precision, ADD COLUMN IF NOT EXISTS lon double precision, ADD COLUMN IF NOT EXISTS maquette_v int, ADD COLUMN IF NOT EXISTS horaires text');
+  await brain.query('ALTER TABLE vitrines ADD COLUMN IF NOT EXISTS lat double precision, ADD COLUMN IF NOT EXISTS lon double precision, ADD COLUMN IF NOT EXISTS maquette_v int, ADD COLUMN IF NOT EXISTS horaires text, ADD COLUMN IF NOT EXISTS pays text, ADD COLUMN IF NOT EXISTS departement text')
+  // Les fiches d'avant le 01/10/2026 : leur département, retrouvé par leur ville (France).
+  await brain.query(`UPDATE vitrines v SET departement = vv.departement, pays = coalesce(v.pays, 'FR') FROM vitrines_villes vv
+    WHERE v.departement IS NULL AND vv.nom = v.ville`).catch(() => {});;
 }
 
 const lireJson = async (f, url, o = {}) => { const r = await f(url, { ...o, signal: AbortSignal.timeout(o.delai || 30000) }); if (!r.ok) throw new Error(`${url.split('?')[0]} : ${r.status}`); return r.json(); };
@@ -64,7 +75,13 @@ const texte = async (f, url, delai = 10000) => {
 // ── 1. DÉCOUVRIR ─────────────────────────────────────────────────────────────
 // Les villes, une fois : la région de Basile d'abord, puis la France par population (API Géo de l'État, sans clé).
 async function villes(brain, f) {
-  const { rows } = await brain.query('SELECT count(*)::int AS n FROM vitrines_villes');
+  const { rows: [ge] } = await brain.query("SELECT count(*)::int AS n FROM vitrines_villes WHERE departement = 'GE'");
+  if (!ge.n) {
+    const v = [], p = [];
+    GENEVE.forEach((nom, i) => { v.push(`($${i * 2 + 1}, 'GE', NULL, $${i * 2 + 2})`); p.push(`${nom} (GE)`, i); });
+    await brain.query(`INSERT INTO vitrines_villes (nom, departement, population, rang) VALUES ${v.join(',')} ON CONFLICT DO NOTHING`, p);
+  }
+  const { rows } = await brain.query("SELECT count(*)::int AS n FROM vitrines_villes WHERE departement <> 'GE'");
   if (rows[0].n) return;
   const toutes = await lireJson(f, 'https://geo.api.gouv.fr/communes?fields=nom,population,codeDepartement&format=json', { delai: 60000 });
   const retenues = toutes.filter((c) => (c.population || 0) >= 2000)
@@ -78,24 +95,26 @@ async function villes(brain, f) {
 
 // La prochaine recherche à faire : la ville la mieux classée où un métier n'a pas encore été cherché.
 async function prochaine(brain, source) {
-  const { rows } = await brain.query(`SELECT v.nom AS ville, m.metier FROM vitrines_villes v CROSS JOIN unnest($1::text[]) WITH ORDINALITY m(metier, o)
+  const { rows } = await brain.query(`SELECT v.nom AS ville, v.departement, m.metier FROM vitrines_villes v CROSS JOIN unnest($1::text[]) WITH ORDINALITY m(metier, o)
     WHERE NOT EXISTS (SELECT 1 FROM vitrines_recherches r WHERE r.ville = v.nom AND r.metier = m.metier AND r.source = $2)
-    ORDER BY array_position($3::text[], v.departement) NULLS LAST, v.population DESC, m.o LIMIT 1`, [METIERS, source, REGION]);
+    ORDER BY array_position($3::text[], v.departement) NULLS LAST, v.population DESC NULLS LAST, v.rang, m.o LIMIT 1`, [METIERS, source, REGION]);
   return rows[0] || null;
 }
 
-export async function chercherPlaces({ cle, metier, ville, fetch: f = globalThis.fetch }) {
+export async function chercherPlaces({ cle, metier, ville, departement, fetch: f = globalThis.fetch }) {
+  const suisse = departement === 'GE', nom = villeSansCanton(ville);
   const d = await lireJson(f, 'https://places.googleapis.com/v1/places:searchText', { method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': cle,
       'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.websiteUri,places.businessStatus,places.googleMapsUri,places.location' },
-    body: JSON.stringify({ textQuery: `${metier} ${ville}`, languageCode: 'fr', regionCode: 'FR', pageSize: 20 }) });
+    body: JSON.stringify({ textQuery: `${metier} ${nom}`, languageCode: 'fr', regionCode: suisse ? 'CH' : 'FR', pageSize: 20 }) });
   return (d.places || []).filter((p) => !p.businessStatus || p.businessStatus === 'OPERATIONAL').map((p) => ({
-    source: 'google', source_id: `google:${p.id}`, nom: p.displayName && p.displayName.text, metier, ville, adresse: p.formattedAddress || null,
+    source: 'google', source_id: `google:${p.id}`, nom: p.displayName && p.displayName.text, metier, ville: nom, pays: suisse ? 'CH' : 'FR', departement: departement || null, adresse: p.formattedAddress || null,
     telephone: p.nationalPhoneNumber || null, site: p.websiteUri || null, carte: p.googleMapsUri || null, email: null,
     lat: p.location ? p.location.latitude : null, lon: p.location ? p.location.longitude : null }));
 }
 
-export async function chercherOsm({ metier, ville, fetch: f = globalThis.fetch }) {
+export async function chercherOsm({ metier, ville, departement, fetch: f = globalThis.fetch }) {
+  const suisse = departement === 'GE', nom = villeSansCanton(ville);
   const tag = { boulangerie: 'shop=bakery', boucherie: 'shop=butcher', fleuriste: 'shop=florist', coiffeur: 'shop=hairdresser',
     'institut de beauté': 'shop=beauty', 'garage automobile': 'shop=car_repair', plombier: 'craft=plumber', électricien: 'craft=electrician',
     serrurier: 'craft=locksmith', menuisier: 'craft=carpenter', restaurant: 'amenity=restaurant', pizzeria: 'cuisine=pizza',
@@ -103,13 +122,15 @@ export async function chercherOsm({ metier, ville, fetch: f = globalThis.fetch }
     photographe: 'craft=photographer', 'peintre en bâtiment': 'craft=painter', paysagiste: 'craft=gardener' }[metier];
   if (!tag) return [];
   const [k, v] = tag.split('=');
-  const q = `[out:json][timeout:40];area["name"="${ville.replace(/"/g, '')}"]["admin_level"="8"]->.a;nwr(area.a)["${k}"="${v}"]["name"];out tags center 60;`;
+  // L'identifiant officiel de la commune départage les homonymes (Bernex en France et à Genève).
+  const officiel = suisse ? '["swisstopo:BFS_NUMMER"]' : '["ref:INSEE"]';
+  const q = `[out:json][timeout:40];area["name"="${nom.replace(/"/g, '')}"]["admin_level"="8"]${officiel}->.a;nwr(area.a)["${k}"="${v}"]["name"];out tags center 60;`;
   const d = await lireJson(f, 'https://overpass-api.de/api/interpreter', { method: 'POST', body: 'data=' + encodeURIComponent(q),
     // Overpass refuse (406) une signature de navigateur : il veut celle d'un programme (constaté le 30/09/2026).
     headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': 'raime-cerveau/1.0 (+https://raime.fr)' }, delai: 60000 });
   // Une enseigne (étiquette « brand » : Carrefour, Jean Louis David…) a son site national : ce n'est pas la cible.
   return (d.elements || []).filter((e) => !(e.tags || {}).brand && !(e.tags || {})['brand:wikidata']).map((e) => { const t = e.tags || {}; return {
-    source: 'osm', source_id: `osm:${e.type}/${e.id}`, nom: t.name, metier, ville,
+    source: 'osm', source_id: `osm:${e.type}/${e.id}`, nom: t.name, metier, ville: nom, pays: suisse ? 'CH' : 'FR', departement: departement || null,
     adresse: [t['addr:housenumber'], t['addr:street'], t['addr:postcode'], t['addr:city']].filter(Boolean).join(' ') || null,
     telephone: t.phone || t['contact:phone'] || null, site: t.website || t['contact:website'] || null, carte: null,
     email: t.email || t['contact:email'] || null, lat: e.lat ?? (e.center && e.center.lat) ?? null, lon: e.lon ?? (e.center && e.center.lon) ?? null, horaires: t.opening_hours || null }; });
@@ -129,9 +150,10 @@ async function decouvrir(brain, { env, fetch: f }) {
   let neufs = 0;
   for (const c of trouves) {
     if (!c.nom || enseigne(c)) continue;
-    const r = await brain.query(`INSERT INTO vitrines (source, source_id, nom, metier, adresse, ville, telephone, carte, site, email, email_source, lat, lon, horaires)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) ON CONFLICT (source_id) DO NOTHING RETURNING id`,
-    [c.source, c.source_id, c.nom, c.metier, c.adresse, c.ville, c.telephone, c.carte, c.site, c.email, c.email ? 'fiche OSM' : null, c.lat ?? null, c.lon ?? null, c.horaires ?? null]);
+    const r = await brain.query(`INSERT INTO vitrines (source, source_id, nom, metier, adresse, ville, telephone, carte, site, email, email_source, lat, lon, horaires, pays, departement)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) ON CONFLICT (source_id) DO NOTHING RETURNING id`,
+    [c.source, c.source_id, c.nom, c.metier, c.adresse, c.ville, c.telephone, c.carte, c.site, c.email, c.email ? 'fiche OSM' : null, c.lat ?? null, c.lon ?? null,
+      c.horaires ?? null, c.pays || 'FR', c.departement || p.departement || null]);
     neufs += r.rowCount;
   }
   await brain.query(`INSERT INTO vitrines_recherches (metier, ville, source, trouves) VALUES ($1,$2,$3,$4)
@@ -321,7 +343,7 @@ export async function localiser(v, f) {
 
 // La maquette (gabarit v2 du 01/10/2026, agents/maquette_premium.js) : photos d'exemple servies par le Cockpit, carte
 // OpenStreetMap quand les coordonnées sont connues.
-export const MAQUETTE_V = 3;
+export const MAQUETTE_V = 4;
 export function maquette(v) {
   return maquettePremium(v, { images: `${ADRESSE_DEMO}/demo/img` });
 }
@@ -383,11 +405,12 @@ async function qualifier(brain, v, deps) {
   const slug = slugifier(v), url = `${ADRESSE_DEMO}/demo/${slug}`;
   const w = { ...v, site, site_etat: juge.etat };
   const b = brouillon(w, url);
-  const statut = m ? 'brouillon' : 'a_appeler';
+  const suisse = v.pays === 'CH';
+  const statut = m && !suisse ? 'brouillon' : 'a_appeler';
   await brain.query(`UPDATE vitrines SET site = $2, site_etat = $3, site_signaux = $4, email = $5, email_source = $6, slug = $7,
     demo_html = $8, sujet = $9, corps = $10, statut = $11, motif = $12, lat = $13, lon = $14, maquette_v = $15, horaires = $16, maj_le = now() WHERE id = $1`,
   [v.id, site, juge.etat, juge.signaux, m ? m.email : null, m ? m.source : null, slug, maquette(w), b.sujet, b.corps, statut,
-    m ? null : 'e-mail non trouvé', v.lat, v.lon, MAQUETTE_V, v.horaires || null]);
+    suisse ? 'Suisse : par téléphone seulement (pas d’e-mail sans accord, loi suisse)' : m ? null : 'e-mail non trouvé', v.lat, v.lon, MAQUETTE_V, v.horaires || null]);
   return statut;
 }
 

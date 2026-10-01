@@ -95,15 +95,19 @@ function fiche(v, adresse) {
     site: { etat: v.site_etat, url: v.site, signaux: v.site_signaux || [] },
     maquette: v.slug ? `${adresse}/demo/${v.slug}` : null, carte: v.carte,
     statut: v.statut, motif: v.motif, envoye_le: v.envoye_le, jours_depuis_envoi: jours, note: v.note,
+    pays: v.pays || 'FR', region: v.departement || null,
     brouillon: v.sujet ? { sujet: v.sujet, corps: v.corps } : null, paiement: LIEN_PAIEMENT, source: v.source === 'google' ? 'Google' : 'OpenStreetMap',
     premium: v.premium_commande ? { commande: v.premium_commande, prete: fs.existsSync(fichierPremium(v.premium_commande)),
       apercu: `${adresse}/livrables/demande-${v.premium_commande}/app/index.html`, publiee_le: v.premium_le || null } : null,
   };
 }
 
-async function liste({ statut = null, limite = 50 } = {}, adresse) {
+// Triées par région (département, ou GE pour le canton de Genève), puis par métier (Basile, 01/10/2026).
+async function liste({ statut = null, region = null, metier = null, limite = 50 } = {}, adresse) {
   const rows = await lire(`SELECT * FROM vitrines WHERE nom IS NOT NULL AND ($1::text IS NULL OR statut = $1)
-    ORDER BY maj_le DESC LIMIT $2`, [statut, Math.min(200, Number(limite) || 50)]).catch(() => []);
+    AND ($3::text IS NULL OR departement = $3) AND ($4::text IS NULL OR metier = $4)
+    ORDER BY array_position(ARRAY['74','GE','01','73','38']::text[], departement) NULLS LAST, departement NULLS LAST, metier, maj_le DESC LIMIT $2`,
+  [statut, Math.min(200, Number(limite) || 50), region, metier]).catch(() => []);
   const compte = await lire('SELECT statut, count(*)::int AS n FROM vitrines GROUP BY statut').catch(() => []);
   return { compteurs: Object.fromEntries(compte.map((c) => [c.statut, c.n])), vitrines: rows.map((v) => fiche(v, adresse)) };
 }

@@ -225,3 +225,21 @@ test('v3 : les vrais horaires d’OpenStreetMap en français ; illisibles, ils n
   assert.equal(maquetteComplete({ nom: 'X', ville: 'Annecy' }, '/demo/img/'), false, 'jamais sans téléphone ni adresse');
 });
 
+
+test('Genève : la recherche passe par l’identifiant officiel suisse ; un commerçant genevois n’est jamais démarché par e-mail', async () => {
+  const { GENEVE, villeSansCanton } = await import('../../agents/vitrines.js');
+  assert.ok(GENEVE.includes('Carouge') && GENEVE.includes('Bernex'));
+  assert.equal(villeSansCanton('Bernex (GE)'), 'Bernex');
+  let corps = '';
+  const r = await chercherOsm({ metier: 'boulangerie', ville: 'Bernex (GE)', departement: 'GE',
+    fetch: async (u, o) => { corps = decodeURIComponent(String(o.body)); return rep({ elements: [{ type: 'node', id: 9, lat: 46.17, lon: 6.07, tags: { name: 'Boulangerie de Bernex', shop: 'bakery' } }] }); } });
+  assert.match(corps, /"name"="Bernex"\]\["admin_level"="8"\]\["swisstopo:BFS_NUMMER"\]/);
+  assert.deepEqual([r[0].ville, r[0].pays, r[0].departement], ['Bernex', 'CH', 'GE']);
+  await brain.query("UPDATE vitrines SET statut = 'ecarte' WHERE statut = 'nouveau'");
+  await brain.query(`INSERT INTO vitrines (id, source, source_id, nom, metier, ville, telephone, email, email_source, statut, pays, departement)
+    VALUES (980, 'osm', 'osm:node/t980', 'Boulangerie de Carouge', 'boulangerie', 'Carouge', '+41 22 000 00 00', 'carouge.boulangerie@gmail.com', 'fiche OSM', 'nouveau', 'CH', 'GE')`);
+  const fetch = async (url) => (String(url).includes('overpass') ? rep({ elements: [] }) : rep({ results: [] }));
+  await passer({ brain, env: {}, fetch, resoudre: async () => [{ exchange: 'mx' }], combien: 3 });
+  const { rows: [f] } = await brain.query('SELECT statut, motif FROM vitrines WHERE id = 980');
+  assert.equal(f.statut, 'a_appeler'); assert.match(f.motif, /Suisse : par téléphone seulement/);
+});

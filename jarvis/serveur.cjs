@@ -278,7 +278,8 @@ async function router(req, res) {
   }
   if (m === 'GET' && url === '/api/vitrines') {
     const statut = (req.url.match(/[?&]statut=([a-z_]+)/) || [])[1] || null;
-    return envoyer(res, 200, await vitrines.liste({ statut }, relais.ADRESSE));
+    const q = new URL(req.url, 'http://x').searchParams;
+    return envoyer(res, 200, await vitrines.liste({ statut, region: q.get('region') || null, metier: q.get('metier') || null }, relais.ADRESSE));
   }
   if (m === 'GET' && (r = url.match(/^\/api\/vitrines\/(\d+)$/))) {
     const f = await vitrines.uneFiche(r[1], relais.ADRESSE);
