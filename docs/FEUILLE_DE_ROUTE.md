@@ -4,7 +4,7 @@
 
 Décidée avec Basile le 30/09/2026. Cette liste fait foi : chaque session (Claude, routines, Codex) la reprend là où elle en est, jusqu'à ce que tout soit fait.
 
-**Avancement : 1 point(s) fait(s) sur 41.**
+**Avancement : 2 point(s) fait(s) sur 41.**
 
 ## Règles
 
@@ -23,7 +23,7 @@ Décidée avec Basile le 30/09/2026. Cette liste fait foi : chaque session (Clau
 | Rang | N° | Moteur | Point | Il faut de Basile | Fini quand | État |
 |---|---|---|---|---|---|---|
 | 1 | 12 | Moteur 1 : sites à 500 € | Canal d'envoi des e-mails des vitrines | — | Un e-mail validé part depuis raime.fr par le flux n8n dédié, plafonné par jour, avec désinscription ; une réponse passe la vitrine à « répondu ». | FAIT (preuve : 01/10/2026 : workflow n8n « Vitrines · Envoi » (vitrinesEnvoi01) actif ; le vrai brouillon n°106 (Techni Nails) est parti de contact@raime.fr par Resend en mode essai, arrivé dans la boîte de réception de Basile, marqué « teste » ; plafond du jour, désinscription, réponse → « répondu » et « stop » prouvés au banc (tests/banc/vitrines_envoi.test.mjs).) |
-| 4 | 18 | Moteur 1 : sites à 500 € | Écarter les chaînes et franchises | — | Aucune enseigne nationale (Paul, Brioche Dorée…) n'arrive en brouillon ; test à l'appui. | à faire |
+| 4 | 18 | Moteur 1 : sites à 500 € | Écarter les chaînes et franchises | — | Aucune enseigne nationale (Paul, Brioche Dorée…) n'arrive en brouillon ; test à l'appui. | FAIT (preuve : 01/10/2026 : liste d'enseignes nationales dans agents/vitrines.js (découverte, qualification, et réexamen à chaque passage) ; en production, aucune enseigne en brouillon ni dans les appels (Carrefour fleurs, Paul, Brioche Dorée, Marie Blachère écartées) ; test « point 18 » au banc (« Boulangerie Paul Martin » reste, « Boulangerie Paul » sort).) |
 | 6 | 16 | Moteur 1 : sites à 500 € | Maquettes premium pour ceux qui répondent | — | Une vitrine « répondu » reçoit une maquette soignée par Hermes (site-premium) ; la vidéo au défilement vient avec le point 26. | à faire |
 | 9 | 19 | Moteur 2 : la niche (contenus et produits) | Agent de recherche de produits dans la niche retenue | — | Chaque semaine, 3 produits proposés dans Jarvis : saison, tendance sourcée, conformité UE, prix de vente visé, note du goût. | à faire |
 | 10 | 21 | Moteur 2 : la niche (contenus et produits) | Calcul de rentabilité d'un produit | — | Pour chaque produit proposé : prix d'achat, livraison, frais de paiement, pub par vente, marge nette ; estimation signalée tant qu'AliExpress n'est pas branché. | à faire |

@@ -369,7 +369,7 @@ export async function passer({ brain, env = process.env, fetch = globalThis.fetc
     }
   }
   // Une enseigne ajoutée à la liste écarte aussi les fiches déjà qualifiées (jamais une vitrine validée ou envoyée).
-  const { rows: qualifiees } = await brain.query(`SELECT id, nom, ville FROM vitrines WHERE statut IN ('brouillon', 'a_appeler') AND nom IS NOT NULL`);
+  const { rows: qualifiees } = await brain.query(`SELECT id, nom, ville FROM vitrines WHERE statut IN ('nouveau', 'brouillon', 'a_appeler') AND nom IS NOT NULL`);
   for (const q of qualifiees) {
     const marque = enseigne(q);
     if (marque) { await brain.query(`UPDATE vitrines SET statut = 'ecarte', motif = $2, maj_le = now() WHERE id = $1`, [q.id, `enseigne nationale (${marque})`]); bilan.ecartes++; }

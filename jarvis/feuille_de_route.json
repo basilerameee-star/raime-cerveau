@@ -62,8 +62,9 @@
       "moteur": "Moteur 1 : sites à 500 €",
       "titre": "Écarter les chaînes et franchises",
       "fini_quand": "Aucune enseigne nationale (Paul, Brioche Dorée…) n'arrive en brouillon ; test à l'appui.",
-      "etat": "a_faire",
-      "routine": true
+      "etat": "fait",
+      "routine": true,
+      "preuve": "01/10/2026 : liste d'enseignes nationales dans agents/vitrines.js (découverte, qualification, et réexamen à chaque passage) ; en production, aucune enseigne en brouillon ni dans les appels (Carrefour fleurs, Paul, Brioche Dorée, Marie Blachère écartées) ; test « point 18 » au banc (« Boulangerie Paul Martin » reste, « Boulangerie Paul » sort)."
     },
     {
       "n": 17,
