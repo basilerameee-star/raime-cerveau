@@ -391,7 +391,7 @@ if (require.main === module) {
   Promise.all([preparer(), courrier.preparer(), outils.preparer()]).finally(() => {
     serveur.listen(PORT, () => console.log(`[jarvis] en service sur :${PORT}, version ${VERSION}`));
     candidatures.demarrer();
-    if (process.env.RELAIS !== '0') { relais.demarrer(); courrier.demarrer(); setInterval(() => { outils.memoriser().catch(() => {}); }, 3600e3); }
+    if (process.env.RELAIS !== '0') { relais.demarrer(); courrier.demarrer(); require('./prestataire.cjs').demarrer(); setInterval(() => { outils.memoriser().catch(() => {}); }, 3600e3); }
     // Le classement des modèles gratuits mesurés par l'éclaireur (agents/eclaireur.js), relu toutes les heures.
     const adopter = async () => {
       const c = {};

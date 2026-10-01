@@ -1,6 +1,6 @@
 {
   "titre": "Feuille de route du cerveau rAIme",
-  "mise_a_jour": "2026-10-01",
+  "mise_a_jour": "2026-10-02",
   "source": "Décidée avec Basile le 30/09/2026. Cette liste fait foi : chaque session (Claude, routines, Codex) la reprend là où elle en est, jusqu'à ce que tout soit fait.",
   "regles": [
     "Un point n'est « fait » que quand sa condition « fini quand » est prouvée en production (la preuve est écrite).",
@@ -23,8 +23,18 @@
   ],
   "points": [
     {
-      "n": 12,
+      "n": 42,
       "rang": 1,
+      "groupe": "basile",
+      "moteur": "Moteur 4 : agents de revenus",
+      "titre": "Agent de revenus : gagner chaque jour, sinon il s’éteint (priorité de Basile du 01/10/2026)",
+      "il_faut": "Ses 4 adresses de RÉCEPTION depuis sa Ledger (Ledger Live) : Bitcoin, Cardano (ADA), XRP et USDC sur le réseau Base ; jamais la phrase de 24 mots ni l’accès aux fonds. Règles confirmées : budget zéro, un gain chaque jour dès le jour 1, et à partir du jour 14, 5 € nets par jour en moyenne sur 7 jours glissants. Monero écarté ; aucun trading.",
+      "fini_quand": "Un agent cherche seul des façons légales de gagner (services aux particuliers, aux entreprises, aux autres IA, dont le paiement entre agents x402 en USDC), vend et encaisse sur l’adresse de Basile ; un registre tient ses gains jour par jour ; un coupe-circuit (webhook) éteint l’agent qui n’a rien gagné dans la journée, et ses agents enfants qui ne gagnent pas ; un superviseur redéploie une nouvelle stratégie ; il ne dépense, ne retire, n’échange ni ne place jamais d’argent.",
+      "etat": "attend_basile"
+    },
+    {
+      "n": 12,
+      "rang": 2,
       "groupe": "seul",
       "moteur": "Moteur 1 : sites à 500 €",
       "titre": "Canal d'envoi des e-mails des vitrines",
@@ -34,7 +44,7 @@
     },
     {
       "n": 14,
-      "rang": 2,
+      "rang": 3,
       "groupe": "basile",
       "moteur": "Moteur 1 : sites à 500 €",
       "titre": "Google Places branché",
@@ -44,7 +54,7 @@
     },
     {
       "n": 13,
-      "rang": 3,
+      "rang": 4,
       "groupe": "basile",
       "moteur": "Moteur 1 : sites à 500 €",
       "titre": "Envoi automatique des vitrines",
@@ -57,7 +67,7 @@
     },
     {
       "n": 18,
-      "rang": 4,
+      "rang": 5,
       "groupe": "seul",
       "moteur": "Moteur 1 : sites à 500 €",
       "titre": "Écarter les chaînes et franchises",
@@ -68,7 +78,7 @@
     },
     {
       "n": 17,
-      "rang": 5,
+      "rang": 6,
       "groupe": "basile",
       "moteur": "Moteur 1 : sites à 500 €",
       "titre": "Parcours de vente des sites à 500 €",
@@ -78,7 +88,7 @@
     },
     {
       "n": 16,
-      "rang": 6,
+      "rang": 7,
       "groupe": "seul",
       "moteur": "Moteur 1 : sites à 500 €",
       "titre": "Maquettes premium pour ceux qui répondent",
@@ -87,7 +97,7 @@
     },
     {
       "n": 15,
-      "rang": 7,
+      "rang": 8,
       "groupe": "basile",
       "moteur": "Moteur 1 : sites à 500 €",
       "titre": "Adresse demo.raime.fr (option)",
@@ -97,7 +107,7 @@
     },
     {
       "n": 30,
-      "rang": 8,
+      "rang": 9,
       "groupe": "basile",
       "moteur": "Moteur 2 : la niche (contenus et produits)",
       "titre": "Le personnage influenceur et sa niche (marque média et produits)",
@@ -107,7 +117,7 @@
     },
     {
       "n": 19,
-      "rang": 9,
+      "rang": 10,
       "groupe": "seul",
       "moteur": "Moteur 2 : la niche (contenus et produits)",
       "titre": "Agent de recherche de produits dans la niche retenue",
@@ -116,7 +126,7 @@
     },
     {
       "n": 21,
-      "rang": 10,
+      "rang": 11,
       "groupe": "seul",
       "moteur": "Moteur 2 : la niche (contenus et produits)",
       "titre": "Calcul de rentabilité d'un produit",
@@ -126,7 +136,7 @@
     },
     {
       "n": 11,
-      "rang": 11,
+      "rang": 12,
       "groupe": "seul",
       "moteur": "Moteur 2 : la niche (contenus et produits)",
       "titre": "Lire une page web (y compris JavaScript) pour tous les agents",
@@ -135,7 +145,7 @@
     },
     {
       "n": 20,
-      "rang": 12,
+      "rang": 13,
       "groupe": "basile",
       "moteur": "Moteur 2 : la niche (contenus et produits)",
       "titre": "Fournisseurs AliExpress",
@@ -145,7 +155,7 @@
     },
     {
       "n": 25,
-      "rang": 13,
+      "rang": 14,
       "groupe": "seul",
       "moteur": "Moteur 2 : la niche (contenus et produits)",
       "titre": "Réalisateur publicitaire UGC (produits et contenus de la niche)",
@@ -154,7 +164,7 @@
     },
     {
       "n": 6,
-      "rang": 14,
+      "rang": 15,
       "groupe": "basile",
       "moteur": "Moteur 2 : la niche (contenus et produits)",
       "titre": "Publier sur Facebook et Instagram",
@@ -164,7 +174,7 @@
     },
     {
       "n": 10,
-      "rang": 15,
+      "rang": 16,
       "groupe": "basile",
       "moteur": "Moteur 2 : la niche (contenus et produits)",
       "titre": "Règle d'autonomie des publications",
@@ -174,7 +184,7 @@
     },
     {
       "n": 28,
-      "rang": 16,
+      "rang": 17,
       "groupe": "seul",
       "moteur": "Moteur 2 : la niche (contenus et produits)",
       "titre": "Calendrier de publication des 6 comptes",
@@ -183,7 +193,7 @@
     },
     {
       "n": 29,
-      "rang": 17,
+      "rang": 18,
       "groupe": "seul",
       "moteur": "Moteur 2 : la niche (contenus et produits)",
       "titre": "Stratégie de campagne",
@@ -193,7 +203,7 @@
     },
     {
       "n": 22,
-      "rang": 18,
+      "rang": 19,
       "groupe": "basile",
       "moteur": "Moteur 2 : la niche (contenus et produits)",
       "titre": "Page produit avec paiement",
@@ -207,7 +217,7 @@
     },
     {
       "n": 24,
-      "rang": 19,
+      "rang": 20,
       "groupe": "seul",
       "moteur": "Moteur 2 : la niche (contenus et produits)",
       "titre": "Décision boutique (page et Stripe, puis TikTok Shop et Instagram Shop)",
@@ -217,7 +227,7 @@
     },
     {
       "n": 7,
-      "rang": 20,
+      "rang": 21,
       "groupe": "basile",
       "moteur": "Moteur 2 : la niche (contenus et produits)",
       "titre": "Campagnes Meta Ads gérées par le cerveau",
@@ -231,7 +241,7 @@
     },
     {
       "n": 26,
-      "rang": 21,
+      "rang": 22,
       "groupe": "basile",
       "moteur": "Moteur 2 : la niche (contenus et produits)",
       "titre": "Vidéos Higgsfield réelles",
@@ -244,7 +254,7 @@
     },
     {
       "n": 23,
-      "rang": 22,
+      "rang": 23,
       "groupe": "basile",
       "moteur": "Moteur 2 : la niche (contenus et produits)",
       "titre": "Commandes aux fournisseurs et service client",
@@ -258,7 +268,7 @@
     },
     {
       "n": 8,
-      "rang": 23,
+      "rang": 24,
       "groupe": "basile",
       "moteur": "Moteur 2 : la niche (contenus et produits)",
       "titre": "Publier sur TikTok",
@@ -268,7 +278,7 @@
     },
     {
       "n": 9,
-      "rang": 24,
+      "rang": 25,
       "groupe": "basile",
       "moteur": "Moteur 2 : la niche (contenus et produits)",
       "titre": "Publier sur YouTube Shorts",
@@ -278,7 +288,7 @@
     },
     {
       "n": 31,
-      "rang": 25,
+      "rang": 26,
       "groupe": "seul",
       "moteur": "Moteur 2 : la niche (contenus et produits)",
       "titre": "Statistiques des plateformes",
@@ -292,7 +302,7 @@
     },
     {
       "n": 35,
-      "rang": 26,
+      "rang": 27,
       "groupe": "basile",
       "moteur": "Moteur 3 : rAIme",
       "titre": "Prospection des cabinets comptables avec une preuve avant le prix",
@@ -302,7 +312,7 @@
     },
     {
       "n": 1,
-      "rang": 27,
+      "rang": 28,
       "groupe": "seul",
       "moteur": "Jarvis",
       "titre": "Réponse vocale plus rapide",
@@ -311,7 +321,7 @@
     },
     {
       "n": 2,
-      "rang": 28,
+      "rang": 29,
       "groupe": "seul",
       "moteur": "Jarvis",
       "titre": "Fil « ce qui se passe derrière »",
@@ -320,7 +330,7 @@
     },
     {
       "n": 4,
-      "rang": 29,
+      "rang": 30,
       "groupe": "seul",
       "moteur": "Jarvis",
       "titre": "Gestes à la voix",
@@ -329,7 +339,7 @@
     },
     {
       "n": 3,
-      "rang": 30,
+      "rang": 31,
       "groupe": "seul",
       "moteur": "Jarvis",
       "titre": "Données pour l'interface 3D",
@@ -338,7 +348,7 @@
     },
     {
       "n": 32,
-      "rang": 31,
+      "rang": 32,
       "groupe": "seul",
       "moteur": "Mesure",
       "titre": "Apprentissage sur les résultats",
@@ -347,7 +357,7 @@
     },
     {
       "n": 33,
-      "rang": 32,
+      "rang": 33,
       "groupe": "seul",
       "moteur": "Mesure",
       "titre": "Suivi des revenus : 2 000 € par mois sur chacune de TikTok, YouTube et Instagram",
@@ -356,7 +366,7 @@
     },
     {
       "n": 34,
-      "rang": 33,
+      "rang": 34,
       "groupe": "seul",
       "moteur": "Mesure",
       "titre": "Réglage du goût sur les résultats réels",
@@ -365,7 +375,7 @@
     },
     {
       "n": 39,
-      "rang": 34,
+      "rang": 35,
       "groupe": "seul",
       "moteur": "Mesure",
       "titre": "L'économe compte toutes les dépenses réelles",
@@ -374,7 +384,7 @@
     },
     {
       "n": 36,
-      "rang": 35,
+      "rang": 36,
       "groupe": "seul",
       "moteur": "Fiabilité",
       "titre": "Configuration d'Hermes posée à chaque livraison",
@@ -383,7 +393,7 @@
     },
     {
       "n": 37,
-      "rang": 36,
+      "rang": 37,
       "groupe": "seul",
       "moteur": "Fiabilité",
       "titre": "Page de confidentialité : retirer Oracle Cloud",
@@ -392,7 +402,7 @@
     },
     {
       "n": 38,
-      "rang": 37,
+      "rang": 38,
       "groupe": "seul",
       "moteur": "Fiabilité",
       "titre": "Anciens ordres échoués (14 à 21)",
@@ -401,7 +411,7 @@
     },
     {
       "n": 40,
-      "rang": 38,
+      "rang": 39,
       "groupe": "seul",
       "moteur": "Fiabilité",
       "titre": "Suivi de chaque tâche de bout en bout",
@@ -410,7 +420,7 @@
     },
     {
       "n": 41,
-      "rang": 39,
+      "rang": 40,
       "groupe": "seul",
       "moteur": "Fiabilité",
       "titre": "Un seul flux de réflexion",
@@ -419,23 +429,68 @@
     },
     {
       "n": 5,
-      "rang": 40,
-      "groupe": "basile",
+      "rang": 41,
+      "groupe": "seul",
       "moteur": "Accès",
       "titre": "Chantiers GitHub ouverts par le cerveau",
-      "il_faut": "Un jeton GitHub (droit Issues sur raime-cerveau) au coffre.",
-      "fini_quand": "Le cerveau ouvre un chantier, la routine d'ingénierie le traite en pull request.",
-      "etat": "attend_basile"
+      "fini_quand": "Le jeton GITHUB_CHANTIER_TOKEN (au coffre, vérifié le 02/10/2026 : il voit le dépôt et ses tickets) est donné aux agents ; le cerveau ouvre un chantier, la routine d’ingénierie le traite en pull request.",
+      "etat": "a_faire"
     },
     {
       "n": 27,
-      "rang": 41,
+      "rang": 42,
       "groupe": "basile",
       "moteur": "Contenu",
       "titre": "Clip farming",
       "il_faut": "Décidé le 01/10/2026 : comptes séparés (TikTok, Instagram, YouTube, Page) ; sources = uniquement les créateurs qui lancent une campagne de clipping officielle et rémunérée (Whop « Content Rewards » et équivalents), jamais leurs vidéos sans accord. Reste : les comptes du clip farming.",
       "fini_quand": "D'une vidéo autorisée : moments forts repérés, clips verticaux sous-titrés, source et autorisation notées, en file de publication.",
       "etat": "attend_basile"
+    },
+    {
+      "n": 43,
+      "groupe": "seul",
+      "moteur": "Jarvis",
+      "titre": "Raccord Jarvis → Claude (« demande à Claude de… »)",
+      "etat": "en_cours",
+      "fini_quand": "Une demande adressée à Claude dans Jarvis ouvre un ticket « chantier » ; la routine Ingénierie la traite à son passage (7 h 07, 19 h 07) ; le compte rendu jarvis/ordres/<n°>.md clôt l’ordre ; cinq par jour au plus. Code écrit le 02/10/2026 (jarvis/prestataire.cjs), banc et mise en service à faire.",
+      "rang": 43
+    },
+    {
+      "n": 44,
+      "groupe": "basile",
+      "moteur": "Moteur 3 : rAIme",
+      "titre": "Refonte de raime.fr d’après les références de Basile",
+      "etat": "attend_basile",
+      "il_faut": "Ses captures ou vidéos de référence (motion design clair, épuré). Trois pistes générées refusées le 02/10/2026 (espace 3D v1 et v2, jetons) : on part de ses références, hero d’abord, restriction Sam Crawford.",
+      "fini_quand": "Un hero validé par Basile, puis chaque section validée une à une ; mise en ligne sur raime.fr avec son accord ; version anglaise et mode jour repris.",
+      "rang": 44
+    },
+    {
+      "n": 45,
+      "groupe": "seul",
+      "moteur": "Moteur 3 : rAIme",
+      "titre": "Prospection des automatisations",
+      "etat": "a_faire",
+      "fini_quand": "Sur le modèle des vitrines : l’agent repère des entreprises dont une tâche répétitive se voit (prise de rendez-vous, devis, relances, réponses), prépare une démonstration et un brouillon d’e-mail ; Basile valide avant tout envoi.",
+      "rang": 45
+    },
+    {
+      "n": 46,
+      "groupe": "seul",
+      "moteur": "Moteur 1 : sites à 500 €",
+      "titre": "Juge visuel des sites (laid ou ancien, même récent techniquement)",
+      "etat": "a_faire",
+      "fini_quand": "Chaque site trouvé est capturé (navigateur d’Hermes) et noté par un modèle de vision gratuit ; un site récent mais laid ou illisible sur téléphone devient une cible, avec la raison écrite dans la fiche.",
+      "rang": 46
+    },
+    {
+      "n": 47,
+      "groupe": "seul",
+      "moteur": "Moteur 1 : sites à 500 €",
+      "titre": "Vitrines : toute la France, triée par région",
+      "etat": "a_faire",
+      "fini_quand": "La découverte passe des 5 départements de départ (74, GE, 01, 73, 38) à toute la France, région par région, en gardant l’ordre de priorité ; le tiroir VITRINES filtre par région.",
+      "rang": 47
     }
   ]
 }

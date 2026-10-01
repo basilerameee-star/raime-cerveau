@@ -236,6 +236,21 @@ async function dire(message, { oral = true } = {}) {
     await noter('assistant', reply);
     return { voie: 'budget', reply };
   }
+  // Ce que Basile adresse à Claude part chez Claude (jarvis/prestataire.cjs, 01/10/2026) ; le reste reste à Hermes, gratuit.
+  const prestataire = require('./prestataire.cjs');
+  const confie = prestataire.CONFIER_ORDRE.exec(message);
+  if (confie) {
+    const ok = await prestataire.confierOrdreExistant(+confie[1]);
+    const reply = ok ? `L'ordre ${confie[1]} part chez Claude, à son prochain passage (${prestataire.PASSAGES}).`
+      : `L'ordre ${confie[1]} ne peut pas partir chez Claude : il est déjà en cours, fait, ou n'existe pas.`;
+    await noter('assistant', reply);
+    return { voie: 'claude', reply };
+  }
+  if (prestataire.POUR_CLAUDE.test(message) && !QUESTION.test(message.trim())) {
+    const r = await prestataire.noter(message);
+    await noter('assistant', r.reply);
+    return { voie: 'claude', reply: r.reply, commande: r.id };
+  }
   if (RELANCE.test(message) && /\d/.test(message) && /(ordres?|demandes?|n°|numéros?)\b|\d+\s*(?:et|,)\s*\d+/i.test(message)) return relancerOrdres(message);
   if (NUMEROS_SEULS.test(message)) return relancerOrdres(message); // « 23 et 24 » seul : leur état, rien de neuf
   if (INTENTION_ACTION.test(message)) return noterCommande(message, '');
