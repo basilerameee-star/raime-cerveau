@@ -52,7 +52,7 @@ def chaines():
 
 def lignes(etat):
     r = sql("SELECT coalesce(json_agg(b), '[]') FROM (SELECT * FROM clips_buffer WHERE etat = :'p0' ORDER BY quand LIMIT 20) b;", etat)
-    return json.loads(next((l for l in r.splitlines() if l.startswith("[")), "[]"))
+    return json.loads(r[r.index("["):] if "[" in r else "[]")      # json_agg s'étale sur plusieurs lignes
 
 
 def legendes(campagne, clip):
