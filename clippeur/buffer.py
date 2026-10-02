@@ -94,6 +94,8 @@ def suivre(b):
                ON CONFLICT (campagne, clip, plateforme) DO UPDATE SET lien = EXCLUDED.lien, publie_le = now();""",
             b["campagne"], b["clip"], b["plateforme"], p["externalLink"])
         sql("UPDATE clips_buffer SET etat = 'publie', lien = :'p0', maj = now() WHERE id = :p1;", p["externalLink"], b["id"])
+        with open(os.path.join(CLIPS, b["campagne"], "liens-whop.txt"), "a", encoding="utf-8") as f:
+            f.write(" | ".join((b["clip"], b["plateforme"], p["externalLink"])) + "\n")
     elif statut == "error":
         sql("UPDATE clips_buffer SET etat = 'echec', message = :'p0', maj = now() WHERE id = :p1;",
             ((p.get("error") or {}).get("message") or "erreur Buffer")[:300], b["id"])

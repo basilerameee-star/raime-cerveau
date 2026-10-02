@@ -491,6 +491,24 @@
       "etat": "a_faire",
       "fini_quand": "La découverte passe des 5 départements de départ (74, GE, 01, 73, 38) à toute la France, région par région, en gardant l’ordre de priorité ; le tiroir VITRINES filtre par région.",
       "rang": 47
+    },
+    {
+      "n": 48,
+      "groupe": "seul",
+      "moteur": "Moteur 3 : clip farming (KinGKlip)",
+      "titre": "Pôles de clip farming : 1 pôle = 1 niche = 3 chaînes (YouTube, TikTok, Instagram)",
+      "etat": "en_cours",
+      "fini_quand": "Chaque pôle a son réglage (niche, campagnes, 3 chaînes Buffer) et tourne avec le même programme, sans Claude ; le brief de chaque campagne est obligatoire (pas de brief = pas de découpe) ; clips de 18 à 20 s en moyenne ; pôle 1 = KinGKlip, en service le 02/10/2026 ; le pôle suivant s'ouvre quand le premier rapporte.",
+      "rang": 48
+    },
+    {
+      "n": 49,
+      "groupe": "seul",
+      "moteur": "Moteur 3 : clip farming (KinGKlip)",
+      "titre": "Superviseur des pôles : surveille, coupe ce qui n'avance pas, prévient Basile",
+      "etat": "a_faire",
+      "fini_quand": "Il suit découpes, publications Buffer, échecs et vues par pôle ; dépense plafonnée à 0 € tant que tout est gratuit ; il prévient Basile sur Jarvis et par e-mail (Resend), relance après le délai fixé ; SMS ou appel seulement avec l'accord de Basile (payant).",
+      "rang": 49
     }
   ]
 }

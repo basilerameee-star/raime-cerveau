@@ -5,6 +5,7 @@ Les consignes du brief sont transmises telles quelles au choix des passages. San
 """
 import fcntl
 import json
+import shutil
 import os
 import subprocess
 import sys
@@ -52,6 +53,15 @@ def main():
                 "En attente de la vidéo depuis le PC (YouTube bloque le serveur)", d["id"])
             return
         source = "/sortie/sources/%s.mp4" % d["campagne"]
+    profil = "/opt/raime/clippeur/campagnes/%s.json" % d["campagne"]
+    if not os.path.isfile(profil):                        # le brief d'abord : sans lui, aucune découpe (règle de Basile, 02/10/2026)
+        sql("UPDATE clips_demandes SET etat = 'echec', message = :'p0', maj = now() WHERE id = :p1;",
+            "Brief manquant : déposer clippeur/campagnes/%s.json avant la découpe" % d["campagne"], d["id"])
+        return
+    # le dossier de la campagne rassemble tout : brief et conditions de paiement, source, clips, liens à déclarer à Whop
+    dossier = os.path.join(CLIPS, d["campagne"])
+    os.makedirs(dossier, exist_ok=True)
+    shutil.copyfile(profil, os.path.join(dossier, "brief.json"))
     env = dict(os.environ, GEMINI_API_KEY=cle_gemini())
     cmd = ["docker", "run", "--rm", "-e", "GEMINI_API_KEY", "-v", "%s:/sortie" % CLIPS, "-v", "clippeur-modeles:/root/.cache",
            "-v", "/opt/raime/clippeur/campagnes:/campagnes:ro",

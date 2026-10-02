@@ -51,7 +51,9 @@ async function liste() {
   for (const nom of noms) {
     let info; try { info = JSON.parse(fs.readFileSync(path.join(DOSSIER(), nom, 'clips.json'), 'utf8')); } catch (e) { continue; }
     const st = fs.statSync(path.join(DOSSIER(), nom, 'clips.json'));
-    campagnes.push({ campagne: nom, le: st.mtime, source: info.source, clips: (info.clips || []).map((c) => {
+    let brief = null; try { brief = JSON.parse(fs.readFileSync(path.join(DOSSIER(), nom, 'brief.json'), 'utf8')); } catch (e) { /* sans brief */ }
+    campagnes.push({ campagne: nom, le: st.mtime, source: info.source, brief: brief && { nom: brief.nom, remuneration: brief.remuneration,
+      consignes: brief.consignes, regles: brief.regles_humaines, priorite: brief.priorite_plateformes }, clips: (info.clips || []).map((c) => {
       let legende = ''; try { legende = fs.readFileSync(path.join(DOSSIER(), nom, c.clip.replace(/\.mp4$/, '.txt')), 'utf8'); } catch (e) { /* sans légende */ }
       // une légende par plateforme, avec le tag obligatoire de la campagne (clip-01.json), si le brief en impose
       let legendes = null; try { legendes = JSON.parse(fs.readFileSync(path.join(DOSSIER(), nom, c.clip.replace(/\.mp4$/, '.json')), 'utf8')); } catch (e) { /* sans tags */ }

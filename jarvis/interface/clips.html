@@ -60,6 +60,19 @@ async function api(u, corps) {
   const r = await fetch(u, corps ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corps) } : {});
   return r.json();
 }
+// le dossier de la campagne : conditions de paiement, règles du brief, liens publiés à déclarer à Whop
+function dossier(c) {
+  const b = c.brief || {}, r = b.remuneration || {};
+  const liens = c.clips.flatMap((k) => k.publies.filter((p) => !p.declare_whop).map((p) => `${k.clip} · ${NOMS[p.plateforme] || p.plateforme} : ${p.lien}`));
+  return `<details class="clip" style="padding:12px;margin-top:10px"><summary class="mono">Dossier de la campagne</summary>
+    ${Object.keys(r).length ? `<p style="margin-top:8px">${Object.entries(r).map(([k, v]) => `<b>${esc(k.replace(/_/g, ' '))}</b> : ${esc(v)}`).join('<br>')}</p>` : '<p class="msg">Brief absent.</p>'}
+    ${b.priorite ? `<p class="msg" style="margin-top:8px">${esc(b.priorite)}</p>` : ''}
+    ${(b.regles || []).length ? `<p class="msg">${b.regles.map(esc).join('<br>')}</p>` : ''}
+    <p class="mono" style="margin-top:10px">Liens à déclarer à Whop (${liens.length})</p>
+    ${liens.length ? `<textarea readonly style="min-height:90px">${esc(liens.join('
+'))}</textarea>` : '<p class="msg">Aucun pour l'instant.</p>'}
+  </details>`;
+}
 async function charger() {
   const d = await api('/api/clips');
   document.getElementById('demandes').innerHTML = d.demandes.length ? 'Demandes : ' + d.demandes.map((x) =>
@@ -68,7 +81,8 @@ async function charger() {
   const sig = JSON.stringify(d.campagnes.map((c) => [c.campagne, c.clips.length, c.clips.map((k) => k.buffer.map((b) => b.etat).join())]));
   if (sig === charger.sig) return; charger.sig = sig;
   document.getElementById('campagnes').innerHTML = d.campagnes.map((c) => `
-    <h2>${esc(c.campagne)}</h2><p class="mono">${c.clips.length} clips</p>
+    <h2>${esc(c.brief && c.brief.nom || c.campagne)}</h2><p class="mono">${c.clips.length} clips</p>
+    ${dossier(c)}
     <div class="grille">${c.clips.map((k) => `
       <div class="clip">
         <video src="${k.fichier}" controls preload="metadata" playsinline></video>
