@@ -56,5 +56,15 @@
       "délai moyen de validation"
     ]
   },
-  "rythme": "3 à 4 clips par jour et par compte au départ, puis plus si les vues suivent ; 20 à 30 meilleurs clips par heure de source, étalés."
+  "rythme": "3 à 4 clips par jour et par compte au départ, puis plus si les vues suivent ; 20 à 30 meilleurs clips par heure de source, étalés.",
+  "conseils_selection": [
+    "Paiement à la publication (ex. 10 $ par post validé) plutôt qu'aux vues quand les comptes sont neufs : l'argent ne dépend pas des vues.",
+    "Campagne récente, avec peu de clippeurs pour le budget restant : on arrive avant la saturation.",
+    "Source fournie en 1440p ou plus (sinon refus automatique) et beaucoup de sources (podcasts, épisodes) : des dizaines de clips sans se répéter.",
+    "Délai de soumission : 30 min est faisable à la main ; 10 min demande l'agent de soumission.",
+    "Comptes exigés : neufs ou à thème (ex. Lovable : IA/startup) : vérifier qu'un pôle colle avant de rejoindre.",
+    "Public exigé (tier 1 = USA, Royaume-Uni, Canada, Australie) : publier en anglais, aux heures américaines.",
+    "Gaming (ex. Roblox, gros budgets) : ouvrir un pôle gaming ; préférer les vidéos commentées (streamers) : le clippeur choisit par la parole.",
+    "Écarter : approbation < 30 %, validation > 48 h, budget restant < 500 $, règles impossibles à tenir."
+  ]
 }

@@ -103,6 +103,14 @@ Plus il y a de transformation (accroche à l'image, zooms de relance, découpe n
 - **La monétisation de la chaîne est un effet secondaire du bon travail**, pas un objectif en soi : des clips forts font grossir la chaîne, et la chaîne qui grossit finit par ouvrir ces programmes.
 - **En résumé** : une chaîne de clipping pur se monétise surtout par **Whop et les campagnes payées par les marques**. La monétisation des plateformes est un bonus incertain. Elle devient réaliste si le pôle ajoute un vrai apport original : une série, un commentaire, une voix, un format à soi.
 
+## 12. Format « bandes noires » (par défaut depuis le 02/10/2026, exemple de Basile)
+- **Mise en page** : bande noire en haut avec le titre (question ou promesse de 4 à 9 mots), vidéo **carrée** au centre, sous-titres jaunes et blancs en bas de l'image, bande noire en bas.
+- **Pourquoi c'est mieux** :
+  - l'image n'est jamais grossie : on garde un carré pris dans la hauteur de la source ;
+  - le titre ne cache rien et accroche dès la 1re seconde ;
+  - la transformation est visible, ce qui protège l'originalité du compte.
+- **Réglage** : `"format": "bandes"` (par défaut) ou `"plein"` (ancien plein écran 9:16) dans le brief de la campagne.
+
 ## 11. Test du 02/10/2026 : Claude contre Gemini gratuit (épisode R3born)
 - **Mes choix (Claude)** : des **moments**, pas des scènes. La blague « je démarrais des voitures qui n'étaient pas à moi », l'échec à 2 secondes, le scan corporel (26 % de graisse), « tu n'as pas le droit de dire cus », le pot-de-vin en crypto, la barrière cassée, « tu n'es plus N3on, tu es PI », la blague « je suis un Crip », la prison à Dubaï.
 - **Gemini, ancien prompt** : 10 scènes entières dans l'ordre, qui partent de l'installation (arrivée, visite du magasin, tour du barbecue), de 34 à 43 s, avec des notes gonflées. Environ 2 moments sur 9 en commun avec moi.

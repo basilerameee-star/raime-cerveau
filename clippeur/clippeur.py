@@ -108,7 +108,7 @@ def choisir(mots, langue, n, mini, maxi, consignes, cle):
         "toujours. %s\n"
         "Réponds en JSON : [{\"debut\": s, \"fin\": s, \"moment\": \"la réplique forte, citée\", \"premiere_phrase\": \"la 1re phrase du clip, citée\", "
         "\"pourquoi\": \"en 1 phrase, pourquoi on regarde jusqu'au bout\", \"note\": 1 à 10, "
-        "\"accroche\": \"6 mots au plus, dans la langue de la vidéo : ce qui se passe, jamais une citation, jamais un juron\", "
+        "\"accroche\": \"le titre affiché au-dessus de la vidéo pendant tout le clip, 4 à 9 mots, dans la langue de la vidéo : une question ou une promesse qui donne envie de rester jusqu'au bout (ex. « How does an AI startup actually make money? »), toujours vraie, jamais une citation, jamais un juron, sans emoji\", "
         "\"titre\": \"titre de publication, 60 caractères au plus, fidèle à la scène\", "
         "\"question\": \"une question courte, dans la langue de la vidéo, sur ce moment précis, qui donne envie de commenter (jamais de juron, jamais trompeuse)\", "
         "\"hashtags\": [\"3 à 5\"]}]\n\n%s"
@@ -171,18 +171,24 @@ def ass_temps(s):
     return "%d:%02d:%05.2f" % (s // 3600, (s % 3600) // 60, s % 60)
 
 
-def sous_titres(mots, debut, fin, accroche, chemin, avec_mots=True):
+def sous_titres(mots, debut, fin, accroche, chemin, avec_mots=True, format_="plein"):
     """Sous-titres ASS : groupes de 3 mots, le mot prononcé en plein blanc, les autres en blanc atténué ;
     l'accroche en haut pendant 2,5 s. Aucune animation clignotante."""
-    tete = ("[Script Info]\nScriptType: v4.00+\nPlayResX: 1080\nPlayResY: 1920\nWrapStyle: 2\n\n"
+    bandes = format_ == "bandes"                         # format « bandes noires » : titre en haut, vidéo carrée au centre
+    tete = ("[Script Info]\nScriptType: v4.00+\nPlayResX: 1080\nPlayResY: 1920\nWrapStyle: 0\n\n"
             "[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, "
             "Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n"
-            "Style: Mot,Inter,100,&H00F5F5F5,&H00F5F5F5,&H00000000,&H64000000,1,0,0,0,100,100,0,0,1,6,3,2,70,70,600,1\n"
-            "Style: Accroche,Inter,76,&H00111111,&H00111111,&H00FFFFFF,&H00FFFFFF,1,0,0,0,100,100,0,0,3,22,0,8,70,70,250,1\n\n"
+            + ("Style: Mot,Inter,92,&H00F5F5F5,&H00F5F5F5,&H00000000,&H64000000,1,0,0,0,100,100,0,0,1,6,3,2,70,70,590,1\n"
+               "Style: Titre,Inter,66,&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,1,0,0,0,100,100,0,0,1,0,0,2,90,90,1530,1\n"
+               if bandes else
+               "Style: Mot,Inter,100,&H00F5F5F5,&H00F5F5F5,&H00000000,&H64000000,1,0,0,0,100,100,0,0,1,6,3,2,70,70,600,1\n")
+            + "Style: Accroche,Inter,76,&H00111111,&H00111111,&H00FFFFFF,&H00FFFFFF,1,0,0,0,100,100,0,0,3,22,0,8,70,70,250,1\n\n"
             "[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n")
     ev = []
-    if accroche:
-        pass  # bandeau de titre retiré le 02/10/2026 (jugé laid) ; l accroche reste dans les légendes
+    if accroche and bandes:                              # le titre vit dans la bande noire du haut : il ne cache rien
+        ev.append("Dialogue: 1,%s,%s,Titre,,0,0,0,,%s" % (ass_temps(0), ass_temps(fin - debut), censurer(accroche.replace(chr(10), " "))))
+    elif accroche:
+        pass  # bandeau de titre sur l'image retiré le 02/10/2026 (jugé laid) ; l'accroche reste dans les légendes
         # ev.append("Dialogue: 1,%s,%s,Accroche,,0,0,0,,%s" % (ass_temps(0), ass_temps(fin - debut), censurer(accroche.replace("\n", " ")).upper()))
     dans = [w for w in mots if w["d"] >= debut - .05 and w["f"] <= fin + .05 and w["m"]] if avec_mots else []
     # des groupes de 3 mots au plus, qui ne traversent jamais une fin de phrase
@@ -254,7 +260,7 @@ def recaler(mots, garde):
     return out, t0
 
 
-def monter(source, debut, fin, ass, sortie, cadrage="visage", garde=None):
+def monter(source, debut, fin, ass, sortie, cadrage="visage", garde=None, format_="plein"):
     if garde and len(garde) > 1:
         sel = "+".join("between(t,%.2f,%.2f)" % (a, b) for a, b in garde)
         coupe = "[0:v]select='%s',setpts=N/FRAME_RATE/TB[vc];[0:a]aselect='%s',asetpts=N/SR/TB[ac]" % (sel, sel)
@@ -265,6 +271,16 @@ def monter(source, debut, fin, ass, sortie, cadrage="visage", garde=None):
     cx = centre_visage(source, debut, fin) if cadrage == "visage" else None
     if cx is None and cadrage == "centre":
         cx = .5                                          # plein écran au centre : les sous-titres incrustés de la source restent lisibles
+    if format_ == "bandes":
+        # bandes noires : un carré net pris dans la hauteur de la source (jamais grossi : 1440p ou plus donne 1080 px),
+        # centré sur le visage, posé entre une bande haute (titre) et une bande basse ; les sous-titres en bas de l'image
+        c = .5 if cx is None else cx
+        filtre = ("[0:v]crop=ih:ih:'max(0,min(iw-ih,%.4f*iw-ih/2))':0,scale=1080:1080:flags=lanczos,unsharp=3:3:0.3:3:3:0.0,"
+                  "pad=1080:1920:0:420:black,subtitles=%s:fontsdir=/usr/share/fonts[v]" % (c, str(ass).replace(":", "\\:")))
+        lancer(["ffmpeg", "-y", "-ss", "%.2f" % debut, "-to", "%.2f" % fin, "-i", str(source), "-filter_complex", filtre,
+                "-map", "[v]", "-map", "0:a?", "-r", "30", "-c:v", "libx264", "-preset", "slow", "-crf", "16", "-pix_fmt", "yuv420p",
+                "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", str(sortie)])
+        return
     if cx is not None:
         # recadrage plein écran sur le visage : une fenêtre 9:16 dans la hauteur de la source, centrée sur lui
         filtre = ("[0:v]crop='min(iw,ih*9/16)':ih:'max(0,min(iw-ih*9/16,%.4f*iw-ih*9/32))':0,scale='if(gt(ih,1920),1080,trunc(ih*9/32)*2)':'if(gt(ih,1920),1920,ih)':flags=lanczos,unsharp=3:3:0.4:3:3:0.0,"
@@ -336,10 +352,10 @@ def main():
         garde = sans_blancs(mots, c["debut"], c["fin"]) if profil.get("sans_blancs", True) else [(c["debut"], c["fin"])]
         if len(garde) > 1:
             mots_c, duree = recaler(mots, garde)
-            sous_titres(mots_c, 0, duree, c.get("accroche", ""), ass, profil.get("sous_titres", True))
+            sous_titres(mots_c, 0, duree, c.get("accroche", ""), ass, profil.get("sous_titres", True), profil.get("format", "bandes"))
         else:
-            sous_titres(mots, c["debut"], c["fin"], c.get("accroche", ""), ass, profil.get("sous_titres", True))
-        monter(source, c["debut"], c["fin"], ass, mp4, profil.get("cadrage", "visage"), garde)
+            sous_titres(mots, c["debut"], c["fin"], c.get("accroche", ""), ass, profil.get("sous_titres", True), profil.get("format", "bandes"))
+        monter(source, c["debut"], c["fin"], ass, mp4, profil.get("cadrage", "visage"), garde, profil.get("format", "bandes"))
         try:
             os.remove(str(mp4) + ".coupe.mp4")
         except OSError:
