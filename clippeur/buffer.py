@@ -10,6 +10,9 @@ créneau (heure du soir à New York). Ce script, lancé par cron toutes les 2 mi
 Sans Claude, sans frais. Chaque ligne vient d'un clic de Basile : le clic vaut accord, clip par clip.
 """
 import fcntl
+import hashlib
+import hmac
+import time
 import json
 import os
 import urllib.request
@@ -66,11 +69,25 @@ def legendes(campagne, clip):
     return leg, info.get("titre", ""), texte
 
 
+def lien_public(campagne, clip, duree=7 * 86400):
+    """Le même lien signé que le cockpit (jarvis/clips.cjs, clé CLIPS_SIGNATURE du coffre) : 7 jours, fichiers des clips seulement."""
+    cle_sig = next((l.split("=", 1)[1].strip().strip('"') for l in open(COFFRE, encoding="utf-8") if l.startswith("CLIPS_SIGNATURE=")), "")
+    if not cle_sig:
+        raise RuntimeError("CLIPS_SIGNATURE absente du coffre : ouvrir une fois la page Clips")
+    exp = int(time.time()) + duree
+    sig = hmac.new(cle_sig.encode(), ("%d/%s/%s" % (exp, campagne, clip)).encode(), hashlib.sha256).hexdigest()[:32]
+    return "https://cockpit.raime.fr/pubclip/%d/%s/%s/%s" % (exp, sig, campagne, clip)
+
+
+class FileBufferPleine(Exception):
+    """La file Buffer de la chaîne est pleine (offre gratuite) : on réessaiera plus tard, sans échec."""
+
+
 def programmer(b, ids):
     camp, clip, pl = b["campagne"], b["clip"], b["plateforme"]
     if pl not in ids:
         raise RuntimeError("Chaîne %s absente de Buffer : la brancher dans Buffer." % pl)
-    url = b["url"]
+    url = b.get("url") or lien_public(camp, clip)
     leg, titre, texte = legendes(camp, clip)
     meta = {"youtube": {"youtube": {"title": (titre or "N3on R3born")[:100], "privacy": "public", "madeForKids": False,
                                     "notifySubscribers": True, "categoryId": "24"}},
@@ -81,7 +98,10 @@ def programmer(b, ids):
     d = buffer("""mutation($e: CreatePostInput!) { createPost(input: $e) {
         ... on PostActionSuccess { post { id } } ... on MutationError { message } } }""", {"e": entree})["createPost"]
     if not d.get("post"):
-        raise RuntimeError(d.get("message") or "Buffer a refusé la publication")
+        msg = d.get("message") or "Buffer a refusé la publication"
+        if "limit" in msg.lower():
+            raise FileBufferPleine(msg)
+        raise RuntimeError(msg)
     sql("UPDATE clips_buffer SET etat = 'programme', post_id = :'p0', message = NULL, maj = now() WHERE id = :p1;", d["post"]["id"], b["id"])
 
 
@@ -114,10 +134,14 @@ def main():
            ALTER TABLE clips_buffer ADD COLUMN IF NOT EXISTS url text;""")
     a_faire = lignes("a_faire")
     if a_faire:
-        ids = chaines()
+        ids, pleines = chaines(), set()
         for b in a_faire:
+            if b["plateforme"] in pleines:
+                continue
             try:
                 programmer(b, ids)
+            except FileBufferPleine:
+                pleines.add(b["plateforme"])               # la suite attend que Buffer publie et libère de la place
             except Exception as e:
                 sql("UPDATE clips_buffer SET etat = 'echec', message = :'p0', maj = now() WHERE id = :p1;", str(e)[:300], b["id"])
     for b in lignes("programme"):

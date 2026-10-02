@@ -76,6 +76,17 @@ def main():
     fin = [l for l in r.stdout.splitlines() if l.startswith("FINI")]
     if r.returncode == 0 and fin:
         sql("UPDATE clips_demandes SET etat = 'fait', message = :'p0', maj = now() WHERE id = :p1;", fin[-1][:300], d["id"])
+        # publication automatique (brief : "publication_auto": true, accord de Basile du 02/10/2026) : chaque clip entre
+        # dans la file Buffer des 3 chaînes ; buffer.py l'envoie au rythme des créneaux réglés dans Buffer
+        if json.load(open(profil, encoding="utf-8")).get("publication_auto"):
+            try:
+                clips = json.load(open(os.path.join(dossier, "clips.json"), encoding="utf-8"))["clips"]
+            except (OSError, ValueError, KeyError):
+                clips = []
+            for c in clips:
+                for pl in ("youtube", "tiktok", "instagram"):
+                    sql("""INSERT INTO clips_buffer (campagne, clip, plateforme, quand) VALUES (:'p0', :'p1', :'p2', now())
+                           ON CONFLICT (campagne, clip, plateforme) DO NOTHING;""", d["campagne"], c["clip"], pl)
     else:
         sql("UPDATE clips_demandes SET etat = 'echec', message = :'p0', maj = now() WHERE id = :p1;",
             (r.stderr or r.stdout)[-300:].replace("\n", " "), d["id"])

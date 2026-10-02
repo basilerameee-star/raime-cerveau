@@ -45,5 +45,6 @@
     "plateformes": "YouTube, TikTok, Instagram, X",
     "budget_restant_le_02_10": "3 700 $ (YouTube 2 590 $, autres 370 $ chacune)",
     "paiement": "vues comptées 7 jours après validation, puis 3 jours de blocage"
-  }
+  },
+  "publication_auto": true
 }
