@@ -86,6 +86,13 @@ Plus il y a de transformation (accroche à l'image, zooms de relance, découpe n
 - **seuls les passages notés 7 ou plus sont gardés** ;
 - un passage peut être plus long (jusqu'à 45 à 60 s) quand il tient de bout en bout et que le brief le permet.
 
+**Ce que vaut la note aujourd'hui** : c'est une **estimation** faite par Gemini à partir de la seule transcription (le texte). Elle ne voit ni l'image, ni l'énergie de la voix, ni les vues réelles. Elle n'est donc pas encore vérifiable.
+**Pour la rendre vérifiable (avec l'agent Analytics)** :
+1. La note prédite est gardée pour chaque clip, dans `clips.json`.
+2. Après 7 jours, on la compare aux vues réelles et à la rétention.
+3. On ajoute des critères **mesurés**, pas estimés : le débit de paroles dans les 3 premières secondes, l'absence de blanc, une question ou un nom connu au début, la durée, une chute présente.
+4. La grille garde les critères qui prédisent vraiment les vues et abandonne les autres.
+
 **Indicateur à suivre (agent Analytics)** : les vues moyennes par clip et la part de clips au-dessus de 3 000 vues, plus que le nombre de clips publiés.
 
 ## 10. Monétiser la chaîne elle-même (à part de Whop)
@@ -93,6 +100,7 @@ Plus il y a de transformation (accroche à l'image, zooms de relance, découpe n
 - **TikTok (Creator Rewards)** : 10 000 abonnés, 100 000 vues sur 30 jours, des vidéos de plus d'une minute, et un contenu jugé original. Les clips simples sont souvent marqués « non original ».
 - **Instagram** : la monétisation directe des Reels est très limitée (bonus sur invitation).
 - **Les droits** : même si la marque autorise la diffusion pour sa campagne, les revenus publicitaires de la plateforme sur son contenu peuvent être réclamés par l'ayant droit (Content ID sur YouTube).
+- **La monétisation de la chaîne est un effet secondaire du bon travail**, pas un objectif en soi : des clips forts font grossir la chaîne, et la chaîne qui grossit finit par ouvrir ces programmes.
 - **En résumé** : une chaîne de clipping pur se monétise surtout par **Whop et les campagnes payées par les marques**. La monétisation des plateformes est un bonus incertain. Elle devient réaliste si le pôle ajoute un vrai apport original : une série, un commentaire, une voix, un format à soi.
 
 ## Sources

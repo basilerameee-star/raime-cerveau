@@ -321,7 +321,9 @@ def main():
             q = censurer(c.get("question", "")).strip()       # la légende finit par une question (commentaires)
             par = {pl: "%s %s\n\n%s%s" % (c.get("titre", ""), tg, (q + "\n\n") if q else "", " ".join(tags_h)) for pl, tg in profil["tags"].items()}
             (dossier / ("clip-%02d.json" % k)).write_text(json.dumps(par, ensure_ascii=False, indent=1), encoding="utf-8")
-        rendus.append(dict(clip=mp4.name, debut=c["debut"], fin=c["fin"], titre=c.get("titre", ""), accroche=c.get("accroche", "")))
+        # la note prédite est gardée : l'agent Analytics la comparera aux vues réelles pour calibrer la notation
+        rendus.append(dict(clip=mp4.name, debut=c["debut"], fin=c["fin"], titre=c.get("titre", ""), accroche=c.get("accroche", ""),
+                           note=c.get("note")))
         print("clip %d : %.0f-%.0f s · %s" % (k, c["debut"], c["fin"], c.get("titre", "")), flush=True)
     (dossier / "clips.json").write_text(json.dumps(dict(source=o.url, langue=langue, clips=rendus), ensure_ascii=False, indent=1), encoding="utf-8")
     print("FINI : %d clips dans %s" % (len(rendus), dossier))
