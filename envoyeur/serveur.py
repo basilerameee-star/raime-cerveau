@@ -1,0 +1,225 @@
+"""L'Envoyeur de Jarvis, sur le serveur, 24 h/24 (02/10/2026) — sans Claude, sans frais.
+
+Boucle : chaque heure, il prend la file des candidatures validées dans Jarvis et postule ; chaque matin (7 h),
+il collecte les offres et les envoie à Jarvis, qui écrit les fiches avec les modèles gratuits.
+Son navigateur (Chromium, profil /data/navigateur) tourne dans un écran virtuel visible par Basile via
+cockpit.raime.fr/navigateur/ (derrière le mot de passe du Cockpit) : Basile s'y connecte une fois aux sites ;
+l'Envoyeur ne voit ni ne stocke aucun mot de passe.
+
+Données (HORS dépôt, volume /data) : jeton.txt, profil_candidat.json, cv/*.pdf, offres.json, deja_dans_jarvis.json.
+Commandes : python serveur.py            -> la boucle
+            python serveur.py connexion  -> ouvre les pages de connexion (Basile se connecte, puis ferme)
+            python serveur.py passage    -> un passage d'envoi tout de suite
+            python serveur.py collecte   -> une collecte tout de suite
+"""
+import json
+import os
+import re
+import sys
+import time
+import traceback
+import urllib.request
+from pathlib import Path
+
+from playwright.sync_api import sync_playwright
+
+from jobcloud import AToi, postuler
+
+DONNEES = Path(os.environ.get("DONNEES", "/data"))
+JARVIS = os.environ.get("JARVIS_URL", "http://cockpit:8090")
+JOURNAL = DONNEES / "envoyeur.log"
+CV = {"Vente": "CV_Suisse_Vente", "Commercial": "CV_Suisse_Commercial", "Sales EN": "CV_Suisse_Sales_EN",
+      "Vente + IA": "CV_Suisse_Vente_IA", "Commercial (France)": "CV_Basile_Rame_Commercial"}
+PAR_PASSAGE = int(os.environ.get("PAR_PASSAGE", "15"))
+SITES_CONNEXION = ["https://www.jobup.ch/fr/login/", "https://www.jobs.ch/fr/login/", "https://secure.indeed.com/auth",
+                   "https://www.hellowork.com/fr-fr/candidat/connexion.html", "https://www.welcometothejungle.com/fr/signin",
+                   "https://candidat.francetravail.fr/espacepersonnel/"]
+
+
+def dire(t):
+    DONNEES.mkdir(parents=True, exist_ok=True)
+    with JOURNAL.open("a", encoding="utf-8") as f:
+        f.write(time.strftime("%Y-%m-%d %H:%M ") + t + "\n")
+    print(t, flush=True)
+
+
+def jeton():
+    return (DONNEES / "jeton.txt").read_text().strip()
+
+
+def jarvis(chemin, donnees=None):
+    req = urllib.request.Request(JARVIS + chemin, method="POST" if donnees is not None else "GET",
+                                 data=json.dumps(donnees).encode() if donnees is not None else None,
+                                 headers={"x-envoyeur-jeton": jeton(), "Content-Type": "application/json"})
+    return json.loads(urllib.request.urlopen(req, timeout=120).read())
+
+
+def profil():
+    return json.loads((DONNEES / "profil_candidat.json").read_text(encoding="utf-8"))
+
+
+def contexte(pw):
+    (DONNEES / "navigateur").mkdir(parents=True, exist_ok=True)
+    return pw.chromium.launch_persistent_context(
+        str(DONNEES / "navigateur"), headless=False, locale="fr-CH", viewport={"width": 1366, "height": 900},
+        args=["--disable-blink-features=AutomationControlled", "--no-sandbox"])
+
+
+CSS = """@page{size:A4;margin:0}*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DejaVu Sans',Arial,sans-serif;color:#333;font-size:10.5pt;line-height:1.5}
+.p{width:210mm;min-height:297mm;padding:22mm 22mm 18mm}
+.h{display:flex;justify-content:space-between;border-bottom:1px solid #cfcfcf;padding-bottom:5mm;margin-bottom:12mm}
+.h b{font-size:18pt;color:#3a3a3a;display:block}.h small{color:#555;font-size:9pt;text-align:right}
+.d{text-align:right;color:#555;margin-bottom:8mm}.o{font-weight:600;margin-bottom:8mm}
+p{margin-bottom:4mm;white-space:pre-wrap}"""
+
+
+def esc(s):
+    return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def dossier(ctx, f, p):
+    """CV et lettre PDF de la fiche (la lettre telle que validée dans Jarvis)."""
+    dos = DONNEES / "envoi" / f["id"]
+    dos.mkdir(parents=True, exist_ok=True)
+    cv = DONNEES / "cv" / f"{CV.get(f.get('cv'), 'CV_Suisse_Vente')}.pdf"
+    (dos / "CV_Basile_Rame.pdf").write_bytes(cv.read_bytes())
+    corps = (f.get("lettre") or "").rsplit("\n\nBasile Rame", 1)[0]
+    en = f.get("langue") == "Anglais"
+    html = (f"<!doctype html><html><head><meta charset='utf-8'><style>{CSS}</style></head><body><div class='p'>"
+            f"<div class='h'><b>{esc(p['prenom'])} {esc(p['nom'])}</b><small>{esc(p['ville'])} ({'F' if p['pays'] == 'France' else p['pays']})"
+            f"<br>{esc(p['telephone'])}<br>{esc(p['email'])}</small></div>"
+            f"<div class='d'>{esc(p['ville'])}, {time.strftime('%d.%m.%Y')}</div>"
+            f"<div class='o'>{esc(('Application: ' if en else 'Candidature : ') + f['titre'])}</div>"
+            + "".join(f"<p>{esc(x)}</p>" for x in corps.split("\n\n"))
+            + f"<p>{esc(p['prenom'])} {esc(p['nom'])}</p></div></body></html>")
+    pg = ctx.new_page()
+    pg.set_content(html)
+    pg.pdf(path=str(dos / "Lettre_Basile_Rame.pdf"), format="A4", print_background=True)
+    pg.close()
+    return dos
+
+
+def passage():
+    try:
+        file = jarvis("/envoyeur/file")
+    except Exception as e:
+        dire(f"Jarvis injoignable : {e}")
+        return
+    auto = [f for f in file if f["source"] in ("jobup", "jobs.ch") and f.get("methode", "").endswith("FORMULAR")][:PAR_PASSAGE]
+    if not auto:
+        return
+    p = profil()
+    with sync_playwright() as pw:
+        ctx = contexte(pw)
+        page = ctx.new_page()
+        for f in auto:
+            r = {"id": f["id"], "source": f["source"]}
+            try:
+                dos = dossier(ctx, f, p)
+                out = postuler(page, f["source"], f["id"], dos / "CV_Basile_Rame.pdf", dos / "Lettre_Basile_Rame.pdf",
+                               code_postal=p.get("code_postal", ""), texte_lettre=f.get("lettre") or "", email=p["email"])
+                r.update(out)
+                r["statut"] = "envoye" if out.get("envoye") else "deja"
+            except AToi as e:
+                # Plus rien « à toi » : ce que l'Envoyeur ne peut pas faire honnêtement est abandonné (raison gardée).
+                r.update(statut="expiree" if e.motif in ("expiree", "question", "formulaire") else e.motif,
+                         detail=f"{e.motif} : {e.detail}")
+            except Exception as e:
+                r.update(statut="erreur", detail=f"{type(e).__name__}: {str(e)[:300]}")
+                with (DONNEES / "erreurs.log").open("a", encoding="utf-8") as fl:
+                    fl.write(time.strftime("%Y-%m-%d %H:%M ") + f["id"] + "\n" + traceback.format_exc() + "\n")
+            dire(f"{r['statut']:10} {f['titre'][:60]} — {f['entreprise'][:30]}")
+            try:
+                jarvis("/envoyeur/resultat", r)
+            except Exception as e:
+                dire(f"  résultat non transmis : {e}")
+            if r["statut"] == "reconnexion":
+                break
+            time.sleep(20)
+        ctx.close()
+
+
+def collecte():
+    import subprocess
+    ici = Path(__file__).resolve().parent / "collecte"
+    env = {**os.environ, "DONNEES": str(DONNEES), "PYTHONIOENCODING": "utf-8"}
+    for s in ("chasse.py", "chasse_fr.py", "chasse_plus.py"):
+        r = subprocess.run([sys.executable, str(ici / s)], cwd=ici, env=env, capture_output=True, text=True)
+        dire(f"{s} : {(r.stdout or '').strip().splitlines()[-1:] or r.returncode}")
+    sys.path.insert(0, str(ici))
+    from canaux import canal_jobcloud
+    from chasse import ZONE
+    vente = re.compile(r"vendeu|vente|sales|client advisor|conseill|commercial|business develop|account|store|magasin|boutique|"
+                       r"retail|caiss|h[ôo]te|customer|key holder|ambassad|promot|recrut|placement|personnel|\bIA\b|\bAI\b|"
+                       r"intelligence artificielle|automati|t[ée]l[ée]vente|chef de rayon|floor manager|trainee", re.I)
+    non = re.compile(r"CFC|AFP|apprenti|stagiaire|stage|intern\b|internship|engineer|ing[ée]nieur|d[ée]veloppeu|developer|"
+                     r"technicien|logisti|magasinier|chauffeur|cuisin|boulang|bouch|poissonn|nurse|infirm|m[ée]decin|pharma|"
+                     r"comptab|accountant|controller|finance|trader|juris|avocat|verk[äa]uf|mitarbeiter|berater|leiter|"
+                     r"deutsch|german|horloger\b|postdoc|phd|doctora|professeur|teaching", re.I)
+
+    def cle(o):
+        t = re.sub(r"\(.*?\)|\d+\s*%|\b(h/f|f/h|m/f|f/m|h/f/d|m/w|m/f/d|f/h/d)\b", "", o["titre"].lower())
+        return re.sub(r"\W+", "", t)[:40] + "|" + re.sub(r"\W+", "", (o.get("entreprise") or "").lower())[:12]
+
+    base = json.loads((DONNEES / "offres.json").read_text(encoding="utf-8"))
+    fdeja = DONNEES / "deja_dans_jarvis.json"
+    deja = set(json.loads(fdeja.read_text(encoding="utf-8"))) if fdeja.exists() else set()
+    lot = []
+    for o in base.values():
+        if o["id"] in deja or cle(o) in deja:
+            continue
+        if not vente.search(o["titre"]) or non.search(o["titre"]) or not ZONE.search(o.get("lieu") or ""):
+            continue
+        t = [x for x in (o.get("taux") or []) if x]
+        if t and max(t) < (80 if o.get("pays") == "FR" else 50):
+            continue
+        if o["source"] in ("jobup", "jobs.ch"):
+            try:
+                c = canal_jobcloud(o["lien"])
+                o["methode"], o["url_externe"] = c.get("methode", ""), c.get("url_externe", "")
+            except Exception:
+                pass
+            time.sleep(0.5)
+        lot.append(o)
+    ajout = 0
+    for i in range(0, len(lot), 100):
+        ajout += jarvis("/envoyeur/offres", lot[i:i + 100]).get("ajout", 0)
+    for o in lot:
+        deja.add(o["id"]); deja.add(cle(o))
+    fdeja.write_text(json.dumps(sorted(deja)), encoding="utf-8")
+    dire(f"collecte : {len(lot)} offres pertinentes, {ajout} nouvelles pour Jarvis")
+
+
+def connexion():
+    """Ouvre les pages de connexion dans le navigateur visible via noVNC ; se ferme seule après 30 minutes."""
+    with sync_playwright() as pw:
+        ctx = contexte(pw)
+        for u in SITES_CONNEXION:
+            ctx.new_page().goto(u)
+        dire("connexion : pages ouvertes, Basile se connecte (30 min)")
+        time.sleep(1800)
+        ctx.close()
+
+
+def boucle():
+    dernier_jour = None
+    while True:
+        if (DONNEES / "pause").exists():
+            time.sleep(60)
+            continue
+        if time.localtime().tm_hour >= 7 and dernier_jour != time.strftime("%Y-%m-%d"):
+            try:
+                collecte()
+            except Exception as e:
+                dire(f"collecte en échec : {e}")
+            dernier_jour = time.strftime("%Y-%m-%d")
+        try:
+            passage()
+        except Exception as e:
+            dire(f"passage en échec : {e}")
+        time.sleep(3600)
+
+
+if __name__ == "__main__":
+    {"connexion": connexion, "passage": passage, "collecte": collecte}.get(sys.argv[1] if len(sys.argv) > 1 else "", boucle)()
