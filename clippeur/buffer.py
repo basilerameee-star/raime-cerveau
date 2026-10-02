@@ -1,0 +1,136 @@
+# -*- coding: utf-8 -*-
+"""Le relais Buffer (02/10/2026) : programme sur les comptes KinGKlip les clips que Basile a validés sur /clips.
+
+Basile clique « Programmer » sur un clip : le cockpit inscrit une ligne par plateforme dans clips_buffer, avec son
+créneau (heure du soir à New York). Ce script, lancé par cron toutes les 2 minutes sur le serveur :
+  1. dépose le clip dans R2 (raime-backups/clips-relais/, dossier à part des sauvegardes) et en tire un lien signé 7 jours ;
+  2. crée la publication programmée dans Buffer (clé BUFFER_API_KEY du coffre, jamais affichée) ;
+  3. une fois la publication partie, note son lien dans clips_publies (à déclarer à Whop) et retire le clip de R2.
+Sans Claude, sans frais. Chaque ligne vient d'un clic de Basile : le clic vaut accord, clip par clip.
+"""
+import fcntl
+import json
+import os
+import subprocess
+import urllib.request
+
+from file import sql, CLIPS, COFFRE
+
+VERROU = "/tmp/clippeur-buffer.lock"
+RELAIS = "r2:raime-backups/clips-relais"
+SERVICES = {"youtube": "youtube", "tiktok": "tiktok", "instagram": "instagram"}
+
+
+def cle():
+    for ligne in open(COFFRE, encoding="utf-8"):
+        if ligne.startswith("BUFFER_API_KEY="):
+            return ligne.split("=", 1)[1].strip().strip('"')
+    return ""
+
+
+def buffer(requete, variables=None):
+    k = cle()
+    req = urllib.request.Request("https://api.buffer.com", data=json.dumps({"query": requete, "variables": variables or {}}).encode(),
+                                 headers={"Content-Type": "application/json", "Authorization": "Bearer " + k})
+    d = json.loads(urllib.request.urlopen(req, timeout=60).read().decode())
+    if d.get("errors"):
+        raise RuntimeError(json.dumps(d["errors"])[:300].replace(k, "***"))
+    return d["data"]
+
+
+def chaines():
+    """Les chaînes branchées dans Buffer, par service (youtube, tiktok, instagram)."""
+    orgs = buffer("{ account { organizations { id } } }")["account"]["organizations"]
+    out = {}
+    for o in orgs:
+        for c in buffer("query($i: ChannelsInput!) { channels(input: $i) { id service } }", {"i": {"organizationId": o["id"]}})["channels"]:
+            out.setdefault(str(c["service"]).lower(), c["id"])
+    return out
+
+
+def lignes(etat):
+    r = sql("SELECT coalesce(json_agg(b), '[]') FROM (SELECT * FROM clips_buffer WHERE etat = :'p0' ORDER BY quand LIMIT 20) b;", etat)
+    return json.loads(next((l for l in r.splitlines() if l.startswith("[")), "[]"))
+
+
+def legendes(campagne, clip):
+    base = os.path.join(CLIPS, campagne, clip[:-4])
+    try:
+        leg = json.load(open(base + ".json", encoding="utf-8"))
+    except (OSError, ValueError):
+        leg = {}
+    try:
+        info = next(c for c in json.load(open(os.path.join(CLIPS, campagne, "clips.json"), encoding="utf-8"))["clips"] if c["clip"] == clip)
+    except (OSError, ValueError, StopIteration):
+        info = {}
+    texte = open(base + ".txt", encoding="utf-8").read() if os.path.isfile(base + ".txt") else ""
+    return leg, info.get("titre", ""), texte
+
+
+def programmer(b, ids):
+    camp, clip, pl = b["campagne"], b["clip"], b["plateforme"]
+    local = os.path.join(CLIPS, camp, clip)
+    if pl not in ids:
+        raise RuntimeError("Chaîne %s absente de Buffer : la brancher dans Buffer." % pl)
+    distant = "%s/%s/%s" % (RELAIS, camp, clip)
+    subprocess.run(["rclone", "copyto", local, distant], check=True, capture_output=True)
+    url = subprocess.run(["rclone", "link", "--expire", "168h", distant], check=True, capture_output=True, text=True).stdout.strip()
+    leg, titre, texte = legendes(camp, clip)
+    meta = {"youtube": {"youtube": {"title": (titre or "N3on R3born")[:100], "privacy": "public", "madeForKids": False,
+                                    "notifySubscribers": True, "categoryId": "24"}},
+            "tiktok": {"tiktok": {"title": titre[:90]}},
+            "instagram": {"instagram": {"type": "reel", "shouldShareToFeed": True}}}[pl]
+    entree = {"channelId": ids[pl], "text": (leg.get(pl) or texte)[:2200], "mode": "customScheduled", "dueAt": b["quand"],
+              "schedulingType": "automatic", "needsApproval": False, "assets": [{"video": {"url": url}}], "metadata": meta}
+    d = buffer("""mutation($e: CreatePostInput!) { createPost(input: $e) {
+        ... on PostActionSuccess { post { id } } ... on MutationError { message } } }""", {"e": entree})["createPost"]
+    if not d.get("post"):
+        raise RuntimeError(d.get("message") or "Buffer a refusé la publication")
+    sql("UPDATE clips_buffer SET etat = 'programme', post_id = :'p0', message = NULL, maj = now() WHERE id = :p1;", d["post"]["id"], b["id"])
+
+
+def suivre(b):
+    """La publication est partie ? On note son lien (à déclarer à Whop) et on retire le clip du relais."""
+    p = buffer("query($i: PostInput!) { post(input: $i) { status externalLink error { message } } }", {"i": {"id": b["post_id"]}})["post"]
+    statut = str(p.get("status", "")).lower()
+    if statut == "sent" and p.get("externalLink"):
+        sql("""INSERT INTO clips_publies (campagne, clip, plateforme, lien) VALUES (:'p0', :'p1', :'p2', :'p3')
+               ON CONFLICT (campagne, clip, plateforme) DO UPDATE SET lien = EXCLUDED.lien, publie_le = now();""",
+            b["campagne"], b["clip"], b["plateforme"], p["externalLink"])
+        sql("UPDATE clips_buffer SET etat = 'publie', lien = :'p0', maj = now() WHERE id = :p1;", p["externalLink"], b["id"])
+    elif statut == "error":
+        sql("UPDATE clips_buffer SET etat = 'echec', message = :'p0', maj = now() WHERE id = :p1;",
+            ((p.get("error") or {}).get("message") or "erreur Buffer")[:300], b["id"])
+    else:
+        return
+    if not sql("SELECT 1 FROM clips_buffer WHERE campagne = :'p0' AND clip = :'p1' AND etat IN ('a_faire', 'programme') LIMIT 1;", b["campagne"], b["clip"]):
+        subprocess.run(["rclone", "deletefile", "%s/%s/%s" % (RELAIS, b["campagne"], b["clip"])], capture_output=True)
+
+
+def main():
+    verrou = open(VERROU, "w")
+    try:
+        fcntl.flock(verrou, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        return
+    sql("""CREATE TABLE IF NOT EXISTS clips_buffer (id serial PRIMARY KEY, campagne text NOT NULL, clip text NOT NULL,
+           plateforme text NOT NULL, quand timestamptz NOT NULL, etat text NOT NULL DEFAULT 'a_faire', post_id text, lien text,
+           message text, cree_le timestamptz NOT NULL DEFAULT now(), maj timestamptz NOT NULL DEFAULT now(),
+           UNIQUE (campagne, clip, plateforme));""")
+    a_faire = lignes("a_faire")
+    if a_faire:
+        ids = chaines()
+        for b in a_faire:
+            try:
+                programmer(b, ids)
+            except Exception as e:
+                sql("UPDATE clips_buffer SET etat = 'echec', message = :'p0', maj = now() WHERE id = :p1;", str(e)[:300], b["id"])
+    for b in lignes("programme"):
+        try:
+            suivre(b)
+        except Exception as e:
+            print("suivi", b["id"], str(e)[:200], flush=True)
+
+
+if __name__ == "__main__":
+    main()

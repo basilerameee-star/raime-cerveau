@@ -131,7 +131,8 @@ def sous_titres(mots, debut, fin, accroche, chemin, avec_mots=True):
             "[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n")
     ev = []
     if accroche:
-        ev.append("Dialogue: 1,%s,%s,Accroche,,0,0,0,,%s" % (ass_temps(0), ass_temps(fin - debut), censurer(accroche.replace("\n", " ")).upper()))
+        pass  # bandeau de titre retiré le 02/10/2026 (jugé laid) ; l accroche reste dans les légendes
+        # ev.append("Dialogue: 1,%s,%s,Accroche,,0,0,0,,%s" % (ass_temps(0), ass_temps(fin - debut), censurer(accroche.replace("\n", " ")).upper()))
     dans = [w for w in mots if w["d"] >= debut - .05 and w["f"] <= fin + .05 and w["m"]] if avec_mots else []
     # des groupes de 3 mots au plus, qui ne traversent jamais une fin de phrase
     groupes, g = [], []
@@ -145,7 +146,7 @@ def sous_titres(mots, debut, fin, accroche, chemin, avec_mots=True):
         for j, w in enumerate(g):
             d = w["d"] - debut
             f = (g[j + 1]["d"] if j + 1 < len(g) else g[-1]["f"]) - debut
-            txt = " ".join(("{\\c&H00F5F5F5&}" if k == j else "{\\c&H00B4B4B4&}") + censurer(x["m"]) for k, x in enumerate(g))
+            txt = " ".join(("{\\c&H0000E6FF&}" if k == j else "{\\c&H00FFFFFF&}") + censurer(x["m"]) for k, x in enumerate(g))
             ev.append("Dialogue: 0,%s,%s,Mot,,0,0,0,,%s" % (ass_temps(d), ass_temps(max(f, d + .08)), txt))
     chemin.write_text(tete + "\n".join(ev) + "\n", encoding="utf-8")
 
