@@ -3,6 +3,7 @@
 YouTube bloque l'adresse du serveur ; le PC télécharge donc les vidéos que le serveur attend (clippeur/attente.py)
 et les dépose dans sources/<campagne>.mp4. La découpe repart alors seule sur le serveur."""
 import json
+import re
 import os
 import subprocess
 import tempfile
@@ -30,9 +31,12 @@ def main():
     for d in attente:
         dossier = tempfile.mkdtemp()
         sortie = os.path.join(dossier, d["campagne"] + ".mp4")
+        url, extra = d["url"], []
+        if re.search(r"youtube\.com/(@|channel/|c/|user/)", url):   # un lien de chaîne : seulement sa dernière vidéo, jamais toute la chaîne
+            url, extra = url.split("?")[0].rstrip("/") + "/videos", ["--playlist-items", "1"]
         r = subprocess.run(["python", "-m", "yt_dlp", "--js-runtimes", "deno:" + DENO.replace("\\", "/"),
                             "-f", "bv*[protocol^=http]+ba/b", "-S", "res,br", "--merge-output-format", "mp4",
-                            "-o", sortie, d["url"]], capture_output=True, text=True, timeout=3600, creationflags=SANS_FENETRE)
+                            "-o", sortie] + extra + [url], capture_output=True, text=True, timeout=3600, creationflags=SANS_FENETRE)
         if r.returncode or not os.path.isfile(sortie):
             noter("échec %s : %s" % (d["campagne"], (r.stderr or r.stdout)[-300:]))
             continue

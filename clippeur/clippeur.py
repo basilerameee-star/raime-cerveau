@@ -37,7 +37,17 @@ def telecharger(url, dossier):
     # une source déjà téléchargée (depuis le PC de Basile : YouTube bloque les adresses de serveur) : on la prend telle quelle
     if pathlib.Path(url).is_file():
         return pathlib.Path(url)
-    # 1080p au plus ; si la source est plus petite, on ne l'agrandit pas
+    # Google Drive (dossier ou fichier partagé par la marque) : gdown ; on garde la plus grosse vidéo du dossier
+    if "drive.google.com" in url:
+        cible = dossier / "drive"
+        cible.mkdir(exist_ok=True)
+        lancer(["gdown", "--fuzzy", "--folder" if "/folders/" in url else "--no-cookies", url, "-O", str(cible) + "/"])
+        videos = sorted([f for f in cible.rglob("*") if f.suffix.lower() in (".mp4", ".mov", ".mkv", ".webm", ".m4v")],
+                        key=lambda f: f.stat().st_size, reverse=True)
+        if not videos:
+            sys.exit("Aucune vidéo dans le lien Drive du brief")
+        return videos[0]
+    # la meilleure qualité disponible (1440p minimum, contrôlé ensuite) ; jamais d'agrandissement
     lancer(["yt-dlp", "-f", "bv*+ba/b", "-S", "res,br", "--merge-output-format", "mp4",
             "-o", str(dossier / "source.%(ext)s"), "--no-playlist", url])
     return next(dossier.glob("source.*"))
