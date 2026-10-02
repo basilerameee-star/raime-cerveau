@@ -180,6 +180,8 @@ async function router(req, res) {
   if (url === '/healthz') { res.writeHead(200, { 'Content-Type': 'text/plain' }); res.end('ok ' + VERSION); return; }
   // La recherche d'emploi de Basile : le Bureau des candidatures et l'Envoyeur de son PC (jarvis/candidatures.cjs).
   if (await candidatures.router(req, res, { url, m, envoyer, json, autorise, fichierInterface })) return;
+  // Le clip farming de KinGKlip : demandes de découpe, clips prêts, liens publiés (jarvis/clips.cjs).
+  if (await require('./clips.cjs').router(req, res, { url, m, envoyer, json, fichierInterface })) return;
   if (m === 'GET' && (url === '/' || url === '/jarvis' || url === '/index.html')) return fichierInterface(res, 'index.html');
   if (m === 'GET' && /^\/(coffre\.html|manifest\.webmanifest|icone\.svg)$/.test(url)) return fichierInterface(res, url.slice(1));
   if (m === 'GET' && url === '/coffre') return fichierInterface(res, 'coffre.html');

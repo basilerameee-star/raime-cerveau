@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Clips · KinGKlip</title>
+<style>
+:root{--n:#000;--b:#f5f5f5;--g:#a6a6a6;--t:rgba(245,245,245,.14)}
+*{box-sizing:border-box;margin:0}
+body{background:var(--n);color:var(--b);font:15px/1.5 Inter,system-ui,sans-serif;padding:20px 16px 80px;max-width:1100px;margin:0 auto}
+a{color:inherit}
+h1{font-size:28px;font-weight:600;letter-spacing:-.02em}
+h2{font-size:18px;font-weight:600;margin:34px 0 4px}
+.mono{font:500 11px ui-monospace,Menlo,Consolas,monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--g)}
+.tete{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:22px}
+form{display:grid;gap:10px;padding:16px;border:1px solid var(--t);border-radius:12px}
+input,textarea,select{width:100%;background:#0b0b0b;color:var(--b);border:1px solid var(--t);border-radius:8px;padding:11px 12px;font:inherit}
+textarea{min-height:64px;resize:vertical}
+.ligne{display:grid;grid-template-columns:1fr 110px;gap:10px}
+button{font:600 14px Inter,system-ui,sans-serif;padding:11px 16px;border-radius:999px;border:1px solid var(--b);background:var(--b);color:var(--n);cursor:pointer}
+button.vide{background:transparent;color:var(--b);border-color:var(--t)}
+.msg{font-size:13px;color:var(--g);min-height:1em}
+.demandes{margin-top:12px;font-size:13px;color:var(--g)}
+.grille{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px;margin-top:12px}
+.clip{border:1px solid var(--t);border-radius:12px;overflow:hidden;background:#070707}
+video{display:block;width:100%;aspect-ratio:9/16;background:#111}
+.corps{padding:12px;display:grid;gap:8px}
+.corps b{font-size:14px}
+.corps textarea{font-size:13px;min-height:72px}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.actions a,.actions button{font-size:13px;padding:8px 12px}
+.actions a{border:1px solid var(--t);border-radius:999px;text-decoration:none}
+.pub{display:grid;grid-template-columns:90px 1fr auto;gap:6px;align-items:center;font-size:12px}
+.pub input{padding:7px 8px;font-size:12px}
+.pub button{padding:7px 10px;font-size:12px}
+.ok{color:var(--b)}
+</style>
+</head>
+<body>
+<div class="tete"><h1>Clips · KinGKlip</h1><a class="mono" href="/">← Jarvis</a></div>
+
+<form id="f">
+  <p class="mono">Nouvelle vidéo d'une campagne Whop rejointe</p>
+  <input name="url" placeholder="Lien de la vidéo source (Drive, Dropbox, YouTube…)" required>
+  <div class="ligne"><input name="campagne" placeholder="Nom de la campagne" required><input name="nombre" type="number" min="1" max="40" value="20" title="Nombre de clips"></div>
+  <textarea name="consignes" placeholder="Consignes du brief (durée, mentions, hashtags, interdits…), collées telles quelles"></textarea>
+  <button>Lancer la découpe</button>
+  <p class="msg" id="msg"></p>
+</form>
+<div class="demandes" id="demandes"></div>
+<div id="campagnes"></div>
+
+<script>
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const ETATS = { a_faire: 'en file', en_cours: 'en découpe…', fait: 'prête', echec: 'échec' };
+const NOMS = { tiktok: 'TikTok', instagram: 'Instagram', youtube: 'YouTube' };
+async function api(u, corps) {
+  const r = await fetch(u, corps ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corps) } : {});
+  return r.json();
+}
+async function charger() {
+  const d = await api('/api/clips');
+  document.getElementById('demandes').innerHTML = d.demandes.length ? 'Demandes : ' + d.demandes.map((x) =>
+    `n°${x.id} ${esc(x.campagne)} · <span class="${x.etat === 'fait' ? 'ok' : ''}">${ETATS[x.etat] || esc(x.etat)}</span>${x.message ? ' · ' + esc(x.message) : ''}`).join(' &nbsp;·&nbsp; ') : '';
+  // on ne redessine les clips que s'il en arrive de nouveaux (sinon un lien en cours de saisie serait effacé)
+  const sig = JSON.stringify(d.campagnes.map((c) => [c.campagne, c.clips.length]));
+  if (sig === charger.sig) return; charger.sig = sig;
+  document.getElementById('campagnes').innerHTML = d.campagnes.map((c) => `
+    <h2>${esc(c.campagne)}</h2><p class="mono">${c.clips.length} clips</p>
+    <div class="grille">${c.clips.map((k) => `
+      <div class="clip">
+        <video src="${k.fichier}" controls preload="metadata" playsinline></video>
+        <div class="corps">
+          <b>${esc(k.titre)}</b><span class="mono">${k.duree} s</span>
+          <textarea readonly>${esc(k.legende)}</textarea>
+          <div class="actions"><a href="${k.fichier}" download>Télécharger</a>
+            <button class="vide" data-copie>Copier la légende</button></div>
+          ${['tiktok', 'instagram', 'youtube'].map((p) => { const pub = k.publies.find((x) => x.plateforme === p);
+            return `<div class="pub"><span>${NOMS[p]}</span><input placeholder="lien publié" value="${pub ? esc(pub.lien) : ''}"
+              data-c="${esc(c.campagne)}" data-k="${esc(k.clip)}" data-p="${p}"><button class="vide" data-note>${pub ? (pub.declare_whop ? 'Whop ✓' : 'Noté') : 'Noter'}</button></div>`; }).join('')}
+        </div>
+      </div>`).join('')}</div>`).join('') || '<p class="msg" style="margin-top:24px">Aucun clip pour l\'instant.</p>';
+}
+document.getElementById('f').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const f = Object.fromEntries(new FormData(e.target));
+  const r = await api('/api/clips/demande', f);
+  document.getElementById('msg').textContent = r.message;
+  if (r.ok) { e.target.reset(); charger(); }
+});
+document.addEventListener('click', async (e) => {
+  if (e.target.matches('[data-copie]')) {
+    const t = e.target.closest('.corps').querySelector('textarea').value;
+    try { await navigator.clipboard.writeText(t); e.target.textContent = 'Copiée'; } catch (err) { e.target.closest('.corps').querySelector('textarea').select(); }
+  }
+  if (e.target.matches('[data-note]')) {
+    const i = e.target.previousElementSibling;
+    if (e.target.textContent === 'Noté') { await api('/api/clips/whop', { campagne: i.dataset.c, clip: i.dataset.k, plateforme: i.dataset.p }); e.target.textContent = 'Whop ✓'; return; }
+    const r = await api('/api/clips/publie', { campagne: i.dataset.c, clip: i.dataset.k, plateforme: i.dataset.p, lien: i.value });
+    e.target.textContent = r.ok ? 'Noté' : '!'; if (!r.ok) alert(r.message);
+  }
+});
+charger(); setInterval(charger, 30000);
+</script>
+</body>
+</html>

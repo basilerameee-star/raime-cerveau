@@ -1,0 +1,206 @@
+# -*- coding: utf-8 -*-
+"""LE CLIPPEUR (02/10/2026) — d'une vidéo source d'une campagne Whop autorisée, des clips verticaux prêts à publier.
+
+Voulu par Basile pour KinGKlip (TikTok, Instagram, YouTube) : la qualité d'un outil du marché, sans abonnement.
+  1. télécharge la source (yt-dlp, 1080p au plus, jamais d'agrandissement : pas de pixels) ;
+  2. transcrit la voix au mot près (faster-whisper, sur le processeur du serveur) ;
+  3. choisit les meilleurs passages (modèle gratuit Gemini, à partir de la transcription datée) ;
+  4. monte en 1080 × 1920 : la vidéo nette au centre, un fond flou de la même image, l'accroche en haut les
+     premières secondes, des sous-titres sobres (blanc, Inter, 3 mots au plus, le mot dit en plein blanc, aucun
+     clignotement, aucune couleur criarde), calés sur la voix ;
+  5. écrit à côté de chaque clip son texte de publication.
+
+Tourne seul sur le serveur, sans Claude (0 jeton). Aucun envoi, aucune publication ici.
+    python clippeur.py <url> --campagne <nom> [--nombre 4] [--min 20] [--max 50] [--consignes "..."]
+"""
+import argparse
+import json
+import os
+import pathlib
+import re
+import subprocess
+import sys
+import urllib.request
+
+SORTIE = pathlib.Path(os.environ.get("SORTIE", "/sortie"))
+MODELES = ["gemini-flash-latest", "gemini-2.5-flash", "gemini-flash-lite-latest"]
+
+
+def lancer(cmd):
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    if r.returncode:
+        raise RuntimeError("%s : %s" % (cmd[0], r.stderr[-800:]))
+    return r.stdout
+
+
+def telecharger(url, dossier):
+    # une source déjà téléchargée (depuis le PC de Basile : YouTube bloque les adresses de serveur) : on la prend telle quelle
+    if pathlib.Path(url).is_file():
+        return pathlib.Path(url)
+    # 1080p au plus ; si la source est plus petite, on ne l'agrandit pas
+    lancer(["yt-dlp", "-f", "bv*[height<=1080][ext=mp4]+ba[ext=m4a]/b[height<=1080]/b", "--merge-output-format", "mp4",
+            "-o", str(dossier / "source.%(ext)s"), "--no-playlist", url])
+    return next(dossier.glob("source.*"))
+
+
+def transcrire(video):
+    from faster_whisper import WhisperModel
+    m = WhisperModel(os.environ.get("WHISPER", "small"), device="cpu", compute_type="int8")
+    segs, info = m.transcribe(str(video), word_timestamps=True, vad_filter=True)
+    mots = []
+    for s in segs:
+        for w in s.words or []:
+            mots.append({"d": round(w.start, 2), "f": round(w.end, 2), "m": w.word.strip()})
+    return mots, info.language
+
+
+def gemini(prompt, cle):
+    corps = json.dumps({"contents": [{"parts": [{"text": prompt}]}],
+                        "generationConfig": {"responseMimeType": "application/json", "temperature": 0.4}}).encode()
+    derniere = None
+    for modele in MODELES:
+        try:
+            req = urllib.request.Request("https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s" % (modele, cle),
+                                         data=corps, headers={"Content-Type": "application/json"})
+            d = json.load(urllib.request.urlopen(req, timeout=120))
+            return json.loads(d["candidates"][0]["content"]["parts"][0]["text"])
+        except Exception as e:                       # modèle saturé ou absent : le suivant
+            derniere = e
+    raise RuntimeError("Gemini indisponible : %s" % derniere)
+
+
+def choisir(mots, langue, n, mini, maxi, consignes, cle):
+    # la transcription par phrases datées (toutes les ~8 s), assez courte pour le modèle gratuit
+    lignes, cour, t0 = [], [], None
+    for w in mots:
+        t0 = w["d"] if t0 is None else t0
+        cour.append(w["m"])
+        if w["f"] - t0 > 8 or w["m"].endswith((".", "?", "!")):
+            lignes.append("[%.1f-%.1f] %s" % (t0, w["f"], " ".join(cour)))
+            cour, t0 = [], None
+    texte = "\n".join(lignes)[:60000]
+    prompt = (
+        "Tu es monteur de clips courts viraux (TikTok, Reels, Shorts). Voici la transcription datée (secondes) d'une vidéo "
+        "en langue « %s ». Choisis les %d meilleurs passages autonomes : chacun doit se comprendre seul, commencer fort "
+        "(une phrase qui accroche dès la 1re seconde) et finir sur une chute ou une idée complète. Durée de chaque passage "
+        "entre %d et %d secondes. Pas de chevauchement. %s\n"
+        "Réponds en JSON : [{\"debut\": s, \"fin\": s, \"accroche\": \"5 mots au plus, dans la langue de la vidéo\", "
+        "\"titre\": \"titre de publication, 60 caractères au plus\", \"hashtags\": [\"3 à 5\"]}]\n\n%s"
+        % (langue, n, mini, maxi, ("Consignes de la campagne : " + consignes) if consignes else "", texte))
+    choix = gemini(prompt, cle)
+    bons = []
+    for c in choix if isinstance(choix, list) else []:
+        d, f = float(c.get("debut", 0)), float(c.get("fin", 0))
+        if mini - 3 <= f - d <= maxi + 5:
+            bons.append(dict(c, debut=d, fin=f))
+    return bons[:n]
+
+
+def ass_temps(s):
+    s = max(0, s)
+    return "%d:%02d:%05.2f" % (s // 3600, (s % 3600) // 60, s % 60)
+
+
+def sous_titres(mots, debut, fin, accroche, chemin):
+    """Sous-titres ASS : groupes de 3 mots, le mot prononcé en plein blanc, les autres en blanc atténué ;
+    l'accroche en haut pendant 2,5 s. Aucune animation clignotante."""
+    tete = ("[Script Info]\nScriptType: v4.00+\nPlayResX: 1080\nPlayResY: 1920\nWrapStyle: 2\n\n"
+            "[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, "
+            "Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n"
+            "Style: Mot,Inter,74,&H00F5F5F5,&H00F5F5F5,&H00000000,&H64000000,1,0,0,0,100,100,0,0,1,3,2,2,90,90,560,1\n"
+            "Style: Accroche,Inter,64,&H00F5F5F5,&H00F5F5F5,&H00000000,&H96000000,1,0,0,0,100,100,0,0,3,18,0,8,80,80,230,1\n\n"
+            "[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n")
+    ev = []
+    if accroche:
+        ev.append("Dialogue: 1,%s,%s,Accroche,,0,0,0,,%s" % (ass_temps(0), ass_temps(2.5), accroche.replace("\n", " ")))
+    dans = [w for w in mots if w["d"] >= debut - .05 and w["f"] <= fin + .05 and w["m"]]
+    # des groupes de 3 mots au plus, qui ne traversent jamais une fin de phrase
+    groupes, g = [], []
+    for w in dans:
+        g.append(w)
+        if len(g) == 3 or w["m"].endswith((".", "?", "!", ",")):
+            groupes.append(g); g = []
+    if g:
+        groupes.append(g)
+    for g in groupes:
+        for j, w in enumerate(g):
+            d = w["d"] - debut
+            f = (g[j + 1]["d"] if j + 1 < len(g) else g[-1]["f"]) - debut
+            txt = " ".join(("{\\c&H00F5F5F5&}" if k == j else "{\\c&H00B4B4B4&}") + x["m"] for k, x in enumerate(g))
+            ev.append("Dialogue: 0,%s,%s,Mot,,0,0,0,,%s" % (ass_temps(d), ass_temps(max(f, d + .08)), txt))
+    chemin.write_text(tete + "\n".join(ev) + "\n", encoding="utf-8")
+
+
+def centre_visage(source, debut, fin):
+    """Le centre horizontal (0 à 1) du visage qui parle, médiane sur une dizaine d'images du passage ; None sans visage."""
+    import cv2
+    cap = cv2.VideoCapture(str(source))
+    det = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+    xs = []
+    for k in range(12):
+        cap.set(cv2.CAP_PROP_POS_MSEC, (debut + (fin - debut) * (k + .5) / 12) * 1000)
+        ok, im = cap.read()
+        if not ok:
+            continue
+        g = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
+        f = det.detectMultiScale(g, 1.1, 6, minSize=(int(g.shape[0] * .08),) * 2)
+        if len(f):
+            x, y, w, h = max(f, key=lambda r: r[2] * r[3])                # le plus grand visage : celui qui parle
+            xs.append((x + w / 2) / g.shape[1])
+    cap.release()
+    if len(xs) < 4:
+        return None
+    xs.sort()
+    return xs[len(xs) // 2]
+
+
+def monter(source, debut, fin, ass, sortie):
+    cx = centre_visage(source, debut, fin)
+    if cx is not None:
+        # recadrage plein écran sur le visage : une fenêtre 9:16 dans la hauteur de la source, centrée sur lui
+        filtre = ("[0:v]crop='min(iw,ih*9/16)':ih:'max(0,min(iw-ih*9/16,%.4f*iw-ih*9/32))':0,scale=1080:1920:flags=lanczos,"
+                  "subtitles=%s:fontsdir=/usr/share/fonts[v]" % (cx, str(ass).replace(":", "\\:")))
+        lancer(["ffmpeg", "-y", "-ss", "%.2f" % debut, "-to", "%.2f" % fin, "-i", str(source), "-filter_complex", filtre,
+                "-map", "[v]", "-map", "0:a?", "-r", "30", "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p",
+                "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart", str(sortie)])
+        return
+
+    # fond : la même image, couvrante, floutée et assombrie ; devant : l'image nette, en largeur, jamais agrandie au-delà de 1080
+    filtre = ("[0:v]split[a][b];[a]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=24:2,"
+              "eq=brightness=-0.12[fond];[b]scale='min(1080,iw)':-2[net];[fond][net]overlay=(W-w)/2:(H-h)/2-80,"
+              "subtitles=%s:fontsdir=/usr/share/fonts[v]" % str(ass).replace(":", "\\:"))
+    lancer(["ffmpeg", "-y", "-ss", "%.2f" % debut, "-to", "%.2f" % fin, "-i", str(source), "-filter_complex", filtre,
+            "-map", "[v]", "-map", "0:a?", "-r", "30", "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p",
+            "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart", str(sortie)])
+
+
+def main():
+    a = argparse.ArgumentParser()
+    a.add_argument("url"); a.add_argument("--campagne", required=True)
+    a.add_argument("--nombre", type=int, default=4); a.add_argument("--min", type=int, default=20); a.add_argument("--max", type=int, default=50)
+    a.add_argument("--consignes", default="")
+    o = a.parse_args()
+    cle = os.environ.get("GEMINI_API_KEY")
+    if not cle:
+        sys.exit("GEMINI_API_KEY absente")
+    nom = re.sub(r"[^a-z0-9-]+", "-", o.campagne.lower()).strip("-")
+    dossier = SORTIE / nom; dossier.mkdir(parents=True, exist_ok=True)
+    source = telecharger(o.url, dossier)
+    mots, langue = transcrire(source)
+    (dossier / "transcription.json").write_text(json.dumps(mots, ensure_ascii=False), encoding="utf-8")
+    choix = choisir(mots, langue, o.nombre, o.min, o.max, o.consignes, cle)
+    rendus = []
+    for k, c in enumerate(choix, 1):
+        ass = dossier / ("clip-%02d.ass" % k); mp4 = dossier / ("clip-%02d.mp4" % k)
+        sous_titres(mots, c["debut"], c["fin"], c.get("accroche", ""), ass)
+        monter(source, c["debut"], c["fin"], ass, mp4)
+        legende = "%s\n\n%s" % (c.get("titre", ""), " ".join("#" + h.lstrip("#") for h in c.get("hashtags", [])))
+        (dossier / ("clip-%02d.txt" % k)).write_text(legende, encoding="utf-8")
+        rendus.append(dict(clip=mp4.name, debut=c["debut"], fin=c["fin"], titre=c.get("titre", ""), accroche=c.get("accroche", "")))
+        print("clip %d : %.0f-%.0f s · %s" % (k, c["debut"], c["fin"], c.get("titre", "")), flush=True)
+    (dossier / "clips.json").write_text(json.dumps(dict(source=o.url, langue=langue, clips=rendus), ensure_ascii=False, indent=1), encoding="utf-8")
+    print("FINI : %d clips dans %s" % (len(rendus), dossier))
+
+
+if __name__ == "__main__":
+    main()
