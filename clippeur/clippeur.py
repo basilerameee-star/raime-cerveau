@@ -86,18 +86,50 @@ def choisir(mots, langue, n, mini, maxi, consignes, cle):
             cour, t0 = [], None
     texte = "\n".join(lignes)[:60000]
     prompt = (
-        "Tu es monteur de clips courts viraux (TikTok, Reels, Shorts). Voici la transcription datée (secondes) d'une vidéo "
-        "en langue « %s ». Choisis les %d meilleurs passages autonomes : chacun doit se comprendre seul, commencer fort "
-        "(une phrase qui accroche dès la 1re seconde) et finir sur une chute ou une idée complète (sauf si les consignes de la campagne demandent de couper avant la fin de la scène). Durée de chaque passage "
-        "entre %d et %d secondes (viser 20 à 35 s si les bornes le permettent). Pas de chevauchement. "
-        "Règles de sélection (stratégie des formats courts ; le brief de la campagne l'emporte toujours) : le passage démarre "
-        "au milieu de l'action ou sur la réplique la plus forte, jamais sur une installation ; les 2 premières secondes doivent "
-        "retenir (question, tension, enjeu, avis à contre-courant, clash) ; ensuite rien que l'essentiel ; fin sur la chute ou, si le "
-        "brief le demande, juste avant la résolution ; préfère les scènes qu'on a envie d'envoyer à un ami et celles qui donnent "
-        "envie de revoir le début. %s\n"
-        "Réponds en JSON : [{\"debut\": s, \"fin\": s, \"accroche\": \"6 mots au plus, dans la langue de la vidéo : le titre affiché en haut pendant tout le clip, qui donne envie de rester jusqu'au bout (une tension, un enjeu ou une question sur ce qui va arriver, ex. « HE WASN'T READY FOR THIS »), toujours vrai par rapport à la scène, jamais une citation, jamais un juron, sans emoji\", "
-        "\"titre\": \"titre de publication, 60 caractères au plus\", \"note\": note de 1 à 10 (10 = le spectateur regarde jusqu'au bout, revoit, partage ; sois sévère), \"question\": \"une question courte, dans la langue de la vidéo, sur la scène, qui donne envie de commenter (jamais de juron, jamais trompeuse)\", \"hashtags\": [\"3 à 5\"]}]\n\n%s"
-        % (langue, n, mini, maxi, ("Consignes de la campagne : " + consignes) if consignes else "", texte))
+        "Tu es le meilleur monteur de clips courts viraux (TikTok, Reels, Shorts). Voici la transcription datée (secondes) "
+        "d'une vidéo en langue « %s ».\n"
+        "MÉTHODE (dans cet ordre) :\n"
+        "1. Repère les MOMENTS FORTS, pas les scènes : une réplique qu'on cite ou qu'on envoie à un ami (aveu absurde, punchline, "
+        "chiffre choc, clash, humiliation drôle, révélation, retournement, échec au dernier moment). Une visite, une arrivée, "
+        "une explication de règles ou un décompte NE sont PAS des moments forts. Parcours la vidéo JUSQU'À LA FIN : les meilleurs "
+        "moments sont souvent tardifs. Les plus forts : une révélation personnelle inattendue (passé, prison, argent), un chiffre "
+        "choc sur la personne, un échec à la dernière seconde suivi de sa réaction, un surnom humiliant, une phrase absurde. "
+        "Ne cherche pas à couvrir toute la vidéo.\n"
+        "2. Construis chaque clip autour d'un moment : il démarre au plus près du moment, avec juste le contexte indispensable "
+        "(jamais d'installation, jamais une phrase banale comme « all right », « let's go », un nombre, jamais une insulte raciale en 1re phrase) ; la PREMIÈRE phrase "
+        "doit à elle seule donner envie de rester (question, tension, enjeu, phrase choc). Il finit juste après la chute ou la "
+        "réaction (ou juste avant la résolution si les consignes de la campagne le demandent). Aucun remplissage : décomptes, "
+        "répétitions, « let's go » en boucle sont coupés en choisissant mieux les bornes.\n"
+        "3. Durée entre %d et %d secondes : prends le minimum qui tient, n'allonge jamais pour atteindre une durée.\n"
+        "4. Note chaque clip SÉVÈREMENT de 1 à 10 : 9-10 = réplique qu'on partage et qu'on revoit ; 7-8 = moment drôle ou tendu "
+        "qui tient seul ; 5-6 = scène agréable sans pic ; 1-4 = transition, visite, explication. La plupart des passages valent "
+        "moins de 7.\n"
+        "Rends les %d meilleurs (moins s'il n'y en a pas assez de bons), sans chevauchement, le brief de la campagne l'emportant "
+        "toujours. %s\n"
+        "Réponds en JSON : [{\"debut\": s, \"fin\": s, \"moment\": \"la réplique forte, citée\", \"premiere_phrase\": \"la 1re phrase du clip, citée\", "
+        "\"pourquoi\": \"en 1 phrase, pourquoi on regarde jusqu'au bout\", \"note\": 1 à 10, "
+        "\"accroche\": \"6 mots au plus, dans la langue de la vidéo : ce qui se passe, jamais une citation, jamais un juron\", "
+        "\"titre\": \"titre de publication, 60 caractères au plus, fidèle à la scène\", "
+        "\"question\": \"une question courte, dans la langue de la vidéo, sur ce moment précis, qui donne envie de commenter (jamais de juron, jamais trompeuse)\", "
+        "\"hashtags\": [\"3 à 5\"]}]\n\n%s"
+        % (langue, mini, maxi, n, ("Consignes de la campagne : " + consignes) if consignes else "", texte))
+    # étape 1 (recherche du 02/10/2026) : lister d'abord TOUS les moments forts de la vidéo, sans contrainte de durée.
+    # Gemini Flash en rate beaucoup quand il doit tout faire d'un coup ; la liste est ensuite imposée à l'étape 2.
+    try:
+        moments = gemini(
+            "Voici la transcription datée (secondes) d'une vidéo en langue « %s ». Liste TOUS ses moments forts, du début à la "
+            "FIN de la vidéo : répliques qu'on citerait ou qu'on enverrait à un ami (révélation personnelle inattendue, chiffre "
+            "choc, échec à la dernière seconde, surnom humiliant, clash, aveu absurde, punchline, retournement). Pas les visites, "
+            "arrivées, explications de règles ni décomptes. Note chacun sévèrement de 1 à 10. %s\n"
+            "Réponds en JSON : [{\"t\": seconde de la réplique, \"citation\": \"la réplique\", \"note\": 1 à 10}]\n\n%s"
+            % (langue, ("Consignes de la campagne : " + consignes) if consignes else "", texte), cle)
+        moments = sorted([m for m in moments if isinstance(m, dict)], key=lambda m: -float(m.get("note") or 0))[:n + 6]
+    except Exception:
+        moments = []
+    if moments:
+        prompt += ("\n\nMOMENTS FORTS DÉJÀ REPÉRÉS : OBLIGATOIRE, fais UN clip autour de CHACUN de ces moments (si deux se chevauchent, garde le mieux noté), "
+                   "des notes) :\n" + "\n".join("- %.0f s, note %s : %s" % (float(m.get("t") or 0), m.get("note"), m.get("citation", ""))
+                                                   for m in moments))
     choix = gemini(prompt, cle)
     bons = []
     for c in choix if isinstance(choix, list) else []:
@@ -113,6 +145,11 @@ def choisir(mots, langue, n, mini, maxi, consignes, cle):
             return 0.0
     bons.sort(key=note, reverse=True)
     forts = [c for c in bons if note(c) >= 7] or bons[:3]
+    gardes = []                                            # jamais deux clips sur le même moment : le mieux noté reste
+    for c in forts:
+        if all(c["fin"] <= g["debut"] or c["debut"] >= g["fin"] for g in gardes):
+            gardes.append(c)
+    forts = gardes
     return sorted(forts[:n], key=lambda c: c["debut"])
 
 
