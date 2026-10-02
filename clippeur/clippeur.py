@@ -89,9 +89,14 @@ def choisir(mots, langue, n, mini, maxi, consignes, cle):
         "Tu es monteur de clips courts viraux (TikTok, Reels, Shorts). Voici la transcription datée (secondes) d'une vidéo "
         "en langue « %s ». Choisis les %d meilleurs passages autonomes : chacun doit se comprendre seul, commencer fort "
         "(une phrase qui accroche dès la 1re seconde) et finir sur une chute ou une idée complète (sauf si les consignes de la campagne demandent de couper avant la fin de la scène). Durée de chaque passage "
-        "entre %d et %d secondes. Pas de chevauchement. %s\n"
+        "entre %d et %d secondes (viser 20 à 35 s si les bornes le permettent). Pas de chevauchement. "
+        "Règles de sélection (stratégie des formats courts ; le brief de la campagne l'emporte toujours) : le passage démarre "
+        "au milieu de l'action ou sur la réplique la plus forte, jamais sur une installation ; les 2 premières secondes doivent "
+        "retenir (question, tension, enjeu, avis à contre-courant, clash) ; ensuite rien que l'essentiel ; fin sur la chute ou, si le "
+        "brief le demande, juste avant la résolution ; préfère les scènes qu'on a envie d'envoyer à un ami et celles qui donnent "
+        "envie de revoir le début. %s\n"
         "Réponds en JSON : [{\"debut\": s, \"fin\": s, \"accroche\": \"6 mots au plus, dans la langue de la vidéo : le titre affiché en haut pendant tout le clip, qui donne envie de rester jusqu'au bout (une tension, un enjeu ou une question sur ce qui va arriver, ex. « HE WASN'T READY FOR THIS »), toujours vrai par rapport à la scène, jamais une citation, jamais un juron, sans emoji\", "
-        "\"titre\": \"titre de publication, 60 caractères au plus\", \"hashtags\": [\"3 à 5\"]}]\n\n%s"
+        "\"titre\": \"titre de publication, 60 caractères au plus\", \"question\": \"une question courte, dans la langue de la vidéo, sur la scène, qui donne envie de commenter (jamais de juron, jamais trompeuse)\", \"hashtags\": [\"3 à 5\"]}]\n\n%s"
         % (langue, n, mini, maxi, ("Consignes de la campagne : " + consignes) if consignes else "", texte))
     choix = gemini(prompt, cle)
     bons = []
@@ -304,7 +309,8 @@ def main():
         (dossier / ("clip-%02d.txt" % k)).write_text(legende, encoding="utf-8")
         if profil.get("tags"):
             # une légende par plateforme, avec le tag obligatoire de la campagne
-            par = {pl: "%s %s\n\n%s" % (c.get("titre", ""), tg, " ".join(tags_h)) for pl, tg in profil["tags"].items()}
+            q = censurer(c.get("question", "")).strip()       # la légende finit par une question (commentaires)
+            par = {pl: "%s %s\n\n%s%s" % (c.get("titre", ""), tg, (q + "\n\n") if q else "", " ".join(tags_h)) for pl, tg in profil["tags"].items()}
             (dossier / ("clip-%02d.json" % k)).write_text(json.dumps(par, ensure_ascii=False, indent=1), encoding="utf-8")
         rendus.append(dict(clip=mp4.name, debut=c["debut"], fin=c["fin"], titre=c.get("titre", ""), accroche=c.get("accroche", "")))
         print("clip %d : %.0f-%.0f s · %s" % (k, c["debut"], c["fin"], c.get("titre", "")), flush=True)
