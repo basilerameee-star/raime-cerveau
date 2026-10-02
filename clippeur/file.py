@@ -47,6 +47,39 @@ def prevenir(sujet, texte):
         print("alerte non envoyée :", str(e)[:120], flush=True)
 
 
+LIRE_DOC = r"""
+import sys, json, re, io
+b = sys.stdin.buffer.read(); texte, liens = "", []
+if b[:4] == b"%PDF":
+    from pypdf import PdfReader
+    r = PdfReader(io.BytesIO(b))
+    for p in r.pages:
+        texte += (p.extract_text() or "") + "\n"
+        for a in (p.get("/Annots") or []):
+            o = a.get_object(); u = (o.get("/A") or {}).get("/URI")
+            if u: liens.append(str(u))
+else:
+    texte = b.decode("utf-8", "replace")
+liens += re.findall(r"https?://[^\s)>\]\"']+", texte)
+print(json.dumps({"texte": texte, "liens": list(dict.fromkeys(liens))}))
+"""
+VIDEO = ("youtu", "drive.google", "dropbox", "vimeo", "twitch", "kick.com", "streamable", "wetransfer", "mega.nz", "frame.io")
+
+
+def lire_document(d):
+    """Le brief déposé en document : son texte entier (il guide le montage) et le lien de la vidéo source qu'il contient."""
+    import base64
+    r = subprocess.run(["docker", "run", "--rm", "-i", "--entrypoint", "python", "raime-clippeur", "-c", LIRE_DOC],
+                       input=base64.b64decode(d["brief_fichier"]), capture_output=True, timeout=300)
+    doc = json.loads(r.stdout.decode() or "{}")
+    texte = ((d.get("consignes") or "") + "\n\n" + doc.get("texte", "")).strip()[:30000]
+    url = d["url"]
+    if not url.startswith("http"):
+        url = next((l for l in doc.get("liens", []) if any(v in l for v in VIDEO)), "")
+    sql("UPDATE clips_demandes SET consignes = :'p0', url = :'p1', brief_fichier = NULL WHERE id = :p2;", texte.replace("'", "’"), url or "introuvable", d["id"])
+    d.update(consignes=texte, url=url or "introuvable", brief_fichier=None)
+
+
 def brief_auto(d):
     """Le brief collé sur /clips devient le profil de la campagne (Gemini gratuit en extrait les règles), sans Claude.
     Publication automatique activée (accord de Basile du 02/10/2026 : de la campagne choisie au poste, sans intervention)."""
@@ -81,6 +114,16 @@ def main():
     if not ligne:
         return
     d = json.loads(next(l for l in ligne.splitlines() if l.startswith("{")))      # la ligne JSON, sans le compte rendu de psql
+    if d.get("brief_fichier"):
+        try:
+            lire_document(d)
+        except Exception as e:
+            print("document", str(e)[:200], flush=True)
+    if not d["url"].startswith("http"):
+        sql("UPDATE clips_demandes SET etat = 'echec', message = :'p0', maj = now() WHERE id = :p1;",
+            "Aucun lien de vidéo trouvé dans le brief : colle-le dans le champ du haut", d["id"])
+        prevenir("lien de vidéo introuvable : " + d["campagne"], "Le brief ne contient pas de lien de vidéo lisible. Recommence en collant le lien dans le champ du haut de la page Clips.")
+        return
     source = d["url"]
     if any(h in d["url"] for h in ("youtube.com", "youtu.be")):
         # YouTube bloque l'adresse du serveur : la vidéo vient du PC de Basile, déposée dans sources/<campagne>.mp4

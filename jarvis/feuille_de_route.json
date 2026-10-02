@@ -527,6 +527,15 @@
       "etat": "en_cours",
       "fini_quand": "Chaque jour, l'agent lit les campagnes Content Rewards dans le navigateur du serveur (Basile s'y connecte une fois à Whop), les note avec clippeur/selection.json et propose les 3 meilleures sur Jarvis ; une tâche planifiée du PC télécharge les vidéos YouTube attendues par le serveur et les dépose, sans Claude.",
       "rang": 51
+    },
+    {
+      "n": 52,
+      "groupe": "seul",
+      "moteur": "Moteur 3 : clip farming (KinGKlip)",
+      "titre": "Agent de soumission Whop : chaque lien publié est soumis dans « Submit clip » de SA campagne en moins de 25 minutes",
+      "etat": "a_faire",
+      "fini_quand": "Dans le navigateur du serveur (Basile connecté une fois à Whop), l'agent soumet chaque lien publié (YouTube, TikTok, Instagram) à la seule campagne pour laquelle le clip a été fait, coche la case des conditions, vérifie l'acceptation ; captcha ou page changée = arrêt et e-mail à Basile, jamais de contournement. Accord de Basile du 02/10/2026. À construire après la recharge des crédits (mercredi).",
+      "rang": 52
     }
   ]
 }

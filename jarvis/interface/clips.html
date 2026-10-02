@@ -43,8 +43,10 @@ video{display:block;width:100%;aspect-ratio:9/16;background:#111}
 <form id="f">
   <p class="mono">Nouvelle vidéo d'une campagne Whop rejointe</p>
   <input name="url" placeholder="Lien de la vidéo source (facultatif s'il est dans le brief)">
-  <div class="ligne"><input name="campagne" placeholder="Nom de la campagne" required><input name="nombre" type="number" min="1" max="40" value="20" title="Nombre de clips"></div>
-  <textarea name="consignes" placeholder="Le brief complet de la campagne Whop, copié-collé (règles, paiement, lien de la vidéo)" required></textarea>
+  <div class="ligne"><input name="campagne" placeholder="Nom de la campagne (sinon : nom du document)"><input name="nombre" type="number" min="1" max="40" value="20" title="Nombre de clips"></div>
+  <label class="mono" style="display:grid;gap:6px">Le brief en document (PDF ou texte) : le lien de la vidéo y est lu
+    <input type="file" name="fichier" accept=".pdf,.txt,.md"></label>
+  <textarea name="consignes" placeholder="… ou le brief complet copié-collé (règles, paiement, lien de la vidéo)"></textarea>
   <button>Lancer la découpe</button>
   <p class="msg" id="msg"></p>
 </form>
@@ -103,6 +105,13 @@ async function charger() {
 document.getElementById('f').addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = Object.fromEntries(new FormData(e.target));
+  const doc = e.target.fichier.files[0];
+  if (doc) {                                         // le document part en base64, lu côté serveur
+    const b = new Uint8Array(await doc.arrayBuffer()); let s = '';
+    for (let i = 0; i < b.length; i += 32768) s += String.fromCharCode.apply(null, b.subarray(i, i + 32768));
+    f.fichier = { nom: doc.name, b64: btoa(s) };
+  } else delete f.fichier;
+  if (!doc && !String(f.consignes || '').trim()) { document.getElementById('msg').textContent = 'Dépose le brief (document) ou colle-le.'; return; }
   const r = await api('/api/clips/demande', f);
   document.getElementById('msg').textContent = r.message;
   if (r.ok) { e.target.reset(); charger(); }

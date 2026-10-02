@@ -28,18 +28,23 @@ async function preparer() {
 }
 
 // Une demande de découpe. YouTube bloque l'adresse du serveur : un lien YouTube passe par le PC de Basile.
-async function demander({ url, campagne, nombre, consignes }) {
+async function demander({ url, campagne, nombre, consignes, fichier }) {
   await preparer();
-  url = String(url || '').trim(); campagne = nomCampagne(campagne);
+  await lire('ALTER TABLE clips_demandes ADD COLUMN IF NOT EXISTS brief_fichier text, ADD COLUMN IF NOT EXISTS brief_nom text');
+  // le brief déposé en document (PDF, texte) : le serveur en lira le texte et les liens (file.py), lien de la vidéo compris
+  const doc = fichier && fichier.b64 && /\.(pdf|txt|md)$/i.test(fichier.nom || '') ? fichier : null;
+  if (doc && doc.b64.length > 15e6) return { ok: false, message: 'Document trop lourd (10 Mo au plus).' };
+  url = String(url || '').trim(); campagne = nomCampagne(campagne || (doc && doc.nom.replace(/\.[a-z]+$/i, '')));
   if (!url) {                                        // le lien de la vidéo source est souvent dans le brief : on le prend là
     const liens = String(consignes || '').match(/https?:\/\/[^\s)>\]"']+/g) || [];
     url = liens.find((l) => /youtu\.?be|drive\.google|dropbox|vimeo|twitch|kick\.com|streamable|wetransfer/i.test(l)) || '';
   }
-  if (!/^https?:\/\/\S+$/.test(url)) return { ok: false, message: 'Aucun lien de vidéo trouvé : colle-le dans le champ du haut.' };
+  if (!doc && !/^https?:\/\/\S+$/.test(url)) return { ok: false, message: 'Aucun lien de vidéo trouvé : dépose le brief en document ou colle le lien.' };
   if (!campagne) return { ok: false, message: 'Donne un nom à la campagne.' };
   const n = Math.max(1, Math.min(40, Number(nombre) || 20));
-  const r = await lire(`INSERT INTO clips_demandes (url, campagne, nombre, consignes) VALUES ($1, $2, $3, $4) RETURNING id`,
-    [url, campagne, n, String(consignes || '').slice(0, 2000) || null]);
+  // le brief entier est gardé (il guide tout le montage) : plus de coupe à 2 000 caractères
+  const r = await lire(`INSERT INTO clips_demandes (url, campagne, nombre, consignes, brief_fichier, brief_nom) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+    [url || 'a-lire-dans-le-brief', campagne, n, String(consignes || '').slice(0, 30000) || null, doc ? doc.b64 : null, doc ? doc.nom : null]);
   return { ok: !!r[0], id: r[0] && r[0].id, message: r[0] ? `Demande n°${r[0].id} en file : ${n} clips pour « ${campagne} ».` : 'Demande non enregistrée.' };
 }
 
@@ -204,7 +209,7 @@ async function router(req, res, { url, m, envoyer, json, fichierInterface }) {
   if (m === 'POST' && url === '/api/clips/instagram') { envoyer(res, 200, await publierInstagram(await json(req))); return true; }
   if (m === 'GET' && (c = url.match(/^\/clips\/f\/([\w-]{1,80})\/(clip-\d{2}\.mp4)$/))) { servirVideo(req, res, decodeURIComponent(c[1]), c[2]); return true; }
   if (m === 'GET' && url === '/api/clips') { envoyer(res, 200, await liste()); return true; }
-  if (m === 'POST' && url === '/api/clips/demande') { envoyer(res, 200, await demander(await json(req))); return true; }
+  if (m === 'POST' && url === '/api/clips/demande') { envoyer(res, 200, await demander(await json(req, 2e7))); return true; }
   if (m === 'POST' && url === '/api/clips/publie') { envoyer(res, 200, await noterPublication(await json(req))); return true; }
   if (m === 'POST' && url === '/api/clips/whop') { envoyer(res, 200, await declarerWhop(await json(req))); return true; }
   return false;
