@@ -372,7 +372,11 @@ def main():
         if profil.get("tags"):
             # une légende par plateforme, avec le tag obligatoire de la campagne
             q = censurer(c.get("question", "")).strip()       # la légende finit par une question (commentaires)
-            par = {pl: "%s %s\n\n%s%s" % (c.get("titre", ""), tg, (q + "\n\n") if q else "", " ".join(tags_h)) for pl, tg in profil["tags"].items()}
+            # une légende par plateforme : 1re ligne = titre avec les mots qu'on cherche ; question ; mention ; hashtags
+            # (YouTube 3 au plus, Instagram et TikTok 5 au plus : au-delà, ça n'aide plus et ça fait spam)
+            maxi_h = {"youtube": 3}
+            par = {pl: "%s %s\n\n%s%s" % (c.get("titre", ""), tg, (q + "\n\n") if q else "", " ".join(tags_h[:maxi_h.get(pl, 5)]))
+                   for pl, tg in profil["tags"].items()}
             (dossier / ("clip-%02d.json" % k)).write_text(json.dumps(par, ensure_ascii=False, indent=1), encoding="utf-8")
         # la note prédite est gardée : l'agent Analytics la comparera aux vues réelles pour calibrer la notation
         rendus.append(dict(clip=mp4.name, debut=c["debut"], fin=c["fin"], titre=c.get("titre", ""), accroche=c.get("accroche", ""),
