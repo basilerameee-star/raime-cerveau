@@ -44,7 +44,7 @@ Plus il y a de transformation (accroche à l'image, zooms de relance, découpe n
 
 ## 4. Durée
 - **Partages TikTok : maximum entre 21 et 34 s.** Reels : 15 à 30 s. Shorts : sous 30 s, c'est plus facile (seuil de 65 %), et jusqu'à 60 s si le passage tient.
-- **Notre règle : viser 20 à 35 s**, au-dessus du minimum du brief, et ne jamais rallonger un passage qui s'essouffle.
+- **Notre règle (02/10/2026, après l'étude de la section 13) : la durée suit le moment**, de 12 s (ou le minimum du brief) à 35 s. Un moment fort court reste court ; on ne rallonge jamais.
 - **Piège** : sur un clip très court (moins de 12 s), tout élément fixe qui occupe l'écran plusieurs secondes coûte cher. Pas de bandeau ni d'appel à l'action au milieu de l'image.
 
 ## 5. Sous-titres (notre style, confirmé par les études)

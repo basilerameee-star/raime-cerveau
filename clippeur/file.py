@@ -89,8 +89,8 @@ def brief_auto(d):
     sys.path.insert(0, "/opt/raime/clippeur")
     from clippeur import gemini
     p = gemini("""Voici le brief d'une campagne de clipping (Whop Content Rewards). Extrais-en les règles, sans rien inventer.
-Réponds en JSON : {"nom": "nom court de la campagne", "min": durée minimale d'un clip en secondes (22 si non précisé ou si inférieur),
-"max": durée maximale en secondes (40 si non précisé), "tags": {"youtube": "@compte à mentionner ou vide", "tiktok": "...", "instagram": "...", "x": "..."},
+Réponds en JSON : {"nom": "nom court de la campagne", "min": durée minimale d'un clip en secondes (12 si non précisé),
+"max": durée maximale en secondes (35 si non précisé), "tags": {"youtube": "@compte à mentionner ou vide", "tiktok": "...", "instagram": "...", "x": "..."},
 "hashtags": ["#obligatoires"], "interdits": ["mots ou sujets interdits, en minuscules"],
 "consignes": "toutes les règles de contenu et de montage du brief, en anglais, phrases courtes",
 "remuneration": {"type": "CPM ou par publication", "detail": "montants, minimum, maximum, plateformes, tels qu'écrits"},
@@ -99,7 +99,7 @@ Brief :
 """ + texte[:12000], cle_gemini())
     p.update({"_source": "Brief collé sur /clips (demande n°%s), extrait par Gemini." % d["id"], "brief_brut": texte[:12000],
               "sous_titres": True, "cadrage": "visage", "publication_auto": True})
-    p["min"] = max(int(p.get("min") or 22), 22); p["max"] = max(int(p.get("max") or 40), p["min"] + 8)
+    p["min"] = max(int(p.get("min") or 12), 12)      # la durée suit le moment (décision du 02/10/2026); p["max"] = max(int(p.get("max") or 35), p["min"] + 8)
     return p
 
 
