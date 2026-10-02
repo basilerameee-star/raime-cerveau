@@ -71,8 +71,7 @@ function dossier(c) {
     ${b.priorite ? `<p class="msg" style="margin-top:8px">${esc(b.priorite)}</p>` : ''}
     ${(b.regles || []).length ? `<p class="msg">${b.regles.map(esc).join('<br>')}</p>` : ''}
     <p class="mono" style="margin-top:10px">Liens à déclarer à Whop (${liens.length})</p>
-    ${liens.length ? `<textarea readonly style="min-height:90px">${esc(liens.join('
-'))}</textarea>` : '<p class="msg">Aucun pour l'instant.</p>'}
+    ${liens.length ? `<textarea readonly style="min-height:90px">${esc(liens.join(String.fromCharCode(10)))}</textarea>` : '<p class="msg">Aucun pour l’instant.</p>'}
   </details>`;
 }
 async function charger() {

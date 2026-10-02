@@ -67,3 +67,9 @@ test('Buffer : créneaux du soir à New York, jamais deux clips au même crénea
   assert.equal(b.toISOString(), '2026-10-02T23:30:00.000Z');
   assert.equal((await clips.programmerBuffer({ campagne: 'camp-a', clip: 'clip-99.mp4' })).ok, false);
 });
+
+test('la page Clips : son script se lit sans erreur de syntaxe (sinon le formulaire part sans JavaScript)', () => {
+  const html = fs.readFileSync(new URL('../../jarvis/interface/clips.html', import.meta.url), 'utf8');
+  const script = html.slice(html.indexOf('<script>') + 8, html.indexOf('</script>'));
+  assert.doesNotThrow(() => new Function(script));
+});
