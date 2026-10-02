@@ -84,7 +84,7 @@ def choisir(mots, langue, n, mini, maxi, consignes, cle):
         "en langue « %s ». Choisis les %d meilleurs passages autonomes : chacun doit se comprendre seul, commencer fort "
         "(une phrase qui accroche dès la 1re seconde) et finir sur une chute ou une idée complète (sauf si les consignes de la campagne demandent de couper avant la fin de la scène). Durée de chaque passage "
         "entre %d et %d secondes. Pas de chevauchement. %s\n"
-        "Réponds en JSON : [{\"debut\": s, \"fin\": s, \"accroche\": \"5 mots au plus, dans la langue de la vidéo\", "
+        "Réponds en JSON : [{\"debut\": s, \"fin\": s, \"accroche\": \"5 mots au plus, dans la langue de la vidéo : ce qui se passe dans la scène, jamais une citation, jamais un juron\", "
         "\"titre\": \"titre de publication, 60 caractères au plus\", \"hashtags\": [\"3 à 5\"]}]\n\n%s"
         % (langue, n, mini, maxi, ("Consignes de la campagne : " + consignes) if consignes else "", texte))
     choix = gemini(prompt, cle)
@@ -96,12 +96,25 @@ def choisir(mots, langue, n, mini, maxi, consignes, cle):
     return bons[:n]
 
 
+CENSURE = ["nigga", "nigger", "niggas", "faggot", "retard", "fuck", "fucking", "shit", "bitch", "cunt", "motherfucker"]
+
+
+def censurer(texte, mots_en_plus=()):
+    """Une injure ou un juron affiché à l'écran : la première lettre, puis des étoiles (le son reste celui de la vidéo)."""
+    def un(m):
+        mot = m.group(0)
+        return mot[0] + "*" * (len(mot) - 1)
+    for w in list(CENSURE) + list(mots_en_plus):
+        texte = re.sub(r"(?i)\b%s\b" % re.escape(w), un, texte)
+    return texte
+
+
 def ass_temps(s):
     s = max(0, s)
     return "%d:%02d:%05.2f" % (s // 3600, (s % 3600) // 60, s % 60)
 
 
-def sous_titres(mots, debut, fin, accroche, chemin):
+def sous_titres(mots, debut, fin, accroche, chemin, avec_mots=True):
     """Sous-titres ASS : groupes de 3 mots, le mot prononcé en plein blanc, les autres en blanc atténué ;
     l'accroche en haut pendant 2,5 s. Aucune animation clignotante."""
     tete = ("[Script Info]\nScriptType: v4.00+\nPlayResX: 1080\nPlayResY: 1920\nWrapStyle: 2\n\n"
@@ -112,8 +125,8 @@ def sous_titres(mots, debut, fin, accroche, chemin):
             "[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n")
     ev = []
     if accroche:
-        ev.append("Dialogue: 1,%s,%s,Accroche,,0,0,0,,%s" % (ass_temps(0), ass_temps(2.5), accroche.replace("\n", " ")))
-    dans = [w for w in mots if w["d"] >= debut - .05 and w["f"] <= fin + .05 and w["m"]]
+        ev.append("Dialogue: 1,%s,%s,Accroche,,0,0,0,,%s" % (ass_temps(0), ass_temps(2.5), censurer(accroche.replace("\n", " "))))
+    dans = [w for w in mots if w["d"] >= debut - .05 and w["f"] <= fin + .05 and w["m"]] if avec_mots else []
     # des groupes de 3 mots au plus, qui ne traversent jamais une fin de phrase
     groupes, g = [], []
     for w in dans:
@@ -126,7 +139,7 @@ def sous_titres(mots, debut, fin, accroche, chemin):
         for j, w in enumerate(g):
             d = w["d"] - debut
             f = (g[j + 1]["d"] if j + 1 < len(g) else g[-1]["f"]) - debut
-            txt = " ".join(("{\\c&H00F5F5F5&}" if k == j else "{\\c&H00B4B4B4&}") + x["m"] for k, x in enumerate(g))
+            txt = " ".join(("{\\c&H00F5F5F5&}" if k == j else "{\\c&H00B4B4B4&}") + censurer(x["m"]) for k, x in enumerate(g))
             ev.append("Dialogue: 0,%s,%s,Mot,,0,0,0,,%s" % (ass_temps(d), ass_temps(max(f, d + .08)), txt))
     chemin.write_text(tete + "\n".join(ev) + "\n", encoding="utf-8")
 
@@ -154,8 +167,10 @@ def centre_visage(source, debut, fin):
     return xs[len(xs) // 2]
 
 
-def monter(source, debut, fin, ass, sortie):
-    cx = centre_visage(source, debut, fin)
+def monter(source, debut, fin, ass, sortie, cadrage="visage"):
+    cx = centre_visage(source, debut, fin) if cadrage == "visage" else None
+    if cx is None and cadrage == "centre":
+        cx = .5                                          # plein écran au centre : les sous-titres incrustés de la source restent lisibles
     if cx is not None:
         # recadrage plein écran sur le visage : une fenêtre 9:16 dans la hauteur de la source, centrée sur lui
         filtre = ("[0:v]crop='min(iw,ih*9/16)':ih:'max(0,min(iw-ih*9/16,%.4f*iw-ih*9/32))':0,scale=1080:1920:flags=lanczos,"
@@ -192,8 +207,13 @@ def main():
     nom = re.sub(r"[^a-z0-9-]+", "-", o.campagne.lower()).strip("-")
     dossier = SORTIE / nom; dossier.mkdir(parents=True, exist_ok=True)
     source = telecharger(o.url, dossier)
-    mots, langue = transcrire(source)
-    (dossier / "transcription.json").write_text(json.dumps(mots, ensure_ascii=False), encoding="utf-8")
+    tr = dossier / "transcription.json"
+    if tr.is_file() and (dossier / "langue.txt").is_file():          # même source déjà transcrite : on la reprend
+        mots, langue = json.loads(tr.read_text(encoding="utf-8")), (dossier / "langue.txt").read_text().strip()
+    else:
+        mots, langue = transcrire(source)
+        tr.write_text(json.dumps(mots, ensure_ascii=False), encoding="utf-8")
+        (dossier / "langue.txt").write_text(langue)
     choix = choisir(mots, langue, o.nombre + (4 if interdits else 0), o.min, o.max, o.consignes, cle)
     if interdits:
         # un mot interdit prononcé s'afficherait dans les sous-titres : le passage est écarté
@@ -208,8 +228,12 @@ def main():
     rendus = []
     for k, c in enumerate(choix, 1):
         ass = dossier / ("clip-%02d.ass" % k); mp4 = dossier / ("clip-%02d.mp4" % k)
-        sous_titres(mots, c["debut"], c["fin"], c.get("accroche", ""), ass)
-        monter(source, c["debut"], c["fin"], ass, mp4)
+        sous_titres(mots, c["debut"], c["fin"], c.get("accroche", ""), ass, profil.get("sous_titres", True))
+        monter(source, c["debut"], c["fin"], ass, mp4, profil.get("cadrage", "visage"))
+        for faux, juste in profil.get("orthographe", {}).items():
+            c["titre"] = re.sub(r"(?i)\b%s\b" % re.escape(faux), juste, c.get("titre", ""))
+            c["accroche"] = re.sub(r"(?i)\b%s\b" % re.escape(faux), juste, c.get("accroche", ""))
+        c["titre"], c["accroche"] = censurer(c.get("titre", "")), censurer(c.get("accroche", ""))
         tags_h = list(dict.fromkeys(["#" + h.lstrip("#") for h in profil.get("hashtags", [])] + ["#" + h.lstrip("#") for h in c.get("hashtags", [])]))
         legende = "%s\n\n%s" % (c.get("titre", ""), " ".join(tags_h))
         (dossier / ("clip-%02d.txt" % k)).write_text(legende, encoding="utf-8")

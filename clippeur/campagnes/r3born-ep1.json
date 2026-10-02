@@ -4,14 +4,36 @@
   "source": "https://www.youtube.com/watch?v=Xyo-mst-qPE",
   "min": 12,
   "max": 50,
-  "tags": { "youtube": "@HardScopeTV", "tiktok": "@hardscope", "instagram": "@hardscope", "x": "@hardscope" },
-  "hashtags": ["#r3born"],
-  "interdits": ["faze", "trump", "biden", "harris", "election", "élection", "democrat", "republican", "politic"],
+  "tags": {
+    "youtube": "@HardScopeTV",
+    "tiktok": "@hardscope",
+    "instagram": "@hardscope",
+    "x": "@hardscope"
+  },
+  "hashtags": [
+    "#r3born"
+  ],
+  "interdits": [
+    "faze",
+    "trump",
+    "biden",
+    "harris",
+    "election",
+    "élection",
+    "democrat",
+    "republican",
+    "politic"
+  ],
   "priorite_plateformes": "YouTube Shorts d'abord (70 % du budget), puis TikTok, Instagram Reels et X (10 % chacun).",
   "consignes": "Show R3born (N3on, fitness transformation), Episode 1 only. Each clip drops straight into the wildest second of a scene (a reaction, a blowup, a moment that makes no sense out of context): the hook is in the first 2 seconds, no setup. Cut BEFORE the moment fully resolves, so people go watch the episode. Prefer moments where HardScope talent appears with other big names. Real moments only: never invent context. Never anything political, never mention FaZe. Captions: short and conversational, like a fan posting, saying what happens on screen; no long write-ups, no hard selling, no clickbait that misrepresents the scene. The title must not make HardScope look bad.",
   "regles_humaines": [
     "Ne jamais soumettre un de ces clips à une autre campagne (exclusion des deux).",
     "Publier depuis les comptes existants (KinGKlip) ; YouTube Shorts en priorité.",
     "Aucun « boost » de vues, aucune vue achetée."
-  ]
+  ],
+  "sous_titres": false,
+  "cadrage": "centre",
+  "orthographe": {
+    "Neon": "N3on"
+  }
 }
