@@ -11,7 +11,8 @@
 
 const fs = require('fs');
 const path = require('path');
-const { lire } = require('./bases.cjs');
+const crypto = require('crypto');
+const { lire, lireCoffre } = require('./bases.cjs');
 
 const DOSSIER = () => process.env.CLIPS_DIR || '/travail/clips';
 const PLATEFORMES = ['tiktok', 'instagram', 'youtube'];
@@ -61,6 +62,57 @@ async function liste() {
   return { campagnes, demandes };
 }
 
+// ── PUBLIER SUR INSTAGRAM (KinGKlip) — le bouton de Basile vaut accord, clip par clip.
+// Meta va chercher la vidéo lui-même : on lui donne un lien public signé, valable une heure (/pubclip/…, hors mot de passe).
+// La clé de signature ne vit qu'en mémoire : un redémarrage invalide les anciens liens, sans conséquence.
+const SIGNATURE = crypto.randomBytes(32);
+const COMPTE_IG = process.env.CLIPS_INSTAGRAM || 'kinggklip';
+const GRAPH = 'https://graph.facebook.com/v21.0';
+const signer = (exp, campagne, clip) => crypto.createHmac('sha256', SIGNATURE).update(`${exp}/${campagne}/${clip}`).digest('hex').slice(0, 32);
+function lienPublic(campagne, clip) {
+  const exp = Math.floor(Date.now() / 1000) + 3600;
+  return `https://cockpit.raime.fr/pubclip/${exp}/${signer(exp, campagne, clip)}/${encodeURIComponent(campagne)}/${clip}`;
+}
+function lienValide(exp, sig, campagne, clip) {
+  if (+exp < Date.now() / 1000) return false;
+  const attendu = Buffer.from(signer(exp, campagne, clip)), recu = Buffer.from(String(sig));
+  return attendu.length === recu.length && crypto.timingSafeEqual(attendu, recu);
+}
+async function graph(chemin, cle, corps) {
+  const r = await fetch(GRAPH + chemin + (corps ? '' : (chemin.includes('?') ? '&' : '?') + 'access_token=' + encodeURIComponent(cle)),
+    corps ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...corps, access_token: cle }) } : {});
+  const d = await r.json();
+  if (d.error) throw new Error(String(d.error.error_user_msg || d.error.message || 'erreur Meta').split(cle).join('***'));
+  return d;
+}
+async function publierInstagram({ campagne, clip, legende }, attendreMs = 5000, essais = 60) {
+  await preparer();
+  campagne = nomCampagne(campagne); clip = String(clip || '');
+  if (!/^clip-\d{2}\.mp4$/.test(clip) || !fs.existsSync(path.join(DOSSIER(), campagne, clip))) return { ok: false, message: 'Clip introuvable.' };
+  const deja = await lire(`SELECT lien FROM clips_publies WHERE campagne = $1 AND clip = $2 AND plateforme = 'instagram'`, [campagne, clip]);
+  if (deja[0]) return { ok: false, message: 'Déjà publié sur Instagram : ' + deja[0].lien };
+  const cle = lireCoffre().META_SYSTEM_TOKEN;
+  if (!cle) return { ok: false, message: 'Clé Meta absente du coffre.' };
+  try {
+    const pages = await graph('/me/accounts?fields=instagram_business_account{id,username}', cle);
+    const ig = (pages.data || []).map((p) => p.instagram_business_account).find((a) => a && a.username === COMPTE_IG);
+    if (!ig) return { ok: false, message: `Le compte @${COMPTE_IG} n'est pas visible par cerveau-raime.` };
+    const boite = await graph(`/${ig.id}/media`, cle, { media_type: 'REELS', video_url: lienPublic(campagne, clip),
+      caption: String(legende || '').slice(0, 2200), share_to_feed: true });
+    let etat = '';
+    for (let i = 0; i < essais && etat !== 'FINISHED'; i++) {          // Meta télécharge et prépare la vidéo (une à deux minutes)
+      await new Promise((ok) => setTimeout(ok, attendreMs));
+      etat = (await graph(`/${boite.id}?fields=status_code`, cle)).status_code;
+      if (etat === 'ERROR' || etat === 'EXPIRED') return { ok: false, message: 'Meta a refusé la vidéo (' + etat + ').' };
+    }
+    if (etat !== 'FINISHED') return { ok: false, message: 'Meta prépare encore la vidéo : réessaie dans quelques minutes.' };
+    const media = await graph(`/${ig.id}/media_publish`, cle, { creation_id: boite.id });
+    const lien = (await graph(`/${media.id}?fields=permalink`, cle)).permalink || `https://www.instagram.com/${COMPTE_IG}/`;
+    await noterPublication({ campagne, clip, plateforme: 'instagram', lien });
+    return { ok: true, lien, message: 'Publié sur Instagram. Déclare le lien dans la campagne Whop.' };
+  } catch (e) { return { ok: false, message: 'Instagram : ' + e.message }; }
+}
+
 // Le lien d'un clip publié : à déclarer à Whop, et à suivre pour les vues.
 async function noterPublication({ campagne, clip, plateforme, lien }) {
   await preparer();
@@ -93,6 +145,11 @@ function servirVideo(req, res, campagne, clip) {
 async function router(req, res, { url, m, envoyer, json, fichierInterface }) {
   if (m === 'GET' && url === '/clips') { fichierInterface(res, 'clips.html'); return true; }
   let c;
+  if (m === 'GET' && (c = url.match(/^\/pubclip\/(\d{10})\/([0-9a-f]{32})\/([\w-]{1,80})\/(clip-\d{2}\.mp4)$/))) {
+    if (!lienValide(c[1], c[2], c[3], c[4])) { res.writeHead(403); res.end(); return true; }
+    servirVideo(req, res, c[3], c[4]); return true;
+  }
+  if (m === 'POST' && url === '/api/clips/instagram') { envoyer(res, 200, await publierInstagram(await json(req))); return true; }
   if (m === 'GET' && (c = url.match(/^\/clips\/f\/([\w-]{1,80})\/(clip-\d{2}\.mp4)$/))) { servirVideo(req, res, decodeURIComponent(c[1]), c[2]); return true; }
   if (m === 'GET' && url === '/api/clips') { envoyer(res, 200, await liste()); return true; }
   if (m === 'POST' && url === '/api/clips/demande') { envoyer(res, 200, await demander(await json(req))); return true; }
@@ -101,4 +158,4 @@ async function router(req, res, { url, m, envoyer, json, fichierInterface }) {
   return false;
 }
 
-module.exports = { router, demander, liste, noterPublication, declarerWhop, nomCampagne, preparer, PLATEFORMES };
+module.exports = { router, publierInstagram, lienPublic, lienValide, demander, liste, noterPublication, declarerWhop, nomCampagne, preparer, PLATEFORMES };

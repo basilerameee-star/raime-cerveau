@@ -49,3 +49,12 @@ test('la vidéo se sert par morceaux (Range) ; un chemin hors du dossier est ref
   const r2 = sortie();
   assert.equal(await clips.router({ headers: {} }, r2, { url: '/clips/f/../etc/clip-01.mp4', m: 'GET', envoyer, json, fichierInterface }), false);
 });
+
+test('Instagram : le lien public est signé, expire, et un clip inconnu ne part pas', async () => {
+  const u = new URL(clips.lienPublic('camp-a', 'clip-01.mp4'));
+  const [, , exp, sig, camp, clip] = u.pathname.split('/');
+  assert.equal(clips.lienValide(exp, sig, camp, clip), true);
+  assert.equal(clips.lienValide(exp, sig, camp, 'clip-02.mp4'), false);           // signature liée au clip
+  assert.equal(clips.lienValide('1000000000', sig, camp, clip), false);           // expiré
+  assert.equal((await clips.publierInstagram({ campagne: 'camp-a', clip: 'clip-99.mp4' })).ok, false);
+});

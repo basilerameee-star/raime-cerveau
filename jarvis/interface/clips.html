@@ -76,7 +76,8 @@ async function charger() {
           ${k.legendes ? `<div class="actions">${Object.keys(k.legendes).map((pl, i) => `<button class="vide${i ? '' : ' ok'}" data-pl="${esc(pl)}" data-txt="${esc(k.legendes[pl])}">${esc(NOMS[pl] || pl)}</button>`).join('')}</div>` : ''}
           <textarea readonly>${esc(k.legendes ? k.legendes[Object.keys(k.legendes)[0]] : k.legende)}</textarea>
           <div class="actions"><a href="${k.fichier}" download>Télécharger</a>
-            <button class="vide" data-copie>Copier la légende</button></div>
+            <button class="vide" data-copie>Copier la légende</button>
+            ${k.publies.some((x) => x.plateforme === 'instagram') ? '' : `<button data-ig data-c="${esc(c.campagne)}" data-k="${esc(k.clip)}" data-txt="${esc(k.legendes ? (k.legendes.instagram || '') : k.legende)}">Publier sur Instagram</button>`}</div>
           ${['tiktok', 'instagram', 'youtube'].map((p) => { const pub = k.publies.find((x) => x.plateforme === p);
             return `<div class="pub"><span>${NOMS[p]}</span><input placeholder="lien publié" value="${pub ? esc(pub.lien) : ''}"
               data-c="${esc(c.campagne)}" data-k="${esc(k.clip)}" data-p="${p}"><button class="vide" data-note>${pub ? (pub.declare_whop ? 'Whop ✓' : 'Noté') : 'Noter'}</button></div>`; }).join('')}
@@ -100,6 +101,14 @@ document.addEventListener('click', async (e) => {
   if (e.target.matches('[data-copie]')) {
     const t = e.target.closest('.corps').querySelector('textarea').value;
     try { await navigator.clipboard.writeText(t); e.target.textContent = 'Copiée'; } catch (err) { e.target.closest('.corps').querySelector('textarea').select(); }
+  }
+  if (e.target.matches('[data-ig]')) {               // publication directe sur @kinggklip : un clic = l'accord, clip par clip
+    const b = e.target;
+    if (!confirm('Publier ce clip sur Instagram (@kinggklip) maintenant ?')) return;
+    b.disabled = true; b.textContent = 'Publication… (1 à 2 min)';
+    const r = await api('/api/clips/instagram', { campagne: b.dataset.c, clip: b.dataset.k, legende: b.dataset.txt });
+    if (r.ok) { b.textContent = 'Publié ✓'; charger.sig = ''; charger(); } else { b.disabled = false; b.textContent = 'Publier sur Instagram'; alert(r.message); }
+    return;
   }
   if (e.target.matches('[data-note]')) {
     const i = e.target.previousElementSibling;
