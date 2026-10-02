@@ -5,14 +5,31 @@
     "Budget restant inférieur à 500 $, ou à 15 % du budget total",
     "Aucune des plateformes de KinGKlip acceptée (TikTok, Instagram, YouTube Shorts)",
     "Source imposée que le clippeur ne peut pas obtenir légalement, ou règle impossible à respecter (ex. visage du clipper à l'écran)",
-    "Minimum de vues par clip supérieur à 50 000 tant que les comptes ont moins de 1 000 abonnés"
+    "Minimum de vues par clip supérieur à 50 000 tant que les comptes ont moins de 1 000 abonnés",
+    "Taux d'approbation des clips inférieur à 30 % (la marque refuse trop : le travail est perdu)",
+    "Délai moyen de validation (average review time) supérieur à 48 heures (les 7 jours de comptage démarrent à la validation : trop tard, les vues sont perdues)"
   ],
   "criteres": {
-    "rpm": { "poids": 30, "regle": "Prix pour 1 000 vues : 0 point à 0,20 $, plein à 3 $ ou plus, linéaire entre les deux." },
-    "budget_restant": { "poids": 20, "regle": "Plein à 10 000 $ restants ou plus ; proportionnel en dessous." },
-    "saturation": { "poids": 20, "regle": "Nombre de clips ou de créateurs déjà sur la campagne, rapporté au budget restant : moins il y a de monde par dollar restant, mieux c'est. Plein si moins de 1 clip par 50 $ restants." },
-    "adequation": { "poids": 20, "regle": "Le clippeur excelle sur la parole : podcast, interview, motivation, débat = plein ; vlog ou défi parlé (ex. 1 contre 20) = 60 % ; jeu vidéo sans parole, musique = 20 %." },
-    "max_payout": { "poids": 10, "regle": "Plafond de gain par clip : plein à 300 $ ou plus, ou sans plafond ; 0 en dessous de 20 $." }
+    "rpm": {
+      "poids": 30,
+      "regle": "Prix pour 1 000 vues : 0 point à 0,20 $, plein à 3 $ ou plus, linéaire entre les deux."
+    },
+    "budget_restant": {
+      "poids": 20,
+      "regle": "Plein à 10 000 $ restants ou plus ; proportionnel en dessous."
+    },
+    "saturation": {
+      "poids": 20,
+      "regle": "Nombre de clips ou de créateurs déjà sur la campagne, rapporté au budget restant : moins il y a de monde par dollar restant, mieux c'est. Plein si moins de 1 clip par 50 $ restants."
+    },
+    "adequation": {
+      "poids": 20,
+      "regle": "Le clippeur excelle sur la parole : podcast, interview, motivation, débat = plein ; vlog ou défi parlé (ex. 1 contre 20) = 60 % ; jeu vidéo sans parole, musique = 20 %."
+    },
+    "max_payout": {
+      "poids": 10,
+      "regle": "Plafond de gain par clip : plein à 300 $ ou plus, ou sans plafond ; 0 en dessous de 20 $."
+    }
   },
   "niches": {
     "motivation": "Très bonne : parole dense, phrases fortes, accroches naturelles. Priorité.",
@@ -22,7 +39,22 @@
   },
   "lecture_du_brief": {
     "content": "La ligne « Content » dit QUELLES vidéos source sont autorisées. « Linkme YouTube vlog only » = seulement des extraits des vlogs YouTube du créateur (ceux de son lien) ; tout autre contenu de lui n'est pas payé.",
-    "a_extraire": ["rpm", "budget_total", "budget_restant", "max_payout", "min_vues", "plateformes", "content (sources autorisées)", "durée min/max", "mentions et hashtags obligatoires", "interdits", "nombre de clips ou de créateurs", "candidature requise"]
+    "a_extraire": [
+      "rpm",
+      "budget_total",
+      "budget_restant",
+      "max_payout",
+      "min_vues",
+      "plateformes",
+      "content (sources autorisées)",
+      "durée min/max",
+      "mentions et hashtags obligatoires",
+      "interdits",
+      "nombre de clips ou de créateurs",
+      "candidature requise",
+      "taux d'approbation",
+      "délai moyen de validation"
+    ]
   },
   "rythme": "3 à 4 clips par jour et par compte au départ, puis plus si les vues suivent ; 20 à 30 meilleurs clips par heure de source, étalés."
 }
