@@ -215,4 +215,22 @@ async function router(req, res, { url, m, envoyer, json, fichierInterface }) {
   return false;
 }
 
-module.exports = { router, programmerBuffer, prochainCreneau, publierInstagram, lienPublic, lienValide, demander, liste, noterPublication, declarerWhop, nomCampagne, preparer, PLATEFORMES };
+// Ce que Jarvis sait du clip farming (02/10/2026) : la routine décidée avec Basile, les règles, et l'état du jour.
+const ROUTINE = `
+Clip farming KinGKlip (routine décidée avec Basile le 02/10/2026) :
+- Basile choisit une campagne Whop Content Rewards (grille : prix pour 1 000 vues, approbation ≥ 30 %, validation ≤ 48 h), la rejoint, puis dépose le brief (document PDF ou texte collé) sur cockpit.raime.fr/clips. Le lien de la vidéo est lu dans le brief.
+- Le serveur lit tout le brief (il est primordial), télécharge la meilleure qualité (vidéo YouTube : par le PC de Basile, allumé), découpe sans jamais grossir l'image, sous-titres gros (mot prononcé en jaune, reste en blanc), sans bandeau de titre, fin sur une fin de phrase, sans blancs, 18 à 40 s ; puis tout part dans Buffer (TikTok bahethora0, Instagram kinggklip ; YouTube KinGKlip en pause tant que Whop ne relie pas la chaîne), 4 publications par jour et par chaîne.
+- Chaque lien publié part à Basile par e-mail (liens bruts, un par ligne) : il le soumet dans « Submit clip » de SA campagne dans les 30 minutes (règle Whop). Un clip ne va que dans sa propre campagne. Aucune vue achetée ni promotion payante.
+- Paiement : Whop compte les vues 7 jours après validation, puis 3 jours de blocage ; retrait depuis Earnings.
+- À venir (après recharge des crédits Claude) : agent qui soumet seul les liens dans Whop (n°52), agent Analytics (n°53).`;
+async function phrase() {
+  try {
+    await preparer(); await preparerBuffer();
+    const d = await lire(`SELECT campagne, etat FROM clips_demandes ORDER BY id DESC LIMIT 3`);
+    const b = await lire(`SELECT plateforme, etat, count(*)::int AS n FROM clips_buffer GROUP BY 1, 2 ORDER BY 1, 2`);
+    const p = await lire(`SELECT count(*) FILTER (WHERE NOT declare_whop)::int AS a FROM clips_publies`);
+    return ROUTINE + `\nÉtat des clips : dernières demandes ${d.map((x) => x.campagne + ' (' + x.etat + ')').join(', ') || 'aucune'} ; Buffer ${b.map((x) => `${x.plateforme} ${x.etat} ${x.n}`).join(', ') || 'vide'} ; liens publiés non déclarés à Whop : ${p[0] ? p[0].a : 0}.`;
+  } catch (e) { return ROUTINE; }
+}
+
+module.exports = { phrase, router, programmerBuffer, prochainCreneau, publierInstagram, lienPublic, lienValide, demander, liste, noterPublication, declarerWhop, nomCampagne, preparer, PLATEFORMES };

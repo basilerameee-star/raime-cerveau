@@ -93,6 +93,7 @@ async function etatDuCerveau(message = '') {
   t += await require('./appels.cjs').phrase(); // les relances téléphoniques à J+7 (30/09/2026)
   t += await require('./vitrines.cjs').phraseEnvoi(); // l'envoi des vitrines : mode et chiffres (01/10/2026)
   t += require('./feuille.cjs').phrase(); // la feuille de route décidée avec Basile (30/09/2026)
+  t += await require('./clips.cjs').phrase(); // le clip farming : routine et état du jour (02/10/2026)
   if (pensee.length) t += "\nLa pensée de la nuit :\n" + pensee.map((p) => `- ${p.titre} — ${p.proposition}`).join('\n');
   if (commandes.length) t += "\nOrdres de Basile (état et compte rendu d'Hermes) :\n" + commandes.map((c) => `- n°${c.id} [${c.etat}] ${c.texte}${c.reponse ? ' → ' + c.reponse : ''}`).join('\n');
   if (questions.length) t += "\nQuestions que le cerveau attend de Basile :\n" + questions.map((x) => '- ' + x.question).join('\n');

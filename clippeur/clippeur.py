@@ -2,7 +2,7 @@
 """LE CLIPPEUR (02/10/2026) — d'une vidéo source d'une campagne Whop autorisée, des clips verticaux prêts à publier.
 
 Voulu par Basile pour KinGKlip (TikTok, Instagram, YouTube) : la qualité d'un outil du marché, sans abonnement.
-  1. télécharge la source (yt-dlp, 1080p au plus, jamais d'agrandissement : pas de pixels) ;
+  1. télécharge la source (yt-dlp, meilleure qualité, 1440p minimum, jamais d’agrandissement) ;
   2. transcrit la voix au mot près (faster-whisper, sur le processeur du serveur) ;
   3. choisit les meilleurs passages (modèle gratuit Gemini, à partir de la transcription datée) ;
   4. monte en 1080 × 1920 : la vidéo nette au centre, un fond flou de la même image, l'accroche en haut les
@@ -38,7 +38,7 @@ def telecharger(url, dossier):
     if pathlib.Path(url).is_file():
         return pathlib.Path(url)
     # 1080p au plus ; si la source est plus petite, on ne l'agrandit pas
-    lancer(["yt-dlp", "-f", "bv*[height<=1080][ext=mp4]+ba[ext=m4a]/b[height<=1080]/b", "--merge-output-format", "mp4",
+    lancer(["yt-dlp", "-f", "bv*+ba/b", "-S", "res,br", "--merge-output-format", "mp4",
             "-o", str(dossier / "source.%(ext)s"), "--no-playlist", url])
     return next(dossier.glob("source.*"))
 
@@ -216,7 +216,7 @@ def monter(source, debut, fin, ass, sortie, cadrage="visage", garde=None):
         cx = .5                                          # plein écran au centre : les sous-titres incrustés de la source restent lisibles
     if cx is not None:
         # recadrage plein écran sur le visage : une fenêtre 9:16 dans la hauteur de la source, centrée sur lui
-        filtre = ("[0:v]crop='min(iw,ih*9/16)':ih:'max(0,min(iw-ih*9/16,%.4f*iw-ih*9/32))':0,scale=1080:1920:flags=lanczos,unsharp=5:5:0.7:5:5:0.0,"
+        filtre = ("[0:v]crop='min(iw,ih*9/16)':ih:'max(0,min(iw-ih*9/16,%.4f*iw-ih*9/32))':0,scale='if(gt(ih,1920),1080,trunc(ih*9/32)*2)':'if(gt(ih,1920),1920,ih)':flags=lanczos,unsharp=3:3:0.4:3:3:0.0,"
                   "subtitles=%s:fontsdir=/usr/share/fonts[v]" % (cx, str(ass).replace(":", "\\:")))
         lancer(["ffmpeg", "-y", "-ss", "%.2f" % debut, "-to", "%.2f" % fin, "-i", str(source), "-filter_complex", filtre,
                 "-map", "[v]", "-map", "0:a?", "-r", "30", "-c:v", "libx264", "-preset", "slow", "-crf", "16", "-pix_fmt", "yuv420p",
@@ -250,6 +250,10 @@ def main():
     nom = re.sub(r"[^a-z0-9-]+", "-", o.campagne.lower()).strip("-")
     dossier = SORTIE / nom; dossier.mkdir(parents=True, exist_ok=True)
     source = telecharger(o.url, dossier)
+    h = subprocess.run(["ffprobe", "-v", "0", "-select_streams", "v:0", "-show_entries", "stream=height", "-of", "csv=p=0", str(source)],
+                       capture_output=True, text=True).stdout.strip()
+    if h.isdigit() and int(h) < 1440:                     # 1440p minimum (règle de Basile, 02/10/2026) : jamais d'image grossie
+        sys.exit("Source en %sp : 1440p minimum exigé" % h)
     tr = dossier / "transcription.json"
     if tr.is_file() and (dossier / "langue.txt").is_file():          # même source déjà transcrite : on la reprend
         mots, langue = json.loads(tr.read_text(encoding="utf-8")), (dossier / "langue.txt").read_text().strip()

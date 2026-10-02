@@ -150,6 +150,16 @@ def main():
     dossier = os.path.join(CLIPS, d["campagne"])
     os.makedirs(dossier, exist_ok=True)
     shutil.copyfile(profil, os.path.join(dossier, "brief.json"))
+    # qualité : jamais de source en dessous de 1440p (règle de Basile, 02/10/2026) ; l'image n'est jamais grossie
+    if source.startswith("/sortie/"):
+        h = subprocess.run(["docker", "run", "--rm", "-v", "%s:/sortie" % CLIPS, "--entrypoint", "ffprobe", "raime-clippeur", "-v", "0",
+                            "-select_streams", "v:0", "-show_entries", "stream=height", "-of", "csv=p=0", source],
+                           capture_output=True, text=True).stdout.strip()
+        if h.isdigit() and int(h) < 1440:
+            sql("UPDATE clips_demandes SET etat = 'echec', message = :'p0', maj = now() WHERE id = :p1;",
+                "Source en %sp : 1440p minimum exigé" % h, d["id"])
+            prevenir("source trop faible : " + d["campagne"], "La vidéo source est en %sp. La règle est 1440p minimum : trouve une version de meilleure qualité (lien du brief, Drive de la marque) et relance." % h)
+            return
     env = dict(os.environ, GEMINI_API_KEY=cle_gemini())
     cmd = ["docker", "run", "--rm", "-e", "GEMINI_API_KEY", "-v", "%s:/sortie" % CLIPS, "-v", "clippeur-modeles:/root/.cache",
            "-v", "/opt/raime/clippeur/campagnes:/campagnes:ro",
