@@ -50,7 +50,9 @@ async function liste() {
     const st = fs.statSync(path.join(DOSSIER(), nom, 'clips.json'));
     campagnes.push({ campagne: nom, le: st.mtime, source: info.source, clips: (info.clips || []).map((c) => {
       let legende = ''; try { legende = fs.readFileSync(path.join(DOSSIER(), nom, c.clip.replace(/\.mp4$/, '.txt')), 'utf8'); } catch (e) { /* sans légende */ }
-      return { ...c, legende, duree: Math.round(c.fin - c.debut), fichier: `/clips/f/${encodeURIComponent(nom)}/${encodeURIComponent(c.clip)}`,
+      // une légende par plateforme, avec le tag obligatoire de la campagne (clip-01.json), si le brief en impose
+      let legendes = null; try { legendes = JSON.parse(fs.readFileSync(path.join(DOSSIER(), nom, c.clip.replace(/\.mp4$/, '.json')), 'utf8')); } catch (e) { /* sans tags */ }
+      return { ...c, legende, legendes, duree: Math.round(c.fin - c.debut), fichier: `/clips/f/${encodeURIComponent(nom)}/${encodeURIComponent(c.clip)}`,
         publies: publies.filter((p) => p.campagne === nom && p.clip === c.clip) };
     }) });
   }

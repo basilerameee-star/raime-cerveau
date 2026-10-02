@@ -82,7 +82,7 @@ def choisir(mots, langue, n, mini, maxi, consignes, cle):
     prompt = (
         "Tu es monteur de clips courts viraux (TikTok, Reels, Shorts). Voici la transcription datée (secondes) d'une vidéo "
         "en langue « %s ». Choisis les %d meilleurs passages autonomes : chacun doit se comprendre seul, commencer fort "
-        "(une phrase qui accroche dès la 1re seconde) et finir sur une chute ou une idée complète. Durée de chaque passage "
+        "(une phrase qui accroche dès la 1re seconde) et finir sur une chute ou une idée complète (sauf si les consignes de la campagne demandent de couper avant la fin de la scène). Durée de chaque passage "
         "entre %d et %d secondes. Pas de chevauchement. %s\n"
         "Réponds en JSON : [{\"debut\": s, \"fin\": s, \"accroche\": \"5 mots au plus, dans la langue de la vidéo\", "
         "\"titre\": \"titre de publication, 60 caractères au plus\", \"hashtags\": [\"3 à 5\"]}]\n\n%s"
@@ -179,7 +179,13 @@ def main():
     a.add_argument("url"); a.add_argument("--campagne", required=True)
     a.add_argument("--nombre", type=int, default=4); a.add_argument("--min", type=int, default=20); a.add_argument("--max", type=int, default=50)
     a.add_argument("--consignes", default="")
+    a.add_argument("--profil", default="", help="profil de campagne (JSON) : tags, hashtags, interdits, consignes, durées")
     o = a.parse_args()
+    profil = json.load(open(o.profil, encoding="utf-8")) if o.profil and os.path.isfile(o.profil) else {}
+    if profil:
+        o.min, o.max = profil.get("min", o.min), profil.get("max", o.max)
+        o.consignes = (profil.get("consignes", "") + " " + o.consignes).strip()
+    interdits = [m.lower() for m in profil.get("interdits", [])]
     cle = os.environ.get("GEMINI_API_KEY")
     if not cle:
         sys.exit("GEMINI_API_KEY absente")
@@ -188,14 +194,29 @@ def main():
     source = telecharger(o.url, dossier)
     mots, langue = transcrire(source)
     (dossier / "transcription.json").write_text(json.dumps(mots, ensure_ascii=False), encoding="utf-8")
-    choix = choisir(mots, langue, o.nombre, o.min, o.max, o.consignes, cle)
+    choix = choisir(mots, langue, o.nombre + (4 if interdits else 0), o.min, o.max, o.consignes, cle)
+    if interdits:
+        # un mot interdit prononcé s'afficherait dans les sous-titres : le passage est écarté
+        def propre(c):
+            dit = " ".join(w["m"] for w in mots if c["debut"] - .05 <= w["d"] and w["f"] <= c["fin"] + .05).lower()
+            ecrit = (c.get("titre", "") + " " + c.get("accroche", "") + " " + " ".join(c.get("hashtags", []))).lower()
+            return not any(m in dit or m in ecrit for m in interdits)
+        ecartes = [c for c in choix if not propre(c)]
+        choix = [c for c in choix if propre(c)][:o.nombre]
+        for c in ecartes:
+            print("écarté (mot interdit) : %.0f-%.0f s" % (c["debut"], c["fin"]), flush=True)
     rendus = []
     for k, c in enumerate(choix, 1):
         ass = dossier / ("clip-%02d.ass" % k); mp4 = dossier / ("clip-%02d.mp4" % k)
         sous_titres(mots, c["debut"], c["fin"], c.get("accroche", ""), ass)
         monter(source, c["debut"], c["fin"], ass, mp4)
-        legende = "%s\n\n%s" % (c.get("titre", ""), " ".join("#" + h.lstrip("#") for h in c.get("hashtags", [])))
+        tags_h = list(dict.fromkeys(["#" + h.lstrip("#") for h in profil.get("hashtags", [])] + ["#" + h.lstrip("#") for h in c.get("hashtags", [])]))
+        legende = "%s\n\n%s" % (c.get("titre", ""), " ".join(tags_h))
         (dossier / ("clip-%02d.txt" % k)).write_text(legende, encoding="utf-8")
+        if profil.get("tags"):
+            # une légende par plateforme, avec le tag obligatoire de la campagne
+            par = {pl: "%s %s\n\n%s" % (c.get("titre", ""), tg, " ".join(tags_h)) for pl, tg in profil["tags"].items()}
+            (dossier / ("clip-%02d.json" % k)).write_text(json.dumps(par, ensure_ascii=False, indent=1), encoding="utf-8")
         rendus.append(dict(clip=mp4.name, debut=c["debut"], fin=c["fin"], titre=c.get("titre", ""), accroche=c.get("accroche", "")))
         print("clip %d : %.0f-%.0f s · %s" % (k, c["debut"], c["fin"], c.get("titre", "")), flush=True)
     (dossier / "clips.json").write_text(json.dumps(dict(source=o.url, langue=langue, clips=rendus), ensure_ascii=False, indent=1), encoding="utf-8")

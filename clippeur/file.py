@@ -18,7 +18,7 @@ COFFRE = "/opt/raime/coffre/secrets.env"
 def sql(requete, *params):
     """psql dans le conteneur Postgres ; les paramètres passent par des variables psql (jamais collés dans la requête)."""
     cmd = ["docker", "exec", "-i", "raime-postgres-1", "sh", "-c",
-           'psql -U "$POSTGRES_USER" -d %s -tA -v ON_ERROR_STOP=1 %s' % (BASE, " ".join("-v p%d=%s" % (i, "'" + str(p).replace("'", "") + "'") for i, p in enumerate(params)))]
+           'psql -U "$POSTGRES_USER" -d %s -tAq -v ON_ERROR_STOP=1 %s' % (BASE, " ".join("-v p%d=%s" % (i, "'" + str(p).replace("'", "") + "'") for i, p in enumerate(params)))]
     r = subprocess.run(cmd, input=requete, capture_output=True, text=True)
     if r.returncode:
         raise RuntimeError(r.stderr[-400:])
@@ -42,7 +42,7 @@ def main():
                    WHERE etat = 'a_faire' ORDER BY id LIMIT 1) RETURNING row_to_json(clips_demandes);""")
     if not ligne:
         return
-    d = json.loads(ligne.splitlines()[0])
+    d = json.loads(next(l for l in ligne.splitlines() if l.startswith("{")))      # la ligne JSON, sans le compte rendu de psql
     source = d["url"]
     if any(h in d["url"] for h in ("youtube.com", "youtu.be")):
         # YouTube bloque l'adresse du serveur : la vidéo vient du PC de Basile, déposée dans sources/<campagne>.mp4
@@ -54,7 +54,11 @@ def main():
         source = "/sortie/sources/%s.mp4" % d["campagne"]
     env = dict(os.environ, GEMINI_API_KEY=cle_gemini())
     cmd = ["docker", "run", "--rm", "-e", "GEMINI_API_KEY", "-v", "%s:/sortie" % CLIPS, "-v", "clippeur-modeles:/root/.cache",
+           "-v", "/opt/raime/clippeur/campagnes:/campagnes:ro",
            "raime-clippeur", source, "--campagne", d["campagne"], "--nombre", str(d["nombre"])]
+    # le profil de la campagne (tags, hashtags, mots interdits, consignes du brief), s'il existe
+    if os.path.isfile("/opt/raime/clippeur/campagnes/%s.json" % d["campagne"]):
+        cmd += ["--profil", "/campagnes/%s.json" % d["campagne"]]
     if d.get("consignes"):
         cmd += ["--consignes", d["consignes"]]
     r = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=4 * 3600)

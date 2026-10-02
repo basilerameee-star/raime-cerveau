@@ -54,7 +54,7 @@ video{display:block;width:100%;aspect-ratio:9/16;background:#111}
 <script>
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const ETATS = { a_faire: 'en file', en_cours: 'en découpe…', fait: 'prête', echec: 'échec' };
-const NOMS = { tiktok: 'TikTok', instagram: 'Instagram', youtube: 'YouTube' };
+const NOMS = { tiktok: 'TikTok', instagram: 'Instagram', youtube: 'YouTube', x: 'X' };
 async function api(u, corps) {
   const r = await fetch(u, corps ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corps) } : {});
   return r.json();
@@ -73,7 +73,8 @@ async function charger() {
         <video src="${k.fichier}" controls preload="metadata" playsinline></video>
         <div class="corps">
           <b>${esc(k.titre)}</b><span class="mono">${k.duree} s</span>
-          <textarea readonly>${esc(k.legende)}</textarea>
+          ${k.legendes ? `<div class="actions">${Object.keys(k.legendes).map((pl, i) => `<button class="vide${i ? '' : ' ok'}" data-pl="${esc(pl)}" data-txt="${esc(k.legendes[pl])}">${esc(NOMS[pl] || pl)}</button>`).join('')}</div>` : ''}
+          <textarea readonly>${esc(k.legendes ? k.legendes[Object.keys(k.legendes)[0]] : k.legende)}</textarea>
           <div class="actions"><a href="${k.fichier}" download>Télécharger</a>
             <button class="vide" data-copie>Copier la légende</button></div>
           ${['tiktok', 'instagram', 'youtube'].map((p) => { const pub = k.publies.find((x) => x.plateforme === p);
@@ -90,6 +91,12 @@ document.getElementById('f').addEventListener('submit', async (e) => {
   if (r.ok) { e.target.reset(); charger(); }
 });
 document.addEventListener('click', async (e) => {
+  if (e.target.matches('[data-pl]')) {                // la légende de la plateforme choisie, avec son tag
+    const corps = e.target.closest('.corps');
+    corps.querySelector('textarea').value = e.target.dataset.txt;
+    corps.querySelectorAll('[data-pl]').forEach((b) => b.classList.toggle('ok', b === e.target));
+    return;
+  }
   if (e.target.matches('[data-copie]')) {
     const t = e.target.closest('.corps').querySelector('textarea').value;
     try { await navigator.clipboard.writeText(t); e.target.textContent = 'Copiée'; } catch (err) { e.target.closest('.corps').querySelector('textarea').select(); }
