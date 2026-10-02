@@ -111,6 +111,20 @@ Plus il y a de transformation (accroche à l'image, zooms de relance, découpe n
   - la transformation est visible, ce qui protège l'originalité du compte.
 - **Réglage** : `"format": "bandes"` (par défaut) ou `"plein"` (ancien plein écran 9:16) dans le brief de la campagne.
 
+## 13. Étude des Shorts qui sur-performent (02/10/2026)
+- **Méthode** : 48 Shorts de clipping trouvés sur YouTube (N3on, Kai Cenat, IShowSpeed, Joe Rogan, podcasts, motivation), classés par **vues divisées par les abonnés de la chaîne**. La rétention n'est pas publique, mais un clip qui fait des milliers de fois les abonnés de sa chaîne a forcément été retenu et poussé par l'algorithme.
+- **Résultats** :
+  - Les meilleurs viennent de **petites chaînes** : 6,4 M de vues avec 1 050 abonnés, 13,5 M avec 10 400. **C'est la rétention qui pousse, pas la communauté.**
+  - Durées des 6 meilleurs : 9, 10, 12, 13, 19 et 30 s. **Un seul moment iconique, très court**, compris en une seconde (réaction, réplique culte, mème).
+  - Titres : **le nom de la célébrité** + un concept intrigant (« Joe Rogan's entire being condensed into 19 seconds »).
+  - Format : souvent la vidéo 16:9 brute, que YouTube affiche **avec des bandes noires**. Ce format ne gêne donc pas, il est même courant.
+  - Les clips qui font 0 à 120 vues accumulent des hashtags de remplissage (#shortsfeed #fy #clips #meme). Ça confirme qu'ils ne servent à rien.
+- **Limites** : petit échantillon (22 clips exploitables), YouTube seulement, beaucoup de vidéos anciennes (publiées avant les règles d'originalité de 2026). TikTok et Instagram ne se lisent pas sans connexion.
+- **Ce qu'on en tire** :
+  1. La durée suit le moment : un moment iconique peut tenir en 10 à 15 s, il ne faut pas le délayer.
+  2. Le nom de la star en tête du titre.
+  3. Une piste à tester plus tard : le format « compilation-concept » (plusieurs moments d'une même personne autour d'une idée).
+
 ## 11. Test du 02/10/2026 : Claude contre Gemini gratuit (épisode R3born)
 - **Mes choix (Claude)** : des **moments**, pas des scènes. La blague « je démarrais des voitures qui n'étaient pas à moi », l'échec à 2 secondes, le scan corporel (26 % de graisse), « tu n'as pas le droit de dire cus », le pot-de-vin en crypto, la barrière cassée, « tu n'es plus N3on, tu es PI », la blague « je suis un Crip », la prison à Dubaï.
 - **Gemini, ancien prompt** : 10 scènes entières dans l'ordre, qui partent de l'installation (arrivée, visite du magasin, tour du barbecue), de 34 à 43 s, avec des notes gonflées. Environ 2 moments sur 9 en commun avec moi.
