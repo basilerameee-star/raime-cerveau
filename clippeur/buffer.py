@@ -76,7 +76,7 @@ def programmer(b, ids):
                                     "notifySubscribers": True, "categoryId": "24"}},
             "tiktok": {"tiktok": {"title": titre[:90]}},
             "instagram": {"instagram": {"type": "reel", "shouldShareToFeed": True}}}[pl]
-    entree = {"channelId": ids[pl], "text": (leg.get(pl) or texte)[:2200], "mode": "customScheduled", "dueAt": b["quand"],
+    entree = {"channelId": ids[pl], "text": (leg.get(pl) or texte)[:2200], "mode": "addToQueue",          # les créneaux réglés par Basile dans Buffer (4 par jour et par chaîne)
               "schedulingType": "automatic", "needsApproval": False, "assets": [{"video": {"url": url}}], "metadata": meta}
     d = buffer("""mutation($e: CreatePostInput!) { createPost(input: $e) {
         ... on PostActionSuccess { post { id } } ... on MutationError { message } } }""", {"e": entree})["createPost"]

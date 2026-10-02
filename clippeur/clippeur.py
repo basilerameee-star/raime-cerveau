@@ -142,10 +142,13 @@ def sous_titres(mots, debut, fin, accroche, chemin, avec_mots=True):
             groupes.append(g); g = []
     if g:
         groupes.append(g)
-    for g in groupes:
+    for i, g in enumerate(groupes):
+        # le groupe reste affiché jusqu'au suivant (sans trou ni clignotement), au plus 1,2 s après le dernier mot
+        suite = groupes[i + 1][0]["d"] if i + 1 < len(groupes) else g[-1]["f"] + .4
+        fin_g = min(suite, g[-1]["f"] + 1.2)
         for j, w in enumerate(g):
             d = w["d"] - debut
-            f = (g[j + 1]["d"] if j + 1 < len(g) else g[-1]["f"]) - debut
+            f = (g[j + 1]["d"] if j + 1 < len(g) else fin_g) - debut
             txt = " ".join(("{\\c&H0000E6FF&}" if k == j else "{\\c&H00FFFFFF&}") + censurer(x["m"]) for k, x in enumerate(g))
             ev.append("Dialogue: 0,%s,%s,Mot,,0,0,0,,%s" % (ass_temps(d), ass_temps(max(f, d + .08)), txt))
     chemin.write_text(tete + "\n".join(ev) + "\n", encoding="utf-8")
