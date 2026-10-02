@@ -7,7 +7,7 @@
     "Source imposée que le clippeur ne peut pas obtenir légalement, ou règle impossible à respecter (ex. visage du clipper à l'écran)",
     "Minimum de vues par clip supérieur à 50 000 tant que les comptes ont moins de 1 000 abonnés",
     "Taux d'approbation des clips inférieur à 30 % (la marque refuse trop : le travail est perdu)",
-    "Délai moyen de validation (average review time) supérieur à 48 heures (les 7 jours de comptage démarrent à la validation : trop tard, les vues sont perdues)"
+    "Délai moyen de validation (average review time) supérieur à 48 heures (argent bloqué plus longtemps, et le comptage de 7 jours ne démarre qu’à la validation)"
   ],
   "criteres": {
     "rpm": {
