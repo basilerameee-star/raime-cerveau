@@ -43,14 +43,18 @@ def main():
     if not ligne:
         return
     d = json.loads(ligne.splitlines()[0])
+    source = d["url"]
     if any(h in d["url"] for h in ("youtube.com", "youtu.be")):
-        # YouTube bloque l'adresse du serveur : la vidéo doit venir du PC de Basile (sources/)
-        sql("UPDATE clips_demandes SET etat = 'echec', message = :'p0', maj = now() WHERE id = :p1;",
-            "Lien YouTube : le serveur est bloqué par YouTube, la vidéo doit être téléchargée depuis le PC", d["id"])
-        return
+        # YouTube bloque l'adresse du serveur : la vidéo vient du PC de Basile, déposée dans sources/<campagne>.mp4
+        local = os.path.join(CLIPS, "sources", d["campagne"] + ".mp4")
+        if not os.path.isfile(local):
+            sql("UPDATE clips_demandes SET etat = 'a_faire', message = :'p0', maj = now() WHERE id = :p1;",
+                "En attente de la vidéo depuis le PC (YouTube bloque le serveur)", d["id"])
+            return
+        source = "/sortie/sources/%s.mp4" % d["campagne"]
     env = dict(os.environ, GEMINI_API_KEY=cle_gemini())
     cmd = ["docker", "run", "--rm", "-e", "GEMINI_API_KEY", "-v", "%s:/sortie" % CLIPS, "-v", "clippeur-modeles:/root/.cache",
-           "raime-clippeur", d["url"], "--campagne", d["campagne"], "--nombre", str(d["nombre"])]
+           "raime-clippeur", source, "--campagne", d["campagne"], "--nombre", str(d["nombre"])]
     if d.get("consignes"):
         cmd += ["--consignes", d["consignes"]]
     r = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=4 * 3600)
