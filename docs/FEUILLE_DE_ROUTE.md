@@ -4,7 +4,7 @@
 
 Décidée avec Basile le 30/09/2026. Cette liste fait foi : chaque session (Claude, routines, Codex) la reprend là où elle en est, jusqu'à ce que tout soit fait.
 
-**Avancement : 2 point(s) fait(s) sur 47.**
+**Avancement : 2 point(s) fait(s) sur 53.**
 
 ## Règles
 
@@ -51,6 +51,12 @@ Décidée avec Basile le 30/09/2026. Cette liste fait foi : chaque session (Clau
 | 45 | 45 | Moteur 3 : rAIme | Prospection des automatisations | — | Sur le modèle des vitrines : l’agent repère des entreprises dont une tâche répétitive se voit (prise de rendez-vous, devis, relances, réponses), prépare une démonstration et un brouillon d’e-mail ; Basile valide avant tout envoi. | à faire |
 | 46 | 46 | Moteur 1 : sites à 500 € | Juge visuel des sites (laid ou ancien, même récent techniquement) | — | Chaque site trouvé est capturé (navigateur d’Hermes) et noté par un modèle de vision gratuit ; un site récent mais laid ou illisible sur téléphone devient une cible, avec la raison écrite dans la fiche. | à faire |
 | 47 | 47 | Moteur 1 : sites à 500 € | Vitrines : toute la France, triée par région | — | La découverte passe des 5 départements de départ (74, GE, 01, 73, 38) à toute la France, région par région, en gardant l’ordre de priorité ; le tiroir VITRINES filtre par région. | à faire |
+| 48 | 48 | Moteur 3 : clip farming (KinGKlip) | Pôles de clip farming : 1 pôle = 1 niche = 3 chaînes (YouTube, TikTok, Instagram) | — | Chaque pôle a son réglage (niche, campagnes, 3 chaînes Buffer) et tourne avec le même programme, sans Claude ; le brief de chaque campagne est obligatoire (pas de brief = pas de découpe) ; clips de 18 à 20 s en moyenne ; pôle 1 = KinGKlip, en service le 02/10/2026 ; le pôle suivant s'ouvre quand le premier rapporte. | en cours |
+| 49 | 49 | Moteur 3 : clip farming (KinGKlip) | Superviseur des pôles : surveille, coupe ce qui n'avance pas, prévient Basile | — | Il suit découpes, publications Buffer, échecs et vues par pôle ; dépense plafonnée à 0 € tant que tout est gratuit ; il prévient Basile sur Jarvis et par e-mail (Resend), relance après le délai fixé ; SMS ou appel seulement avec l'accord de Basile (payant). | à faire |
+| 50 | 50 | Moteur 2 : la niche (contenus et produits) | Influenceur IA : étudier Pinokio + Wan2GP (« One2GP ») + modèle MiniMax cité par Basile | — | Nom exact, licence (usage commercial), coût et faisabilité sur le PC de Basile vérifiés ; une vidéo test de 15 s produite en local ; note Obsidian 16. | à faire |
+| 51 | 51 | Moteur 3 : clip farming (KinGKlip) | Chercheur de campagnes Whop + récupération des sources YouTube depuis le PC | — | Chaque jour, l'agent lit les campagnes Content Rewards dans le navigateur du serveur (Basile s'y connecte une fois à Whop), les note avec clippeur/selection.json et propose les 3 meilleures sur Jarvis ; une tâche planifiée du PC télécharge les vidéos YouTube attendues par le serveur et les dépose, sans Claude. | en cours |
+| 52 | 52 | Moteur 3 : clip farming (KinGKlip) | Agent de soumission Whop : chaque lien publié est soumis dans « Submit clip » de SA campagne en moins de 25 minutes | — | Dans le navigateur du serveur (Basile connecté une fois à Whop), l'agent soumet chaque lien publié (YouTube, TikTok, Instagram) à la seule campagne pour laquelle le clip a été fait, coche la case des conditions, vérifie l'acceptation ; captcha ou page changée = arrêt et e-mail à Basile, jamais de contournement. Accord de Basile du 02/10/2026. À construire après la recharge des crédits (mercredi). | à faire |
+| 53 | 53 | Moteur 3 : clip farming (KinGKlip) | Agent Analytics : vues, rétention, likes, partages par clip (YouTube, TikTok, Instagram) pour savoir ce qui marche | — | Chaque jour, les statistiques de chaque clip publié (via Buffer, qui les fournit, puis les API des plateformes) sont rangées par campagne ; un retour hebdomadaire par e-mail dit quels sujets, durées, accroches et heures font le plus de vues payées ; le clippeur et la sélection des campagnes en tiennent compte. Demande de Basile du 02/10/2026. | à faire |
 
 ## Groupe 2 : avec Basile (clé, compte ou accord)
 

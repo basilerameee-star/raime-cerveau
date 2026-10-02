@@ -536,6 +536,15 @@
       "etat": "a_faire",
       "fini_quand": "Dans le navigateur du serveur (Basile connecté une fois à Whop), l'agent soumet chaque lien publié (YouTube, TikTok, Instagram) à la seule campagne pour laquelle le clip a été fait, coche la case des conditions, vérifie l'acceptation ; captcha ou page changée = arrêt et e-mail à Basile, jamais de contournement. Accord de Basile du 02/10/2026. À construire après la recharge des crédits (mercredi).",
       "rang": 52
+    },
+    {
+      "n": 53,
+      "groupe": "seul",
+      "moteur": "Moteur 3 : clip farming (KinGKlip)",
+      "titre": "Agent Analytics : vues, rétention, likes, partages par clip (YouTube, TikTok, Instagram) pour savoir ce qui marche",
+      "etat": "a_faire",
+      "fini_quand": "Chaque jour, les statistiques de chaque clip publié (via Buffer, qui les fournit, puis les API des plateformes) sont rangées par campagne ; un retour hebdomadaire par e-mail dit quels sujets, durées, accroches et heures font le plus de vues payées ; le clippeur et la sélection des campagnes en tiennent compte. Demande de Basile du 02/10/2026.",
+      "rang": 53
     }
   ]
 }
