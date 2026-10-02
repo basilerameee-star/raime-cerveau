@@ -128,7 +128,7 @@ def choisir(mots, langue, n, mini, maxi, consignes, cle):
         moments = []
     if moments:
         prompt += ("\n\nMOMENTS FORTS DÉJÀ REPÉRÉS : OBLIGATOIRE, fais UN clip autour de CHACUN de ces moments (si deux se chevauchent, garde le mieux noté), "
-                   "des notes) :\n" + "\n".join("- %.0f s, note %s : %s" % (float(m.get("t") or 0), m.get("note"), m.get("citation", ""))
+                   "avec juste son contexte et sa réaction ; aucun autre passage sauf s'il est aussi fort :\n" + "\n".join("- %.0f s, note %s : %s" % (float(m.get("t") or 0), m.get("note"), m.get("citation", ""))
                                                    for m in moments))
     choix = gemini(prompt, cle)
     bons = []
