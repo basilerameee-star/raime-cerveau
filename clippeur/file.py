@@ -33,6 +33,29 @@ def cle_gemini():
     return ""
 
 
+def brief_auto(d):
+    """Le brief collé sur /clips devient le profil de la campagne (Gemini gratuit en extrait les règles), sans Claude.
+    Publication automatique activée (accord de Basile du 02/10/2026 : de la campagne choisie au poste, sans intervention)."""
+    texte = (d.get("consignes") or "").strip()
+    if len(texte) < 40:
+        return None
+    sys.path.insert(0, "/opt/raime/clippeur")
+    from clippeur import gemini
+    p = gemini("""Voici le brief d'une campagne de clipping (Whop Content Rewards). Extrais-en les règles, sans rien inventer.
+Réponds en JSON : {"nom": "nom court de la campagne", "min": durée minimale d'un clip en secondes (22 si non précisé ou si inférieur),
+"max": durée maximale en secondes (40 si non précisé), "tags": {"youtube": "@compte à mentionner ou vide", "tiktok": "...", "instagram": "...", "x": "..."},
+"hashtags": ["#obligatoires"], "interdits": ["mots ou sujets interdits, en minuscules"],
+"consignes": "toutes les règles de contenu et de montage du brief, en anglais, phrases courtes",
+"remuneration": {"type": "CPM ou par publication", "detail": "montants, minimum, maximum, plateformes, tels qu'écrits"},
+"sources_autorisees": "quelles vidéos source sont autorisées"}
+Brief :
+""" + texte[:12000], cle_gemini())
+    p.update({"_source": "Brief collé sur /clips (demande n°%s), extrait par Gemini." % d["id"], "brief_brut": texte[:12000],
+              "sous_titres": True, "cadrage": "visage", "publication_auto": True})
+    p["min"] = max(int(p.get("min") or 22), 22); p["max"] = max(int(p.get("max") or 40), p["min"] + 8)
+    return p
+
+
 def main():
     verrou = open(VERROU, "w")
     try:
@@ -40,7 +63,7 @@ def main():
     except OSError:
         return                                            # une découpe est déjà en cours
     ligne = sql("""UPDATE clips_demandes SET etat = 'en_cours', maj = now() WHERE id = (SELECT id FROM clips_demandes
-                   WHERE etat = 'a_faire' ORDER BY id LIMIT 1) RETURNING row_to_json(clips_demandes);""")
+                   WHERE etat = 'a_faire' ORDER BY (coalesce(message, '') LIKE 'En attente%'), id LIMIT 1) RETURNING row_to_json(clips_demandes);""")
     if not ligne:
         return
     d = json.loads(next(l for l in ligne.splitlines() if l.startswith("{")))      # la ligne JSON, sans le compte rendu de psql
@@ -54,6 +77,13 @@ def main():
             return
         source = "/sortie/sources/%s.mp4" % d["campagne"]
     profil = "/opt/raime/clippeur/campagnes/%s.json" % d["campagne"]
+    if not os.path.isfile(profil):                        # le brief collé sur la page devient le profil de la campagne
+        try:
+            p = brief_auto(d)
+        except Exception as e:
+            p = None; print("brief_auto", str(e)[:200], flush=True)
+        if p:
+            json.dump(p, open(profil, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
     if not os.path.isfile(profil):                        # le brief d'abord : sans lui, aucune découpe (règle de Basile, 02/10/2026)
         sql("UPDATE clips_demandes SET etat = 'echec', message = :'p0', maj = now() WHERE id = :p1;",
             "Brief manquant : déposer clippeur/campagnes/%s.json avant la découpe" % d["campagne"], d["id"])
