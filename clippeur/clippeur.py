@@ -90,7 +90,7 @@ def choisir(mots, langue, n, mini, maxi, consignes, cle):
         "en langue « %s ». Choisis les %d meilleurs passages autonomes : chacun doit se comprendre seul, commencer fort "
         "(une phrase qui accroche dès la 1re seconde) et finir sur une chute ou une idée complète (sauf si les consignes de la campagne demandent de couper avant la fin de la scène). Durée de chaque passage "
         "entre %d et %d secondes. Pas de chevauchement. %s\n"
-        "Réponds en JSON : [{\"debut\": s, \"fin\": s, \"accroche\": \"5 mots au plus, dans la langue de la vidéo : ce qui se passe dans la scène, jamais une citation, jamais un juron\", "
+        "Réponds en JSON : [{\"debut\": s, \"fin\": s, \"accroche\": \"6 mots au plus, dans la langue de la vidéo : le titre affiché en haut pendant tout le clip, qui donne envie de rester jusqu'au bout (une tension, un enjeu ou une question sur ce qui va arriver, ex. « HE WASN'T READY FOR THIS »), toujours vrai par rapport à la scène, jamais une citation, jamais un juron, sans emoji\", "
         "\"titre\": \"titre de publication, 60 caractères au plus\", \"hashtags\": [\"3 à 5\"]}]\n\n%s"
         % (langue, n, mini, maxi, ("Consignes de la campagne : " + consignes) if consignes else "", texte))
     choix = gemini(prompt, cle)
@@ -126,12 +126,12 @@ def sous_titres(mots, debut, fin, accroche, chemin, avec_mots=True):
     tete = ("[Script Info]\nScriptType: v4.00+\nPlayResX: 1080\nPlayResY: 1920\nWrapStyle: 2\n\n"
             "[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, "
             "Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n"
-            "Style: Mot,Inter,74,&H00F5F5F5,&H00F5F5F5,&H00000000,&H64000000,1,0,0,0,100,100,0,0,1,3,2,2,90,90,560,1\n"
-            "Style: Accroche,Inter,64,&H00F5F5F5,&H00F5F5F5,&H00000000,&H96000000,1,0,0,0,100,100,0,0,3,18,0,8,80,80,230,1\n\n"
+            "Style: Mot,Inter,100,&H00F5F5F5,&H00F5F5F5,&H00000000,&H64000000,1,0,0,0,100,100,0,0,1,6,3,2,70,70,600,1\n"
+            "Style: Accroche,Inter,76,&H00111111,&H00111111,&H00FFFFFF,&H00FFFFFF,1,0,0,0,100,100,0,0,3,22,0,8,70,70,250,1\n\n"
             "[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n")
     ev = []
     if accroche:
-        ev.append("Dialogue: 1,%s,%s,Accroche,,0,0,0,,%s" % (ass_temps(0), ass_temps(2.5), censurer(accroche.replace("\n", " "))))
+        ev.append("Dialogue: 1,%s,%s,Accroche,,0,0,0,,%s" % (ass_temps(0), ass_temps(fin - debut), censurer(accroche.replace("\n", " ")).upper()))
     dans = [w for w in mots if w["d"] >= debut - .05 and w["f"] <= fin + .05 and w["m"]] if avec_mots else []
     # des groupes de 3 mots au plus, qui ne traversent jamais une fin de phrase
     groupes, g = [], []
@@ -267,6 +267,13 @@ def main():
     rendus = []
     for k, c in enumerate(choix, 1):
         ass = dossier / ("clip-%02d.ass" % k); mp4 = dossier / ("clip-%02d.mp4" % k)
+        fins = [w for w in mots if c["fin"] - .3 <= w["f"] <= c["fin"] + 5 and w["m"][-1:] in ".?!"]
+        if fins:
+            c["fin"] = round(fins[0]["f"] + .15, 2)
+        else:
+            suite = [w for w in mots if w["f"] >= c["fin"] - .05]
+            if suite:
+                c["fin"] = round(suite[0]["f"] + .1, 2)
         garde = sans_blancs(mots, c["debut"], c["fin"]) if profil.get("sans_blancs", True) else [(c["debut"], c["fin"])]
         if len(garde) > 1:
             mots_c, duree = recaler(mots, garde)
