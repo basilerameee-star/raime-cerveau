@@ -50,7 +50,13 @@ def transcrire(video):
     mots = []
     for s in segs:
         for w in s.words or []:
-            mots.append({"d": round(w.start, 2), "f": round(w.end, 2), "m": w.word.strip()})
+            m = w.word.strip()
+            if mots and (w.word.startswith("'") or m.startswith("'")) and not w.word.startswith(" "):
+                mots[-1]["m"] += m; mots[-1]["f"] = round(w.end, 2)          # « y » + « 'all » = « y'all »
+            elif mots and m.startswith("'") and mots[-1]["m"].lower() in ("y", "don", "can", "ain", "i", "you", "it", "that"):
+                mots[-1]["m"] += m; mots[-1]["f"] = round(w.end, 2)
+            else:
+                mots.append({"d": round(w.start, 2), "f": round(w.end, 2), "m": m})
     return mots, info.language
 
 
@@ -167,7 +173,40 @@ def centre_visage(source, debut, fin):
     return xs[len(xs) // 2]
 
 
-def monter(source, debut, fin, ass, sortie, cadrage="visage"):
+def sans_blancs(mots, debut, fin, seuil=.45, marge=.12):
+    """Les intervalles à garder : la parole, avec une petite marge ; les blancs plus longs que le seuil sont retirés."""
+    dans = [w for w in mots if w["d"] >= debut - .05 and w["f"] <= fin + .05]
+    if not dans:
+        return [(debut, fin)]
+    garde = [[max(debut, dans[0]["d"] - marge), min(fin, dans[0]["f"] + marge)]]
+    for w in dans[1:]:
+        a, b = max(debut, w["d"] - marge), min(fin, w["f"] + marge)
+        if a - garde[-1][1] <= seuil:
+            garde[-1][1] = max(garde[-1][1], b)
+        else:
+            garde.append([a, b])
+    return [(round(a, 2), round(b, 2)) for a, b in garde if b - a > .15]
+
+
+def recaler(mots, garde):
+    """Les mots sur la nouvelle ligne du temps, une fois les blancs retirés (pour les sous-titres)."""
+    out, t0 = [], 0.0
+    for a, b in garde:
+        for w in mots:
+            if w["d"] >= a - .01 and w["f"] <= b + .01:
+                out.append({"d": round(t0 + w["d"] - a, 2), "f": round(t0 + w["f"] - a, 2), "m": w["m"]})
+        t0 += b - a
+    return out, t0
+
+
+def monter(source, debut, fin, ass, sortie, cadrage="visage", garde=None):
+    if garde and len(garde) > 1:
+        sel = "+".join("between(t,%.2f,%.2f)" % (a, b) for a, b in garde)
+        coupe = "[0:v]select='%s',setpts=N/FRAME_RATE/TB[vc];[0:a]aselect='%s',asetpts=N/SR/TB[ac]" % (sel, sel)
+        tmp = str(sortie) + ".coupe.mp4"
+        lancer(["ffmpeg", "-y", "-i", str(source), "-filter_complex", coupe, "-map", "[vc]", "-map", "[ac]",
+                "-c:v", "libx264", "-preset", "veryfast", "-crf", "14", "-c:a", "aac", "-b:a", "192k", tmp])
+        source, debut, fin = tmp, 0.0, sum(b - a for a, b in garde)
     cx = centre_visage(source, debut, fin) if cadrage == "visage" else None
     if cx is None and cadrage == "centre":
         cx = .5                                          # plein écran au centre : les sous-titres incrustés de la source restent lisibles
@@ -228,8 +267,17 @@ def main():
     rendus = []
     for k, c in enumerate(choix, 1):
         ass = dossier / ("clip-%02d.ass" % k); mp4 = dossier / ("clip-%02d.mp4" % k)
-        sous_titres(mots, c["debut"], c["fin"], c.get("accroche", ""), ass, profil.get("sous_titres", True))
-        monter(source, c["debut"], c["fin"], ass, mp4, profil.get("cadrage", "visage"))
+        garde = sans_blancs(mots, c["debut"], c["fin"]) if profil.get("sans_blancs", True) else [(c["debut"], c["fin"])]
+        if len(garde) > 1:
+            mots_c, duree = recaler(mots, garde)
+            sous_titres(mots_c, 0, duree, c.get("accroche", ""), ass, profil.get("sous_titres", True))
+        else:
+            sous_titres(mots, c["debut"], c["fin"], c.get("accroche", ""), ass, profil.get("sous_titres", True))
+        monter(source, c["debut"], c["fin"], ass, mp4, profil.get("cadrage", "visage"), garde)
+        try:
+            os.remove(str(mp4) + ".coupe.mp4")
+        except OSError:
+            pass
         for faux, juste in profil.get("orthographe", {}).items():
             c["titre"] = re.sub(r"(?i)\b%s\b" % re.escape(faux), juste, c.get("titre", ""))
             c["accroche"] = re.sub(r"(?i)\b%s\b" % re.escape(faux), juste, c.get("accroche", ""))
