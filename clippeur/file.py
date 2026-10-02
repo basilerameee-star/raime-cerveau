@@ -41,8 +41,8 @@ def prevenir(sujet, texte):
         c = {l.split("=", 1)[0]: l.split("=", 1)[1].strip().strip('"') for l in open(COFFRE, encoding="utf-8") if "=" in l}
         m = EmailMessage(); m["From"] = m["To"] = c["GMAIL_ADRESSE"]; m["Subject"] = "[Clips] " + sujet
         m.set_content(texte + chr(10) * 2 + "Tout est sur https://cockpit.raime.fr/clips")
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=30) as s:
-            s.login(c["GMAIL_ADRESSE"], c["GMAIL_MOT_DE_PASSE_APPLI"]); s.send_message(m)
+        with smtplib.SMTP("smtp.gmail.com", 587, timeout=30) as s:   # le port 465 est fermé sur le serveur
+            s.starttls(); s.login(c["GMAIL_ADRESSE"], c["GMAIL_MOT_DE_PASSE_APPLI"]); s.send_message(m)
     except Exception as e:
         print("alerte non envoyée :", str(e)[:120], flush=True)
 
