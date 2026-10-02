@@ -103,6 +103,19 @@ Plus il y a de transformation (accroche à l'image, zooms de relance, découpe n
 - **La monétisation de la chaîne est un effet secondaire du bon travail**, pas un objectif en soi : des clips forts font grossir la chaîne, et la chaîne qui grossit finit par ouvrir ces programmes.
 - **En résumé** : une chaîne de clipping pur se monétise surtout par **Whop et les campagnes payées par les marques**. La monétisation des plateformes est un bonus incertain. Elle devient réaliste si le pôle ajoute un vrai apport original : une série, un commentaire, une voix, un format à soi.
 
+## 11. Test du 02/10/2026 : Claude contre Gemini gratuit (épisode R3born)
+- **Mes choix (Claude)** : des **moments**, pas des scènes. La blague « je démarrais des voitures qui n'étaient pas à moi », l'échec à 2 secondes, le scan corporel (26 % de graisse), « tu n'as pas le droit de dire cus », le pot-de-vin en crypto, la barrière cassée, « tu n'es plus N3on, tu es PI », la blague « je suis un Crip », la prison à Dubaï.
+- **Gemini, ancien prompt** : 10 scènes entières dans l'ordre, qui partent de l'installation (arrivée, visite du magasin, tour du barbecue), de 34 à 43 s, avec des notes gonflées. Environ 2 moments sur 9 en commun avec moi.
+- **Ce qui a été corrigé** :
+  1. « des moments, pas des scènes » ;
+  2. la 1re phrase doit accrocher à elle seule ;
+  3. aucun remplissage ;
+  4. une note sévère et étalonnée ;
+  5. **sélection en deux étapes** : on liste d'abord tous les moments forts jusqu'à la fin de la vidéo, puis on construit un clip autour de chacun ;
+  6. jamais de chevauchement.
+- **Gemini, nouveau prompt** : 6 moments sur 9 en commun avec moi (voitures, cus, crypto, clash à la muscu, Crip noté 10, Dubaï noté 9), de 20 à 26 s. Il en manque encore (PI, échec à 2 s, scan). Les résultats varient d'un passage à l'autre.
+- **La suite** : l'agent Analytics dira lesquels font vraiment des vues. La note pourra alors être étalonnée sur les chiffres réels.
+
 ## Sources
 - YouTube Shorts : [vidIQ](https://vidiq.com/blog/post/youtube-shorts-algorithm/), [Shortimize](https://www.shortimize.com/blog/youtube-shorts-retention-rate), [Teleprompter](https://www.teleprompter.com/blog/how-to-go-viral-on-youtube-shorts)
 - TikTok : [Sprout Social](https://sproutsocial.com/insights/tiktok-algorithm/), [go-viral.app](https://www.go-viral.app/blog/tiktok-algorithm-2026/), [Creator Academy, originalité](https://www.tiktok.com/creator-academy/article/tiktok-originality-policy)
