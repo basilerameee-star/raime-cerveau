@@ -102,7 +102,7 @@ def choisir(mots, langue, n, mini, maxi, consignes, cle):
     return bons[:n]
 
 
-CENSURE = ["nigga", "nigger", "niggas", "faggot", "retard", "fuck", "fucking", "shit", "bitch", "cunt", "motherfucker"]
+CENSURE = ["nigga", "nigger", "niggas", "faggot", "retard", "fuck", "fucking", "shit", "bitch", "cunt", "motherfucker", "pussy", "cuck", "dick", "hoe", "whore"]
 
 
 def censurer(texte, mots_en_plus=()):
@@ -288,6 +288,8 @@ def main():
         for faux, juste in profil.get("orthographe", {}).items():
             c["titre"] = re.sub(r"(?i)\b%s\b" % re.escape(faux), juste, c.get("titre", ""))
             c["accroche"] = re.sub(r"(?i)\b%s\b" % re.escape(faux), juste, c.get("accroche", ""))
+        if censurer(c.get("accroche", "")) != c.get("accroche", ""):      # un juron dans l'accroche : on prend le titre, sinon on le masque
+            c["accroche"] = c.get("titre", "") if censurer(c.get("titre", "")) == c.get("titre", "") else c.get("accroche", "")
         c["titre"], c["accroche"] = censurer(c.get("titre", "")), censurer(c.get("accroche", ""))
         tags_h = list(dict.fromkeys(["#" + h.lstrip("#") for h in profil.get("hashtags", [])] + ["#" + h.lstrip("#") for h in c.get("hashtags", [])]))
         legende = "%s\n\n%s" % (c.get("titre", ""), " ".join(tags_h))
