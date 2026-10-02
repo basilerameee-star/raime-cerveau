@@ -51,7 +51,7 @@ def chaines():
 
 
 def lignes(etat):
-    r = sql("SELECT coalesce(json_agg(b), '[]') FROM (SELECT * FROM clips_buffer WHERE etat = :'p0' ORDER BY quand LIMIT 20) b;", etat)
+    r = sql("SELECT coalesce(json_agg(b), '[]') FROM (SELECT * FROM clips_buffer WHERE etat = :'p0' AND (etat <> 'a_faire' OR quand <= now()) ORDER BY quand LIMIT 20) b;", etat)
     return json.loads(r[r.index("["):] if "[" in r else "[]")      # json_agg s'étale sur plusieurs lignes
 
 
@@ -117,8 +117,15 @@ def suivre(b):
         with open(os.path.join(CLIPS, b["campagne"], "liens-whop.txt"), "a", encoding="utf-8") as f:
             f.write(" | ".join((b["clip"], b["plateforme"], p["externalLink"])) + "\n")
     elif statut == "error":
-        sql("UPDATE clips_buffer SET etat = 'echec', message = :'p0', maj = now() WHERE id = :p1;",
-            ((p.get("error") or {}).get("message") or "erreur Buffer")[:300], b["id"])
+        msg = ((p.get("error") or {}).get("message") or "erreur Buffer")[:300]
+        if "limit" in msg.lower():                         # quota du jour (ex. YouTube non vérifié) : on retire et on réessaie demain
+            try:
+                buffer("mutation($i: DeletePostInput!) { deletePost(input: $i) { __typename } }", {"i": {"id": b["post_id"]}})
+            except Exception:
+                pass
+            sql("UPDATE clips_buffer SET etat = 'a_faire', post_id = NULL, message = :'p0', quand = now() + interval '20 hours', maj = now() WHERE id = :p1;", msg, b["id"])
+        else:
+            sql("UPDATE clips_buffer SET etat = 'echec', message = :'p0', maj = now() WHERE id = :p1;", msg, b["id"])
 
 
 def main():
