@@ -445,3 +445,9 @@ Merci pour le travail de cette nuit : le banc a déjà trouvé un vrai défaut e
   - une adresse sans https:// se lit ;
   - les enseignes ne sont pas démarchées.
 - Panneau Monétisation corrigé : 2 000 € sur chacune de TikTok, YouTube et Instagram, « pour les 6 000 € » ; Facebook et produits hors objectif.
+
+## 2026-10-02 — Feuille de route n°24 : décision boutique (routine Ingénierie)
+- Action : recommandation écrite dans `docs/DECISION_BOUTIQUE.md` : page Stripe d'abord, TikTok Shop ensuite (3 jours d'expédition, 15 de livraison, commission 4 à 9 %), Instagram Shop en dernier ; test au banc ; point passé « en_cours ».
+- Résultat : sources secondaires seulement (les pages officielles sont bloquées depuis la routine) ; dit noir sur blanc dans le document.
+- Évaluation : suffisant pour décider de l'ordre, pas pour s'inscrire.
+- Leçon : relire les chiffres sur le Seller Center de TikTok avant toute inscription.
