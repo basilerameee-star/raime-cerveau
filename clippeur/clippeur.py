@@ -216,10 +216,10 @@ def monter(source, debut, fin, ass, sortie, cadrage="visage", garde=None):
         cx = .5                                          # plein écran au centre : les sous-titres incrustés de la source restent lisibles
     if cx is not None:
         # recadrage plein écran sur le visage : une fenêtre 9:16 dans la hauteur de la source, centrée sur lui
-        filtre = ("[0:v]crop='min(iw,ih*9/16)':ih:'max(0,min(iw-ih*9/16,%.4f*iw-ih*9/32))':0,scale=1080:1920:flags=lanczos,"
+        filtre = ("[0:v]crop='min(iw,ih*9/16)':ih:'max(0,min(iw-ih*9/16,%.4f*iw-ih*9/32))':0,scale=1080:1920:flags=lanczos,unsharp=5:5:0.7:5:5:0.0,"
                   "subtitles=%s:fontsdir=/usr/share/fonts[v]" % (cx, str(ass).replace(":", "\\:")))
         lancer(["ffmpeg", "-y", "-ss", "%.2f" % debut, "-to", "%.2f" % fin, "-i", str(source), "-filter_complex", filtre,
-                "-map", "[v]", "-map", "0:a?", "-r", "30", "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p",
+                "-map", "[v]", "-map", "0:a?", "-r", "30", "-c:v", "libx264", "-preset", "slow", "-crf", "16", "-pix_fmt", "yuv420p",
                 "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart", str(sortie)])
         return
 
@@ -228,7 +228,7 @@ def monter(source, debut, fin, ass, sortie, cadrage="visage", garde=None):
               "eq=brightness=-0.12[fond];[b]scale='min(1080,iw)':-2[net];[fond][net]overlay=(W-w)/2:(H-h)/2-80,"
               "subtitles=%s:fontsdir=/usr/share/fonts[v]" % str(ass).replace(":", "\\:"))
     lancer(["ffmpeg", "-y", "-ss", "%.2f" % debut, "-to", "%.2f" % fin, "-i", str(source), "-filter_complex", filtre,
-            "-map", "[v]", "-map", "0:a?", "-r", "30", "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p",
+            "-map", "[v]", "-map", "0:a?", "-r", "30", "-c:v", "libx264", "-preset", "slow", "-crf", "16", "-pix_fmt", "yuv420p",
             "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart", str(sortie)])
 
 

@@ -31,7 +31,7 @@ def main():
         dossier = tempfile.mkdtemp()
         sortie = os.path.join(dossier, d["campagne"] + ".mp4")
         r = subprocess.run(["python", "-m", "yt_dlp", "--js-runtimes", "deno:" + DENO.replace("\\", "/"),
-                            "-f", "bv*[height<=1080][ext=mp4]+ba[ext=m4a]/b[height<=1080]", "--merge-output-format", "mp4",
+                            "-f", "bv*[height<=1440][protocol^=http]+ba/b", "-S", "res,br", "--merge-output-format", "mp4",
                             "-o", sortie, d["url"]], capture_output=True, text=True, timeout=3600, creationflags=SANS_FENETRE)
         if r.returncode or not os.path.isfile(sortie):
             noter("échec %s : %s" % (d["campagne"], (r.stderr or r.stdout)[-300:]))

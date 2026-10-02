@@ -160,7 +160,10 @@ def main():
     nouveaux = [x for x in lignes("publie") if (x["campagne"], x["clip"], x["plateforme"]) not in avant]
     if nouveaux:
         prevenir("%d lien(s) à déclarer à Whop" % len(nouveaux),
-                 chr(10).join("%s · %s · %s : %s" % (x["campagne"], x["clip"], x["plateforme"], x["lien"]) for x in nouveaux))
+                 # d'abord les liens bruts, un par ligne, à copier tels quels dans « Submit clip » ; puis le détail
+                 chr(10).join(x["lien"] for x in nouveaux) + chr(10) * 3 + "Détail :" + chr(10)
+                 + chr(10).join("%s · %s · %s : %s" % (x["campagne"], x["clip"], x["plateforme"], x["lien"]) for x in nouveaux)
+                 + chr(10) * 2 + "À soumettre dans les 30 minutes qui suivent la publication.")
 
 
 if __name__ == "__main__":
