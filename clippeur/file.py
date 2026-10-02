@@ -62,6 +62,7 @@ def main():
     if d.get("consignes"):
         cmd += ["--consignes", d["consignes"]]
     r = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=4 * 3600)
+    print(chr(10).join((r.stdout + r.stderr).splitlines()[-25:]), flush=True)   # le compte rendu de la découpe, pour le diagnostic
     fin = [l for l in r.stdout.splitlines() if l.startswith("FINI")]
     if r.returncode == 0 and fin:
         sql("UPDATE clips_demandes SET etat = 'fait', message = :'p0', maj = now() WHERE id = :p1;", fin[-1][:300], d["id"])
