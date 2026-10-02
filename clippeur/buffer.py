@@ -136,8 +136,8 @@ def main():
     if a_faire:
         ids, pleines = chaines(), set()
         for b in a_faire:
-            if b["plateforme"] in pleines:
-                continue
+            if b["plateforme"] in pleines or os.path.exists("/opt/raime/clippeur/pause-" + b["plateforme"]):
+                continue                                   # file pleine, ou plateforme en pause (ex. changement de compte)
             try:
                 programmer(b, ids)
             except FileBufferPleine:
