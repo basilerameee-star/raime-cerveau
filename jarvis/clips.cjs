@@ -230,7 +230,11 @@ async function phrase() {
     const d = await lire(`SELECT campagne, etat FROM clips_demandes ORDER BY id DESC LIMIT 3`);
     const b = await lire(`SELECT plateforme, etat, count(*)::int AS n FROM clips_buffer GROUP BY 1, 2 ORDER BY 1, 2`);
     const p = await lire(`SELECT count(*) FILTER (WHERE NOT declare_whop)::int AS a FROM clips_publies`);
-    return ROUTINE + `\nÉtat des clips : dernières demandes ${d.map((x) => x.campagne + ' (' + x.etat + ')').join(', ') || 'aucune'} ; Buffer ${b.map((x) => `${x.plateforme} ${x.etat} ${x.n}`).join(', ') || 'vide'} ; liens publiés non déclarés à Whop : ${p[0] ? p[0].a : 0}.`;
+    let prop = [];                                          // les campagnes proposées ce matin par le chercheur (clippeur/chercheur.py)
+    try { prop = await lire(`SELECT rang, nom, budget_restant, cpm FROM campagnes_proposees WHERE le = (SELECT max(le) FROM campagnes_proposees) ORDER BY rang`); } catch (e) { /* pas encore de table */ }
+    return ROUTINE + `\nÉtat des clips : dernières demandes ${d.map((x) => x.campagne + ' (' + x.etat + ')').join(', ') || 'aucune'} ; Buffer ${b.map((x) => `${x.plateforme} ${x.etat} ${x.n}`).join(', ') || 'vide'} ; liens publiés non déclarés à Whop : ${p[0] ? p[0].a : 0}.`
+      + (prop.length ? `
+Campagnes proposées par le chercheur : ${prop.map((x) => `${x.rang}. ${x.nom} (${Math.round(x.budget_restant)} $ restants, ${x.cpm} $ / 1 000 vues)`).join(' ; ')}.` : '');
   } catch (e) { return ROUTINE; }
 }
 
