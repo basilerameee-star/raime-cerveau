@@ -17,7 +17,7 @@ import json
 import os
 import urllib.request
 
-from file import sql, CLIPS, COFFRE
+from file import sql, CLIPS, COFFRE, prevenir
 
 VERROU = "/tmp/clippeur-buffer.lock"
 SERVICES = {"youtube": "youtube", "tiktok": "tiktok", "instagram": "instagram"}
@@ -144,11 +144,16 @@ def main():
                 pleines.add(b["plateforme"])               # la suite attend que Buffer publie et libère de la place
             except Exception as e:
                 sql("UPDATE clips_buffer SET etat = 'echec', message = :'p0', maj = now() WHERE id = :p1;", str(e)[:300], b["id"])
+    avant = {(x["campagne"], x["clip"], x["plateforme"]) for x in lignes("publie")}
     for b in lignes("programme"):
         try:
             suivre(b)
         except Exception as e:
             print("suivi", b["id"], str(e)[:200], flush=True)
+    nouveaux = [x for x in lignes("publie") if (x["campagne"], x["clip"], x["plateforme"]) not in avant]
+    if nouveaux:
+        prevenir("%d lien(s) à déclarer à Whop" % len(nouveaux),
+                 chr(10).join("%s · %s · %s : %s" % (x["campagne"], x["clip"], x["plateforme"], x["lien"]) for x in nouveaux))
 
 
 if __name__ == "__main__":

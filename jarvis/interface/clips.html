@@ -42,9 +42,9 @@ video{display:block;width:100%;aspect-ratio:9/16;background:#111}
 
 <form id="f">
   <p class="mono">Nouvelle vidéo d'une campagne Whop rejointe</p>
-  <input name="url" placeholder="Lien de la vidéo source (Drive, Dropbox, YouTube…)" required>
+  <input name="url" placeholder="Lien de la vidéo source (facultatif s'il est dans le brief)">
   <div class="ligne"><input name="campagne" placeholder="Nom de la campagne" required><input name="nombre" type="number" min="1" max="40" value="20" title="Nombre de clips"></div>
-  <textarea name="consignes" placeholder="Consignes du brief (durée, mentions, hashtags, interdits…), collées telles quelles"></textarea>
+  <textarea name="consignes" placeholder="Le brief complet de la campagne Whop, copié-collé (règles, paiement, lien de la vidéo)" required></textarea>
   <button>Lancer la découpe</button>
   <p class="msg" id="msg"></p>
 </form>

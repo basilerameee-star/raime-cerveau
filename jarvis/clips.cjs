@@ -31,7 +31,11 @@ async function preparer() {
 async function demander({ url, campagne, nombre, consignes }) {
   await preparer();
   url = String(url || '').trim(); campagne = nomCampagne(campagne);
-  if (!/^https?:\/\/\S+$/.test(url)) return { ok: false, message: 'Colle le lien de la vidéo source (https://…).' };
+  if (!url) {                                        // le lien de la vidéo source est souvent dans le brief : on le prend là
+    const liens = String(consignes || '').match(/https?:\/\/[^\s)>\]"']+/g) || [];
+    url = liens.find((l) => /youtu\.?be|drive\.google|dropbox|vimeo|twitch|kick\.com|streamable|wetransfer/i.test(l)) || '';
+  }
+  if (!/^https?:\/\/\S+$/.test(url)) return { ok: false, message: 'Aucun lien de vidéo trouvé : colle-le dans le champ du haut.' };
   if (!campagne) return { ok: false, message: 'Donne un nom à la campagne.' };
   const n = Math.max(1, Math.min(40, Number(nombre) || 20));
   const r = await lire(`INSERT INTO clips_demandes (url, campagne, nombre, consignes) VALUES ($1, $2, $3, $4) RETURNING id`,

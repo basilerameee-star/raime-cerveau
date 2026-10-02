@@ -33,6 +33,20 @@ def cle_gemini():
     return ""
 
 
+def prevenir(sujet, texte):
+    """Alerte à Basile, de son Gmail vers son Gmail (GMAIL_ADRESSE et GMAIL_MOT_DE_PASSE_APPLI du coffre). Jamais bloquant."""
+    import smtplib
+    from email.message import EmailMessage
+    try:
+        c = {l.split("=", 1)[0]: l.split("=", 1)[1].strip().strip('"') for l in open(COFFRE, encoding="utf-8") if "=" in l}
+        m = EmailMessage(); m["From"] = m["To"] = c["GMAIL_ADRESSE"]; m["Subject"] = "[Clips] " + sujet
+        m.set_content(texte + chr(10) * 2 + "Tout est sur https://cockpit.raime.fr/clips")
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=30) as s:
+            s.login(c["GMAIL_ADRESSE"], c["GMAIL_MOT_DE_PASSE_APPLI"]); s.send_message(m)
+    except Exception as e:
+        print("alerte non envoyée :", str(e)[:120], flush=True)
+
+
 def brief_auto(d):
     """Le brief collé sur /clips devient le profil de la campagne (Gemini gratuit en extrait les règles), sans Claude.
     Publication automatique activée (accord de Basile du 02/10/2026 : de la campagne choisie au poste, sans intervention)."""
@@ -87,6 +101,7 @@ def main():
     if not os.path.isfile(profil):                        # le brief d'abord : sans lui, aucune découpe (règle de Basile, 02/10/2026)
         sql("UPDATE clips_demandes SET etat = 'echec', message = :'p0', maj = now() WHERE id = :p1;",
             "Brief manquant : déposer clippeur/campagnes/%s.json avant la découpe" % d["campagne"], d["id"])
+        prevenir("brief illisible : " + d["campagne"], "Le brief de la campagne %s n'a pas pu être lu. Recolle-le en entier sur la page Clips." % d["campagne"])
         return
     # le dossier de la campagne rassemble tout : brief et conditions de paiement, source, clips, liens à déclarer à Whop
     dossier = os.path.join(CLIPS, d["campagne"])
@@ -106,6 +121,7 @@ def main():
     fin = [l for l in r.stdout.splitlines() if l.startswith("FINI")]
     if r.returncode == 0 and fin:
         sql("UPDATE clips_demandes SET etat = 'fait', message = :'p0', maj = now() WHERE id = :p1;", fin[-1][:300], d["id"])
+        prevenir("clips prêts : " + d["campagne"], fin[-1] + chr(10) + "Ils partent seuls dans Buffer, 4 par jour et par chaîne. Les liens publiés arrivent sur la page Clips.")
         # publication automatique (brief : "publication_auto": true, accord de Basile du 02/10/2026) : chaque clip entre
         # dans la file Buffer des 3 chaînes ; buffer.py l'envoie au rythme des créneaux réglés dans Buffer
         brief = json.load(open(profil, encoding="utf-8"))
@@ -124,6 +140,7 @@ def main():
     else:
         sql("UPDATE clips_demandes SET etat = 'echec', message = :'p0', maj = now() WHERE id = :p1;",
             (r.stderr or r.stdout)[-300:].replace("\n", " "), d["id"])
+        prevenir("échec de découpe : " + d["campagne"], (r.stderr or r.stdout)[-600:])
 
 
 if __name__ == "__main__":
