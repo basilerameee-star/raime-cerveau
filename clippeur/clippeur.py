@@ -96,7 +96,7 @@ def choisir(mots, langue, n, mini, maxi, consignes, cle):
         "brief le demande, juste avant la résolution ; préfère les scènes qu'on a envie d'envoyer à un ami et celles qui donnent "
         "envie de revoir le début. %s\n"
         "Réponds en JSON : [{\"debut\": s, \"fin\": s, \"accroche\": \"6 mots au plus, dans la langue de la vidéo : le titre affiché en haut pendant tout le clip, qui donne envie de rester jusqu'au bout (une tension, un enjeu ou une question sur ce qui va arriver, ex. « HE WASN'T READY FOR THIS »), toujours vrai par rapport à la scène, jamais une citation, jamais un juron, sans emoji\", "
-        "\"titre\": \"titre de publication, 60 caractères au plus\", \"question\": \"une question courte, dans la langue de la vidéo, sur la scène, qui donne envie de commenter (jamais de juron, jamais trompeuse)\", \"hashtags\": [\"3 à 5\"]}]\n\n%s"
+        "\"titre\": \"titre de publication, 60 caractères au plus\", \"note\": note de 1 à 10 (10 = le spectateur regarde jusqu'au bout, revoit, partage ; sois sévère), \"question\": \"une question courte, dans la langue de la vidéo, sur la scène, qui donne envie de commenter (jamais de juron, jamais trompeuse)\", \"hashtags\": [\"3 à 5\"]}]\n\n%s"
         % (langue, n, mini, maxi, ("Consignes de la campagne : " + consignes) if consignes else "", texte))
     choix = gemini(prompt, cle)
     bons = []
@@ -104,7 +104,16 @@ def choisir(mots, langue, n, mini, maxi, consignes, cle):
         d, f = float(c.get("debut", 0)), float(c.get("fin", 0))
         if mini - 3 <= f - d <= maxi + 5:
             bons.append(dict(c, debut=d, fin=f))
-    return bons[:n]
+    # la qualité avant le volume (décision de Basile, 02/10/2026) : un clip sous 3 000 vues ne paie rien ; on ne garde que
+    # les passages notés 7/10 ou plus, les meilleurs d'abord (s'il n'y en a aucun, les 3 meilleurs restent)
+    def note(c):
+        try:
+            return float(c.get("note", 0))
+        except (TypeError, ValueError):
+            return 0.0
+    bons.sort(key=note, reverse=True)
+    forts = [c for c in bons if note(c) >= 7] or bons[:3]
+    return sorted(forts[:n], key=lambda c: c["debut"])
 
 
 CENSURE = ["nigga", "nigger", "niggas", "faggot", "retard", "fuck", "fucking", "shit", "bitch", "cunt", "motherfucker", "pussy", "cuck", "dick", "hoe", "whore"]

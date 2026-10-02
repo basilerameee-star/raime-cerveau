@@ -72,6 +72,29 @@ Plus il y a de transformation (accroche à l'image, zooms de relance, découpe n
 4. Monter selon nos réglages : 9:16 sans grossir, sous-titres jaunes et blancs, sans blancs, fin sur une fin de phrase.
 5. Légendes : titre fidèle à la scène, mentions et hashtags du brief, **une question en fin de légende**.
 
+## 9. La qualité avant le volume (décision de Basile, 02/10/2026)
+**Pourquoi trier sévèrement :**
+- **Le paiement est par clip, avec 3 000 vues minimum** : trois clips à 1 000 vues rapportent 0 $, un clip à 3 000 vues rapporte 3 $. Seuls les clips forts paient.
+- **La chaîne grossit avec ses meilleurs clips** :
+  - un clip qui retient et fait revoir pousse les gens vers le profil, d'où des abonnements ;
+  - chaque nouveau clip démarre ensuite avec un public qui le pousse ;
+  - la plateforme juge le compte sur la durée (Instagram évalue l'originalité au mois).
+- **Le cercle vertueux** : de meilleurs clips donnent plus de vues par clip, donc plus d'abonnés, donc plus de vues au départ de chaque clip, donc plus de clips au-dessus de 3 000 vues.
+
+**Ce que fait le clippeur :**
+- chaque passage reçoit une note de 1 à 10 (regarder jusqu'au bout, revoir, partager) ;
+- **seuls les passages notés 7 ou plus sont gardés** ;
+- un passage peut être plus long (jusqu'à 45 à 60 s) quand il tient de bout en bout et que le brief le permet.
+
+**Indicateur à suivre (agent Analytics)** : les vues moyennes par clip et la part de clips au-dessus de 3 000 vues, plus que le nombre de clips publiés.
+
+## 10. Monétiser la chaîne elle-même (à part de Whop)
+- **YouTube (Programme Partenaire)** : 1 000 abonnés et 10 millions de vues de Shorts sur 90 jours (ou 4 000 heures de visionnage). Mais **une chaîne qui ne publie que des extraits d'autres créateurs est souvent refusée pour « contenu réutilisé »**. Il faut un vrai apport : montage, mise en contexte, voix ou commentaire.
+- **TikTok (Creator Rewards)** : 10 000 abonnés, 100 000 vues sur 30 jours, des vidéos de plus d'une minute, et un contenu jugé original. Les clips simples sont souvent marqués « non original ».
+- **Instagram** : la monétisation directe des Reels est très limitée (bonus sur invitation).
+- **Les droits** : même si la marque autorise la diffusion pour sa campagne, les revenus publicitaires de la plateforme sur son contenu peuvent être réclamés par l'ayant droit (Content ID sur YouTube).
+- **En résumé** : une chaîne de clipping pur se monétise surtout par **Whop et les campagnes payées par les marques**. La monétisation des plateformes est un bonus incertain. Elle devient réaliste si le pôle ajoute un vrai apport original : une série, un commentaire, une voix, un format à soi.
+
 ## Sources
 - YouTube Shorts : [vidIQ](https://vidiq.com/blog/post/youtube-shorts-algorithm/), [Shortimize](https://www.shortimize.com/blog/youtube-shorts-retention-rate), [Teleprompter](https://www.teleprompter.com/blog/how-to-go-viral-on-youtube-shorts)
 - TikTok : [Sprout Social](https://sproutsocial.com/insights/tiktok-algorithm/), [go-viral.app](https://www.go-viral.app/blog/tiktok-algorithm-2026/), [Creator Academy, originalité](https://www.tiktok.com/creator-academy/article/tiktok-originality-policy)
