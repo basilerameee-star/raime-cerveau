@@ -3,21 +3,20 @@
 
 Basile clique « Programmer » sur un clip : le cockpit inscrit une ligne par plateforme dans clips_buffer, avec son
 créneau (heure du soir à New York). Ce script, lancé par cron toutes les 2 minutes sur le serveur :
-  1. dépose le clip dans R2 (raime-backups/clips-relais/, dossier à part des sauvegardes) et en tire un lien signé 7 jours ;
+  1. donne à Buffer le lien signé du clip (7 jours, /pubclip/ du cockpit, hors mot de passe : accord de Basile du 02/10/2026) ;
+     les liens signés R2 ne conviennent pas (Buffer vérifie le fichier par une requête HEAD, que R2 refuse) ;
   2. crée la publication programmée dans Buffer (clé BUFFER_API_KEY du coffre, jamais affichée) ;
-  3. une fois la publication partie, note son lien dans clips_publies (à déclarer à Whop) et retire le clip de R2.
+  3. une fois la publication partie, note son lien dans clips_publies (à déclarer à Whop).
 Sans Claude, sans frais. Chaque ligne vient d'un clic de Basile : le clic vaut accord, clip par clip.
 """
 import fcntl
 import json
 import os
-import subprocess
 import urllib.request
 
 from file import sql, CLIPS, COFFRE
 
 VERROU = "/tmp/clippeur-buffer.lock"
-RELAIS = "r2:raime-backups/clips-relais"
 SERVICES = {"youtube": "youtube", "tiktok": "tiktok", "instagram": "instagram"}
 
 
@@ -69,12 +68,9 @@ def legendes(campagne, clip):
 
 def programmer(b, ids):
     camp, clip, pl = b["campagne"], b["clip"], b["plateforme"]
-    local = os.path.join(CLIPS, camp, clip)
     if pl not in ids:
         raise RuntimeError("Chaîne %s absente de Buffer : la brancher dans Buffer." % pl)
-    distant = "%s/%s/%s" % (RELAIS, camp, clip)
-    subprocess.run(["rclone", "copyto", local, distant], check=True, capture_output=True)
-    url = subprocess.run(["rclone", "link", "--expire", "168h", distant], check=True, capture_output=True, text=True).stdout.strip()
+    url = b["url"]
     leg, titre, texte = legendes(camp, clip)
     meta = {"youtube": {"youtube": {"title": (titre or "N3on R3born")[:100], "privacy": "public", "madeForKids": False,
                                     "notifySubscribers": True, "categoryId": "24"}},
@@ -101,10 +97,6 @@ def suivre(b):
     elif statut == "error":
         sql("UPDATE clips_buffer SET etat = 'echec', message = :'p0', maj = now() WHERE id = :p1;",
             ((p.get("error") or {}).get("message") or "erreur Buffer")[:300], b["id"])
-    else:
-        return
-    if not sql("SELECT 1 FROM clips_buffer WHERE campagne = :'p0' AND clip = :'p1' AND etat IN ('a_faire', 'programme') LIMIT 1;", b["campagne"], b["clip"]):
-        subprocess.run(["rclone", "deletefile", "%s/%s/%s" % (RELAIS, b["campagne"], b["clip"])], capture_output=True)
 
 
 def main():
@@ -116,7 +108,8 @@ def main():
     sql("""CREATE TABLE IF NOT EXISTS clips_buffer (id serial PRIMARY KEY, campagne text NOT NULL, clip text NOT NULL,
            plateforme text NOT NULL, quand timestamptz NOT NULL, etat text NOT NULL DEFAULT 'a_faire', post_id text, lien text,
            message text, cree_le timestamptz NOT NULL DEFAULT now(), maj timestamptz NOT NULL DEFAULT now(),
-           UNIQUE (campagne, clip, plateforme));""")
+           UNIQUE (campagne, clip, plateforme));
+           ALTER TABLE clips_buffer ADD COLUMN IF NOT EXISTS url text;""")
     a_faire = lignes("a_faire")
     if a_faire:
         ids = chaines()

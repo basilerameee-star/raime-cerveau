@@ -58,3 +58,12 @@ test('Instagram : le lien public est signé, expire, et un clip inconnu ne part 
   assert.equal(clips.lienValide('1000000000', sig, camp, clip), false);           // expiré
   assert.equal((await clips.publierInstagram({ campagne: 'camp-a', clip: 'clip-99.mp4' })).ok, false);
 });
+
+test('Buffer : créneaux du soir à New York, jamais deux clips au même créneau', async () => {
+  const t0 = Date.UTC(2026, 9, 2, 12, 0);
+  const a = clips.prochainCreneau(new Set(), t0);
+  assert.equal(a.toISOString(), '2026-10-02T22:30:00.000Z');
+  const b = clips.prochainCreneau(new Set([a.getTime()]), t0);
+  assert.equal(b.toISOString(), '2026-10-02T23:30:00.000Z');
+  assert.equal((await clips.programmerBuffer({ campagne: 'camp-a', clip: 'clip-99.mp4' })).ok, false);
+});

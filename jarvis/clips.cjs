@@ -12,7 +12,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { lire, lireCoffre } = require('./bases.cjs');
+const { lire, lireCoffre, rangerCoffre } = require('./bases.cjs');
 
 const DOSSIER = () => process.env.CLIPS_DIR || '/travail/clips';
 const PLATEFORMES = ['tiktok', 'instagram', 'youtube'];
@@ -43,6 +43,8 @@ async function demander({ url, campagne, nombre, consignes }) {
 async function liste() {
   await preparer();
   const publies = await lire('SELECT campagne, clip, plateforme, lien, declare_whop FROM clips_publies');
+  await preparerBuffer();
+  const buf = await lire('SELECT campagne, clip, plateforme, quand, etat, message FROM clips_buffer');
   const campagnes = [];
   let noms = [];
   try { noms = fs.readdirSync(DOSSIER()).filter((n) => n !== 'sources' && fs.existsSync(path.join(DOSSIER(), n, 'clips.json'))); } catch (e) { /* dossier absent */ }
@@ -54,7 +56,7 @@ async function liste() {
       // une légende par plateforme, avec le tag obligatoire de la campagne (clip-01.json), si le brief en impose
       let legendes = null; try { legendes = JSON.parse(fs.readFileSync(path.join(DOSSIER(), nom, c.clip.replace(/\.mp4$/, '.json')), 'utf8')); } catch (e) { /* sans tags */ }
       return { ...c, legende, legendes, duree: Math.round(c.fin - c.debut), fichier: `/clips/f/${encodeURIComponent(nom)}/${encodeURIComponent(c.clip)}`,
-        publies: publies.filter((p) => p.campagne === nom && p.clip === c.clip) };
+        publies: publies.filter((p) => p.campagne === nom && p.clip === c.clip), buffer: buf.filter((b) => b.campagne === nom && b.clip === c.clip) };
     }) });
   }
   campagnes.sort((a, b) => b.le - a.le);
@@ -64,13 +66,19 @@ async function liste() {
 
 // ── PUBLIER SUR INSTAGRAM (KinGKlip) — le bouton de Basile vaut accord, clip par clip.
 // Meta va chercher la vidéo lui-même : on lui donne un lien public signé, valable une heure (/pubclip/…, hors mot de passe).
-// La clé de signature ne vit qu'en mémoire : un redémarrage invalide les anciens liens, sans conséquence.
-const SIGNATURE = crypto.randomBytes(32);
+// La clé de signature est créée une fois et rangée au coffre (CLIPS_SIGNATURE) : les liens survivent à un redémarrage.
+let SIGNATURE = null;
+function cleSignature() {
+  if (SIGNATURE) return SIGNATURE;
+  let k = (lireCoffre() || {}).CLIPS_SIGNATURE;
+  if (!k) { k = crypto.randomBytes(32).toString('hex'); try { rangerCoffre('CLIPS_SIGNATURE', k); } catch (e) { /* banc : coffre absent */ } }
+  return (SIGNATURE = Buffer.from(k));
+}
 const COMPTE_IG = process.env.CLIPS_INSTAGRAM || 'kinggklip';
 const GRAPH = 'https://graph.facebook.com/v21.0';
-const signer = (exp, campagne, clip) => crypto.createHmac('sha256', SIGNATURE).update(`${exp}/${campagne}/${clip}`).digest('hex').slice(0, 32);
-function lienPublic(campagne, clip) {
-  const exp = Math.floor(Date.now() / 1000) + 3600;
+const signer = (exp, campagne, clip) => crypto.createHmac('sha256', cleSignature()).update(`${exp}/${campagne}/${clip}`).digest('hex').slice(0, 32);
+function lienPublic(campagne, clip, duree = 3600) {
+  const exp = Math.floor(Date.now() / 1000) + duree;
   return `https://cockpit.raime.fr/pubclip/${exp}/${signer(exp, campagne, clip)}/${encodeURIComponent(campagne)}/${clip}`;
 }
 function lienValide(exp, sig, campagne, clip) {
@@ -113,6 +121,42 @@ async function publierInstagram({ campagne, clip, legende }, attendreMs = 5000, 
   } catch (e) { return { ok: false, message: 'Instagram : ' + e.message }; }
 }
 
+// ── PROGRAMMER SUR BUFFER — le clic de Basile vaut accord ; clippeur/buffer.py (cron du serveur) fait le reste.
+// Créneaux : 18 h 30 à 21 h 30 à New York (22:30, 23:30, 00:30, 01:30 UTC), un clip par créneau et par plateforme.
+const CRENEAUX_UTC = [[22, 30], [23, 30], [0, 30], [1, 30]];
+const PLATEFORMES_BUFFER = ['youtube', 'tiktok', 'instagram'];
+async function preparerBuffer() {
+  await lire(`CREATE TABLE IF NOT EXISTS clips_buffer (id serial PRIMARY KEY, campagne text NOT NULL, clip text NOT NULL,
+    plateforme text NOT NULL, quand timestamptz NOT NULL, etat text NOT NULL DEFAULT 'a_faire', post_id text, lien text,
+    message text, cree_le timestamptz NOT NULL DEFAULT now(), maj timestamptz NOT NULL DEFAULT now(), UNIQUE (campagne, clip, plateforme))`);
+  await lire('ALTER TABLE clips_buffer ADD COLUMN IF NOT EXISTS url text');
+}
+function prochainCreneau(pris, maintenant = Date.now()) {
+  for (let j = 0; j < 60; j++) {
+    for (const [h, mn] of CRENEAUX_UTC) {
+      const d = new Date(maintenant); d.setUTCDate(d.getUTCDate() + j); d.setUTCHours(h, mn, 0, 0);
+      if (d.getTime() > maintenant + 20 * 60000 && !pris.has(d.getTime())) return d;
+    }
+  }
+  return null;
+}
+async function programmerBuffer({ campagne, clip }) {
+  await preparer(); await preparerBuffer();
+  campagne = nomCampagne(campagne); clip = String(clip || '');
+  if (!/^clip-\d{2}\.mp4$/.test(clip) || !fs.existsSync(path.join(DOSSIER(), campagne, clip))) return { ok: false, message: 'Clip introuvable.' };
+  const faits = [];
+  for (const pl of PLATEFORMES_BUFFER) {
+    const deja = await lire('SELECT 1 FROM clips_buffer WHERE campagne = $1 AND clip = $2 AND plateforme = $3', [campagne, clip, pl]);
+    if (deja[0]) continue;
+    const pris = new Set((await lire(`SELECT quand FROM clips_buffer WHERE plateforme = $1 AND etat <> 'echec'`, [pl])).map((r) => new Date(r.quand).getTime()));
+    const quand = prochainCreneau(pris);
+    await lire('INSERT INTO clips_buffer (campagne, clip, plateforme, quand, url) VALUES ($1, $2, $3, $4, $5)',
+      [campagne, clip, pl, quand.toISOString(), lienPublic(campagne, clip, 7 * 86400)]);
+    faits.push(pl + ' ' + quand.toISOString().slice(5, 16).replace('T', ' ') + ' UTC');
+  }
+  return { ok: true, message: faits.length ? 'Programmé : ' + faits.join(' · ') : 'Déjà programmé partout.' };
+}
+
 // Le lien d'un clip publié : à déclarer à Whop, et à suivre pour les vues.
 async function noterPublication({ campagne, clip, plateforme, lien }) {
   await preparer();
@@ -135,6 +179,7 @@ function servirVideo(req, res, campagne, clip) {
   const taille = fs.statSync(f).size, plage = /bytes=(\d*)-(\d*)/.exec(req.headers.range || '');
   const entetes = { 'Content-Type': 'video/mp4', 'Accept-Ranges': 'bytes', 'Cache-Control': 'no-store',
     'Content-Disposition': `inline; filename="${clip}"`, 'X-Content-Type-Options': 'nosniff' };
+  if (req.method === 'HEAD') { res.writeHead(200, { ...entetes, 'Content-Length': taille }); res.end(); return; }
   if (!plage) { res.writeHead(200, { ...entetes, 'Content-Length': taille }); fs.createReadStream(f).pipe(res); return; }
   const debut = plage[1] ? +plage[1] : 0, fin = plage[2] ? Math.min(+plage[2], taille - 1) : taille - 1;
   if (debut >= taille || debut > fin) { res.writeHead(416, { 'Content-Range': `bytes */${taille}` }); res.end(); return; }
@@ -145,10 +190,11 @@ function servirVideo(req, res, campagne, clip) {
 async function router(req, res, { url, m, envoyer, json, fichierInterface }) {
   if (m === 'GET' && url === '/clips') { fichierInterface(res, 'clips.html'); return true; }
   let c;
-  if (m === 'GET' && (c = url.match(/^\/pubclip\/(\d{10})\/([0-9a-f]{32})\/([\w-]{1,80})\/(clip-\d{2}\.mp4)$/))) {
+  if ((m === 'GET' || m === 'HEAD') && (c = url.match(/^\/pubclip\/(\d{10})\/([0-9a-f]{32})\/([\w-]{1,80})\/(clip-\d{2}\.mp4)$/))) {
     if (!lienValide(c[1], c[2], c[3], c[4])) { res.writeHead(403); res.end(); return true; }
     servirVideo(req, res, c[3], c[4]); return true;
   }
+  if (m === 'POST' && url === '/api/clips/buffer') { envoyer(res, 200, await programmerBuffer(await json(req))); return true; }
   if (m === 'POST' && url === '/api/clips/instagram') { envoyer(res, 200, await publierInstagram(await json(req))); return true; }
   if (m === 'GET' && (c = url.match(/^\/clips\/f\/([\w-]{1,80})\/(clip-\d{2}\.mp4)$/))) { servirVideo(req, res, decodeURIComponent(c[1]), c[2]); return true; }
   if (m === 'GET' && url === '/api/clips') { envoyer(res, 200, await liste()); return true; }
@@ -158,4 +204,4 @@ async function router(req, res, { url, m, envoyer, json, fichierInterface }) {
   return false;
 }
 
-module.exports = { router, publierInstagram, lienPublic, lienValide, demander, liste, noterPublication, declarerWhop, nomCampagne, preparer, PLATEFORMES };
+module.exports = { router, programmerBuffer, prochainCreneau, publierInstagram, lienPublic, lienValide, demander, liste, noterPublication, declarerWhop, nomCampagne, preparer, PLATEFORMES };

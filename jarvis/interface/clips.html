@@ -54,6 +54,7 @@ video{display:block;width:100%;aspect-ratio:9/16;background:#111}
 <script>
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const ETATS = { a_faire: 'en file', en_cours: 'en découpe…', fait: 'prête', echec: 'échec' };
+const ETATS_BUF = { a_faire: 'envoi à Buffer…', programme: 'programmé', publie: 'publié ✓', echec: 'échec' };
 const NOMS = { tiktok: 'TikTok', instagram: 'Instagram', youtube: 'YouTube', x: 'X' };
 async function api(u, corps) {
   const r = await fetch(u, corps ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corps) } : {});
@@ -64,7 +65,7 @@ async function charger() {
   document.getElementById('demandes').innerHTML = d.demandes.length ? 'Demandes : ' + d.demandes.map((x) =>
     `n°${x.id} ${esc(x.campagne)} · <span class="${x.etat === 'fait' ? 'ok' : ''}">${ETATS[x.etat] || esc(x.etat)}</span>${x.message ? ' · ' + esc(x.message) : ''}`).join(' &nbsp;·&nbsp; ') : '';
   // on ne redessine les clips que s'il en arrive de nouveaux (sinon un lien en cours de saisie serait effacé)
-  const sig = JSON.stringify(d.campagnes.map((c) => [c.campagne, c.clips.length]));
+  const sig = JSON.stringify(d.campagnes.map((c) => [c.campagne, c.clips.length, c.clips.map((k) => k.buffer.map((b) => b.etat).join())]));
   if (sig === charger.sig) return; charger.sig = sig;
   document.getElementById('campagnes').innerHTML = d.campagnes.map((c) => `
     <h2>${esc(c.campagne)}</h2><p class="mono">${c.clips.length} clips</p>
@@ -77,7 +78,8 @@ async function charger() {
           <textarea readonly>${esc(k.legendes ? k.legendes[Object.keys(k.legendes)[0]] : k.legende)}</textarea>
           <div class="actions"><a href="${k.fichier}" download>Télécharger</a>
             <button class="vide" data-copie>Copier la légende</button>
-            ${k.publies.some((x) => x.plateforme === 'instagram') ? '' : `<button data-ig data-c="${esc(c.campagne)}" data-k="${esc(k.clip)}" data-txt="${esc(k.legendes ? (k.legendes.instagram || '') : k.legende)}">Publier sur Instagram</button>`}</div>
+            ${k.buffer.length ? '' : `<button data-buf data-c="${esc(c.campagne)}" data-k="${esc(k.clip)}">Programmer</button>`}</div>
+          ${k.buffer.length ? `<p class="mono">${k.buffer.map((b) => `${esc(NOMS[b.plateforme] || b.plateforme)} : ${esc(ETATS_BUF[b.etat] || b.etat)}${b.etat === 'echec' && b.message ? ' (' + esc(b.message) + ')' : ''}`).join(' · ')}</p>` : ''}
           ${['tiktok', 'instagram', 'youtube'].map((p) => { const pub = k.publies.find((x) => x.plateforme === p);
             return `<div class="pub"><span>${NOMS[p]}</span><input placeholder="lien publié" value="${pub ? esc(pub.lien) : ''}"
               data-c="${esc(c.campagne)}" data-k="${esc(k.clip)}" data-p="${p}"><button class="vide" data-note>${pub ? (pub.declare_whop ? 'Whop ✓' : 'Noté') : 'Noter'}</button></div>`; }).join('')}
@@ -101,6 +103,14 @@ document.addEventListener('click', async (e) => {
   if (e.target.matches('[data-copie]')) {
     const t = e.target.closest('.corps').querySelector('textarea').value;
     try { await navigator.clipboard.writeText(t); e.target.textContent = 'Copiée'; } catch (err) { e.target.closest('.corps').querySelector('textarea').select(); }
+  }
+  if (e.target.matches('[data-buf]')) {              // programmé sur YouTube, TikTok et Instagram, le soir à New York
+    const b = e.target;
+    if (!confirm('Programmer ce clip sur YouTube, TikTok et Instagram (KinGKlip) ?')) return;
+    b.disabled = true;
+    const r = await api('/api/clips/buffer', { campagne: b.dataset.c, clip: b.dataset.k });
+    alert(r.message); charger.sig = ''; charger();
+    return;
   }
   if (e.target.matches('[data-ig]')) {               // publication directe sur @kinggklip : un clic = l'accord, clip par clip
     const b = e.target;
