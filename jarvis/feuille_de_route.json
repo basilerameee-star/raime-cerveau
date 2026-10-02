@@ -509,6 +509,24 @@
       "etat": "a_faire",
       "fini_quand": "Il suit découpes, publications Buffer, échecs et vues par pôle ; dépense plafonnée à 0 € tant que tout est gratuit ; il prévient Basile sur Jarvis et par e-mail (Resend), relance après le délai fixé ; SMS ou appel seulement avec l'accord de Basile (payant).",
       "rang": 49
+    },
+    {
+      "n": 50,
+      "groupe": "seul",
+      "moteur": "Moteur 2 : la niche (contenus et produits)",
+      "titre": "Influenceur IA : étudier Pinokio + Wan2GP (« One2GP ») + modèle MiniMax cité par Basile",
+      "etat": "a_faire",
+      "fini_quand": "Nom exact, licence (usage commercial), coût et faisabilité sur le PC de Basile vérifiés ; une vidéo test de 15 s produite en local ; note Obsidian 16.",
+      "rang": 50
+    },
+    {
+      "n": 51,
+      "groupe": "seul",
+      "moteur": "Moteur 3 : clip farming (KinGKlip)",
+      "titre": "Chercheur de campagnes Whop + récupération des sources YouTube depuis le PC",
+      "etat": "en_cours",
+      "fini_quand": "Chaque jour, l'agent lit les campagnes Content Rewards dans le navigateur du serveur (Basile s'y connecte une fois à Whop), les note avec clippeur/selection.json et propose les 3 meilleures sur Jarvis ; une tâche planifiée du PC télécharge les vidéos YouTube attendues par le serveur et les dépose, sans Claude.",
+      "rang": 51
     }
   ]
 }
