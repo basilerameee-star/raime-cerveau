@@ -26,7 +26,8 @@ function canal(o) {
   if (o.source === 'HelloWork') return 'hellowork';
   return 'manuel';
 }
-const auto = (o) => CANAUX_AUTO.includes(canal(o));
+// Suisse seulement (Basile, 06/10/2026) : une offre française n'est jamais proposée.
+const auto = (o) => (o || {}).pays !== 'FR' && CANAUX_AUTO.includes(canal(o));
 const ESSAIS_MAX = 3;
 
 async function preparer() {

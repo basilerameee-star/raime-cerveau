@@ -177,7 +177,7 @@ def collecte():
     import subprocess
     ici = Path(__file__).resolve().parent / "collecte"
     env = {**os.environ, "DONNEES": str(DONNEES), "PYTHONIOENCODING": "utf-8"}
-    for s in ("chasse.py", "chasse_fr.py", "chasse_plus.py"):
+    for s in ("chasse.py", "chasse_plus.py"):              # la France est abandonnée (Basile, 06/10/2026) : Suisse seulement
         r = subprocess.run([sys.executable, str(ici / s)], cwd=ici, env=env, capture_output=True, text=True)
         dire(f"{s} : {(r.stdout or '').strip().splitlines()[-1:] or r.returncode}")
     sys.path.insert(0, str(ici))
