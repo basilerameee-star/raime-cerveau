@@ -1,6 +1,6 @@
 """L'Envoyeur de Jarvis, sur le serveur, 24 h/24 (02/10/2026) — sans Claude, sans frais.
 
-Boucle : chaque heure, il prend la file des candidatures validées dans Jarvis et postule ; chaque matin (7 h),
+Boucle : toutes les 15 minutes, il prend la file des candidatures validées dans Jarvis et postule ; chaque matin (7 h),
 il collecte les offres et les envoie à Jarvis, qui écrit les fiches avec les modèles gratuits.
 Son navigateur (Chromium, profil /data/navigateur) tourne dans un écran virtuel visible par Basile via
 cockpit.raime.fr/navigateur/ (derrière le mot de passe du Cockpit) : Basile s'y connecte une fois aux sites ;
@@ -100,33 +100,66 @@ def dossier(ctx, f, p):
     return dos
 
 
+def jobcloud(page, f, dos, p):
+    return postuler(page, f["source"], f["id"], dos / "CV_Basile_Rame.pdf", dos / "Lettre_Basile_Rame.pdf",
+                    code_postal=p.get("code_postal", ""), texte_lettre=f.get("lettre") or "", email=p["email"], profil=p)
+
+
+# Un canal = une façon de postuler sans Basile. Jarvis ne propose à la validation que les offres de ces canaux.
+POSTULER = {"jobcloud": jobcloud}
+
+
+def capture(page, oid):
+    """Capture de l'écran au moment de l'échec, pour comprendre sans rejouer (gardée 14 jours)."""
+    try:
+        (DONNEES / "echecs").mkdir(exist_ok=True)
+        page.screenshot(path=str(DONNEES / "echecs" / (re.sub(r"[^\w.-]", "_", oid) + ".png")), full_page=True)
+        for vieux in (DONNEES / "echecs").glob("*.png"):
+            if time.time() - vieux.stat().st_mtime > 14 * 86400:
+                vieux.unlink()
+    except Exception:
+        pass
+
+
 def passage():
     try:
         file = jarvis("/envoyeur/file")
     except Exception as e:
         dire(f"Jarvis injoignable : {e}")
         return
-    auto = [f for f in file if f["source"] in ("jobup", "jobs.ch") and f.get("methode", "").endswith("FORMULAR")][:PAR_PASSAGE]
+    auto = [f for f in file if f.get("canal", "jobcloud") in POSTULER][:PAR_PASSAGE]
     if not auto:
         return
     p = profil()
     with sync_playwright() as pw:
         ctx = contexte(pw)
         page = ctx.new_page()
+        envoyes = DONNEES / "envoyes.txt"              # mémoire locale : jamais deux fois la même candidature,
+        deja = set(envoyes.read_text().split()) if envoyes.exists() else set()   # même si Jarvis n'a pas reçu la preuve
         for f in auto:
             r = {"id": f["id"], "source": f["source"]}
+            if f["id"] in deja:
+                r.update(statut="deja", detail="déjà envoyée par l'Envoyeur (preuve renvoyée)")
+                try:
+                    jarvis("/envoyeur/resultat", r)
+                except Exception as e:
+                    dire(f"  résultat non transmis : {e}")
+                continue
             try:
                 dos = dossier(ctx, f, p)
-                out = postuler(page, f["source"], f["id"], dos / "CV_Basile_Rame.pdf", dos / "Lettre_Basile_Rame.pdf",
-                               code_postal=p.get("code_postal", ""), texte_lettre=f.get("lettre") or "", email=p["email"], profil=p)
+                out = POSTULER[f.get("canal", "jobcloud")](page, f, dos, p)
                 r.update(out)
                 r["statut"] = "envoye" if out.get("envoye") else "deja"
+                with envoyes.open("a") as fe:
+                    fe.write(f["id"] + chr(10))
             except AToi as e:
-                # Plus rien « à toi » : ce que l'Envoyeur ne peut pas faire honnêtement est abandonné (raison gardée).
-                r.update(statut="expiree" if e.motif in ("expiree", "question", "formulaire") else e.motif,
-                         detail=f"{e.motif} : {e.detail}")
+                # 06/10/2026 : la vraie raison remonte à Jarvis (expiree, question, formulaire, reconnexion). Une candidature
+                # validée n'est plus jamais rangée sans bruit : Jarvis la réessaie, puis la rend à Basile avec la raison.
+                r.update(statut=e.motif, detail=f"{e.motif} : {e.detail}")
+                capture(page, f["id"])
             except Exception as e:
                 r.update(statut="erreur", detail=f"{type(e).__name__}: {str(e)[:300]}")
+                capture(page, f["id"])
                 with (DONNEES / "erreurs.log").open("a", encoding="utf-8") as fl:
                     fl.write(time.strftime("%Y-%m-%d %H:%M ") + f["id"] + "\n" + traceback.format_exc() + "\n")
             dire(f"{r['statut']:10} {f['titre'][:60]} — {f['entreprise'][:30]}")
@@ -218,7 +251,7 @@ def boucle():
             passage()
         except Exception as e:
             dire(f"passage en échec : {e}")
-        time.sleep(3600)
+        time.sleep(900)                                    # une validation part au plus tard 15 minutes après le clic
 
 
 if __name__ == "__main__":

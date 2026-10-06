@@ -63,3 +63,33 @@ test('la file ne rend que les fiches validées ; le résultat les fait passer en
   assert.equal((await c.resultat({ id: 'banc-a', statut: 'question', detail: 'CFC ?' })).statut, 'a_toi');
   assert.ok(!(await c.file(100)).map((x) => x.id).includes('banc-v'));
 });
+
+test('un échec de formulaire ne range jamais une candidature validée : 3 essais, puis elle revient à Basile', async () => {
+  await c.importer([{ id: 'banc-e', offre: OFFRE, fiche: { cv: 'Vente', lettre: 'L' }, statut: 'valide' }]);
+  assert.equal((await c.resultat({ id: 'banc-e', statut: 'formulaire', detail: 'x' })).statut, 'valide');
+  assert.equal((await c.resultat({ id: 'banc-e', statut: 'erreur', detail: 'x' })).statut, 'valide');
+  const r = await c.resultat({ id: 'banc-e', statut: 'reconnexion', detail: 'x' });
+  assert.deepEqual([r.statut, r.essais], ['a_toi', 3]);
+  await c.agir('banc-e', { statut: 'valide' });                       // revalidée : de nouveaux essais
+  assert.equal((await c.resultat({ id: 'banc-e', statut: 'formulaire' })).statut, 'valide');
+  assert.equal((await c.resultat({ id: 'banc-e', statut: 'expiree' })).statut, 'ecartee');
+});
+
+test('seules les offres d’un canal automatique sont proposées ; les autres sont rangées et comptées', async () => {
+  await c.importer([
+    { id: 'banc-li', offre: { ...OFFRE, id: 'banc-li', source: 'LinkedIn', methode: '' }, fiche: { cv: 'Vente', lettre: 'L' }, statut: 'a_valider' },
+    { id: 'banc-ext', offre: { ...OFFRE, id: 'banc-ext', methode: 'APPLICATION_METHOD.EXTERNAL' }, fiche: { cv: 'Vente', lettre: 'L' }, statut: 'a_valider' },
+    { id: 'banc-ok', offre: { ...OFFRE, id: 'banc-ok' }, fiche: { cv: 'Vente', lettre: 'L' }, statut: 'a_valider' },
+  ]);
+  await c.reclasser();
+  const l = await c.liste();
+  const ids = l.offres.map((o) => o.id);
+  assert.ok(ids.includes('banc-ok')); assert.ok(!ids.includes('banc-li')); assert.ok(!ids.includes('banc-ext'));
+  assert.ok(l.compte.hors_auto >= 2);
+  assert.equal(c.canal({ source: 'HelloWork' }), 'hellowork');
+  // une offre nouvelle d'un canal manuel est rangée sans passer par un modèle
+  await c.recevoirOffres([{ id: 'banc-n', titre: 'Vendeur', source: 'LinkedIn' }]);
+  await c.traiterNouvelles({ max: 0 });
+  const [n] = await lire("SELECT statut FROM candidatures WHERE id = 'banc-n'");
+  assert.equal(n.statut, 'hors_auto');
+});

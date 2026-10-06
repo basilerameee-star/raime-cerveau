@@ -101,7 +101,7 @@ dialog form { display: flex; justify-content: flex-end; padding: 8px }
 </head><body>
 <header class="top"><div class="wrap">
   <h1>Bureau des candidatures</h1>
-  <p class="sub" id="maj">Offres de Genève à Lausanne, triées et préparées. Tu valides, Claude envoie.</p>
+  <p class="sub" id="maj">Offres de Genève à Lausanne, triées et préparées. Tu valides, l'Envoyeur postule tout seul.</p>
   <div class="counts" id="counts"></div>
 </div></header>
 
@@ -111,8 +111,8 @@ dialog form { display: flex; justify-content: flex-end; padding: 8px }
     <input id="q" type="search" placeholder="Chercher un poste, une entreprise, un lieu" aria-label="Chercher">
     <select id="avisf" aria-label="Recommandation">
       <option value="">Toutes les recommandations</option>
-      <option value="postuler">Claude conseille de postuler</option>
-      <option value="avis">Claude veut ton avis</option>
+      <option value="postuler">Jarvis conseille de postuler</option>
+      <option value="avis">Jarvis veut ton avis</option>
     </select>
   </div>
   <div class="bulk" id="bulk" hidden>
@@ -158,7 +158,8 @@ function filtrees() {
     .filter((o) => etape === "tout" || o.statut === etape)
     .filter((o) => !a || o.avis === a)
     .filter((o) => !q || [o.titre, o.entreprise, o.lieu].join(" ").toLowerCase().includes(q))
-    .sort((x, y) => (y.score || 0) - (x.score || 0));
+    // les plus récentes d'abord (par jour d'arrivée), puis les mieux notées
+    .sort((x, y) => String(y.arrivee || "").slice(0, 10).localeCompare(String(x.arrivee || "").slice(0, 10)) || (y.score || 0) - (x.score || 0));
 }
 
 function renderHead() {
@@ -168,16 +169,19 @@ function renderHead() {
   if (meta) $("maj").textContent = `${meta} · Tu valides, l'Envoyeur postule tout seul.`;
 }
 
+const nouvelle = (o) => o.statut === "a_valider" && o.arrivee && Date.now() - new Date(o.arrivee) < 864e5;
+const CANAL = { jobcloud: "Candidature simplifiée", hellowork: "Candidature HelloWork" };
+
 function card(o) {
   const alertes = (o.alertes || []).map((a) => `<span class="chip">${esc(a)}</span>`).join("");
   const pill = o.statut === "a_valider" ? `<span class="pill p-${o.avis}">${AVIS[o.avis] || ""}</span>` : `<span class="pill p-${o.statut}">${STATUT[o.statut] || ""}</span>`;
   const cv = CV[o.cv] ? `<div><label>CV joint · ${esc(o.cv)}</label><img class="cvthumb" data-cv="${esc(o.cv)}" src="${CV[o.cv]}" alt="CV ${esc(o.cv)}" loading="lazy"></div>` : "";
   return `<details class="card" data-id="${esc(o.id)}" ${ouverts.has(o.id) ? "open" : ""}>
   <summary><div class="score">${o.score ?? "–"}<small>/100</small></div>
-    <div class="head"><h2>${esc(o.titre)}</h2><div class="meta">${esc(o.entreprise)} · ${esc(o.lieu)} · ${esc(o.taux)} · ${esc(o.contrat)} · publiée le ${esc(o.publie)}</div></div>${pill}</summary>
+    <div class="head"><h2>${nouvelle(o) ? '<span class="pill p-postuler">Nouvelle</span> ' : ""}${esc(o.titre)}</h2><div class="meta">${esc(o.entreprise)} · ${esc(o.lieu)} · ${esc(o.taux)} · ${esc(o.contrat)}${o.arrivee ? " · arrivée le " + new Date(o.arrivee).toLocaleDateString("fr-FR") : ""}</div></div>${pill}</summary>
   <div class="body">
     <div class="col">
-      <p class="why"><b>Avis de Claude :</b> ${esc(o.pourquoi)}</p>
+      <p class="why"><b>Avis de Jarvis :</b> ${esc(o.pourquoi)}</p>
       ${alertes ? `<div class="chips">${alertes}</div>` : ""}
       <div><label for="l-${esc(o.id)}">Lettre de motivation (modifiable)</label><textarea class="lettre" id="l-${esc(o.id)}" data-f="lettre">${esc(o.lettre)}</textarea></div>
       <div><label for="n-${esc(o.id)}">Ta note pour Claude</label><textarea id="n-${esc(o.id)}" data-f="note" rows="2" placeholder="Une précision, une question, une consigne…">${esc(o.note)}</textarea></div>
@@ -185,7 +189,7 @@ function card(o) {
     </div>
     <div class="side">
       <a href="${esc(o.lien)}" target="_blank" rel="noopener">Voir l'annonce sur ${esc(o.source)} ↗</a>
-      <div class="kv"><b>Canal</b>${esc(o.methode && o.methode.endsWith("FORMULAR") ? "Candidature simplifiée " + o.source + " (Envoyeur)" : (o.source || ""))}</div>
+      <div class="kv"><b>Canal</b>${esc(CANAL[o.canal] ? CANAL[o.canal] + " " + o.source + " : part seule" : (o.source || "") + " : envoi à faire toi-même")}</div>
       <div class="kv"><b>Langue</b>${esc(o.langue)}</div>
       ${o.envoi ? `<div class="kv"><b>${o.statut === "a_toi" ? "À toi" : "Preuve d'envoi"}</b>${esc(o.envoi.quand || o.envoi.recu_le || "")} ${esc(o.envoi.source || "")}${o.envoi.detail ? "<br>" + esc(o.envoi.detail) : ""}${o.envoi.reponses ? "<br>" + esc(o.envoi.reponses) : ""}${o.envoi.url ? `<br><a href="${esc(o.envoi.url)}" target="_blank" rel="noopener">page de confirmation ↗</a>` : ""}</div>` : ""}
       ${cv}
@@ -206,7 +210,7 @@ function renderList() {
     `<div class="empty">${offres.length ? "Aucune offre à cette étape avec ces filtres." : "Les offres apparaîtront ici dès la première collecte."}</div>`;
   const reco = offres.filter((o) => o.statut === "a_valider" && o.avis === "postuler");
   $("bulk").hidden = !(etape === "a_valider" && reco.length);
-  $("bulktxt").textContent = `${reco.length} candidature${reco.length > 1 ? "s" : ""} recommandée${reco.length > 1 ? "s" : ""} par Claude : tu peux toutes les valider d'un coup, ou les ouvrir une par une.`;
+  $("bulktxt").textContent = `${reco.length} candidature${reco.length > 1 ? "s" : ""} recommandée${reco.length > 1 ? "s" : ""} par Jarvis : tu peux toutes les valider d'un coup, ou les ouvrir une par une.`;
 }
 
 function render() { renderHead(); renderList() }
@@ -237,7 +241,7 @@ $("list").addEventListener("click", (e) => {
   const b = e.target.closest("button[data-s]"); if (!b) return;
   const id = b.closest(".card").dataset.id;
   if (b.dataset.s === "valide") { ouvrirValidation([offres.find((o) => o.id === id)]); return }
-  const msgs = { valide: "Validée : Claude l'enverra", refuse: "Refusée", a_valider: "Remise à valider", entretien: "Bravo, entretien noté" };
+  const msgs = { valide: "Validée : elle part dans les 15 minutes", refuse: "Refusée", a_valider: "Remise à valider", entretien: "Bravo, entretien noté" };
   ecrire(id, { statut: b.dataset.s }, msgs[b.dataset.s]);
 });
 $("list").addEventListener("change", (e) => {
@@ -256,15 +260,15 @@ function ouvrirValidation(liste) {
   $("okbody").innerHTML = un ? `
     <h3>Valider cette candidature ?</h3>
     <div class="meta">${esc(un.titre)} · ${esc(un.entreprise)} · ${esc(un.lieu)} · ${esc(un.taux)}</div>
-    <div class="kv"><b>Envoi par</b>${esc(un.envoi)} · <a href="${esc(un.lien)}" target="_blank" rel="noopener">annonce ↗</a></div>
+    <div class="kv"><b>Envoi par</b>${esc((CANAL[un.canal] || "") + " " + (un.source || ""))} · <a href="${esc(un.lien)}" target="_blank" rel="noopener">annonce ↗</a></div>
     <div class="recap"><div><label>Lettre qui sera jointe</label><div class="lt">${esc(un.lettre)}</div></div>
       <div><label>CV joint · ${esc(un.cv)}</label>${CV[un.cv] ? `<img class="cvthumb" src="${CV[un.cv]}" alt="CV">` : ""}</div></div>
-    <p class="why">Rien ne part maintenant : Claude t'affichera la liste finale et attendra ton « oui » avant d'envoyer.</p>
-    <div class="btns"><button type="button" id="okno">Annuler</button><button type="button" class="go" id="okgo">Valider pour l'envoi</button></div>` : `
+    <p class="why">En validant, elle part toute seule dans les 15 minutes, avec ce CV et cette lettre.</p>
+    <div class="btns"><button type="button" id="okno">Annuler</button><button type="button" class="go" id="okgo">Valider et envoyer</button></div>` : `
     <h3>Valider ${aValider.length} candidatures ?</h3>
-    <ul>${aValider.map((o) => `<li><b>${esc(o.titre)}</b> · ${esc(o.entreprise)} · ${esc(o.lieu)} · CV ${esc(o.cv)} · ${o.envoi && o.envoi.startsWith("Candidature simplifiée") ? "candidature simplifiée" : "site ou e-mail de l'annonce"}</li>`).join("")}</ul>
-    <p class="why">Chaque lettre est visible dans sa fiche. Rien ne part maintenant : Claude t'affichera la liste finale et attendra ton « oui » avant d'envoyer.</p>
-    <div class="btns"><button type="button" id="okno">Annuler</button><button type="button" class="go" id="okgo">Valider ces ${aValider.length} candidatures</button></div>`;
+    <ul>${aValider.map((o) => `<li><b>${esc(o.titre)}</b> · ${esc(o.entreprise)} · ${esc(o.lieu)} · CV ${esc(o.cv)} · ${esc(CANAL[o.canal] || "")}</li>`).join("")}</ul>
+    <p class="why">Chaque lettre est visible dans sa fiche. En validant, elles partent toutes seules dans les 15 minutes.</p>
+    <div class="btns"><button type="button" id="okno">Annuler</button><button type="button" class="go" id="okgo">Valider et envoyer ces ${aValider.length} candidatures</button></div>`;
   $("okdlg").showModal();
 }
 $("okbody").addEventListener("click", async (e) => {
@@ -273,7 +277,7 @@ $("okbody").addEventListener("click", async (e) => {
   e.target.disabled = true;
   for (const o of aValider) await ecrire(o.id, { statut: "valide" });
   $("okdlg").close();
-  toast(aValider.length > 1 ? `${aValider.length} candidatures validées` : "Validée : Claude te demandera ton oui avant l'envoi");
+  toast(aValider.length > 1 ? `${aValider.length} candidatures validées : elles partent dans les 15 minutes` : "Validée : elle part dans les 15 minutes");
 });
 
 render();
@@ -283,7 +287,8 @@ async function charger() {
     const d = await r.json();
     offres = d.offres || [];
     const c = d.compte || {};
-    meta = `${Object.values(c).reduce((a, b) => a + b, 0)} offres reçues · ${c.nouvelle || 0} en préparation · ${c.ecartee || 0} écartées par Jarvis`;
+    meta = `${Object.values(c).reduce((a, b) => a + b, 0)} offres reçues · ${c.nouvelle || 0} en préparation · ${c.ecartee || 0} écartées par Jarvis`
+      + (c.hors_auto ? ` · ${c.hors_auto} sans envoi automatique (LinkedIn, sites d'entreprise), non proposées` : "");
     if (document.activeElement?.tagName === "TEXTAREA" || $("okdlg").open) { renderHead(); return }
     render();
   } catch (e) { $("list").innerHTML = `<div class="empty">Jarvis ne répond pas pour l'instant : nouvel essai dans 30 secondes.</div>` }

@@ -13,14 +13,41 @@ const crypto = require('crypto');
 const { lire, lireCoffre } = require('./bases.cjs');
 const { repondreSansFrais } = require('./parole.cjs');
 
-const STATUTS = ['nouvelle', 'ecartee', 'a_valider', 'valide', 'envoye', 'a_toi', 'refuse', 'entretien'];
+const STATUTS = ['nouvelle', 'ecartee', 'a_valider', 'valide', 'envoye', 'a_toi', 'refuse', 'entretien', 'hors_auto'];
 const CV = ['Vente', 'Commercial', 'Sales EN', 'Vente + IA'];
+
+// Les canaux que l'Envoyeur sait servir seul (06/10/2026). « Valider » doit vouloir dire « envoyé » (Basile) : une offre
+// d'un autre canal (LinkedIn, site d'entreprise…) n'est plus proposée à la validation ; elle est rangée « hors_auto »
+// et seulement comptée. Un canal ajouté ici fait revenir ses offres (reclasser).
+const CANAUX_AUTO = (process.env.CANAUX_AUTO || 'jobcloud').split(',').map((s) => s.trim()).filter(Boolean);
+function canal(o) {
+  o = o || {};
+  if ((o.source === 'jobup' || o.source === 'jobs.ch') && String(o.methode || '').endsWith('FORMULAR')) return 'jobcloud';
+  if (o.source === 'HelloWork') return 'hellowork';
+  return 'manuel';
+}
+const auto = (o) => CANAUX_AUTO.includes(canal(o));
+const ESSAIS_MAX = 3;
 
 async function preparer() {
   await lire(`CREATE TABLE IF NOT EXISTS candidatures (id text PRIMARY KEY, offre jsonb NOT NULL, fiche jsonb,
     statut text NOT NULL DEFAULT 'nouvelle', envoi jsonb, note text, cree_le timestamptz NOT NULL DEFAULT now(),
     maj timestamptz NOT NULL DEFAULT now())`);
   await lire('CREATE INDEX IF NOT EXISTS candidatures_statut ON candidatures(statut, maj)');
+  await reclasser();
+}
+
+// À valider seulement ce qui peut partir seul ; quand un canal devient automatique, ses offres reviennent.
+async function reclasser() {
+  const lignes = await lire("SELECT id, offre, fiche, statut FROM candidatures WHERE statut IN ('a_valider', 'hors_auto')");
+  let n = 0;
+  for (const l of lignes) {
+    const cible = !auto(l.offre) ? 'hors_auto' : l.fiche && l.fiche.lettre ? 'a_valider' : 'nouvelle';
+    if (cible === l.statut) continue;
+    await lire('UPDATE candidatures SET statut = $2 WHERE id = $1', [l.id, cible]);
+    n++;
+  }
+  return n;
 }
 
 // ── Le profil et la signature : HORS du dépôt (données personnelles), dans le dossier du serveur
@@ -134,7 +161,10 @@ async function traiterNouvelles({ max = 8 } = {}) {
   enCours = true;
   let n = 0;
   try {
-    const lot = await lire("SELECT id, offre FROM candidatures WHERE statut = 'nouvelle' ORDER BY cree_le LIMIT $1", [max]);
+    // les offres d'un canal non automatique sont rangées tout de suite, sans dépenser de modèle
+    await lire("UPDATE candidatures SET statut = 'hors_auto' WHERE statut = 'nouvelle' AND NOT (id = ANY($1::text[]))",
+      [(await lire("SELECT id, offre FROM candidatures WHERE statut = 'nouvelle'")).filter((l) => auto(l.offre)).map((l) => l.id)]);
+    const lot = await lire("SELECT id, offre FROM candidatures WHERE statut = 'nouvelle' ORDER BY cree_le DESC LIMIT $1", [max]);
     for (const l of lot) {
       const f = await ecrireFiche(l.offre);
       if (!f) continue; // aucun modèle gratuit disponible : on réessaiera plus tard
@@ -148,17 +178,19 @@ async function traiterNouvelles({ max = 8 } = {}) {
 
 // ── Lecture pour la page, gestes de Basile ────────────────────────────────────────────────────────
 async function liste() {
-  const lignes = await lire(`SELECT id, offre, fiche, statut, envoi, note, maj FROM candidatures
-    WHERE statut NOT IN ('nouvelle','ecartee') ORDER BY maj DESC LIMIT 1000`);
+  const lignes = await lire(`SELECT id, offre, fiche, statut, envoi, note, maj, cree_le FROM candidatures
+    WHERE statut NOT IN ('nouvelle','ecartee','hors_auto') ORDER BY maj DESC LIMIT 1000`);
   const compte = await lire('SELECT statut, count(*)::int AS n FROM candidatures GROUP BY statut');
   return { offres: lignes.map((l) => ({ id: l.id, ...(l.offre || {}), description: undefined,
     extrait: String((l.offre || {}).description || '').replace(/^À propos de cette offre\s*/, '').slice(0, 1800), taux: taux((l.offre || {}).taux), ...(l.fiche || {}),
-    statut: l.statut, envoi: l.envoi, note: l.note || '', maj: l.maj })), compte: Object.fromEntries(compte.map((c) => [c.statut, c.n])) };
+    statut: l.statut, envoi: l.envoi, note: l.note || '', maj: l.maj, arrivee: l.cree_le, canal: canal(l.offre) })),
+  compte: Object.fromEntries(compte.map((c) => [c.statut, c.n])), canaux: CANAUX_AUTO };
 }
 
 async function agir(id, d) {
   const champs = [], vals = [id];
   if (d.statut && ['a_valider', 'valide', 'refuse', 'entretien'].includes(d.statut)) { vals.push(d.statut); champs.push(`statut = $${vals.length}`); }
+  if (d.statut === 'valide') champs.push("envoi = CASE WHEN envoi IS NULL THEN NULL ELSE envoi - 'essais' END");   // revalidée : 3 nouveaux essais
   if (typeof d.note === 'string') { vals.push(d.note.slice(0, 2000)); champs.push(`note = $${vals.length}`); }
   if (typeof d.lettre === 'string') { vals.push(d.lettre.slice(0, 6000)); champs.push(`fiche = jsonb_set(coalesce(fiche,'{}'), '{lettre}', to_jsonb($${vals.length}::text))`); }
   if (!champs.length) return { ok: false };
@@ -200,26 +232,33 @@ async function importer(fiches) {
 
 async function file(max = 300) {
   const l = await lire("SELECT id, offre, fiche FROM candidatures WHERE statut = 'valide' ORDER BY maj LIMIT $1", [max]);
-  return l.map((x) => ({ id: x.id, source: x.offre.source, methode: x.offre.methode || '', url_externe: x.offre.url_externe || '',
+  return l.filter((x) => auto(x.offre)).map((x) => ({ id: x.id, source: x.offre.source, canal: canal(x.offre),
+    methode: x.offre.methode || '', url_externe: x.offre.url_externe || '',
     titre: x.offre.titre, entreprise: x.offre.entreprise, lien: x.offre.lien, pays: x.offre.pays || 'CH',
     cv: (x.fiche || {}).cv, langue: (x.fiche || {}).langue, lettre: (x.fiche || {}).lettre }));
 }
 
+// Le compte rendu de l'Envoyeur. Envoyée (ou déjà envoyée) : c'est fini. Annonce retirée : rangée. Question dont la réponse
+// vraie est inconnue : revient à Basile tout de suite. Tout autre échec (formulaire, reconnexion, panne) reste dans la file et
+// réessaie au passage suivant ; au 3e échec, elle revient à Basile avec la raison (et une alerte : clippeur/veille_candidatures.py).
+// Plus jamais une candidature validée rangée sans bruit (06/10/2026).
 async function resultat(d) {
   if (!d || !d.id) return { ok: false };
-  // envoyée (ou déjà envoyée) ; erreur passagère = reste dans la file ; annonce retirée = rangée ; le reste revient à Basile
-  const statut = d.statut === 'envoye' || d.statut === 'deja' ? 'envoye'
-    : d.statut === 'erreur' ? 'valide' : d.statut === 'expiree' ? 'ecartee' : 'a_toi';
+  const [avant] = await lire('SELECT envoi FROM candidatures WHERE id = $1', [String(d.id)]);
+  const reussi = d.statut === 'envoye' || d.statut === 'deja';
+  const essais = reussi ? ((avant && avant.envoi && avant.envoi.essais) || 0) : ((avant && avant.envoi && avant.envoi.essais) || 0) + 1;
+  const statut = reussi ? 'envoye' : d.statut === 'expiree' ? 'ecartee'
+    : d.statut === 'question' || essais >= ESSAIS_MAX ? 'a_toi' : 'valide';
   await lire('UPDATE candidatures SET statut = $2, envoi = $3, maj = now() WHERE id = $1',
-    [String(d.id), statut, { ...d, recu_le: new Date().toISOString() }]);
-  return { ok: true, statut };
+    [String(d.id), statut, { ...d, essais, recu_le: new Date().toISOString() }]);
+  return { ok: true, statut, essais };
 }
 
 let minuteur = null;
 function demarrer() {
   if (minuteur) return;
   preparer().catch(() => {});
-  minuteur = setInterval(() => { traiterNouvelles().catch(() => {}); }, 10 * 60e3);
+  minuteur = setInterval(() => { reclasser().catch(() => {}).then(() => traiterNouvelles()).catch(() => {}); }, 10 * 60e3);
   setTimeout(() => { traiterNouvelles().catch(() => {}); }, 30e3);
 }
 
@@ -252,4 +291,4 @@ async function router(req, res, { url, m, envoyer, json, autorise, fichierInterf
   return false;
 }
 
-module.exports = { router, demarrer, preparer, ecrireFiche, traiterNouvelles, lettre, envoyeurAutorise, liste, agir, recevoirOffres, file, resultat, importer };
+module.exports = { router, demarrer, preparer, reclasser, canal, ecrireFiche, traiterNouvelles, lettre, envoyeurAutorise, liste, agir, recevoirOffres, file, resultat, importer };

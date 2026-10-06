@@ -33,14 +33,14 @@ def cle_gemini():
     return ""
 
 
-def prevenir(sujet, texte):
+def prevenir(sujet, texte, prefixe="[Clips]", page="https://cockpit.raime.fr/clips"):
     """Alerte à Basile, de son Gmail vers son Gmail (GMAIL_ADRESSE et GMAIL_MOT_DE_PASSE_APPLI du coffre). Jamais bloquant."""
     import smtplib
     from email.message import EmailMessage
     try:
         c = {l.split("=", 1)[0]: l.split("=", 1)[1].strip().strip('"') for l in open(COFFRE, encoding="utf-8") if "=" in l}
-        m = EmailMessage(); m["From"] = m["To"] = c["GMAIL_ADRESSE"]; m["Subject"] = "[Clips] " + sujet
-        m.set_content(texte + chr(10) * 2 + "Tout est sur https://cockpit.raime.fr/clips")
+        m = EmailMessage(); m["From"] = m["To"] = c["GMAIL_ADRESSE"]; m["Subject"] = prefixe + " " + sujet
+        m.set_content(texte + chr(10) * 2 + "Tout est sur " + page)
         with smtplib.SMTP("smtp.gmail.com", 587, timeout=30) as s:   # le port 465 est fermé sur le serveur
             s.starttls(); s.login(c["GMAIL_ADRESSE"], c["GMAIL_MOT_DE_PASSE_APPLI"]); s.send_message(m)
     except Exception as e:
