@@ -64,15 +64,20 @@ def postuler(page, source, oid, cv, lettre, code_postal="74100", envoyer=True, t
             if not choisi:
                 raise AToi("formulaire", "indicatif téléphonique introuvable")
             page.wait_for_timeout(800)
-            numero = "+" + choisi + numero[1 + len(choisi):].lstrip("0")
-        # le champ se réécrit après le choix du pays : on le vide et on tape le numéro complet, touche par touche
+        # l'indicatif du pays (« +33 ») reste affiché et ne s'efface pas : on tape seulement la suite du numéro,
+        # puis on exige que le champ contienne exactement le numéro complet (06/10 : « +33 3 36… » parti une fois)
+        attendu = re.sub(r"\D", "", numero)
         tel.first.click()
         tel.first.press("Control+a")
         tel.first.press("Backspace")
-        tel.first.press_sequentially(numero, delay=40)
+        prefixe = re.sub(r"\D", "", tel.first.input_value())
+        if prefixe and not attendu.startswith(prefixe):
+            raise AToi("formulaire", "indicatif affiché (+%s) différent du numéro du profil" % prefixe)
+        suite = attendu[len(prefixe):].lstrip("0") if prefixe else attendu
+        tel.first.press_sequentially(suite, delay=40)
         page.wait_for_timeout(500)
-        if numero[-6:] not in re.sub(r"\D", "", tel.first.input_value()):
-            raise AToi("formulaire", "numéro de téléphone refusé : " + tel.first.input_value())
+        if re.sub(r"\D", "", tel.first.input_value()) != prefixe + suite:
+            raise AToi("formulaire", "numéro de téléphone mal saisi : " + tel.first.input_value())
 
     # 2. retirer les documents préchargés (ancien CV « IA Expert », etc.)
     for _ in range(6):
@@ -110,6 +115,16 @@ def postuler(page, source, oid, cv, lettre, code_postal="74100", envoyer=True, t
     if dispo.count():
         dispo.click()
         page.get_by_role("option", name="Immédiatement").click()
+        page.wait_for_timeout(400)
+    # permis de travail (liste) : réponse vraie du profil — Basile est citoyen de l'UE, sans permis G
+    permis = page.get_by_role("combobox", name=re.compile("Permis de travail|Arbeitsbewilligung|Work permit"))
+    if permis.count():
+        permis.first.click()
+        page.wait_for_timeout(600)
+        choix = page.get_by_role("option", name=(profil or {}).get("permis_travail") or "Citoyen de l'UE", exact=True)
+        if not choix.count():
+            raise AToi("formulaire", "permis de travail : option introuvable")
+        choix.first.click()
         page.wait_for_timeout(400)
     groupes = page.locator("#requirements [role=group]").all()
     blocs = [(g.locator("xpath=..").locator("p").first.inner_text(), g) for g in groupes]
