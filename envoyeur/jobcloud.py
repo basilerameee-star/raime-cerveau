@@ -54,7 +54,8 @@ def postuler(page, source, oid, cv, lettre, code_postal="74100", envoyer=True, t
         if indicatif and indicatif.group(1) != "41":          # le sélecteur propose la Suisse par défaut : on choisit le bon pays
             page.locator("#phone-select-dropdown-trigger").click()
             page.wait_for_timeout(500)
-            choix = page.get_by_role("option", name=re.compile(r"\+%s\b|France" % indicatif.group(1)))
+            page.wait_for_timeout(1000)                    # la liste des pays s'affiche avec un léger retard
+            choix = page.locator("[role=option]").filter(has_text=re.compile(r"\+%s(\D|$)" % indicatif.group(1)))
             if not choix.count():
                 raise AToi("formulaire", "indicatif téléphonique introuvable")
             choix.first.click()
