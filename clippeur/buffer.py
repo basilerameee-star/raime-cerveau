@@ -15,11 +15,13 @@ import hmac
 import time
 import json
 import os
+import urllib.error
 import urllib.request
 
 from file import sql, CLIPS, COFFRE, prevenir
 
 VERROU = "/tmp/clippeur-buffer.lock"
+RALENTI = "/tmp/clippeur-buffer-429"                       # posé quand Buffer répond « trop de demandes » : 30 min de silence
 SERVICES = {"youtube": "youtube", "tiktok": "tiktok", "instagram": "instagram"}
 
 
@@ -34,10 +36,20 @@ def buffer(requete, variables=None):
     k = cle()
     req = urllib.request.Request("https://api.buffer.com", data=json.dumps({"query": requete, "variables": variables or {}}).encode(),
                                  headers={"Content-Type": "application/json", "Authorization": "Bearer " + k})
-    d = json.loads(urllib.request.urlopen(req, timeout=60).read().decode())
+    try:
+        d = json.loads(urllib.request.urlopen(req, timeout=60).read().decode())
+    except urllib.error.HTTPError as e:
+        if e.code == 429:
+            open(RALENTI, "w").close()
+            raise TropDeDemandes("Buffer : trop de demandes")
+        raise
     if d.get("errors"):
         raise RuntimeError(json.dumps(d["errors"])[:300].replace(k, "***"))
     return d["data"]
+
+
+class TropDeDemandes(Exception):
+    """Buffer limite le nombre d'appels : on s'arrête tout de suite au lieu d'insister (06/10/2026 : 24 000 refus en 2 jours)."""
 
 
 def chaines():
@@ -126,6 +138,15 @@ def suivre(b):
             sql("UPDATE clips_buffer SET etat = 'a_faire', post_id = NULL, message = :'p0', quand = now() + interval '20 hours', maj = now() WHERE id = :p1;", msg, b["id"])
         else:
             sql("UPDATE clips_buffer SET etat = 'echec', message = :'p0', maj = now() WHERE id = :p1;", msg, b["id"])
+    else:
+        sql("UPDATE clips_buffer SET maj = now() WHERE id = :p0;", b["id"])   # pas encore partie : prochaine question dans 40 min
+
+
+def a_suivre():
+    """Les publications programmées, chacune interrogée au plus une fois toutes les 40 minutes."""
+    r = sql("""SELECT coalesce(json_agg(b), '[]') FROM (SELECT * FROM clips_buffer WHERE etat = 'programme'
+               AND maj < now() - interval '40 minutes' ORDER BY maj LIMIT 10) b;""")
+    return json.loads(r[r.index("["):] if "[" in r else "[]")
 
 
 def main():
@@ -134,6 +155,8 @@ def main():
         fcntl.flock(verrou, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except OSError:
         return
+    if os.path.exists(RALENTI) and time.time() - os.path.getmtime(RALENTI) < 1800:
+        return
     sql("""CREATE TABLE IF NOT EXISTS clips_buffer (id serial PRIMARY KEY, campagne text NOT NULL, clip text NOT NULL,
            plateforme text NOT NULL, quand timestamptz NOT NULL, etat text NOT NULL DEFAULT 'a_faire', post_id text, lien text,
            message text, cree_le timestamptz NOT NULL DEFAULT now(), maj timestamptz NOT NULL DEFAULT now(),
@@ -141,7 +164,10 @@ def main():
            ALTER TABLE clips_buffer ADD COLUMN IF NOT EXISTS url text;""")
     a_faire = lignes("a_faire")
     if a_faire:
-        ids, pleines = chaines(), set()
+        try:
+            ids, pleines = chaines(), set()
+        except TropDeDemandes:
+            return
         for b in a_faire:
             if b["plateforme"] in pleines or os.path.exists("/opt/raime/clippeur/pause-" + b["plateforme"]):
                 continue                                   # file pleine, ou plateforme en pause (ex. changement de compte)
@@ -149,12 +175,19 @@ def main():
                 programmer(b, ids)
             except FileBufferPleine:
                 pleines.add(b["plateforme"])               # la suite attend que Buffer publie et libère de la place
+            except TropDeDemandes:
+                return
             except Exception as e:
                 sql("UPDATE clips_buffer SET etat = 'echec', message = :'p0', maj = now() WHERE id = :p1;", str(e)[:300], b["id"])
     avant = {(x["campagne"], x["clip"], x["plateforme"]) for x in lignes("publie")}
-    for b in lignes("programme"):
+    # au-delà de 7 jours, une publication jamais partie est perdue : on cesse de la suivre
+    sql("""UPDATE clips_buffer SET etat = 'perdu', message = coalesce(message, 'jamais publiée par Buffer en 7 jours'), maj = now()
+           WHERE etat = 'programme' AND cree_le < now() - interval '7 days';""")
+    for b in a_suivre():
         try:
             suivre(b)
+        except TropDeDemandes:
+            break
         except Exception as e:
             print("suivi", b["id"], str(e)[:200], flush=True)
     nouveaux = [x for x in lignes("publie") if (x["campagne"], x["clip"], x["plateforme"]) not in avant]
