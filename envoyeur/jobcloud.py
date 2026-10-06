@@ -50,18 +50,22 @@ def postuler(page, source, oid, cv, lettre, code_postal="74100", envoyer=True, t
     tel = page.locator("main input#phone")
     if p.get("telephone") and tel.count() and not tel.first.input_value().strip("+0123456789 ") and len(tel.first.input_value()) < 6:
         numero = str(p["telephone"]).replace(" ", "")
-        indicatif = re.match(r"\+(\d{2,3})", numero)
-        if indicatif and indicatif.group(1) != "41":          # le sélecteur propose la Suisse par défaut : on choisit le bon pays
+        if numero.startswith("+") and not numero.startswith("+41"):   # la Suisse est proposée par défaut : on choisit le bon pays
             page.locator("#phone-select-dropdown-trigger").click()
-            page.wait_for_timeout(500)
-            page.wait_for_timeout(1000)                    # la liste des pays s'affiche avec un léger retard
-            choix = page.locator("[role=option]").filter(has_text=re.compile(r"\+%s(\D|$)" % indicatif.group(1)))
-            if not choix.count():
+            page.wait_for_timeout(1500)
+            choisi = None
+            for n in (2, 3, 1):                            # indicatifs à 2 chiffres (33, 49…) d'abord, puis 3, puis 1
+                code = numero[1:1 + n]
+                choix = page.locator("[role=option]").filter(has_text=re.compile(r"^\s*\+%s(\D|$)" % code))
+                if choix.count():
+                    choix.first.click()
+                    choisi = code
+                    break
+            if not choisi:
                 raise AToi("formulaire", "indicatif téléphonique introuvable")
-            choix.first.click()
             page.wait_for_timeout(400)
-            numero = numero[len(indicatif.group(0)):]
-        tel.first.fill(numero.lstrip("0") if indicatif else numero)
+            numero = numero[1 + len(choisi):].lstrip("0")
+        tel.first.fill(numero)
 
     # 2. retirer les documents préchargés (ancien CV « IA Expert », etc.)
     for _ in range(6):
