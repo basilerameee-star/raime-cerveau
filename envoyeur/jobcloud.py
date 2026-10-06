@@ -43,14 +43,24 @@ def postuler(page, source, oid, cv, lettre, code_postal="74100", envoyer=True, t
     # 1 ter. sans session ouverte, le formulaire demande les coordonnées : on les remplit depuis la fiche du candidat,
     #        ce qui évite de dépendre d'une connexion à jobup / jobs.ch (qui expire)
     p = profil or {}
-    for motif, valeur in ((r"^Pr[ée]nom|First name|Vorname", p.get("prenom")), (r"^Nom( de famille)?|Last name|Nachname", p.get("nom")),
-                          (r"E-?mail", p.get("email") or email)):
-        champ = page.get_by_label(re.compile(motif))
+    for cle, valeur in (("firstname", p.get("prenom")), ("lastname", p.get("nom")), ("email", p.get("email") or email)):
+        champ = page.locator("main input#%s" % cle)
         if valeur and champ.count() and not champ.first.input_value():
             champ.first.fill(str(valeur))
-    tel = page.locator('input[type="tel"]')
-    if p.get("telephone") and tel.count() and not tel.first.input_value():
-        tel.first.fill(str(p["telephone"]).replace(" ", ""))
+    tel = page.locator("main input#phone")
+    if p.get("telephone") and tel.count() and not tel.first.input_value().strip("+0123456789 ") and len(tel.first.input_value()) < 6:
+        numero = str(p["telephone"]).replace(" ", "")
+        indicatif = re.match(r"\+(\d{2,3})", numero)
+        if indicatif and indicatif.group(1) != "41":          # le sélecteur propose la Suisse par défaut : on choisit le bon pays
+            page.locator("#phone-select-dropdown-trigger").click()
+            page.wait_for_timeout(500)
+            choix = page.get_by_role("option", name=re.compile(r"\+%s\b|France" % indicatif.group(1)))
+            if not choix.count():
+                raise AToi("formulaire", "indicatif téléphonique introuvable")
+            choix.first.click()
+            page.wait_for_timeout(400)
+            numero = numero[len(indicatif.group(0)):]
+        tel.first.fill(numero.lstrip("0") if indicatif else numero)
 
     # 2. retirer les documents préchargés (ancien CV « IA Expert », etc.)
     for _ in range(6):
@@ -89,9 +99,13 @@ def postuler(page, source, oid, cv, lettre, code_postal="74100", envoyer=True, t
         dispo.click()
         page.get_by_role("option", name="Immédiatement").click()
         page.wait_for_timeout(400)
-    for bloc in page.locator("main").locator(":scope *:has(> button:text-is('Oui')):has(> button:text-is('Non'))").all():
-        conteneur = bloc.locator("xpath=..")
-        question = conteneur.inner_text().split("\nOui")[0].strip().replace("*", "")
+    groupes = page.locator("#requirements [role=group]").all()
+    blocs = [(g.locator("xpath=..").locator("p").first.inner_text(), g) for g in groupes]
+    if not blocs:                                          # ancienne mise en page (avant octobre 2026)
+        for bloc in page.locator("main").locator(":scope *:has(> button:text-is('Oui')):has(> button:text-is('Non'))").all():
+            blocs.append((bloc.locator("xpath=..").inner_text().split("\nOui")[0], bloc))
+    for question, bloc in blocs:
+        question = question.strip().replace("*", "")
         rep = repondre(question)
         if rep is None:
             raise AToi("question", question)
