@@ -212,13 +212,9 @@ nav#onglets button:hover{color:var(--cyan2);border-color:var(--trait2)}
       <form class="encaisse" id="f-encaisse"><input name="montant" inputmode="decimal" placeholder="Montant €" required><select name="plateforme" style="flex:1 1 110px;height:34px;background:rgba(2,6,11,.6);border:1px solid var(--trait);border-radius:8px;color:inherit"><option value="instagram">Instagram</option><option value="tiktok">TikTok</option><option value="youtube">YouTube</option><option value="facebook">Facebook (hors objectif)</option><option value="boutique">Ventes de produits (hors objectif)</option><option value="autre">Autre contenu (hors objectif)</option><option value="raime">Vente rAIme (hors objectif)</option></select><input name="source" placeholder="Détail (ex. bonus Reels, partenariat)" required><button class="bouton">Noter</button></form>
     </div>
     <div class="panneau" id="bloc-rappels" hidden><h2>Rappels</h2><ul class="fil" id="rappels"></ul></div>
-    <div class="panneau" id="bloc-courriels">
-      <h2>E-mails <small id="c-etat"></small></h2>
-      <div id="courriels-resume" class="vide">…</div>
-    </div>
-    <div class="panneau">
-      <h2>Ordres en cours <small id="o-n"></small></h2>
-      <div id="ordres"><p class="vide">Aucun ordre pour l'instant. Dis-moi « crée… », « écris… », « installe… » : mes mains s'en chargent.</p></div>
+    <div class="panneau" id="bloc-appels">
+      <h2>À appeler <small id="a-n"></small></h2>
+      <div id="appels"><p class="vide">Personne à relancer pour l'instant.</p></div>
     </div>
   </section>
 
@@ -419,26 +415,29 @@ nav#onglets button:hover{color:var(--cyan2);border-color:var(--trait2)}
     $('o-pct').textContent = pct + ' %'; $('o-mois').textContent = o.mois.toLocaleString('fr-FR') + ' €';
     $('o-detail').textContent = (o.plateformes || []).map(function (p) { return ({ tiktok: 'TikTok', youtube: 'YouTube', instagram: 'Instagram' }[p.plateforme] || p.plateforme) + ' ' + p.montant.toLocaleString('fr-FR') + ' / ' + (p.objectif || 2000).toLocaleString('fr-FR') + ' €'; }).join(' · ');
     $('o-reste').textContent = o.mois >= o.objectif ? 'Objectif atteint.' : 'Encore ' + (o.objectif - o.mois).toLocaleString('fr-FR') + ' € pour les ' + o.objectif.toLocaleString('fr-FR') + ' €.';
-    // ordres
-    var box = $('ordres'), ordres = d.ordres || [];
-    $('o-n').textContent = ordres.filter(function (x) { return x.etat !== 'faite'; }).length ? ordres.filter(function (x) { return x.etat !== 'faite'; }).length + ' actifs' : '';
-    if (ordres.length) {
-      box.textContent = '';
-      ordres.forEach(function (x) {
+    // à appeler : commerçants et prospects contactés par e-mail, sans réponse depuis 7 jours (jarvis/appels.cjs)
+    var ap = d.appels || { a_faire: 0, prochains: [] }, boxa = $('appels');
+    $('a-n').textContent = ap.a_faire ? ap.a_faire + ' à appeler' : '';
+    if (ap.prochains && ap.prochains.length) {
+      boxa.textContent = '';
+      ap.prochains.forEach(function (x) {
         var d2 = el('div', 'ordre'), tete = el('div', 'tete');
-        tete.appendChild(el('span', 'num', 'N°' + x.id));
-        var cle = x.bloque ? 'bloque' : x.etat, lib = { en_cours: 'en cours · ' + x.minutes + ' min', a_faire: 'en file', faite: 'fait', bloque: 'bloqué' }[cle] || x.etat;
-        tete.appendChild(el('span', 'etiq ' + cle, lib));
-        d2.appendChild(tete); d2.appendChild(el('p', '', x.texte.length > 160 ? x.texte.slice(0, 159) + '…' : x.texte));
-        if (x.etat === 'en_cours') { var b = el('div', 'barre'); b.appendChild(el('i')); d2.appendChild(b); }
-        if (x.reponse && x.etat !== 'en_cours') d2.appendChild(el('p', 'rep', x.reponse.replace(/\s*\[(relance|redonnée sans frais|relancé par Basile)\]/g, '')));
+        tete.appendChild(el('span', 'num', x.nom || '?'));
+        if (x.repondu) tete.appendChild(el('span', 'etiq fait', 'a répondu'));
+        d2.appendChild(tete);
+        d2.appendChild(el('p', 'rep', (x.raison || (x.envoye_le ? 'E-mail envoyé il y a ' + x.jours + ' jours · pas de retour' : 'pas de retour'))
+          + (x.ville ? ' · ' + x.ville : '') + (x.segment ? ' · ' + x.segment : '')));
         var act = el('div', 'actions');
-        if (x.lien) { var a = el('a', '', '→ voir le résultat'); a.href = x.lien; a.target = '_blank'; a.rel = 'noopener'; act.appendChild(a); }
-        if (x.bloque) { var r = el('button', 'lien', '↻ relancer'); r.type = 'button'; r.onclick = function () { relancer(x.id); }; act.appendChild(r); }
-        if (act.childNodes.length) d2.appendChild(act);
-        box.appendChild(d2);
+        if (x.telephone) { var tel = el('a', '', '☎ ' + x.telephone); tel.href = 'tel:' + String(x.telephone).replace(/[^0-9+]/g, ''); act.appendChild(tel); }
+        [['appele', '✓ appelé'], ['plus_tard', '↻ plus tard'], ['pas_interesse', '✕ pas intéressé']].forEach(function (e) {
+          var b = el('button', 'lien', e[1]); b.type = 'button';
+          b.onclick = function () { fetch('/api/appels/' + x.siren, { method: 'POST', headers: ecrire, body: JSON.stringify({ etat: e[0] }) }).then(function () { d2.remove(); }); };
+          act.appendChild(b);
+        });
+        d2.appendChild(act);
+        boxa.appendChild(d2);
       });
-    }
+    } else boxa.innerHTML = '<p class="vide">Personne à relancer pour l’instant.</p>';
     // rappels : ceux qui arrivent à échéance sont dits à voix haute et affichés
     var rp = d.rappels || { echus: [], a_venir: [] };
     $('bloc-rappels').hidden = !rp.a_venir.length;
@@ -448,16 +447,9 @@ nav#onglets button:hover{color:var(--cyan2);border-color:var(--trait2)}
       try { if (window.Notification && Notification.permission === 'granted') new Notification('Jarvis', { body: r.texte }); } catch (e) {}
       if (!parleEnCours) parler('Rappel : ' + r.texte);
     });
-    // e-mails
-    var cm = d.courriels || {}, cr = $('courriels-resume');
+    // e-mails : le compteur du bouton du haut (le tiroir garde la liste)
+    var cm = d.courriels || {};
     $('n-courriels').textContent = cm.non_vus ? '· ' + cm.non_vus : '';
-    if (!cm.configure) { cr.textContent = 'À brancher : range ton adresse Gmail et un mot de passe d’application dans le coffre.'; $('c-etat').textContent = ''; }
-    else {
-      cr.textContent = (cm.urgents ? cm.urgents + ' à traiter vite · ' : '') + (cm.non_vus || 0) + ' non vus (7 jours)';
-      cr.className = cm.urgents ? '' : 'vide';
-      $('c-etat').textContent = cm.releve && cm.releve.le ? 'relevé ' + new Date(cm.releve.le).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '';
-      if (cm.releve && cm.releve.etat && !/^(ok|jamais lancé)$/.test(cm.releve.etat)) cr.textContent = 'Boîte : ' + cm.releve.etat;
-    }
     // cerveau
     var c = d.compteurs || {};
     $('c-agents').textContent = c.agents; $('c-biblio').textContent = (c.bibliotheque || 0).toLocaleString('fr-FR');

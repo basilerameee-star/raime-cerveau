@@ -117,7 +117,7 @@ async function etat() {
     lire(`SELECT count(*) FILTER (WHERE NOT vu)::int AS non_vus, count(*) FILTER (WHERE NOT vu AND importance = 3)::int AS urgents
       FROM courriels WHERE recu_le > now() - interval '7 days'`),
     outils.rappelsEchus(), outils.rappelsAVenir(),
-    appels.aFaire(5).catch(() => ({ total: 0, liste: [] })),
+    appels.aFaire(40).catch(() => ({ total: 0, liste: [] })),   // la liste « À appeler » du panneau de gauche (03/10/2026)
     vitrines.envoi().catch(() => ({ mode: 'absent' })),
   ]);
   const coffre = lireCoffre();
