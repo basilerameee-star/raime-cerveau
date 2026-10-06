@@ -509,7 +509,7 @@ nav#onglets button:hover{color:var(--cyan2);border-color:var(--trait2)}
     if (id === 't-courriels') courriels();
     if (id === 't-capacites') capacites();
   }
-  $('bloc-courriels').onclick = function () { ouvrir('t-courriels'); };
+  if ($('bloc-courriels')) $('bloc-courriels').onclick = function () { ouvrir('t-courriels'); };
   $('c-relever').onclick = function () {
     var b = this; b.disabled = true; b.textContent = '… relevé en cours';
     fetch('/api/courriels/relever', { method: 'POST', headers: ecrire }).then(function (r) { return r.json(); })
