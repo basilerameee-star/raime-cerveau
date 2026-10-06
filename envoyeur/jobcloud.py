@@ -23,7 +23,7 @@ class AToi(Exception):
         self.motif, self.detail = motif, detail
 
 
-def postuler(page, source, oid, cv, lettre, code_postal="74100", envoyer=True, texte_lettre="", email=""):
+def postuler(page, source, oid, cv, lettre, code_postal="74100", envoyer=True, texte_lettre="", email="", profil=None):
     page.goto(BASE[source].format(id=oid), wait_until="domcontentloaded")
     page.wait_for_timeout(3000)
     if "/login" in page.url or "connexion" in page.url:
@@ -33,6 +33,24 @@ def postuler(page, source, oid, cv, lettre, code_postal="74100", envoyer=True, t
     if page.get_by_text("Cette annonce est expirée").count() or page.get_by_text("n'est plus active").count():
         raise AToi("expiree", "l'annonce a été retirée par l'employeur")
     page.wait_for_selector("main", timeout=20000)
+    # 1 bis. le bandeau de cookies recouvre tout le formulaire : toujours « cookies essentiels uniquement » (06/10/2026)
+    for nom in ("Uniquement les cookies essentiels", "Nur essenzielle Cookies", "Only essential cookies"):
+        b = page.get_by_role("button", name=nom)
+        if b.count():
+            b.first.click()
+            page.wait_for_timeout(800)
+            break
+    # 1 ter. sans session ouverte, le formulaire demande les coordonnées : on les remplit depuis la fiche du candidat,
+    #        ce qui évite de dépendre d'une connexion à jobup / jobs.ch (qui expire)
+    p = profil or {}
+    for motif, valeur in ((r"^Pr[ée]nom|First name|Vorname", p.get("prenom")), (r"^Nom( de famille)?|Last name|Nachname", p.get("nom")),
+                          (r"E-?mail", p.get("email") or email)):
+        champ = page.get_by_label(re.compile(motif))
+        if valeur and champ.count() and not champ.first.input_value():
+            champ.first.fill(str(valeur))
+    tel = page.locator('input[type="tel"]')
+    if p.get("telephone") and tel.count() and not tel.first.input_value():
+        tel.first.fill(str(p["telephone"]).replace(" ", ""))
 
     # 2. retirer les documents préchargés (ancien CV « IA Expert », etc.)
     for _ in range(6):

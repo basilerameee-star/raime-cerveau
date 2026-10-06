@@ -118,7 +118,7 @@ def passage():
             try:
                 dos = dossier(ctx, f, p)
                 out = postuler(page, f["source"], f["id"], dos / "CV_Basile_Rame.pdf", dos / "Lettre_Basile_Rame.pdf",
-                               code_postal=p.get("code_postal", ""), texte_lettre=f.get("lettre") or "", email=p["email"])
+                               code_postal=p.get("code_postal", ""), texte_lettre=f.get("lettre") or "", email=p["email"], profil=p)
                 r.update(out)
                 r["statut"] = "envoye" if out.get("envoye") else "deja"
             except AToi as e:
