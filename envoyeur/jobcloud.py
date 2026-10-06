@@ -63,9 +63,16 @@ def postuler(page, source, oid, cv, lettre, code_postal="74100", envoyer=True, t
                     break
             if not choisi:
                 raise AToi("formulaire", "indicatif téléphonique introuvable")
-            page.wait_for_timeout(400)
-            numero = numero[1 + len(choisi):].lstrip("0")
-        tel.first.fill(numero)
+            page.wait_for_timeout(800)
+            numero = "+" + choisi + numero[1 + len(choisi):].lstrip("0")
+        # le champ se réécrit après le choix du pays : on le vide et on tape le numéro complet, touche par touche
+        tel.first.click()
+        tel.first.press("Control+a")
+        tel.first.press("Backspace")
+        tel.first.press_sequentially(numero, delay=40)
+        page.wait_for_timeout(500)
+        if numero[-6:] not in re.sub(r"\D", "", tel.first.input_value()):
+            raise AToi("formulaire", "numéro de téléphone refusé : " + tel.first.input_value())
 
     # 2. retirer les documents préchargés (ancien CV « IA Expert », etc.)
     for _ in range(6):
@@ -114,8 +121,11 @@ def postuler(page, source, oid, cv, lettre, code_postal="74100", envoyer=True, t
         rep = repondre(question)
         if rep is None:
             raise AToi("question", question)
-        bloc.locator(f"button:text-is('{rep}')").click()
+        bouton = bloc.get_by_role("button", name=rep, exact=True)   # le texte est dans des <span> imbriqués (octobre 2026)
+        bouton.click()
         page.wait_for_timeout(300)
+        if bouton.get_attribute("aria-pressed") == "false":
+            raise AToi("formulaire", "réponse non prise : " + question[:80])
 
     # 5. vérification
     page.get_by_role("button", name="Continuer").click()
@@ -128,6 +138,13 @@ def postuler(page, source, oid, cv, lettre, code_postal="74100", envoyer=True, t
         raise AToi("formulaire", "page de vérification incomplète")
     recap = verif.split("Informations supplémentaires")[-1].split("En envoyant ce formulaire")[0].strip()
     recap = re.sub(r"\n+", " | ", recap)
+    # partage des données avec « Spotted by jobup.ch » : jamais (option non essentielle)
+    partage = page.get_by_role("checkbox", name=re.compile("Spotted|partager mes données"))
+    if partage.count() and partage.first.is_checked():
+        partage.first.uncheck()
+        page.wait_for_timeout(300)
+    if partage.count() and partage.first.is_checked():
+        raise AToi("formulaire", "case de partage des données impossible à décocher")
     if not envoyer:
         return {"verifie": True, "url": page.url, "reponses": recap}
 
