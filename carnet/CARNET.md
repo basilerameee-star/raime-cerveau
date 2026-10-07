@@ -445,3 +445,10 @@ Merci pour le travail de cette nuit : le banc a déjà trouvé un vrai défaut e
   - une adresse sans https:// se lit ;
   - les enseignes ne sont pas démarchées.
 - Panneau Monétisation corrigé : 2 000 € sur chacune de TikTok, YouTube et Instagram, « pour les 6 000 € » ; Facebook et produits hors objectif.
+
+## 2026-10-07 — livraison — échec, retour automatique
+- Action : déploiement de 31ec62c7a86c par la porte.
+- Résultat : code 1 (3 = version précédente remise, 4 = aucune version précédente).
+- Évaluation : 
+- Correction : aucune version cassée ne reste en ligne ; la cause est à traiter dans une nouvelle pull request.
+- Leçon : à tirer par la session suivante.
