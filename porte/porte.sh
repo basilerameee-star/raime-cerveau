@@ -41,6 +41,8 @@ GARDER=5                              # versions conservées pour revenir en arr
 # livré dort sur le disque. Vide : aucune boucle à relancer (banc d'essai).
 BOUCLE="${PORTE_BOUCLE-raime-boucle}"
 ATTENTE_BOUCLE="${PORTE_ATTENTE_BOUCLE:-20}"   # secondes laissées à la boucle pour démarrer
+# Les conteneurs qui ne lisent le code qu'à leur démarrage : « chemin:conteneur », relancés quand LEUR partie change.
+SUIVIS="${PORTE_SUIVIS-envoyeur:raime-envoyeur agents/raime_mcp.js:raime-mcp agents/lib.js:raime-mcp}"
 
 VERSIONS="$MAISON/versions"
 JOURNAL="$MAISON/journal.log"
@@ -132,6 +134,17 @@ appliquer() {
     date -u +%FT%TZ > "$MAISON/.boucle_depuis"
     "$DOCKER" restart "$BOUCLE" >/dev/null || { echo "la boucle ne redémarre pas"; return 1; }
   fi
+  # 07/10/2026 : l'Envoyeur a tourné quatre jours sur un ancien code, le service d'outils d'Hermes depuis le 26/09.
+  # Chaque conteneur suivi est relancé quand sa partie du dépôt diffère de la version précédente (une seule fois).
+  local suivi chemin conteneur relances=" "
+  for suivi in $SUIVIS; do
+    chemin="${suivi%%:*}"; conteneur="${suivi#*:}"
+    [ -e "$v/$chemin" ] || continue
+    case "$relances" in *" $conteneur "*) continue ;; esac
+    if [ -z "$avant" ] || ! diff -rq "$v/$chemin" "$VERSIONS/$avant/$chemin" >/dev/null 2>&1; then
+      "$DOCKER" restart "$conteneur" >/dev/null 2>&1 && relances="$relances$conteneur "         || echo "relance de $conteneur impossible (la livraison continue)"
+    fi
+  done
   # Les services de la version sont mis ; ceux que la porte avait posés et qui n'y sont plus, retirés.
   for nom in $(services_de "$sha"); do mettre_service "$sha" "$nom" || return 1; done
   for p in "$CADDY_DOSSIER"/*.caddy; do

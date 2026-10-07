@@ -56,7 +56,7 @@ const env = () => ({ ...process.env, PORTE_RACINE: R.racine, PORTE_DOCKER: path.
 
 // ── Une version = une archive du dépôt ──────────────────────────────────────
 let n = 0;
-function version({ agent = 'export const pret = true;\n', services = {} } = {}) {
+function version({ agent = 'export const pret = true;\n', services = {}, envoyeur = null } = {}) {
   n += 1;
   const sha = String(n).padStart(40, 'a');
   const d = fs.mkdtempSync(path.join(os.tmpdir(), 'banc-version-'));
@@ -64,6 +64,7 @@ function version({ agent = 'export const pret = true;\n', services = {} } = {}) 
   ecrire(path.join(d, 'package.json'), '{"name":"raime-brain","type":"module"}\n');
   ecrire(path.join(d, 'package-lock.json'), '{}\n');
   ecrire(path.join(d, '.env'), 'NE_DOIT_JAMAIS_ARRIVER=1\n');
+  if (envoyeur) ecrire(path.join(d, 'envoyeur/serveur.py'), envoyeur);
   for (const [nom, s] of Object.entries(services)) {
     ecrire(path.join(d, `services/${nom}/Dockerfile`), 'FROM caddy:2-alpine\n');
     ecrire(path.join(d, `services/${nom}/service.conf`), s.conf ?? `port=8080\nchemin=/\ncontient=${s.attendu}\n`);
@@ -205,4 +206,20 @@ test('sur un serveur vierge, un premier déploiement raté ne laisse rien derri�
   assert.equal(r.code, 4);
   assert.equal(conteneur('essai'), null);
   assert.ok(!fs.existsSync(path.join(R.caddy, 'essai.caddy')));
+});
+
+// ── Les conteneurs suivis (07/10/2026) ─────────────────────────────────────
+test('l’Envoyeur n’est relancé que quand son code change d’une version à l’autre', () => {
+  const relances = () => (fs.existsSync(path.join(B, 'docker.log')) ? lire(path.join(B, 'docker.log')) : '')
+    .split(/\r?\n/).filter((l) => l === 'restart raime-envoyeur').length;
+  const avant = relances();
+  const V1 = version({ services: { vitrine: VITRINE }, envoyeur: 'print(1)' });
+  assert.equal(porte(`deployer ${V1.sha}`, V1.archive).code, 0);
+  assert.equal(relances(), avant + 1, 'nouveau code de l’Envoyeur : relancé');
+  const V2 = version({ agent: 'export const pret = 2;', services: { vitrine: VITRINE }, envoyeur: 'print(1)' });
+  assert.equal(porte(`deployer ${V2.sha}`, V2.archive).code, 0);
+  assert.equal(relances(), avant + 1, 'code inchangé : pas relancé');
+  const V3 = version({ services: { vitrine: VITRINE }, envoyeur: 'print(3)' });
+  assert.equal(porte(`deployer ${V3.sha}`, V3.archive).code, 0);
+  assert.equal(relances(), avant + 2);
 });

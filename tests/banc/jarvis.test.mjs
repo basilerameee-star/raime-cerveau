@@ -314,3 +314,17 @@ test('une réponse brève n’est jamais un ordre ; « relance les ordres 7 et 8
   assert.deepEqual(x, { etat: 'a_faire', pour: 'harness' });
   assert.equal((await b.lire('SELECT count(*)::int AS n FROM commandes'))[0].n, avant + 2, 'rien de neuf pour Hermes');
 });
+
+test('désinscription : le lien (GET) demande confirmation et ne désinscrit pas ; seul le bouton (POST) désinscrit', async () => {
+  const b = require('../../jarvis/bases.cjs');
+  const e = 'robot-ou-humain@exemple.test';
+  await b.n8n.query('CREATE TABLE IF NOT EXISTS suppression (email text PRIMARY KEY, reason text)');   // comme en production
+  await b.lireN8n('DELETE FROM suppression WHERE email = $1', [e]);
+  const lien = await fetch(`${base}/unsub?e=${encodeURIComponent(e)}`);
+  assert.match(await lien.text(), /Confirmer la désinscription/);
+  assert.equal((await b.lireN8n('SELECT 1 FROM suppression WHERE email = $1', [e])).length, 0, 'un antivirus qui ouvre le lien ne désinscrit personne');
+  const bouton = await fetch(`${base}/unsub?e=${encodeURIComponent(e)}`, { method: 'POST' });
+  assert.match(await bouton.text(), /C’est fait/);
+  assert.equal((await b.lireN8n('SELECT 1 FROM suppression WHERE email = $1', [e])).length, 1);
+  await b.lireN8n('DELETE FROM suppression WHERE email = $1', [e]);
+});

@@ -375,16 +375,25 @@ async function router(req, res) {
   }
 
   // Désinscription PUBLIQUE (opt-out RGPD), hors mot de passe.
-  if (m === 'GET' && url.startsWith('/unsub')) {
+  // 07/10/2026 : les antivirus des messageries « ouvrent » chaque lien d'un e-mail (des désinscriptions en moins d'une
+  // minute, des adresses jamais prospectées). Le lien (GET) affiche donc une confirmation ; seul le bouton (POST) désinscrit.
+  // Le désabonnement en un clic des messageries (RFC 8058) est lui aussi un POST : il marche toujours.
+  if ((m === 'GET' || m === 'POST') && url.startsWith('/unsub')) {
     let email = '';
     try { email = (new URL(req.url, 'http://x').searchParams.get('e') || '').trim().toLowerCase(); } catch (e) {}
+    const page = (corps) => { res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'X-Robots-Tag': 'noindex', 'Cache-Control': 'no-store' });
+      res.end('<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><body style="font-family:system-ui,sans-serif;background:#0b0c0e;color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:16px"><div style="text-align:center;max-width:440px">' + corps + '</div></body>'); };
+    if (m === 'GET') {
+      if (!email) return page('<h2>Lien incomplet</h2><p>Répondez simplement « stop » à notre e-mail : vous ne recevrez plus rien.</p>');
+      const e = email.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+      return page(`<h2>Se désinscrire ?</h2><p>L’adresse <b>${e}</b> ne recevra plus d’e-mails de rAIme.</p>`
+        + `<form method="post" action="/unsub?e=${encodeURIComponent(email)}"><button style="font:600 16px system-ui;padding:14px 26px;border:0;border-radius:999px;background:#fff;color:#0b0c0e;cursor:pointer">Confirmer la désinscription</button></form>`);
+    }
     if (email) {
       await lireN8n("INSERT INTO suppression (email, reason) VALUES ($1,'opt-out') ON CONFLICT (email) DO NOTHING", [email]);
       await lireN8n("UPDATE outreach SET status='refuse' WHERE lower(to_email)=$1 AND status IN ('brouillon','valide')", [email]);
     }
-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-    res.end('<!doctype html><meta charset="utf-8"><body style="font-family:sans-serif;background:#000;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;margin:0"><div style="text-align:center"><h2>C\'est fait.</h2><p>Vous ne recevrez plus d\'e-mails de rAIme.</p></div></body>');
-    return;
+    return page('<h2>C’est fait.</h2><p>Vous ne recevrez plus d’e-mails de rAIme.</p>');
   }
   res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end('Introuvable');
 }
