@@ -209,7 +209,7 @@ h3{font-size:22px;letter-spacing:-.01em}
 .demo{position:relative;z-index:3;background:#0d0e10;color:#b9bcc2;border:0;font-size:12px;letter-spacing:.02em}
 .hero{position:relative;height:auto;min-height:calc(100svh - 33px);display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch;color:#fff;overflow:hidden;background:#15171b}
 .hero .fond{position:absolute;inset:0;background-size:cover;background-position:center;transform:scale(1.06);animation:respire 14s ease-out forwards}
-.hero .voile{position:absolute;inset:0;background:linear-gradient(180deg,rgba(9,10,12,.55) 0%,rgba(9,10,12,.12) 30%,rgba(9,10,12,.2) 55%,rgba(9,10,12,.82) 100%)}
+.hero .voile{position:absolute;inset:0;background:radial-gradient(ellipse 70% 60% at 18% 82%,rgba(9,10,12,.6),transparent 70%),linear-gradient(180deg,rgba(9,10,12,.55) 0%,rgba(9,10,12,.12) 30%,rgba(9,10,12,.2) 55%,rgba(9,10,12,.82) 100%)}
 .hero .w{position:relative;z-index:2;width:100%}
 .barre{display:flex;align-items:center;justify-content:space-between;gap:24px;height:88px}
 .barre .nom{color:#fff;font-family:"Instrument Serif",Georgia,serif;font-size:26px;font-weight:400;letter-spacing:0}
@@ -239,7 +239,7 @@ h3{font-size:22px;letter-spacing:-.01em}
 @keyframes respire{to{transform:scale(1)}}
 @keyframes goutte{0%,100%{opacity:.2;transform:scaleY(.6);transform-origin:top}50%{opacity:1;transform:scaleY(1)}}
 @media (prefers-reduced-motion:reduce){.hero .fond,.texte>*,.encart,.defiler::after{animation:none;opacity:1;transform:none}}
-@media (max-width:860px){.barre{height:68px}.barre .nom{font-size:22px}.contenu{grid-template-columns:1fr;gap:28px;padding-bottom:64px}
+@media (max-width:860px){.hero .voile{background:linear-gradient(180deg,rgba(9,10,12,.55) 0%,rgba(9,10,12,.2) 30%,rgba(9,10,12,.78) 62%,rgba(9,10,12,.9) 100%)}.barre{height:68px}.barre .nom{font-size:22px}.contenu{grid-template-columns:1fr;gap:28px;padding-bottom:64px}
   .hero h1{font-size:clamp(52px,15vw,84px)}.accroche{font-size:18px}.encart{padding:20px}.defiler{display:none}
   .hero{min-height:auto}.contenu{padding-top:30vh}}`;
 
