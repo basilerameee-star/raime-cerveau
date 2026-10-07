@@ -137,9 +137,13 @@ test('livrables : servis en lecture, isolés (sandbox), sans sortie du dossier',
 });
 
 test('l’interface, le coffre (présent ou absent, jamais la valeur), la santé avec la version', async () => {
-  const page = await (await fetch(base + '/')).text();
+  // Depuis le 07/10/2026 : / et /jarvis sont la 3D ; l'ancienne page reste à /jarvis/classique. Les deux gardent la
+  // conversation, la dictée, la saisie et la sphère.
+  const page3d = await (await fetch(base + '/')).text();
+  assert.match(page3d, /\/3d\/jarvis\.js/);
+  const page = await (await fetch(base + '/jarvis/classique')).text();
   assert.match(page, /J\.A\.R\.V\.I\.S/);
-  for (const id of ['b-conversation', 'b-dicter', 'saisie', 'sphere']) assert.match(page, new RegExp(`id="${id}"`), id);
+  for (const p of [page, page3d]) for (const id of ['b-conversation', 'b-dicter', 'saisie', 'sphere']) assert.match(p, new RegExp(`id="${id}"`), id);
   assert.equal((await fetch(base + '/visage.js')).status, 404, 'l’ancien visage est retiré');
   const ranger = await fetch(base + '/api/coffre', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Jarvis': '1' },
     body: JSON.stringify({ nom: 'GEMINI_API_KEY', valeur: 'cle-secrete-banc' }) });
