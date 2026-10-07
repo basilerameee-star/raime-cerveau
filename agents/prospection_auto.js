@@ -112,10 +112,14 @@ export async function preparer({ n8n, brain, combien = 14 } = {}) {
       AND p.name !~* '(^|[^a-z])(assoc|association|agc|cerfrance|syndicat|f[ée]d[ée]ration|chambre|ordre des|union|mutuelle|coop[ée]rative)([^a-z]|$)'
       AND NOT EXISTS (SELECT 1 FROM outreach o WHERE o.siren = p.siren AND o.status NOT IN ('non_recu', 'annule'))
       AND NOT EXISTS (SELECT 1 FROM suppression s WHERE lower(s.email) = lower(p.contact_email))
+      AND NOT EXISTS (SELECT 1 FROM outreach o2 WHERE lower(o2.to_email) = lower(p.contact_email) AND o2.status NOT IN ('non_recu', 'annule'))
     ORDER BY p.score DESC NULLS LAST, p.found_at DESC NULLS LAST LIMIT $2`, [Object.keys(METIERS), combien * 10]);
   let faits = 0;
+  const vues = new Set();
   for (const p of rows) {
-    if (faits >= combien || exclus.has(p.siren) || !adresseFiable(p)) continue;
+    const adresse = String(p.contact_email).trim().toLowerCase();
+    if (faits >= combien || exclus.has(p.siren) || !adresseFiable(p) || vues.has(adresse)) continue;   // une boîte = un e-mail
+    vues.add(adresse);
     const b = brouillon(p);
     if (!b) continue;
     // Une ligne par entreprise (outreach.siren est unique) : l'ancien e-mail annulé ou jamais reçu est remplacé.
