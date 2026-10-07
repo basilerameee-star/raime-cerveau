@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Validation prospection</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+body{margin:0}
+/* Une file par offre (sites vitrines, automatisation) : chaque carte montre l'e-mail tel qu'il partira, « Voir » ouvre
+   l'exemple (maquette ou pré-audit), et Basile valide ou refuse. En tête : l'état des deux envois, réglable. */
+:root {
+  --bg: #f2f5f9; --surface: #ffffff; --ink: #14243a; --muted: #5b6b80; --line: #d8e0ea;
+  --accent: #2f6db5; --accent-ink: #ffffff; --navy: #17345c;
+  --go: #1f7a4d; --go-bg: #e3f3ea; --ask: #9a6400; --ask-bg: #fbf0d9; --no: #a33a3a; --no-bg: #f8e4e4; --sent: #4b4fb0; --sent-bg: #e7e8fa;
+  --f-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0d1724; --surface: #142236; --ink: #e6edf6; --muted: #9aabbf; --line: #24364e;
+  --accent: #6ea4e6; --accent-ink: #0d1724; --navy: #0a1422;
+  --go: #6fd3a0; --go-bg: #173a2b; --ask: #f0c060; --ask-bg: #3a2f15; --no: #f08c8c; --no-bg: #3e1d1f; --sent: #a9adf5; --sent-bg: #262a55;
+  color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0d1724; --surface: #142236; --ink: #e6edf6; --muted: #9aabbf; --line: #24364e;
+  --accent: #6ea4e6; --accent-ink: #0d1724; --navy: #0a1422;
+  --go: #6fd3a0; --go-bg: #173a2b; --ask: #f0c060; --ask-bg: #3a2f15; --no: #f08c8c; --no-bg: #3e1d1f; --sent: #a9adf5; --sent-bg: #262a55;
+  color-scheme: dark }
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--f-body); }
+.wrap { max-width: 1060px; margin: 0 auto; padding-inline: 16px; padding-block: 0 48px }
+header.top { background: var(--navy); color: #fff; padding-block: 22px 18px; }
+header.top .wrap { padding-block: 0; display: grid; gap: 14px }
+h1 { font: 700 clamp(26px, 4vw, 36px)/1.05 var(--f-display); margin: 0; letter-spacing: -.01em }
+.sub { color: #b9cbe2; margin: 0; font-size: 14px }
+.envois { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px }
+.envoi { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14); border-radius: 10px; padding: 10px 12px; display: grid; gap: 8px }
+.envoi b { font: 600 14px var(--f-body) }
+.envoi small { color: #b9cbe2; font-size: 12px }
+.modes { display: flex; gap: 6px; flex-wrap: wrap }
+.modes button { font: 600 13px var(--f-body); border-radius: 8px; cursor: pointer; padding: 6px 10px; border: 1px solid rgba(255,255,255,.25); background: transparent; color: #fff }
+.modes button[aria-pressed="true"] { background: #fff; color: var(--navy) }
+nav.tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-block: 18px 12px }
+nav.tabs button, .tool select, .actions button { font: 600 14px var(--f-body); border-radius: 8px; cursor: pointer; padding: 8px 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink) }
+nav.tabs button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent) }
+nav.tabs .n { font: 500 12px var(--f-mono); opacity: .8; margin-left: 4px }
+.tool { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap }
+.tool select { font-weight: 500 }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px }
+.list { display: grid; gap: 10px }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden }
+.card summary { list-style: none; cursor: pointer; display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; padding: 12px 14px }
+.card summary::-webkit-details-marker { display: none }
+.card h2 { font: 600 16px/1.3 var(--f-body); margin: 0 0 2px; overflow-wrap: anywhere }
+.meta { color: var(--muted); font-size: 13px; overflow-wrap: anywhere }
+.pill { font: 600 12px var(--f-body); padding: 4px 9px; border-radius: 999px; white-space: nowrap }
+.p-brouillon, .p-differe { color: var(--ask); background: var(--ask-bg) } .p-valide { color: var(--go); background: var(--go-bg) }
+.body { border-top: 1px solid var(--line); padding: 14px; display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr) 220px }
+.mail { border: 1px solid var(--line); border-radius: 10px; overflow: hidden }
+.mail .entete { background: var(--bg); padding: 10px 12px; font-size: 13px; display: grid; gap: 2px }
+.mail .entete span { color: var(--muted) }
+.mail pre { margin: 0; padding: 12px; white-space: pre-wrap; font: 14px/1.6 var(--f-body); overflow-wrap: anywhere }
+.mail .pied { padding: 8px 12px 12px; font-size: 12px; color: var(--muted); border-top: 1px dashed var(--line) }
+.side { display: grid; gap: 10px; align-content: start }
+.voir { display: block; text-align: center; font-weight: 600; text-decoration: none; padding: 10px 12px; border-radius: 8px; background: var(--accent); color: var(--accent-ink) }
+.voir.second { background: transparent; color: var(--accent); border: 1px solid var(--accent) }
+.absent { font-size: 13px; color: var(--muted) }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; grid-column: 1 / -1; align-items: center }
+.actions .go { background: var(--go); color: #fff; border-color: var(--go) }
+.actions .no { color: var(--no) }
+.actions input { flex: 1 1 220px; font: 14px var(--f-body); padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); min-width: 0 }
+.empty { background: var(--surface); border: 1px dashed var(--line); border-radius: 12px; padding: 28px; text-align: center; color: var(--muted) }
+.toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 8px; font-size: 14px }
+@media (max-width: 720px) { .body { grid-template-columns: 1fr } }
+</style>
+</head><body>
+<header class="top"><div class="wrap">
+  <h1>Validation des e-mails de prospection</h1>
+  <p class="sub">Chaque e-mail tel qu’il partira. « Voir » ouvre l’exemple : la maquette pour un commerçant, le pré-audit de son secteur pour une entreprise.</p>
+  <div class="envois" id="envois"></div>
+</div></header>
+<main class="wrap">
+  <nav class="tabs" id="tabs" aria-label="Offre"></nav>
+  <div class="tool"><label for="etape" class="meta">Afficher</label>
+    <select id="etape"><option value="a_valider">À valider</option><option value="valide">Validés, en attente d’envoi</option><option value="tout">Tout</option></select></div>
+  <div class="list" id="list"><div class="empty">Chargement…</div></div>
+</main>
+<div class="toast" id="toast" hidden></div>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const MODES = { pause: "Pause", test: "Essai (vers ta boîte)", live: "Réel" };
+const NOMS = { site: "Sites vitrines", automatisation: "Automatisation" };
+const STATUT = { brouillon: "À valider", differe: "Différé", valide: "Validé, en attente" };
+let donnees = { sites: [], automatisation: [] }, etat = null, offre = "site";
+try { offre = localStorage.getItem("prospection-offre") || offre } catch (e) {}
+
+function toast(t) { const el = $("toast"); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => el.hidden = true, 2400) }
+const liste = () => offre === "site" ? donnees.sites : donnees.automatisation;
+const aValider = (x) => x.statut === "brouillon" || x.statut === "differe";
+
+function renderEnvois() {
+  if (!etat) return;
+  $("envois").innerHTML = [["site", etat.vitrines], ["automatisation", etat.automatisation]].map(([k, e]) => {
+    if (!e || e.mode === "absent") return `<div class="envoi"><b>${NOMS[k]}</b><small>Canal d’envoi absent.</small></div>`;
+    const chiffres = k === "site"
+      ? `${e.en_file} en file · ${e.envoyes_aujourdhui} parti(s) aujourd’hui · ${e.envoyes} en tout · ${e.plafond_jour}/jour au plus`
+      : `${e.en_file} validé(s) en file · ${e.envoyes_aujourdhui} parti(s) aujourd’hui · ${e.envoyes} en tout · ${e.plafond_jour}/jour au plus`;
+    return `<div class="envoi"><b>${NOMS[k]} : envoi ${esc(MODES[e.mode] || e.mode)}</b>
+      <div class="modes">${Object.keys(MODES).map((m) => `<button type="button" data-type="${k}" data-mode="${m}" aria-pressed="${e.mode === m}">${MODES[m]}</button>`).join("")}</div>
+      <small>${esc(chiffres)}</small></div>`;
+  }).join("");
+}
+
+function renderTabs() {
+  $("tabs").innerHTML = Object.keys(NOMS).map((k) => {
+    const n = (k === "site" ? donnees.sites : donnees.automatisation).filter(aValider).length;
+    return `<button type="button" data-k="${k}" aria-pressed="${k === offre}">${NOMS[k]}<span class="n">${n} à valider</span></button>`;
+  }).join("");
+}
+
+function carte(x) {
+  const pied = x.type === "site" ? "Ajouté à l’envoi : contact@raime.fr · lien « se désinscrire »."
+    : "Ajouté à l’envoi : la signature « Basile Ramé · rAIme » et le lien « se désinscrire ».";
+  const voir = x.voir ? `<a class="voir" href="${esc(x.voir)}" target="_blank" rel="noopener">${esc(x.voir_label)} ↗</a>`
+    : `<p class="absent">Pas de pré-audit publié pour ce secteur (${esc(x.metier || "inconnu")}).</p>`;
+  const v3 = x.apercu_v3 ? `<a class="voir second" href="${esc(x.apercu_v3)}" target="_blank" rel="noopener">Nouveau héros (à valider) ↗</a>` : "";
+  return `<details class="card" data-type="${x.type}" data-id="${x.id}">
+  <summary><div><h2>${esc(x.nom || x.a)}</h2><div class="meta">${esc(x.metier || "")}${x.ville ? " · " + esc(x.ville) : ""} · ${esc(x.a || "sans adresse")}</div></div>
+    <span class="pill p-${x.statut}">${STATUT[x.statut] || esc(x.statut)}</span></summary>
+  <div class="body">
+    <div class="mail"><div class="entete"><div><span>À :</span> ${esc(x.a)}</div><div><span>Objet :</span> ${esc(x.sujet)}</div></div>
+      <pre>${esc(x.corps)}</pre><div class="pied">${pied}</div></div>
+    <div class="side">${voir}${v3}</div>
+    <div class="actions">
+      ${x.statut !== "valide" ? `<button class="go" type="button" data-a="valider">Valider</button>` : ""}
+      <button class="no" type="button" data-a="refuser">${x.statut === "valide" ? "Retirer de la file" : "Refuser"}</button>
+      <input type="text" placeholder="Motif (facultatif, gardé au journal)" aria-label="Motif" maxlength="300">
+    </div>
+  </div></details>`;
+}
+
+function renderList() {
+  const e = $("etape").value;
+  const l = liste().filter((x) => e === "tout" || (e === "valide" ? x.statut === "valide" : aValider(x)));
+  $("list").innerHTML = l.length ? l.map(carte).join("") : `<div class="empty">Rien ici pour l’instant.</div>`;
+}
+function render() { renderEnvois(); renderTabs(); renderList() }
+
+async function poster(url, data) {
+  const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json", "x-jarvis": "1" }, body: JSON.stringify(data) });
+  return r.json();
+}
+
+$("tabs").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-k]"); if (!b) return;
+  offre = b.dataset.k; try { localStorage.setItem("prospection-offre", offre) } catch (er) {}
+  render();
+});
+$("etape").addEventListener("change", renderList);
+$("envois").addEventListener("click", async (e) => {
+  const b = e.target.closest("button[data-mode]"); if (!b) return;
+  if (b.dataset.mode === "live" && !confirm("Les e-mails validés partiront pour de bon, au plafond du jour. Confirmer ?")) return;
+  const r = await poster(`/api/prospection/${b.dataset.type}/mode`, { mode: b.dataset.mode });
+  toast(r.ok === false ? (r.erreur || "Réglage refusé") : "Réglage enregistré");
+  charger();
+});
+$("list").addEventListener("click", async (e) => {
+  const b = e.target.closest("button[data-a]"); if (!b) return;
+  const c = b.closest(".card"), motif = c.querySelector("input").value.trim();
+  b.disabled = true;
+  try {
+    const r = await poster(`/api/prospection/${c.dataset.type}/${c.dataset.id}`, { action: b.dataset.a, motif });
+    if (r.ok === false) { toast(r.erreur || "Action refusée"); b.disabled = false; return }
+    toast(b.dataset.a === "valider" ? "Validé : il part avec le prochain envoi" : "Refusé, motif gardé");
+    charger();
+  } catch (er) { toast("Jarvis ne répond pas"); b.disabled = false }
+});
+
+async function charger() {
+  try {
+    const [f, s] = await Promise.all([fetch("/api/prospection/file", { cache: "no-store" }).then((r) => r.json()),
+      fetch("/api/prospection/etat", { cache: "no-store" }).then((r) => r.json())]);
+    donnees = f; etat = s;
+    if (document.activeElement && document.activeElement.tagName === "INPUT") { renderEnvois(); renderTabs(); return }
+    render();
+  } catch (e) { $("list").innerHTML = `<div class="empty">Jarvis ne répond pas pour l’instant : nouvel essai dans 30 secondes.</div>` }
+}
+charger();
+setInterval(charger, 30000);
+</script>
+</body></html>

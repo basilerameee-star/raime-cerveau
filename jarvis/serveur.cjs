@@ -18,6 +18,7 @@ const appels = require('./appels.cjs');
 const vitrines = require('./vitrines.cjs');
 const tiktok = require('./tiktok.cjs');
 const candidatures = require('./candidatures.cjs');
+const prospection = require('./prospection.cjs');
 const { repondreSansFrais } = require('./parole.cjs');
 
 const ICI = __dirname;
@@ -180,6 +181,7 @@ async function router(req, res) {
   if (url === '/healthz') { res.writeHead(200, { 'Content-Type': 'text/plain' }); res.end('ok ' + VERSION); return; }
   // La recherche d'emploi de Basile : le Bureau des candidatures et l'Envoyeur de son PC (jarvis/candidatures.cjs).
   if (await candidatures.router(req, res, { url, m, envoyer, json, autorise, fichierInterface })) return;
+  if (await prospection.router(req, res, { url, m, envoyer, json, autorise, fichierInterface })) return;
   // Le clip farming de KinGKlip : demandes de découpe, clips prêts, liens publiés (jarvis/clips.cjs).
   if (await require('./clips.cjs').router(req, res, { url, m, envoyer, json, fichierInterface })) return;
   if (m === 'GET' && (url === '/' || url === '/jarvis' || url === '/index.html')) return fichierInterface(res, 'index.html');
