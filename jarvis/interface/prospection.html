@@ -181,6 +181,12 @@ async function charger() {
     const [f, s] = await Promise.all([fetch("/api/prospection/file", { cache: "no-store" }).then((r) => r.json()),
       fetch("/api/prospection/etat", { cache: "no-store" }).then((r) => r.json())]);
     donnees = f; etat = s;
+    // au premier chargement, ouvrir l'offre qui a quelque chose à valider
+    if (!charger.fait) {
+      charger.fait = true;
+      const autre = offre === "site" ? "automatisation" : "site";
+      if (!liste().some(aValider) && (autre === "site" ? f.sites : f.automatisation).some(aValider)) offre = autre;
+    }
     if (document.activeElement && document.activeElement.tagName === "INPUT") { renderEnvois(); renderTabs(); return }
     render();
   } catch (e) { $("list").innerHTML = `<div class="empty">Jarvis ne répond pas pour l’instant : nouvel essai dans 30 secondes.</div>` }
