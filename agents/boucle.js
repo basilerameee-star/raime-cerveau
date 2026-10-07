@@ -27,7 +27,8 @@ const RYTHMES = [
   // pas valide. Pour le relancer : retirer les deux barres de commentaire ci-dessous.
   // REPRIS le 2026-09-25 : Basile a dicté le message (heraut v3). Il ne rédige que des BROUILLONS ;
   // rien ne part sans la validation de Basile dans le cockpit.
-  { nom: 'heraut',       module: './heraut.js',      fn: null,          toutes: 24 * H, besoinN8n: true,  cmd: 'heraut' },
+  // 07/10/2026 : remplacé par prospection_auto (le même e-mail que les vitrines, avec le pré-audit, écrit par le code).
+  { nom: 'prospection', module: './prospection_auto.js', fn: null,     toutes: 24 * H, besoinN8n: true,  cmd: 'prospection' },
   // Le reflexif passe chaque jour : il mesure les agents, designe le maillon faible et propose
   // une version de prompt INACTIVE, jamais activee par lui-meme. Mesure du 2026-09-23 : 0,0028 $.
   { nom: 'reflexif',     module: './reflexif.js',    fn: 'reflechir',   toutes: 24 * H, besoinN8n: true },
@@ -115,9 +116,9 @@ async function executer(tache, brain, n8n) {
     agent: tache.nom, action: tache.fn || tache.cmd || tache.nom, arguments: tache.args || {},
     avant, apres: await experience.photographier(brain), succes, resultat, duree_ms: Date.now() - t0 });
   try {
-    if (tache.cmd === 'heraut') {
+    if (tache.cmd === 'prospection') {
       const { execSync } = await import('node:child_process');
-      execSync('node agents/heraut.js 14', { stdio: 'inherit', cwd: '/app' });
+      execSync('node agents/prospection_auto.js 14', { stdio: 'inherit', cwd: '/app' });
     } else {
       const mod = await import(tache.module);
       await mod[tache.fn]({ brain, n8n, ...(tache.args || {}) });

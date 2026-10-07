@@ -48,3 +48,18 @@ test('Héraut : le pré-audit du secteur, seul lien permis, est posé par le cod
   assert.equal(ajouterPreaudit(avec, 'Cabinets comptables'), avec, 'jamais deux fois');
   assert.equal(ajouterPreaudit(corps, 'Immobilier'), corps, 'pas de pré-audit publié : rien d’inventé');
 });
+
+test('e-mail d’automatisation (07/10/2026) : le même que celui des vitrines, avec le pré-audit du métier ; rien d’inventé', async () => {
+  const { brouillon, joliNom, metierDe } = await import('../../agents/prospection_auto.js');
+  const b = brouillon({ name: 'SCP DUPONT ET ASSOCIES', sector: 'Cabinets comptables', city: 'ANNECY' });
+  assert.equal(b.sujet, 'Dupont et Associés : j\'ai préparé votre pré-audit');
+  assert.match(b.corps, /cabinets comptables à Annecy/);
+  assert.match(b.corps, /https:\/\/raime\.fr\/dossiers\/rAIme-pre-audit-experts-comptables\.pdf/);
+  assert.match(b.corps, /calendar\.app\.google/);
+  assert.match(b.corps, /répondez « stop »/);
+  assert.ok(!/\d+\s*%|€/.test(b.corps), 'aucun chiffre ni prix hors du pré-audit');
+  assert.equal(metierDe({ name: 'SELARL ETUDE MARTIN NOTAIRES', sector: 'Cabinets d avocats' }), 'Notaires');
+  assert.equal(brouillon({ name: 'X', sector: 'Organismes de formation' }), null, 'les organismes de formation ne sont plus prospectés');
+  assert.equal(brouillon({ name: 'X', sector: 'Immobilier' }), null, 'pas de pré-audit publié : pas d’e-mail');
+  assert.equal(joliNom('Agence du Lac'), 'Agence du Lac', 'un nom déjà bien écrit reste tel quel');
+});
