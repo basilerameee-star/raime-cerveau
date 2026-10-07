@@ -71,7 +71,7 @@ function court(nom) {
     if (u.length >= 3) return u.charAt(0).toUpperCase() + u.slice(1);
   }
   if (n.length > 45) n = n.split(',')[0].trim();
-  return n;
+  return n.replace(/\b([Aa])ssocies\b/g, '$1ssociés');   // le registre écrit sans accents, même en minuscules
 }
 export const joliVille = (v) => joliNom(String(v || '').replace(/\s+\d+(E|ER|EME)?\s+ARRONDISSEMENT$/i, ''));
 
