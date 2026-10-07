@@ -44,6 +44,7 @@ function normaliser(brut) {
   if (/^0[1-9]0{8}$/.test(c)) return null;
   // Numeros de demonstration sequentiels : 06 12 34 56 78, 01 23 45 67 89.
   if ('0123456789'.includes(c.slice(1)) || '9876543210'.includes(c.slice(1))) return null;
+  if (/12345678|23456789|98765432|87654321/.test(c)) return null;   // 06 12 34 56 78 : le numéro des gabarits de site (07/10/2026)
   return c;
 }
 

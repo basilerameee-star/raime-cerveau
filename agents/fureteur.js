@@ -117,11 +117,12 @@ export async function visiter(url, p, lire = lirePage) {
 
 // Une recherche Brave, page publique, au plus quelques-unes par passage, espacées. Si le moteur répond autre chose
 // qu'une page de résultats (blocage, vérification « êtes-vous humain »), on s'arrête : on ne contourne jamais.
-let moteurFerme = false;
+// Fermé, il le reste 24 heures : on ne revient pas frapper à une porte qui a dit non (429 et vérification le 07/10/2026).
+let moteurFerme = false, fermeJusqua = 0;
 async function chercher(q) {
-  if (moteurFerme) return [];
+  if (moteurFerme || Date.now() < fermeJusqua) { moteurFerme = true; return []; }
   const r = await lirePage(`https://search.brave.com/search?q=${encodeURIComponent(q)}&source=web`);
-  if (!r || /captcha|are you a (human|robot)|unusual traffic/i.test(r.html.slice(0, 20000))) { moteurFerme = true; return []; }
+  if (!r || /captcha|are you a (human|robot)|unusual traffic/i.test(r.html.slice(0, 20000))) { moteurFerme = true; fermeJusqua = Date.now() + 24 * 3600_000; return []; }
   const vus = new Set(), sites = [];
   for (const m of r.html.matchAll(/href="(https?:\/\/[^"]+)"/gi)) {
     const h = hote(m[1]);
@@ -193,8 +194,9 @@ export async function passer({ n8n, brain, combien = 25, recherches = 15, dureeM
       // Aucun site prouvé : une adresse posée par l'ancien Fureteur sans preuve n'est gardée que si son domaine porte le nom.
       const garde = p.contact_email && adresseFiable({ name: p.name, contact_email: p.contact_email }) ? p.contact_email : null;
       if (p.contact_email && !garde) bilan.retirees++;
-      await n8n.query(`UPDATE prospects SET contact_email = $2, furete_le = now(), furete_note = $3 WHERE siren = $1`,
-        [p.siren, garde, moteurFerme ? 'aucun site prouvé (moteur fermé)' : 'aucun site prouvé']);
+      // le site enregistré (souvent le 1er lien d'un moteur : buttondown.email/Mojeek, rubypayeur…) a été visité sans preuve : retiré
+      await n8n.query(`UPDATE prospects SET contact_email = $2, website = NULL, furete_le = now(), furete_note = $3 WHERE siren = $1`,
+        [p.siren, garde, (moteurFerme ? 'aucun site prouvé (moteur fermé)' : 'aucun site prouvé') + (p.website ? ` ; ancien site sans preuve retiré : ${String(p.website).slice(0, 120)}` : '')]);
     }
   }
   if (moteurFerme) bilan.moteur = 'fermé (on ne contourne pas)';
