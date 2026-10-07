@@ -5,6 +5,8 @@
 // les 152 premiers e-mails sont rendues structurellement impossibles.
 import { ask, db, logRun, money, instructionActive } from './lib.js';
 import pg from 'pg';
+import { createRequire } from 'node:module';
+const { ajouterPreaudit } = createRequire(import.meta.url)('../jarvis/preaudits.cjs');
 
 const PROMPT_VERSION = 'heraut-v3-taches'; // message dicté par Basile le 25/09/2026
 
@@ -213,6 +215,9 @@ Rédige l'e-mail.`;
   // n'a aucune raison de les transmettre — sauf si on le lui demande explicitement.
   const entete = enteteRoutage(prospect.contact_email, prospect.dirigeant, prospect.name);
   if (entete && !erreurs.length) corps = entete + '\n\n' + corps;
+  // Le pré-audit du secteur, seul lien permis, posé par le CODE avant la signature (décision de Basile, 06/10/2026) :
+  // le modèle n'écrit jamais d'adresse, et un secteur sans pré-audit publié n'en reçoit pas.
+  if (!erreurs.length) corps = ajouterPreaudit(corps, prospect.sector);
 
   const status = erreurs.length ? 'refuse' : 'brouillon';
   if (!erreurs.length) {
