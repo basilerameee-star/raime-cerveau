@@ -464,4 +464,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { serveur, etat, rapport, version };
+module.exports = { serveur, etat, rapport, version, fichier3d };
