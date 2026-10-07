@@ -72,3 +72,13 @@ test('l’adresse doit être celle de l’entreprise : jamais une plateforme, un
   assert.equal(adresseFiable({ name: 'FIMECO (FIMECO)', contact_email: 'emmanuel.labrousse@fimeco.fr' }), true);
   assert.equal(adresseFiable({ name: 'CABINET X', contact_email: 'contact@cabinet-y.fr', website: 'https://www.cabinet-y.fr/contact' }), true, 'le domaine du site fait foi');
 });
+
+test('noms d’usage des études et annuaires refusés (07/10/2026)', async () => {
+  const { joliNom, adresseFiable } = await import('../../agents/prospection_auto.js');
+  assert.equal(joliNom('Xavier Brunet, Vincent Morati, Aude Martin-Bouvier, Florent Billet et Damien Brecville, Notaires Associés (la Manufacture, Notaires)'), 'La Manufacture');
+  assert.equal(joliNom("Société Civile Professionnelle Naz & Associes, Notaires, Associés D'Une Société Civile Professionnelle Titulaire D'Un Office"), 'Naz & Associes');
+  assert.equal(adresseFiable({ name: 'SKILLSDAY', contact_email: 'contact@lesentreprises.com', website: 'lesentreprises.com' }), false, 'un annuaire n’est pas l’entreprise');
+  assert.equal(adresseFiable({ name: 'LA MANUFACTURE', contact_email: 'webmestre.csn@notaires.fr' }), false, 'le site national des notaires');
+  assert.equal(adresseFiable({ name: 'SCP NAZ & ASSOCIES, NOTAIRES', contact_email: 'accueil@naz-associes.notaires.fr' }), true, 'le domaine de l’étude');
+  assert.equal(adresseFiable({ name: 'CABINET X', contact_email: 'contact@cabinet-y.fr' }), false, 'un mot du métier ne prouve rien');
+});

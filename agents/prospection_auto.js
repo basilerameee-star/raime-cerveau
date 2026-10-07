@@ -36,9 +36,21 @@ export function joliNom(brut) {
   // « FIMECO (FIMECO) » : le sigle répété entre parenthèses est retiré
   const s = String(brut || '').replace(/\s*\(([^)]*)\)/g, (m, x) => (String(brut).toLowerCase().includes(x.toLowerCase().trim() + ' ') || String(brut).toLowerCase().startsWith(x.toLowerCase().trim()) ? '' : m))
     .replace(FORMES, ' ').replace(/\s+/g, ' ').trim();
-  if (!s || s !== s.toUpperCase()) return s;
-  return s.toLowerCase().split(' ').map((w) => ACCENTS[w] || w).map((w, i) => (i > 0 && PETITS.has(w) ? w
-    : w.replace(/(^|[-'’])(\p{L})/gu, (_, a, b) => a + b.toUpperCase()))).join(' ');
+  if (!s || s !== s.toUpperCase()) return court(s);
+  return court(s.toLowerCase().split(' ').map((w) => ACCENTS[w] || w).map((w, i) => (i > 0 && PETITS.has(w) ? w
+    : w.replace(/(^|[-'’])(\p{L})/gu, (_, a, b) => a + b.toUpperCase()))).join(' '));
+}
+// Les études de notaires portent des noms à rallonge (« Société civile professionnelle Naz & associés, notaires, associés
+// d'une société… », « Xavier Brunet, Vincent Morati… (la Manufacture, Notaires) ») : on garde le nom d'usage.
+function court(nom) {
+  let n = nom.replace(/^(soci[ée]t[ée] civile professionnelle|soci[ée]t[ée] d.exercice lib[ée]ral\S*( [aà] responsabilit[ée] limit[ée]e)?|scp|selarl)\s+/i, '').trim();
+  const usage = n.match(/\(([^)]+)\)/);
+  if (n.length > 45 && usage) {
+    const u = usage[1].split(',')[0].trim();
+    if (u.length >= 3) return u.charAt(0).toUpperCase() + u.slice(1);
+  }
+  if (n.length > 45) n = n.split(',')[0].trim();
+  return n;
 }
 export const joliVille = (v) => joliNom(String(v || '').replace(/\s+\d+(E|ER|EME)?\s+ARRONDISSEMENT$/i, ''));
 
@@ -70,16 +82,23 @@ export function brouillon(p) {
 // cabinets, no-reply@infomaniak.com à un autre…). Acceptée si son domaine est celui du site de l'entreprise, ou s'il porte
 // un mot de son nom (4 lettres au moins) ; jamais une boîte « no-reply » ni celle d'une plateforme.
 const SANS_ACCENTS = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-const PLATEFORMES = /(buttondown|infomaniak|wix|wixpress|sentry|mailchimp|sendinblue|brevo|hubspot|example|domain|sitew|jimdo|squarespace|godaddy|ovh|o2switch|gandi|myu\.fr|encheres-publiques|pagesjaunes|societe\.com|linkedin|facebook)\./i;
+const PLATEFORMES = /(buttondown|infomaniak|wix|wixpress|sentry|mailchimp|sendinblue|brevo|hubspot|example|domain|sitew|jimdo|squarespace|godaddy|ovh|o2switch|gandi|myu\.fr|encheres-publiques|pagesjaunes|societe\.com|linkedin|facebook|lesentreprises|rubypayeur|pappers|infogreffe|verif|manageo|kompass|corporama|annuaire|societeinfo|bodacc|french-business|score3)\./i;
+const GENERIQUES = new Set(['cabinet', 'cabinets', 'conseil', 'conseils', 'expertise', 'expert', 'experts', 'comptable', 'comptables',
+  'audit', 'associes', 'associe', 'avocat', 'avocats', 'notaire', 'notaires', 'notarial', 'notariale', 'societe', 'groupe', 'france', 'gestion',
+  'services', 'service', 'consulting', 'partners', 'partenaires', 'etude', 'office', 'juridique', 'fiduciaire', 'international', 'compagnie',
+  'agence', 'immobilier', 'immobiliere', 'nouvelle', 'les', 'des', 'et', 'and', 'the', 'sas', 'sarl', 'scp', 'selarl', 'professionnelle', 'civile']);
 export function adresseFiable(p) {
   const e = SANS_ACCENTS(p.contact_email).trim();
   const m = e.match(/^([^@\s]+)@([a-z0-9.-]+\.[a-z]{2,})$/);
-  if (!m || /^(no-?reply|ne-?pas-?repondre|mailer-daemon|postmaster|bounce)/.test(m[1]) || PLATEFORMES.test(m[2] + '.')) return false;
+  if (!m || /^(no-?reply|ne-?pas-?repondre|mailer-daemon|postmaster|bounce|webmestre|webmaster)/.test(m[1]) || PLATEFORMES.test(m[2] + '.')) return false;
+  if (m[2] === 'notaires.fr') return false;            // le site national des notaires, jamais celui d'une étude (*.notaires.fr l'est)
   const domaine = m[2];
   const site = SANS_ACCENTS(p.website).replace(/^https?:\/\//, '').replace(/^www\./, '').split(/[/?#]/)[0];
   if (site && (domaine === site || domaine.endsWith('.' + site) || site.endsWith('.' + domaine))) return true;
   const label = domaine.replace(/\.[a-z]{2,}$/, '').replace(/[^a-z0-9]/g, '');
-  return SANS_ACCENTS(joliNom(p.name)).split(/[^a-z0-9]+/).some((mot) => mot.length >= 4 && label.includes(mot));
+  // les mots du métier (« cabinet », « associés », « conseil »…) ne prouvent rien : seuls les mots propres au nom comptent
+  return SANS_ACCENTS(joliNom(p.name)).split(/[^a-z0-9]+/)
+    .some((mot) => mot.length >= 3 && !GENERIQUES.has(mot) && label.includes(mot));
 }
 
 // Prépare `combien` brouillons : prospects à but lucratif d'un métier qui a son pré-audit, avec une adresse, jamais écrits
