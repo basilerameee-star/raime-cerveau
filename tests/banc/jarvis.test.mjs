@@ -297,7 +297,7 @@ test('vitrines : la maquette est publique et isolée, la fiche dit « e-mail non
     assert.ok(l.vitrines.some((x) => x.id === id));
     const appels = await (await fetch(base + '/api/appels')).json();
     const a = appels.liste.find((x) => x.siren === `v${id}`);
-    assert.equal(a.raison, 'e-mail non trouvé');
+    assert.equal(a.raison, 'aucun e-mail envoyé (adresse introuvable)');
     const noter = await fetch(`${base}/api/appels/v${id}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Jarvis': '1' }, body: JSON.stringify({ etat: 'appele' }) });
     assert.deepEqual(await noter.json(), { ok: true });
     assert.ok(!(await (await fetch(base + '/api/appels')).json()).liste.some((x) => x.siren === `v${id}`));

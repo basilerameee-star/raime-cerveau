@@ -63,3 +63,12 @@ test('e-mail d’automatisation (07/10/2026) : le même que celui des vitrines, 
   assert.equal(brouillon({ name: 'X', sector: 'Immobilier' }), null, 'pas de pré-audit publié : pas d’e-mail');
   assert.equal(joliNom('Agence du Lac'), 'Agence du Lac', 'un nom déjà bien écrit reste tel quel');
 });
+
+test('l’adresse doit être celle de l’entreprise : jamais une plateforme, un « no-reply », ni un domaine étranger à son nom', async () => {
+  const { adresseFiable } = await import('../../agents/prospection_auto.js');
+  assert.equal(adresseFiable({ name: 'BBM ET ASSOCIES', contact_email: 'contact@buttondown.email' }), false);
+  assert.equal(adresseFiable({ name: 'SOCIETE NOUVELLE CATALYS', contact_email: 'no-reply@infomaniak.com' }), false);
+  assert.equal(adresseFiable({ name: 'ALCOPA AUCTION', contact_email: 'contact@encheres-publiques.com' }), false);
+  assert.equal(adresseFiable({ name: 'FIMECO (FIMECO)', contact_email: 'emmanuel.labrousse@fimeco.fr' }), true);
+  assert.equal(adresseFiable({ name: 'CABINET X', contact_email: 'contact@cabinet-y.fr', website: 'https://www.cabinet-y.fr/contact' }), true, 'le domaine du site fait foi');
+});

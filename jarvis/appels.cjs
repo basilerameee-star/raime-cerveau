@@ -44,7 +44,7 @@ async function aFaire(limite = 20, { categories = [] } = {}) {
       telephone: v.telephone, ville: v.ville,
       envoye_le: v.envoye_le ? new Date(v.envoye_le).toISOString().slice(0, 10) : null,
       jours: v.envoye_le ? Math.floor((Date.now() - new Date(v.envoye_le)) / 86400e3) : null, repondu: v.statut === 'repondu',
-      raison: v.statut === 'repondu' ? (v.motif || 'a répondu à l’e-mail') : v.statut === 'a_appeler' ? (v.email ? (v.motif || 'à appeler') : 'e-mail non trouvé')
+      raison: v.statut === 'repondu' ? (v.motif || 'a répondu à l’e-mail') : v.statut === 'a_appeler' ? (v.email ? (v.motif || 'à appeler') : 'aucun e-mail envoyé (adresse introuvable)')
         : `e-mail sans réponse depuis ${DELAI_JOURS} jours`, fiche: `/api/vitrines/${v.id}` });
   }
   liste.sort((a, b) => Number(Boolean(b.repondu)) - Number(Boolean(a.repondu))); // qui a répondu passe devant

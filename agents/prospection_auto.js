@@ -66,21 +66,37 @@ export function brouillon(p) {
   };
 }
 
+// L'adresse doit être CELLE de l'entreprise (07/10/2026 : l'enrichissement avait attaché contact@buttondown.email à trois
+// cabinets, no-reply@infomaniak.com à un autre…). Acceptée si son domaine est celui du site de l'entreprise, ou s'il porte
+// un mot de son nom (4 lettres au moins) ; jamais une boîte « no-reply » ni celle d'une plateforme.
+const SANS_ACCENTS = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+const PLATEFORMES = /(buttondown|infomaniak|wix|wixpress|sentry|mailchimp|sendinblue|brevo|hubspot|example|domain|sitew|jimdo|squarespace|godaddy|ovh|o2switch|gandi|myu\.fr|encheres-publiques|pagesjaunes|societe\.com|linkedin|facebook)\./i;
+export function adresseFiable(p) {
+  const e = SANS_ACCENTS(p.contact_email).trim();
+  const m = e.match(/^([^@\s]+)@([a-z0-9.-]+\.[a-z]{2,})$/);
+  if (!m || /^(no-?reply|ne-?pas-?repondre|mailer-daemon|postmaster|bounce)/.test(m[1]) || PLATEFORMES.test(m[2] + '.')) return false;
+  const domaine = m[2];
+  const site = SANS_ACCENTS(p.website).replace(/^https?:\/\//, '').replace(/^www\./, '').split(/[/?#]/)[0];
+  if (site && (domaine === site || domaine.endsWith('.' + site) || site.endsWith('.' + domaine))) return true;
+  const label = domaine.replace(/\.[a-z]{2,}$/, '').replace(/[^a-z0-9]/g, '');
+  return SANS_ACCENTS(joliNom(p.name)).split(/[^a-z0-9]+/).some((mot) => mot.length >= 4 && label.includes(mot));
+}
+
 // Prépare `combien` brouillons : prospects à but lucratif d'un métier qui a son pré-audit, avec une adresse, jamais écrits
 // (ou seulement par l'ancien envoi jamais reçu), et que Basile n'a pas classés « pas intéressé » au téléphone.
 export async function preparer({ n8n, brain, combien = 14 } = {}) {
   const exclus = new Set((await brain.query(`SELECT siren FROM appels WHERE etat = 'pas_interesse'`).catch(() => ({ rows: [] }))).rows.map((r) => r.siren));
-  const { rows } = await n8n.query(`SELECT p.siren, p.name, p.sector, p.city, p.contact_email FROM prospects p
+  const { rows } = await n8n.query(`SELECT p.siren, p.name, p.sector, p.city, p.contact_email, p.website FROM prospects p
     WHERE p.status = 'nouveau' AND coalesce(p.contact_email, '') LIKE '%@%'
       AND (p.sector = ANY($1::text[]) OR p.name ~* 'notaire|notarial')
       -- à but lucratif seulement (Basile, 07/10) : ni associations (AGC, Cerfrance…), ni ordres, chambres ou syndicats
       AND p.name !~* '(^|[^a-z])(assoc|association|agc|cerfrance|syndicat|f[ée]d[ée]ration|chambre|ordre des|union|mutuelle|coop[ée]rative)([^a-z]|$)'
       AND NOT EXISTS (SELECT 1 FROM outreach o WHERE o.siren = p.siren AND o.status NOT IN ('non_recu', 'annule'))
       AND NOT EXISTS (SELECT 1 FROM suppression s WHERE lower(s.email) = lower(p.contact_email))
-    ORDER BY p.score DESC NULLS LAST, p.found_at DESC NULLS LAST LIMIT $2`, [Object.keys(METIERS), combien * 3]);
+    ORDER BY p.score DESC NULLS LAST, p.found_at DESC NULLS LAST LIMIT $2`, [Object.keys(METIERS), combien * 10]);
   let faits = 0;
   for (const p of rows) {
-    if (faits >= combien || exclus.has(p.siren)) continue;
+    if (faits >= combien || exclus.has(p.siren) || !adresseFiable(p)) continue;
     const b = brouillon(p);
     if (!b) continue;
     // Une ligne par entreprise (outreach.siren est unique) : l'ancien e-mail annulé ou jamais reçu est remplacé.
