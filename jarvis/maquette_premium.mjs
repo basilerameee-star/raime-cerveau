@@ -207,7 +207,7 @@ h2{font-size:clamp(40px,5vw,68px);line-height:1.02}
 h2 em,.hero em{font-family:"Instrument Serif",Georgia,serif;font-style:italic;font-weight:400}
 h3{font-size:22px;letter-spacing:-.01em}
 .demo{position:relative;z-index:3;background:#0d0e10;color:#b9bcc2;border:0;font-size:12px;letter-spacing:.02em}
-.hero{position:relative;min-height:calc(100svh - 33px);display:flex;flex-direction:column;color:#fff;overflow:hidden;background:#15171b}
+.hero{position:relative;height:auto;min-height:calc(100svh - 33px);display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch;color:#fff;overflow:hidden;background:#15171b}
 .hero .fond{position:absolute;inset:0;background-size:cover;background-position:center;transform:scale(1.06);animation:respire 14s ease-out forwards}
 .hero .voile{position:absolute;inset:0;background:linear-gradient(180deg,rgba(9,10,12,.55) 0%,rgba(9,10,12,.12) 30%,rgba(9,10,12,.2) 55%,rgba(9,10,12,.82) 100%)}
 .hero .w{position:relative;z-index:2;width:100%}
