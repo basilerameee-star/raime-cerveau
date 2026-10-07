@@ -53,7 +53,7 @@ function estFax(html, index) {
   return /fax|t[ée]l[ée]copie/.test(avant);
 }
 
-function extraire(html) {
+export function extraire(html) {
   const texte = String(html).replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ');
   const trouves = new Map();
 

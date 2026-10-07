@@ -33,8 +33,12 @@ const ACCENTS = { associes: 'associés', etude: 'étude', societe: 'société', 
   gerance: 'gérance', experts: 'experts', expert: 'expert', immobiliere: 'immobilière', geneve: 'Genève', strategie: 'stratégie',
   developpement: 'développement', creation: 'création', reseau: 'réseau', regie: 'régie', notariale: 'notariale' };
 export function joliNom(brut) {
-  // « FIMECO (FIMECO) » : le sigle répété entre parenthèses est retiré
-  const s = String(brut || '').replace(/\s*\(([^)]*)\)/g, (m, x) => (String(brut).toLowerCase().includes(x.toLowerCase().trim() + ' ') || String(brut).toLowerCase().startsWith(x.toLowerCase().trim()) ? '' : m))
+  // « FIMECO (FIMECO) », « SURPERFORMANCE (ZONEBOURSE - SURPERFORMANCE) » : la parenthèse qui répète le nom est retirée
+  const b = String(brut || ''), dehors = b.replace(/\s*\([^)]*\)/g, '').toLowerCase().trim();
+  const s = b.replace(/\s*\(([^)]*)\)/g, (m, x) => {
+    const y = x.toLowerCase().trim();
+    return b.toLowerCase().includes(y + ' ') || b.toLowerCase().startsWith(y) || (dehors.length >= 3 && y.includes(dehors)) ? '' : m;
+  })
     .replace(FORMES, ' ').replace(/\s+/g, ' ').trim();
   if (!s || s !== s.toUpperCase()) return court(s);
   return court(s.toLowerCase().split(' ').map((w) => ACCENTS[w] || w).map((w, i) => (i > 0 && PETITS.has(w) ? w
@@ -81,9 +85,9 @@ export function brouillon(p) {
 // L'adresse doit être CELLE de l'entreprise (07/10/2026 : l'enrichissement avait attaché contact@buttondown.email à trois
 // cabinets, no-reply@infomaniak.com à un autre…). Acceptée si son domaine est celui du site de l'entreprise, ou s'il porte
 // un mot de son nom (4 lettres au moins) ; jamais une boîte « no-reply » ni celle d'une plateforme.
-const SANS_ACCENTS = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+export const SANS_ACCENTS = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 const PLATEFORMES = /(buttondown|infomaniak|wix|wixpress|sentry|mailchimp|sendinblue|brevo|hubspot|example|domain|sitew|jimdo|squarespace|godaddy|ovh|o2switch|gandi|myu\.fr|encheres-publiques|pagesjaunes|societe\.com|linkedin|facebook|lesentreprises|rubypayeur|pappers|infogreffe|verif|manageo|kompass|corporama|annuaire|societeinfo|bodacc|french-business|score3)\./i;
-const GENERIQUES = new Set(['cabinet', 'cabinets', 'conseil', 'conseils', 'expertise', 'expert', 'experts', 'comptable', 'comptables',
+export const GENERIQUES = new Set(['cabinet', 'cabinets', 'conseil', 'conseils', 'expertise', 'expert', 'experts', 'comptable', 'comptables',
   'audit', 'associes', 'associe', 'avocat', 'avocats', 'notaire', 'notaires', 'notarial', 'notariale', 'societe', 'groupe', 'france', 'gestion',
   'services', 'service', 'consulting', 'partners', 'partenaires', 'etude', 'office', 'juridique', 'fiduciaire', 'international', 'compagnie',
   'agence', 'immobilier', 'immobiliere', 'nouvelle', 'les', 'des', 'et', 'and', 'the', 'sas', 'sarl', 'scp', 'selarl', 'professionnelle', 'civile']);
@@ -93,19 +97,25 @@ export function adresseFiable(p) {
   if (!m || /^(no-?reply|ne-?pas-?repondre|mailer-daemon|postmaster|bounce|webmestre|webmaster)/.test(m[1]) || PLATEFORMES.test(m[2] + '.')) return false;
   if (m[2] === 'notaires.fr') return false;            // le site national des notaires, jamais celui d'une étude (*.notaires.fr l'est)
   const domaine = m[2];
+  // une messagerie grand public (orange.fr, gmail.com…) : acceptée seulement si l'adresse elle-même porte le nom
+  if (MESSAGERIES.test(domaine)) return motsDuNom(p.name).some((mot) => m[1].replace(/[^a-z0-9]/g, '').includes(mot));
   const site = SANS_ACCENTS(p.website).replace(/^https?:\/\//, '').replace(/^www\./, '').split(/[/?#]/)[0];
   if (site && (domaine === site || domaine.endsWith('.' + site) || site.endsWith('.' + domaine))) return true;
   const label = domaine.replace(/\.[a-z]{2,}$/, '').replace(/[^a-z0-9]/g, '');
   // les mots du métier (« cabinet », « associés », « conseil »…) ne prouvent rien : seuls les mots propres au nom comptent
-  return SANS_ACCENTS(joliNom(p.name)).split(/[^a-z0-9]+/)
-    .some((mot) => mot.length >= 3 && !GENERIQUES.has(mot) && label.includes(mot));
+  return motsDuNom(p.name).some((mot) => label.includes(mot));
 }
+const MESSAGERIES = /^(gmail|googlemail|orange|wanadoo|free|sfr|neuf|laposte|hotmail|outlook|live|yahoo|icloud|aliceadsl|bbox|numericable)\.(fr|com|net)$/;
+export const motsDuNom = (nom) => SANS_ACCENTS(joliNom(nom)).split(/[^a-z0-9]+/).filter((mot) => mot.length >= 3 && !GENERIQUES.has(mot));
 
 // Prépare `combien` brouillons : prospects à but lucratif d'un métier qui a son pré-audit, avec une adresse, jamais écrits
 // (ou seulement par l'ancien envoi jamais reçu), et que Basile n'a pas classés « pas intéressé » au téléphone.
 export async function preparer({ n8n, brain, combien = 14 } = {}) {
   const exclus = new Set((await brain.query(`SELECT siren FROM appels WHERE etat = 'pas_interesse'`).catch(() => ({ rows: [] }))).rows.map((r) => r.siren));
-  const { rows } = await n8n.query(`SELECT p.siren, p.name, p.sector, p.city, p.contact_email, p.website FROM prospects p
+  await n8n.query('ALTER TABLE prospects ADD COLUMN IF NOT EXISTS site_preuve text');
+  // le site ne fait foi que si le Fureteur l'a prouvé (SIREN ou nom et ville sur ses pages) : l'ancien prenait le 1er lien d'un moteur
+  const { rows } = await n8n.query(`SELECT p.siren, p.name, p.sector, p.city, p.contact_email,
+      CASE WHEN p.site_preuve IS NOT NULL THEN p.website END AS website FROM prospects p
     WHERE p.status = 'nouveau' AND coalesce(p.contact_email, '') LIKE '%@%'
       AND (p.sector = ANY($1::text[]) OR p.name ~* 'notaire|notarial')
       -- à but lucratif seulement (Basile, 07/10) : ni associations (AGC, Cerfrance…), ni ordres, chambres ou syndicats

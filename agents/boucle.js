@@ -28,6 +28,8 @@ const RYTHMES = [
   // REPRIS le 2026-09-25 : Basile a dicté le message (heraut v3). Il ne rédige que des BROUILLONS ;
   // rien ne part sans la validation de Basile dans le cockpit.
   // 07/10/2026 : remplacé par prospection_auto (le même e-mail que les vitrines, avec le pré-audit, écrit par le code).
+  // 07/10/2026 : le Fureteur réécrit (remplace le workflow n8n) — il trouve l'adresse sur le site PROUVÉ de l'entreprise.
+  { nom: 'fureteur',     module: './fureteur.js',    fn: 'passer',      toutes: 1 * H, besoinN8n: true, args: { combien: 25, recherches: 8 } },
   { nom: 'prospection', module: './prospection_auto.js', fn: null,     toutes: 24 * H, besoinN8n: true,  cmd: 'prospection' },
   // Le reflexif passe chaque jour : il mesure les agents, designe le maillon faible et propose
   // une version de prompt INACTIVE, jamais activee par lui-meme. Mesure du 2026-09-23 : 0,0028 $.
