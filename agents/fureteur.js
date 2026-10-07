@@ -12,7 +12,7 @@
 // Chaque fiche essayée est datée : on n'y revient pas avant 30 jours. Aucun modèle : rien d'inventé, aucun coût.
 import pg from 'pg';
 import dns from 'node:dns/promises';
-import { joliNom, adresseFiable, motsDuNom, SANS_ACCENTS, METIERS } from './prospection_auto.js';
+import { joliNom, adresseFiable, motsDuNom, SANS_ACCENTS, METIERS, NAF_EXCLUS } from './prospection_auto.js';
 import { extraire as extraireTelephone } from './annuaire.js';
 
 const UA = {
@@ -163,9 +163,10 @@ export async function passer({ n8n, brain, combien = 25, recherches = 15, dureeM
   // dont le site n'a jamais été prouvé (celles de l'ancien Fureteur) passent avant les autres.
   const { rows } = await n8n.query(`SELECT siren, name, city, website, contact_email, telephone FROM prospects
     WHERE status = 'nouveau' AND site_preuve IS NULL AND (furete_le IS NULL OR furete_le < now() - interval '30 days')
-      AND coalesce(sector, '') NOT IN ('Organismes de formation', 'CCI')
+      -- seulement les métiers qui ont un pré-audit (l'e-mail peut partir), jamais les codes exclus (07/10/2026)
+      AND (sector = ANY($1::text[]) OR name ~* 'notaire|notarial') AND coalesce(naf, '') <> ALL($3::text[])
     ORDER BY (sector = ANY($1::text[]) OR name ~* 'notaire|notarial') DESC, (website IS NOT NULL) DESC,
-      (departement = '74') DESC, effectif_est DESC NULLS LAST, score DESC NULLS LAST LIMIT $2`, [Object.keys(METIERS), combien]);
+      (departement = '74') DESC, effectif_est DESC NULLS LAST, score DESC NULLS LAST LIMIT $2`, [Object.keys(METIERS), combien, NAF_EXCLUS]);
   const bilan = { examinees: 0, prouves: 0, adresses: 0, retirees: 0, telephones: 0, moteur: 'ouvert' };
   const debut = Date.now();
   let cherchees = 0;

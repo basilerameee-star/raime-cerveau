@@ -21,6 +21,8 @@ test('chaque secteur ouvre son pré-audit publié ; un secteur sans pré-audit n
   assert.equal(p.preaudit('CCI'), 'https://raime.fr/dossiers/rAIme-pre-audit-federations-chambres.pdf');
   assert.equal(p.preaudit('Immobilier'), 'https://raime.fr/dossiers/rAIme-pre-audit-immobilier.pdf');
   assert.equal(p.preaudit('Santé privée'), null);
+  assert.equal(p.preaudit('RH / recrutement'), 'https://raime.fr/dossiers/rAIme-pre-audit-recrutement.pdf');
+  assert.equal(p.preaudit('Courtiers en assurance'), 'https://raime.fr/dossiers/rAIme-pre-audit-assurance.pdf');
 });
 
 test('un e-mail d’automatisation se valide avec son motif au journal ; la file le rend tel quel avec son pré-audit', async (t) => {
@@ -63,6 +65,8 @@ test('e-mail d’automatisation (07/10/2026) : le même que celui des vitrines, 
   assert.equal(brouillon({ name: 'X', sector: 'Organismes de formation' }), null, 'les organismes de formation ne sont plus prospectés');
   assert.equal(brouillon({ name: 'X', sector: 'Santé privée' }), null, 'pas de pré-audit publié : pas d’e-mail');
   const im = brouillon({ name: 'AGENCE DU LAC', sector: 'Immobilier', city: 'ANNECY' });
+  assert.match(brouillon({ name: 'ARCHI SAS', sector: 'Architectes', city: 'LYON' }).corps, /agences d’architecture à Lyon[\s\S]*Dans une agence[\s\S]*batiment-architecture\.pdf/);
+  assert.match(brouillon({ name: 'COURTIER SA', sector: 'Courtiers en assurance', city: 'ANNECY' }).corps, /cabinets de courtage à Annecy[\s\S]*Dans un cabinet[\s\S]*pre-audit-assurance\.pdf/);
   assert.match(im.corps, /agences immobilières à Annecy[\s\S]*Dans une agence[\s\S]*rAIme-pre-audit-immobilier\.pdf/);
   assert.equal(joliNom('Agence du Lac'), 'Agence du Lac', 'un nom déjà bien écrit reste tel quel');
 });

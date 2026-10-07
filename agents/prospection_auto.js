@@ -25,7 +25,16 @@ export const METIERS = {
   // 07/10/2026 : pré-audit publié (moteur de ROI, 492 h, 18 700 €, retour ≈ 6 mois pour une agence de 10 personnes)
   'Immobilier': { preaudit: 'immobilier', pluriel: 'agences immobilières', structure: 'agence',
     taches: ['la rédaction des annonces', 'les réponses aux demandes des acquéreurs et des locataires', 'la constitution et le contrôle des dossiers'] },
+  // 07/10/2026 : niches choisies avec Basile (prospection et documents) ; pré-audits publiés le même jour
+  'RH / recrutement': { preaudit: 'recrutement', pluriel: 'cabinets de recrutement', structure: 'cabinet',
+    taches: ['le tri des candidatures', 'la rédaction des annonces', 'la prospection des entreprises clientes'] },
+  'Courtiers en assurance': { preaudit: 'assurance', pluriel: 'cabinets de courtage', structure: 'cabinet',
+    taches: ['la constitution des dossiers clients', 'la comparaison des offres des compagnies', 'les devis et les propositions'] },
+  'Architectes': { preaudit: 'batiment-architecture', pluriel: 'agences d’architecture', structure: 'agence',
+    taches: ['le chiffrage et les métrés', 'les réponses aux appels d’offres', 'les comptes rendus de chantier'] },
 };
+// Codes d'activité jamais prospectés (07/10/2026) : groupements d'employeurs, assureurs et mutuelles, banques mutualistes.
+export const NAF_EXCLUS = ['78.30Z', '65.12Z', '64.19Z', '85.59A', '85.59B', '94.11Z', '94.12Z'];
 const lien = (m) => `https://raime.fr/dossiers/rAIme-pre-audit-${m.preaudit}.pdf`;
 
 // Les noms du registre arrivent en capitales, avec la forme juridique : « SCP DUPONT ET ASSOCIES » → « Dupont et associés ».
@@ -125,11 +134,12 @@ export async function preparer({ n8n, brain, combien = 14 } = {}) {
       AND p.site_preuve IS NOT NULL AND p.furete_note LIKE 'adresse sur le site%'
       AND (p.sector = ANY($1::text[]) OR p.name ~* 'notaire|notarial')
       -- à but lucratif seulement (Basile, 07/10) : ni associations (AGC, Cerfrance…), ni ordres, chambres ou syndicats
-      AND p.name !~* '(^|[^a-z])(assoc|association|agc|cerfrance|syndicat|f[ée]d[ée]ration|chambre|ordre des|union|mutuelle|coop[ée]rative)([^a-z]|$)'
+      AND p.name !~* '(^|[^a-z])(assoc|association|agc|cerfrance|syndicat|f[ée]d[ée]ration|chambre|ordre des|union|mutuelle|mutualit[ée]|coop[ée]rative|groupement|geiq|gie)([^a-z]|$)'
+      AND coalesce(p.naf, '') <> ALL($3::text[])
       AND NOT EXISTS (SELECT 1 FROM outreach o WHERE o.siren = p.siren AND o.status NOT IN ('non_recu', 'annule'))
       AND NOT EXISTS (SELECT 1 FROM suppression s WHERE lower(s.email) = lower(p.contact_email))
       AND NOT EXISTS (SELECT 1 FROM outreach o2 WHERE lower(o2.to_email) = lower(p.contact_email) AND o2.status NOT IN ('non_recu', 'annule'))
-    ORDER BY p.score DESC NULLS LAST, p.found_at DESC NULLS LAST LIMIT $2`, [Object.keys(METIERS), combien * 10]);
+    ORDER BY p.score DESC NULLS LAST, p.found_at DESC NULLS LAST LIMIT $2`, [Object.keys(METIERS), combien * 10, NAF_EXCLUS]);
   let faits = 0;
   const vues = new Set();
   for (const p of rows) {
