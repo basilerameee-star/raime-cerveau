@@ -93,3 +93,17 @@ test('seules les offres d’un canal automatique sont proposées ; les autres so
   const [n] = await lire("SELECT statut FROM candidatures WHERE id = 'banc-n'");
   assert.equal(n.statut, 'hors_auto');
 });
+
+test('candidature par e-mail : une vraie consigne de l’annonce est retenue, une adresse de contact jamais', async () => {
+  const consigne = c.adresseCandidature({ description: 'Pour postuler, envoyez votre CV et votre lettre de motivation par e-mail à recrutement@exemple.ch. Merci.' });
+  assert.equal(consigne.email, 'recrutement@exemple.ch');
+  assert.match(consigne.phrase, /envoyez votre CV/);
+  assert.equal(c.adresseCandidature({ description: 'Pour toute question sur cette candidature : info@exemple.ch' }), null);
+  assert.equal(c.adresseCandidature({ description: 'Contact : jean@exemple.ch. Nous recherchons un vendeur. Postulez via notre site.' }), null);
+  assert.equal(c.adresseCandidature({ description: 'Aucune candidature par e-mail ne sera traitée (rh@exemple.ch).' }), null);
+  const offre = { id: 'banc-mail', titre: 'Vendeur', source: 'LinkedIn', pays: 'CH', description: 'Envoyez votre dossier de candidature à rh@boutique.ch' };
+  assert.equal(c.canal(offre), 'email');
+  await c.importer([{ id: 'banc-mail', offre, fiche: { cv: 'Vente', lettre: 'L' }, statut: 'valide' }]);
+  const f = (await c.file(300)).find((x) => x.id === 'banc-mail');
+  assert.deepEqual([f.canal, f.email], ['email', 'rh@boutique.ch']);
+});

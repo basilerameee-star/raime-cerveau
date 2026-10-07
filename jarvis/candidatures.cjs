@@ -19,12 +19,36 @@ const CV = ['Vente', 'Commercial', 'Sales EN', 'Vente + IA'];
 // Les canaux que l'Envoyeur sait servir seul (06/10/2026). « Valider » doit vouloir dire « envoyé » (Basile) : une offre
 // d'un autre canal (LinkedIn, site d'entreprise…) n'est plus proposée à la validation ; elle est rangée « hors_auto »
 // et seulement comptée. Un canal ajouté ici fait revenir ses offres (reclasser).
-const CANAUX_AUTO = (process.env.CANAUX_AUTO || 'jobcloud').split(',').map((s) => s.trim()).filter(Boolean);
+const CANAUX_AUTO = (process.env.CANAUX_AUTO || 'jobcloud,email').split(',').map((s) => s.trim()).filter(Boolean);
 function canal(o) {
   o = o || {};
   if ((o.source === 'jobup' || o.source === 'jobs.ch') && String(o.methode || '').endsWith('FORMULAR')) return 'jobcloud';
   if (o.source === 'HelloWork') return 'hellowork';
+  if (adresseCandidature(o)) return 'email';
   return 'manuel';
+}
+
+// Le canal « candidature par e-mail » (07/10/2026) : l'annonce dit d'envoyer le dossier à une adresse. On ne retient que
+// une vraie consigne de candidature (verbe d'envoi + dossier/CV + adresse dans la même phrase), jamais une adresse de
+// contact pour des questions ; Basile voit l'adresse et la phrase avant de valider. L'envoi part de son Gmail
+// (envoyeur/postuler_email.py, sur l'hôte) : la lettre dans le corps, le CV en pièce jointe.
+const ENVOI = /envoy|adress|transmet|parvenir|faire suivre|send|submit|postul|apply|bewerb/i;
+const PIECES = /candidature|dossier|\bcv\b|curriculum|lettre de motivation|application|resume|résumé|bewerbung/i;
+const PAS_CANDIDATURE = /question|renseignement|information|privacy|donn[ée]es personnelles|datenschutz|ne (pas|plus)|aucune candidature|pas de candidature|unsolicited|agences?|no agencies|uniquement via|only via|exclusivement (via|par le)/i;
+const ADRESSE = /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/;
+function adresseCandidature(o) {
+  if (o.email_candidature) return { email: o.email_candidature, phrase: o.email_phrase || '' };
+  const texte = String(o.description || '');
+  // la consigne doit précéder l'adresse de près (180 signes), dans la même phrase : un paragraphe sans ponctuation ne
+  // suffit pas à relier un verbe lointain à une adresse de contact
+  for (const m of texte.matchAll(new RegExp(ADRESSE.source, 'g'))) {
+    const debut = Math.max(0, texte.lastIndexOf('.', m.index - 1) + 1, texte.lastIndexOf('\n', m.index - 1) + 1, m.index - 180);
+    const fenetre = texte.slice(debut, m.index + m[0].length);
+    if (!ENVOI.test(fenetre) || !PIECES.test(fenetre) || PAS_CANDIDATURE.test(fenetre)) continue;
+    if (/^(no-?reply|privacy|dpo|datenschutz|info@jobup|support)/i.test(m[0])) continue;
+    return { email: m[0].replace(/[.,;:]+$/, ''), phrase: fenetre.trim().slice(0, 300) };
+  }
+  return null;
 }
 // Suisse seulement (Basile, 06/10/2026) : une offre française n'est jamais proposée.
 const auto = (o) => (o || {}).pays !== 'FR' && CANAUX_AUTO.includes(canal(o));
@@ -184,7 +208,8 @@ async function liste() {
   const compte = await lire('SELECT statut, count(*)::int AS n FROM candidatures GROUP BY statut');
   return { offres: lignes.map((l) => ({ id: l.id, ...(l.offre || {}), description: undefined,
     extrait: String((l.offre || {}).description || '').replace(/^À propos de cette offre\s*/, '').slice(0, 1800), taux: taux((l.offre || {}).taux), ...(l.fiche || {}),
-    statut: l.statut, envoi: l.envoi, note: l.note || '', maj: l.maj, arrivee: l.cree_le, canal: canal(l.offre) })),
+    statut: l.statut, envoi: l.envoi, note: l.note || '', maj: l.maj, arrivee: l.cree_le, canal: canal(l.offre),
+    candidature_email: adresseCandidature(l.offre || {}) })),
   compte: Object.fromEntries(compte.map((c) => [c.statut, c.n])), canaux: CANAUX_AUTO };
 }
 
@@ -235,6 +260,7 @@ async function file(max = 300) {
   const l = await lire("SELECT id, offre, fiche FROM candidatures WHERE statut = 'valide' ORDER BY maj LIMIT $1", [max]);
   return l.filter((x) => auto(x.offre)).map((x) => ({ id: x.id, source: x.offre.source, canal: canal(x.offre),
     methode: x.offre.methode || '', url_externe: x.offre.url_externe || '',
+    ...(canal(x.offre) === 'email' ? { email: adresseCandidature(x.offre).email } : {}),
     titre: x.offre.titre, entreprise: x.offre.entreprise, lien: x.offre.lien, pays: x.offre.pays || 'CH',
     cv: (x.fiche || {}).cv, langue: (x.fiche || {}).langue, lettre: (x.fiche || {}).lettre }));
 }
@@ -292,4 +318,4 @@ async function router(req, res, { url, m, envoyer, json, autorise, fichierInterf
   return false;
 }
 
-module.exports = { router, demarrer, preparer, reclasser, canal, ecrireFiche, traiterNouvelles, lettre, envoyeurAutorise, liste, agir, recevoirOffres, file, resultat, importer };
+module.exports = { router, demarrer, preparer, reclasser, canal, adresseCandidature, ecrireFiche, traiterNouvelles, lettre, envoyeurAutorise, liste, agir, recevoirOffres, file, resultat, importer };

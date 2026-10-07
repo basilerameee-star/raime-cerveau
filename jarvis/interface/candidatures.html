@@ -170,7 +170,7 @@ function renderHead() {
 }
 
 const nouvelle = (o) => o.statut === "a_valider" && o.arrivee && Date.now() - new Date(o.arrivee) < 864e5;
-const CANAL = { jobcloud: "Candidature simplifiée", hellowork: "Candidature HelloWork" };
+const CANAL = { jobcloud: "Candidature simplifiée", hellowork: "Candidature HelloWork", email: "Candidature par e-mail" };
 
 function card(o) {
   const alertes = (o.alertes || []).map((a) => `<span class="chip">${esc(a)}</span>`).join("");
@@ -189,7 +189,9 @@ function card(o) {
     </div>
     <div class="side">
       <a href="${esc(o.lien)}" target="_blank" rel="noopener">Voir l'annonce sur ${esc(o.source)} ↗</a>
-      <div class="kv"><b>Canal</b>${esc(CANAL[o.canal] ? CANAL[o.canal] + " " + o.source + " : part seule" : (o.source || "") + " : envoi à faire toi-même")}</div>
+      <div class="kv"><b>Canal</b>${o.canal === "email" && o.candidature_email
+        ? `Candidature par e-mail à <b>${esc(o.candidature_email.email)}</b>, depuis ton Gmail (lettre dans le message, CV joint) : part seule<br><small>Consigne de l’annonce : « ${esc(o.candidature_email.phrase.slice(-220))} »</small>`
+        : esc(CANAL[o.canal] ? CANAL[o.canal] + " " + o.source + " : part seule" : (o.source || "") + " : envoi à faire toi-même")}</div>
       <div class="kv"><b>Langue</b>${esc(o.langue)}</div>
       ${o.envoi ? `<div class="kv"><b>${o.statut === "a_toi" ? "À toi" : "Preuve d'envoi"}</b>${esc(o.envoi.quand || o.envoi.recu_le || "")} ${esc(o.envoi.source || "")}${o.envoi.detail ? "<br>" + esc(o.envoi.detail) : ""}${o.envoi.reponses ? "<br>" + esc(o.envoi.reponses) : ""}${o.envoi.url ? `<br><a href="${esc(o.envoi.url)}" target="_blank" rel="noopener">page de confirmation ↗</a>` : ""}</div>` : ""}
       ${cv}
