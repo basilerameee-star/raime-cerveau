@@ -348,7 +348,11 @@ async function router(req, res) {
     return envoyer(res, 200, await vitrines.agir(r[1], await json(req, 2000)));
   }
   if (m === 'GET' && url === '/api/feuille') return envoyer(res, 200, require('./feuille.cjs').F);
-  if (m === 'GET' && url === '/api/appels') return envoyer(res, 200, await appels.aFaire(50));
+  if (m === 'GET' && url === '/api/appels') {
+    // ?categories=Cabinets comptables,Vitrines · coiffeur (vide = toutes) & limite=… (07/10/2026 : Basile trie par catégorie)
+    const q = new URL(req.url, 'http://x').searchParams;
+    return envoyer(res, 200, await appels.aFaire(Math.min(500, Number(q.get('limite')) || 100), { categories: q.get('categories') || '' }));
+  }
   if (m === 'POST' && (r = url.match(/^\/api\/appels\/(\d{9}|v\d+)$/))) {
     if (!autorise(req)) return envoyer(res, 403, { ok: false });
     return envoyer(res, 200, await appels.noter(r[1], await json(req, 2000)));
