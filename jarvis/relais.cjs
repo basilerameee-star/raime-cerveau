@@ -14,16 +14,22 @@ const ADRESSE = process.env.COCKPIT_ADRESSE || 'https://cockpit.raime.fr';
 let occupe = false;
 
 // Conclure : réussite = faite ; échec = bloqué avec la raison (pour = 'claude') ; rien (null) = à refaire une fois.
+// 07/10/2026 : une séance d'apprentissage de la nuit qui échoue n'est pas un ordre de Basile ; elle est refusée chez
+// Hermes (raison gardée) au lieu d'encombrer les ordres de Claude (7 séances y attendaient depuis le 26/09).
+const ROUTINE = "texte LIKE 'Apprentissage (séance%'";
 async function conclure(id, d) {
   if (!d) {
-    await lire(`UPDATE commandes SET etat = 'a_faire', pour = CASE WHEN coalesce(reponse, '') LIKE '%[relance]%' THEN 'claude' ELSE 'harness' END,
+    await lire(`UPDATE commandes SET
+      etat = CASE WHEN coalesce(reponse, '') LIKE '%[relance]%' AND ${ROUTINE} THEN 'refusee' ELSE 'a_faire' END,
+      pour = CASE WHEN coalesce(reponse, '') LIKE '%[relance]%' AND NOT ${ROUTINE} THEN 'claude' ELSE 'harness' END,
       reponse = coalesce(reponse, '') || ' [relance]' WHERE id = $1 AND etat = 'en_cours'`, [id]);
     return;
   }
   const ok = d.code === 0 && !!d.sortie;
-  const r = await lire(`UPDATE commandes SET etat = $2, pour = $3, reponse = $4, traite_le = now() WHERE id = $1 AND etat = 'en_cours' RETURNING id`,
-    [id, ok ? 'faite' : 'a_faire', ok ? 'harness' : 'claude',
-     ok ? String(d.sortie).slice(-4000) : `Hermes n'a pas abouti (code ${d.code}). ${String(d.trace || d.erreur || '').slice(-400)}`]);
+  const r = await lire(`UPDATE commandes SET etat = CASE WHEN $3::boolean THEN 'faite' WHEN ${ROUTINE} THEN 'refusee' ELSE 'a_faire' END,
+    pour = CASE WHEN $3::boolean OR ${ROUTINE} THEN 'harness' ELSE 'claude' END, reponse = $2, traite_le = now()
+    WHERE id = $1 AND etat = 'en_cours' RETURNING id`,
+    [id, ok ? String(d.sortie).slice(-4000) : `Hermes n'a pas abouti (code ${d.code}). ${String(d.trace || d.erreur || '').slice(-400)}`, ok]);
   if (r.length) await lire(`INSERT INTO journal(acteur, changement, motif) VALUES('executant', $1, $2)`,
     [`Ordre n°${id} ${ok ? `fait${d.duree_s ? ` en ${d.duree_s} s` : ''}` : 'bloqué'}`, String(ok ? d.sortie : d.trace || '').slice(-400)]);
 }

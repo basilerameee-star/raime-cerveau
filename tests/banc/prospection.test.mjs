@@ -39,3 +39,12 @@ test('un e-mail d’automatisation se valide avec son motif au journal ; la file
   assert.equal(j && j.motif, 'bon secteur');
   assert.equal((await p.agir('automatisation', id, { action: 'envoyer' })).ok, false, 'seules valider et refuser existent');
 });
+
+test('Héraut : le pré-audit du secteur, seul lien permis, est posé par le code avant la signature ; sinon rien', () => {
+  const { ajouterPreaudit } = require('../../jarvis/preaudits.cjs');
+  const corps = 'Bonjour,\n\nTexte.\n\nBien cordialement,\nBasile Ramé\nraime.fr';
+  const avec = ajouterPreaudit(corps, 'Cabinets comptables');
+  assert.match(avec, /pré-audit propre à votre secteur : https:\/\/raime\.fr\/dossiers\/rAIme-pre-audit-experts-comptables\.pdf\n\nBien cordialement,/);
+  assert.equal(ajouterPreaudit(avec, 'Cabinets comptables'), avec, 'jamais deux fois');
+  assert.equal(ajouterPreaudit(corps, 'Immobilier'), corps, 'pas de pré-audit publié : rien d’inventé');
+});

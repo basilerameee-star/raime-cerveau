@@ -9,16 +9,7 @@ const { lire, lireN8n } = require('./bases.cjs');
 const vitrines = require('./vitrines.cjs');
 
 const ADRESSE = process.env.COCKPIT_ADRESSE || 'https://cockpit.raime.fr';
-// Les pré-audits publiés sur raime.fr (un par secteur) ; un secteur sans pré-audit le dit au lieu d'en inventer un.
-const PREAUDITS = [
-  [/formation/i, 'organismes-formation'], [/comptab/i, 'experts-comptables'], [/avocat|notaire/i, 'avocats-notaires'],
-  [/conseil/i, 'cabinets-conseil'], [/archi|b[âa]timent|construction/i, 'batiment-architecture'],
-  [/CCI|OPCO|f[ée]d[ée]ration|syndicat|chambre/i, 'federations-chambres'],
-];
-const preaudit = (segment) => {
-  const p = PREAUDITS.find(([re]) => re.test(String(segment || '')));
-  return p ? `https://raime.fr/dossiers/rAIme-pre-audit-${p[1]}.pdf` : null;
-};
+const { preaudit } = require('./preaudits.cjs');   // le pré-audit publié du secteur, ou rien
 
 async function etat() {
   const v = await vitrines.envoi().catch(() => ({ mode: 'absent' }));
