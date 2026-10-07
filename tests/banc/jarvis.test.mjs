@@ -341,3 +341,23 @@ test('désinscription : le lien (GET) demande confirmation et ne désinscrit pas
   assert.equal((await b.lireN8n('SELECT 1 FROM suppression WHERE email = $1', [e])).length, 1);
   await b.lireN8n('DELETE FROM suppression WHERE email = $1', [e]);
 });
+
+test('décisions : seules celles écrites pour Basile s’affichent ; il y répond ou les écarte d’un geste', async () => {
+  const b = require('../../jarvis/bases.cjs');
+  await b.cerveau.query(`CREATE TABLE IF NOT EXISTS demandes (id bigserial PRIMARY KEY, question text NOT NULL UNIQUE, pourquoi text,
+    bloquant boolean NOT NULL DEFAULT false, etat text NOT NULL DEFAULT 'ouverte', reponse text, cycle_id text,
+    cree_le timestamptz NOT NULL DEFAULT now(), close_le timestamptz)`);
+  await b.preparer();
+  const [interne] = (await b.cerveau.query("INSERT INTO demandes (question) VALUES ('Question interne de banc ?') RETURNING id")).rows;
+  const [pour] = (await b.cerveau.query("INSERT INTO demandes (question, pourquoi, pour_basile, bloquant) VALUES ('Décision de banc ?', 'parce que', true, true) RETURNING id")).rows;
+  try {
+    const e = await (await fetch(base + '/api/etat')).json();
+    assert.ok(e.decisions.some((d) => d.id === Number(pour.id) && d.pourquoi === 'parce que'));
+    assert.ok(!e.decisions.some((d) => d.id === Number(interne.id)), 'une question interne de l’architecte ne s’affiche pas');
+    const repondre = (corps) => fetch(`${base}/api/decisions/${pour.id}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Jarvis': '1' }, body: JSON.stringify(corps) }).then((r) => r.json());
+    assert.deepEqual(await repondre({ reponse: '' }), { ok: false, erreur: 'réponse vide' });
+    assert.deepEqual(await repondre({ reponse: 'Oui, vas-y.' }), { ok: true });
+    const [d] = (await b.cerveau.query('SELECT etat, reponse FROM demandes WHERE id = $1', [pour.id])).rows;
+    assert.deepEqual([d.etat, d.reponse], ['repondue', 'Oui, vas-y.']);
+  } finally { await b.cerveau.query('DELETE FROM demandes WHERE id = ANY($1::bigint[])', [[interne.id, pour.id]]); }
+});

@@ -27,6 +27,9 @@ async function preparer() {
   await lire(`CREATE TABLE IF NOT EXISTS revenus (id serial PRIMARY KEY, le timestamptz NOT NULL DEFAULT now(),
     montant_eur numeric(10,2) NOT NULL CHECK (montant_eur > 0), source text NOT NULL, note text)`);
   await lire('ALTER TABLE revenus ADD COLUMN IF NOT EXISTS plateforme text');
+  // 07/10/2026 : seules les décisions écrites POUR Basile s'affichent ; les questions internes de l'architecte restent
+  // dans sa table sans encombrer « Il attend ta décision » (30 questions obscures, dont 6 fois la même).
+  await lire('ALTER TABLE demandes ADD COLUMN IF NOT EXISTS pour_basile boolean NOT NULL DEFAULT false');
 }
 
 // ── LE COFFRE — Basile y range ses accès. Les valeurs ne sont jamais renvoyées ni journalisées.

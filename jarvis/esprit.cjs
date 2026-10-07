@@ -81,7 +81,7 @@ async function etatDuCerveau(message = '') {
   const commandes = await lire(`SELECT id, texte, etat, left(coalesce(reponse, ''), 300) AS reponse FROM commandes
     WHERE etat IN ('a_faire','en_cours') OR traite_le > now() - interval '24 hours' ORDER BY cree_le DESC LIMIT 6`);
   const actifs = await lire("SELECT string_agg(DISTINCT agent, ', ' ORDER BY agent) AS a FROM boucle_passages WHERE fin_le > now() - interval '24 hours' AND statut = 'ok'");
-  const questions = await lire("SELECT question FROM demandes WHERE etat = 'ouverte' ORDER BY bloquant DESC, cree_le LIMIT 5");
+  const questions = await lire("SELECT question FROM demandes WHERE etat = 'ouverte' AND pour_basile ORDER BY bloquant DESC, cree_le LIMIT 5");
   const pr = await lireN8n("SELECT count(*) FILTER (WHERE status = 'brouillon')::int AS b, count(*) FILTER (WHERE sent_at > now() - interval '24 hours')::int AS e FROM outreach");
   const rev = await revenusDuMois();
   let t = `\nObjectif n°1 (monétisation seulement, 2 000 € par mois sur chacune de TikTok, YouTube et Instagram, soit ${rev.objectif} €) : ce mois ${rev.mois} €`

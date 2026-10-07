@@ -149,7 +149,7 @@ async function etat() {
       FROM commandes WHERE etat IN ('a_faire','en_cours') OR traite_le > now() - interval '72 hours' ORDER BY cree_le DESC LIMIT 12`),
     lire("SELECT acteur, left(changement, 200) AS changement, created_at FROM journal WHERE created_at > now() - interval '48 hours' ORDER BY created_at DESC LIMIT 12"),
     lire("SELECT titre, proposition FROM pensees WHERE nuit = (SELECT max(nuit) FROM pensees) ORDER BY rang LIMIT 3"),
-    lire("SELECT question FROM demandes WHERE etat = 'ouverte' ORDER BY bloquant DESC, cree_le DESC LIMIT 4"),
+    lire("SELECT id, question, pourquoi FROM demandes WHERE etat = 'ouverte' AND pour_basile ORDER BY bloquant DESC, cree_le DESC LIMIT 8"),
     lire("SELECT count(DISTINCT agent)::int AS n FROM boucle_passages WHERE fin_le > now() - interval '24 hours' AND statut = 'ok'"),
     lire("SELECT count(*)::int AS n FROM kb_chunks"),
     lire("SELECT count(*)::int AS n FROM veille WHERE vu_le > now() - interval '24 hours'"),
@@ -171,6 +171,7 @@ async function etat() {
     journal: journal.map((j) => ({ qui: NOMS[j.acteur] || j.acteur, quoi: j.changement,
       heure: new Date(j.created_at).toLocaleTimeString('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit' }) })),
     pensee, questions: questions.map((x) => x.question),
+    decisions: questions.map((x) => ({ id: Number(x.id), question: x.question, pourquoi: x.pourquoi || '' })),
     compteurs: { agents: agents[0] ? agents[0].n : 0, bibliotheque: biblio[0] ? biblio[0].n : 0, veille: veille[0] ? veille[0].n : 0,
       brouillons: prospection[0] ? prospection[0].brouillons : 0, envoyes: prospection[0] ? prospection[0].envoyes : 0 },
     objectif: { ...revenus, derniers: encaisse },
@@ -196,7 +197,7 @@ async function rapport() {
   const mep = await lire("SELECT changement FROM journal WHERE acteur = 'applicateur' AND changement LIKE '%mise en service%' AND created_at > now() - interval '24 hours' ORDER BY created_at");
   const rev = await esprit.revenusDuMois();
   const br = (await lireN8n("SELECT count(*)::int AS n FROM outreach WHERE status = 'brouillon'"))[0];
-  const qs = await lire("SELECT question FROM demandes WHERE etat = 'ouverte' ORDER BY bloquant DESC, cree_le DESC LIMIT 3");
+  const qs = await lire("SELECT question FROM demandes WHERE etat = 'ouverte' AND pour_basile ORDER BY bloquant DESC, cree_le DESC LIMIT 3");
   return { sections: [
     { titre: 'Le cerveau cette nuit : sa pensée', lignes: pensee.length ? pensee.map((p) => `${p.titre} — ${court(p.proposition, 220)}`) : ['Pas de pensée cette nuit.'] },
     { titre: 'Tes ordres faits (24 h)', lignes: faites.length ? faites.map((c) => `n°${c.id} — ${court(c.texte, 90)} → ${court(c.reponse, 200)}`) : ['Aucun.'] },
@@ -348,6 +349,17 @@ async function router(req, res) {
     return envoyer(res, 200, await vitrines.agir(r[1], await json(req, 2000)));
   }
   if (m === 'GET' && url === '/api/feuille') return envoyer(res, 200, require('./feuille.cjs').F);
+  // Basile répond à une décision (ou l'écarte) depuis l'interface ; sa réponse est lue par les agents (07/10/2026).
+  if (m === 'POST' && (r = url.match(/^\/api\/decisions\/(\d+)$/))) {
+    if (!autorise(req)) return envoyer(res, 403, { ok: false });
+    const { reponse = '', ecarter = false } = await json(req, 4000);
+    if (!ecarter && !String(reponse).trim()) return envoyer(res, 200, { ok: false, erreur: 'réponse vide' });
+    const fait = await lire(`UPDATE demandes SET etat = $2, reponse = $3, close_le = now() WHERE id = $1 AND etat = 'ouverte' RETURNING id`,
+      [Number(r[1]), ecarter ? 'abandonnee' : 'repondue', ecarter ? 'Écartée par Basile' : String(reponse).slice(0, 2000)]);
+    if (fait.length) await lire(`INSERT INTO journal(acteur, changement, motif) VALUES('basile', $1, $2)`,
+      [`Décision n°${r[1]} : ${ecarter ? 'écartée' : 'répondue'}`, String(reponse).slice(0, 300) || null]);
+    return envoyer(res, 200, { ok: fait.length > 0 });
+  }
   if (m === 'GET' && url === '/api/appels') {
     // ?categories=Cabinets comptables,Vitrines · coiffeur (vide = toutes) & limite=… (07/10/2026 : Basile trie par catégorie)
     const q = new URL(req.url, 'http://x').searchParams;
