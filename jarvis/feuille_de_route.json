@@ -1,6 +1,6 @@
 {
   "titre": "Feuille de route du cerveau rAIme",
-  "mise_a_jour": "2026-10-02",
+  "mise_a_jour": "2026-10-07",
   "source": "Décidée avec Basile le 30/09/2026. Cette liste fait foi : chaque session (Claude, routines, Codex) la reprend là où elle en est, jusqu'à ce que tout soit fait.",
   "regles": [
     "Un point n'est « fait » que quand sa condition « fini quand » est prouvée en production (la preuve est écrite).",
@@ -470,9 +470,10 @@
       "groupe": "seul",
       "moteur": "Moteur 3 : rAIme",
       "titre": "Prospection des automatisations",
-      "etat": "a_faire",
+      "etat": "en_cours",
       "fini_quand": "Sur le modèle des vitrines : l’agent repère des entreprises dont une tâche répétitive se voit (prise de rendez-vous, devis, relances, réponses), prépare une démonstration et un brouillon d’e-mail ; Basile valide avant tout envoi.",
-      "rang": 45
+      "rang": 45,
+      "avance": "07/10/2026 : agent prospection_auto (l’e-mail des vitrines avec le pré-audit du métier, écrit par le code) ; organismes de formation retirés, à but lucratif seulement ; pré-audit Immobilier publié ; Fureteur réécrit (site prouvé par SIREN ou nom et ville, adresse écrite sur le site, jamais devinée). Reste : pré-audits RH/recrutement et courtiers/assurances, relance à 7 jours vers « À appeler »."
     },
     {
       "n": 46,
@@ -545,6 +546,54 @@
       "etat": "a_faire",
       "fini_quand": "Chaque jour, les statistiques de chaque clip publié (via Buffer, qui les fournit, puis les API des plateformes) sont rangées par campagne ; un retour hebdomadaire par e-mail dit quels sujets, durées, accroches et heures font le plus de vues payées ; le clippeur et la sélection des campagnes en tiennent compte. Demande de Basile du 02/10/2026.",
       "rang": 53
+    },
+    {
+      "n": 54,
+      "groupe": "seul",
+      "moteur": "Socle",
+      "titre": "Le veilleur GitHub se met à jour : il fouille GitHub, essaie et propose les outils et agents utiles",
+      "fini_quand": "Le veilleur (qui lit déjà GitHub, Hacker News, Hugging Face, arXiv) passe à l’acte : pour chaque outil ou agent open source utile à un point de cette feuille, il l’essaie sur le banc, écrit ce qu’il apporte, et ouvre un chantier ; l’installation se fait après accord. Demande de Basile du 07/10/2026.",
+      "etat": "a_faire",
+      "rang": 54
+    },
+    {
+      "n": 55,
+      "groupe": "basile",
+      "moteur": "Moteur 4 : agents de revenus",
+      "titre": "Agent bourse : analyse et portefeuille simulé d’abord",
+      "il_faut": "Demande de Basile du 07/10/2026 (elle remplace « aucun trading » du point 42 pour ce point). Claude ne passe jamais d’ordre ni ne déplace d’argent et ne donne pas de conseil en investissement : l’agent tourne d’abord en portefeuille simulé, mesuré ; le compte de courtage, l’argent et l’activation réelle restent à Basile.",
+      "fini_quand": "Un portefeuille simulé tenu chaque jour, avec ses règles écrites et sa performance comparée à un indice, visible dans Jarvis ; décision de Basile ensuite.",
+      "etat": "attend_basile",
+      "rang": 55
+    },
+    {
+      "n": 56,
+      "groupe": "basile",
+      "moteur": "Moteur 4 : agents de revenus",
+      "titre": "Agent trading (ajouté après l’agent bourse, même règle)",
+      "il_faut": "Même règle que le point 55 : simulation d’abord, aucun ordre réel passé par Claude ; le compte, l’argent et l’activation restent à Basile.",
+      "fini_quand": "Une stratégie simulée sur données réelles, avec frais et pertes comptés, mesurée plusieurs semaines ; décision de Basile ensuite.",
+      "etat": "attend_basile",
+      "rang": 56
+    },
+    {
+      "n": 57,
+      "groupe": "seul",
+      "moteur": "Contenu",
+      "titre": "Comptes Buffer : réparer le suivi en boucle et brancher les comptes",
+      "fini_quand": "Le suivi Buffer ne boucle plus en erreurs (« trop de demandes », « publication introuvable ») ; chaque compte branché publie depuis la file, et ses statistiques remontent au point 53. Demande de Basile du 07/10/2026.",
+      "etat": "a_faire",
+      "rang": 57
+    },
+    {
+      "n": 58,
+      "groupe": "basile",
+      "moteur": "Direction",
+      "titre": "Une seule entité : le système agentique rAIme, avec sa direction",
+      "il_faut": "Demande de Basile du 07/10/2026 : tous les agents (prospection, candidatures, vitrines, revenus, bourse, trading, clipping, Buffer, Instagram, YouTube, dropshipping, veille GitHub) forment une seule entité qui tourne seule ; chaque agent peut créer ses sous-agents pour réussir. Outils à télécharger permis (open source vérifié).",
+      "fini_quand": "Le Directeur (point 41) répartit le travail entre les agents, chacun rend compte au même endroit, et Basile ne reçoit que les décisions qui lui reviennent.",
+      "etat": "a_faire",
+      "rang": 58
     }
   ]
 }
