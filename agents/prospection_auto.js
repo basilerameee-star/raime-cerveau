@@ -33,7 +33,9 @@ const ACCENTS = { associes: 'associés', etude: 'étude', societe: 'société', 
   gerance: 'gérance', experts: 'experts', expert: 'expert', immobiliere: 'immobilière', geneve: 'Genève', strategie: 'stratégie',
   developpement: 'développement', creation: 'création', reseau: 'réseau', regie: 'régie', notariale: 'notariale' };
 export function joliNom(brut) {
-  const s = String(brut || '').replace(FORMES, ' ').replace(/\s+/g, ' ').trim();
+  // « FIMECO (FIMECO) » : le sigle répété entre parenthèses est retiré
+  const s = String(brut || '').replace(/\s*\(([^)]*)\)/g, (m, x) => (String(brut).toLowerCase().includes(x.toLowerCase().trim() + ' ') || String(brut).toLowerCase().startsWith(x.toLowerCase().trim()) ? '' : m))
+    .replace(FORMES, ' ').replace(/\s+/g, ' ').trim();
   if (!s || s !== s.toUpperCase()) return s;
   return s.toLowerCase().split(' ').map((w) => ACCENTS[w] || w).map((w, i) => (i > 0 && PETITS.has(w) ? w
     : w.replace(/(^|[-'’])(\p{L})/gu, (_, a, b) => a + b.toUpperCase()))).join(' ');
@@ -71,6 +73,8 @@ export async function preparer({ n8n, brain, combien = 14 } = {}) {
   const { rows } = await n8n.query(`SELECT p.siren, p.name, p.sector, p.city, p.contact_email FROM prospects p
     WHERE p.status = 'nouveau' AND coalesce(p.contact_email, '') LIKE '%@%'
       AND (p.sector = ANY($1::text[]) OR p.name ~* 'notaire|notarial')
+      -- à but lucratif seulement (Basile, 07/10) : ni associations (AGC, Cerfrance…), ni ordres, chambres ou syndicats
+      AND p.name !~* '(^|[^a-z])(assoc|association|agc|cerfrance|syndicat|f[ée]d[ée]ration|chambre|ordre des|union|mutuelle|coop[ée]rative)([^a-z]|$)'
       AND NOT EXISTS (SELECT 1 FROM outreach o WHERE o.siren = p.siren AND o.status NOT IN ('non_recu', 'annule'))
       AND NOT EXISTS (SELECT 1 FROM suppression s WHERE lower(s.email) = lower(p.contact_email))
     ORDER BY p.score DESC NULLS LAST, p.found_at DESC NULLS LAST LIMIT $2`, [Object.keys(METIERS), combien * 3]);
