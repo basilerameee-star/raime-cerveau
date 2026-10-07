@@ -60,9 +60,12 @@ def profil():
 
 def contexte(pw):
     (DONNEES / "navigateur").mkdir(parents=True, exist_ok=True)
+    # 07/10/2026 : jobup/jobs.ch refusent l'IPv4 du serveur ; le navigateur sort par le relais IPv6 de l'hôte (proxy6.py)
+    relais = os.environ.get("PROXY_SORTIE")
     return pw.chromium.launch_persistent_context(
         str(DONNEES / "navigateur"), headless=False, locale="fr-CH", viewport={"width": 1366, "height": 900},
-        args=["--disable-blink-features=AutomationControlled", "--no-sandbox"])
+        args=["--disable-blink-features=AutomationControlled", "--no-sandbox"],
+        **({"proxy": {"server": relais, "bypass": "localhost,127.0.0.1,cockpit,raime-cockpit-1"}} if relais else {}))
 
 
 CSS = """@page{size:A4;margin:0}*{margin:0;padding:0;box-sizing:border-box}
