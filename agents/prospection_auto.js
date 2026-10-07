@@ -22,6 +22,9 @@ export const METIERS = {
     taches: ['la rédaction des actes qui se répètent', 'la préparation des dossiers', 'le suivi des échéances'] },
   'Cabinets de conseil': { preaudit: 'cabinets-conseil', pluriel: 'cabinets de conseil', structure: 'cabinet',
     taches: ['la rédaction des livrables et des comptes rendus', 'la préparation des propositions', 'le suivi des clients et des prospects'] },
+  // 07/10/2026 : pré-audit publié (moteur de ROI, 492 h, 18 700 €, retour ≈ 6 mois pour une agence de 10 personnes)
+  'Immobilier': { preaudit: 'immobilier', pluriel: 'agences immobilières', structure: 'agence',
+    taches: ['la rédaction des annonces', 'les réponses aux demandes des acquéreurs et des locataires', 'la constitution et le contrôle des dossiers'] },
 };
 const lien = (m) => `https://raime.fr/dossiers/rAIme-pre-audit-${m.preaudit}.pdf`;
 
@@ -73,7 +76,7 @@ export function brouillon(p) {
     segment: cle,
     sujet: `${nom} : j'ai préparé votre pré-audit`,
     corps: `Bonjour,\n\nEn regardant les ${m.pluriel}${ville ? ` à ${ville}` : ''}, je suis tombé sur ${nom}.\n\n`
-      + `Dans un${m.structure === 'étude' ? 'e' : ''} ${m.structure}, une bonne part de la semaine part dans des tâches qui reviennent : `
+      + `Dans un${['étude', 'agence'].includes(m.structure) ? 'e' : ''} ${m.structure}, une bonne part de la semaine part dans des tâches qui reviennent : `
       + `${m.taches[0]}, ${m.taches[1]}, ${m.taches[2]}. Une partie peut aujourd'hui être prise par des outils d'IA, avec vos logiciels actuels.\n\n`
       + `Alors je vous ai préparé un pré-audit pour votre métier : les tâches concernées, le temps qu'elles prennent, ce qu'un outil peut en prendre. Le voici :\n${lien(m)}\n\n`
       + `S'il vous parle, on prend vingt minutes pour l'appliquer à votre ${m.structure}. Sinon, vous n'avez rien à faire.\n\n`

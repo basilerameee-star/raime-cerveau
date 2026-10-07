@@ -6,7 +6,7 @@
 const PREAUDITS = [
   [/formation/i, 'organismes-formation'], [/comptab/i, 'experts-comptables'], [/avocat|notaire/i, 'avocats-notaires'],
   [/conseil/i, 'cabinets-conseil'], [/archi|b[âa]timent|construction/i, 'batiment-architecture'],
-  [/CCI|OPCO|f[ée]d[ée]ration|syndicat|chambre/i, 'federations-chambres'],
+  [/CCI|OPCO|f[ée]d[ée]ration|syndicat|chambre/i, 'federations-chambres'], [/immobili/i, 'immobilier'],
 ];
 
 function preaudit(secteur) {

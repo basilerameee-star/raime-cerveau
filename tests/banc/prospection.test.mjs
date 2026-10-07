@@ -19,7 +19,8 @@ test('chaque secteur ouvre son pré-audit publié ; un secteur sans pré-audit n
   assert.equal(p.preaudit('Cabinets comptables'), 'https://raime.fr/dossiers/rAIme-pre-audit-experts-comptables.pdf');
   assert.equal(p.preaudit('Cabinets d avocats'), 'https://raime.fr/dossiers/rAIme-pre-audit-avocats-notaires.pdf');
   assert.equal(p.preaudit('CCI'), 'https://raime.fr/dossiers/rAIme-pre-audit-federations-chambres.pdf');
-  assert.equal(p.preaudit('Immobilier'), null);
+  assert.equal(p.preaudit('Immobilier'), 'https://raime.fr/dossiers/rAIme-pre-audit-immobilier.pdf');
+  assert.equal(p.preaudit('Santé privée'), null);
 });
 
 test('un e-mail d’automatisation se valide avec son motif au journal ; la file le rend tel quel avec son pré-audit', async (t) => {
@@ -46,7 +47,7 @@ test('Héraut : le pré-audit du secteur, seul lien permis, est posé par le cod
   const avec = ajouterPreaudit(corps, 'Cabinets comptables');
   assert.match(avec, /pré-audit propre à votre secteur : https:\/\/raime\.fr\/dossiers\/rAIme-pre-audit-experts-comptables\.pdf\n\nBien cordialement,/);
   assert.equal(ajouterPreaudit(avec, 'Cabinets comptables'), avec, 'jamais deux fois');
-  assert.equal(ajouterPreaudit(corps, 'Immobilier'), corps, 'pas de pré-audit publié : rien d’inventé');
+  assert.equal(ajouterPreaudit(corps, 'Santé privée'), corps, 'pas de pré-audit publié : rien d’inventé');
 });
 
 test('e-mail d’automatisation (07/10/2026) : le même que celui des vitrines, avec le pré-audit du métier ; rien d’inventé', async () => {
@@ -60,7 +61,9 @@ test('e-mail d’automatisation (07/10/2026) : le même que celui des vitrines, 
   assert.ok(!/\d+\s*%|€/.test(b.corps), 'aucun chiffre ni prix hors du pré-audit');
   assert.equal(metierDe({ name: 'SELARL ETUDE MARTIN NOTAIRES', sector: 'Cabinets d avocats' }), 'Notaires');
   assert.equal(brouillon({ name: 'X', sector: 'Organismes de formation' }), null, 'les organismes de formation ne sont plus prospectés');
-  assert.equal(brouillon({ name: 'X', sector: 'Immobilier' }), null, 'pas de pré-audit publié : pas d’e-mail');
+  assert.equal(brouillon({ name: 'X', sector: 'Santé privée' }), null, 'pas de pré-audit publié : pas d’e-mail');
+  const im = brouillon({ name: 'AGENCE DU LAC', sector: 'Immobilier', city: 'ANNECY' });
+  assert.match(im.corps, /agences immobilières à Annecy[\s\S]*Dans une agence[\s\S]*rAIme-pre-audit-immobilier\.pdf/);
   assert.equal(joliNom('Agence du Lac'), 'Agence du Lac', 'un nom déjà bien écrit reste tel quel');
 });
 
