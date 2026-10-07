@@ -47,11 +47,18 @@ ZONE = re.compile(
     r"preverenges|st-sulpice|saint-sulpice|vufflens|gen[eè]ve|suisse romande|romandie|"
     r"paudex|ch[aâ]telaine|perly|acacias|etagni|signy|mies|plan-les|petit-lancy|grand-lancy|"
     r"annemasse|ville-la-grand|ambilly|gaillard|reignier|roche-sur-foron|bonneville|saint-julien-en-genevois|thonon|"
-    r"vaud|waadt|t[ée]l[ée]travail|remote|home office",
+    r"vaud|waadt|t[ée]l[ée]travail|remote|home office|"
+    # 07/10/2026 : toute la Suisse romande (Basile : « Suisse seulement, beaucoup plus d'offres »), Genève–Lausanne restant la priorité
+    r"yverdon|echallens|payerne|moudon|orbe|vallorbe|aigle|villeneuve|bex|ch[aâ]tel-st-denis|ch[aâ]tel-saint-denis|bulle|vuadens|"
+    r"fribourg|freiburg|granges-paccot|villars-sur-gl[aâ]ne|marly|romont|estavayer|morat|murten|"
+    r"neuch[aâ]tel|le locle|la chaux-de-fonds|marin|peseux|boudry|colombier|"
+    r"valais|wallis|sion|sierre|martigny|monthey|conthey|collombey|saint-maurice|st-maurice|"
+    r"jura|del[ée]mont|porrentruy|saignel[ée]gier",
     re.I,
 )
 EXCLU_TITRE = re.compile(
-    r"apprenti|apprentissage|lehr|stagiaire|stage\b|praktik|ing[ée]nieur|d[ée]veloppeur|developer|"
+    r"apprenti|apprentissage|lehr|stagiaire|stage\b|praktik|ing[ée]nieur(?! (commercial|de vente|d.affaires|des ventes))|"
+    r"(?<!business )d[ée]veloppeu|(?<!business )developer|"
     r"m[ée]decin|infirmi|pharmac|comptable|controller|juriste|avocat|chauffeur|cuisinier|"
     r"boulanger|boucher|poissonn|horloger\b|polydesign|électricien|electricien|mécanicien|"
     r"m[ée]canicien|monteur|technicien|nurse|kader|verkäufer|verkauf|berater/in|leiter",
@@ -103,6 +110,42 @@ def recherche(site, terme, lieu, pages=2):
         if p >= main.get("meta", {}).get("numPages", 1):
             return
         time.sleep(0.6)
+
+
+# Les métiers de Basile, lus dans le titre (vente, commercial, relation client, management des ventes, IA).
+METIER = re.compile(r"vendeu|vente|sales|client|conseill|commercia|business develop|account|store|magasin|boutique|retail|"
+                    r"caiss|customer|courtier|broker|repr[ée]sentant|g[ée]rant|chef de rayon|\bKAM\b|\bB2B\b|relation|"
+                    r"placement|recrut|personnel|t[ée]l[ée]vente|\b(IA|AI)\b|intelligence artificielle|charg[ée]e? d.affaires|"
+                    r"partnership|ambassad|promot|key holder|floor manager", re.I)
+
+
+# 07/10/2026 : au lieu de 20 termes × 9 lieux × 2 pages (≈720 pages, des offres manquées), un balayage complet des
+# annonces récentes de Suisse romande, tous métiers, toutes les pages : ≈10 fois moins de pages, rien de raté.
+# jobs.ch rate les lieux écrits avec le code postal quand on cherche par canton : on ajoute donc ses villes.
+CANTONS = ["Genève", "Vaud", "Fribourg", "Neuchâtel", "Valais", "Jura"]
+VILLES_JOBSCH = ["Lausanne", "Genève", "Fribourg", "Neuchâtel", "Sion", "Yverdon-les-Bains", "Vevey", "Montreux", "Nyon",
+                 "Morges", "Bulle", "Martigny", "Monthey", "Delémont", "La Chaux-de-Fonds", "Renens", "Sierre", "Payerne",
+                 "Aigle", "Gland"]
+RECHERCHE = {"jobup": "https://www.jobup.ch/fr/emplois/?", "jobs.ch": "https://www.jobs.ch/fr/offres-emplois/?"}
+
+
+def balayer(site, lieu, jours=3, pages_max=80):
+    """Toutes les annonces publiées depuis `jours` jours à `lieu` (le terme vide est obligatoire sur jobs.ch)."""
+    for p in range(1, pages_max + 1):
+        url = RECHERCHE[site] + urllib.parse.urlencode({"term": "", "location": lieu, "publication-date": jours, "page": p})
+        try:
+            d = etat_init(get(url))
+        except Exception as e:
+            print(f"  ! {site} {lieu} p{p}: {e}", file=sys.stderr)
+            return
+        if not d:
+            return
+        main = d["vacancy"]["results"].get("main", {})
+        for r in main.get("results", []):
+            yield r
+        if p >= main.get("meta", {}).get("numPages", 1):
+            return
+        time.sleep(0.5)
 
 
 def description(site, oid):
@@ -164,35 +207,33 @@ def main():
     detail = "--sans-detail" not in sys.argv
     base = json.loads(FICHIER.read_text(encoding="utf-8")) if FICHIER.exists() else {}
     vus = 0
-    for terme in TERMES:
-        for lieu in LIEUX:
-            for site in SITES:
-                for r in recherche(site, terme, lieu):
-                    vus += 1
-                    oid = r["id"]
-                    if oid in base:
-                        continue
-                    titre = r.get("title", "")
-                    if EXCLU_TITRE.search(titre):
-                        continue
-                    if "apprenticeship" in json.dumps(r.get("employmentPositionIds", [])):
-                        continue
-                    base[oid] = {
-                        "id": oid,
-                        "titre": titre,
-                        "entreprise": (r.get("company") or {}).get("name", ""),
-                        "lieu": r.get("place", ""),
-                        "taux": r.get("employmentGrades") or [],
-                        "contrat": CONTRATS.get((r.get("employmentTypeIds") or [""])[0], ""),
-                        "publie": (r.get("publicationDate") or "")[:10],
-                        "source": site,
-                        "lien": DETAIL[site].format(id=oid),
-                        "candidature_simplifiee": any(t.get("name") in ("quickApply", "easyApply")
-                                                      for t in r.get("listingTags", [])),
-                        "trouve_le": time.strftime("%Y-%m-%d"),
-                        "statut": "nouvelle",
-                    }
-            print(f"{terme} / {lieu} : {len(base)} offres en base", file=sys.stderr)
+    for site, lieu in [("jobup", c) for c in CANTONS] + [("jobs.ch", c) for c in CANTONS + VILLES_JOBSCH]:
+        for r in balayer(site, lieu):
+            vus += 1
+            oid = r["id"]
+            if oid in base:
+                continue
+            titre = r.get("title", "")
+            if EXCLU_TITRE.search(titre) or not METIER.search(titre):   # le balayage lit tous les métiers : on garde le sien
+                continue
+            if "apprenticeship" in json.dumps(r.get("employmentPositionIds", [])):
+                continue
+            base[oid] = {
+                "id": oid,
+                "titre": titre,
+                "entreprise": (r.get("company") or {}).get("name", ""),
+                "lieu": r.get("place", ""),
+                "taux": r.get("employmentGrades") or [],
+                "contrat": CONTRATS.get((r.get("employmentTypeIds") or [""])[0], ""),
+                "publie": (r.get("publicationDate") or "")[:10],
+                "source": site,
+                "lien": DETAIL[site].format(id=oid),
+                "candidature_simplifiee": any(t.get("name") in ("quickApply", "easyApply")
+                                              for t in r.get("listingTags", [])),
+                "trouve_le": time.strftime("%Y-%m-%d"),
+                "statut": "nouvelle",
+            }
+        print(f"{site} / {lieu} : {len(base)} offres en base", file=sys.stderr)
     if detail:
         for o in base.values():
             if "description" not in o and o["statut"] == "nouvelle" and ZONE.search(o["lieu"] or ""):

@@ -183,10 +183,15 @@ def collecte():
     sys.path.insert(0, str(ici))
     from canaux import canal_jobcloud
     from chasse import ZONE
-    vente = re.compile(r"vendeu|vente|sales|client advisor|conseill|commercial|business develop|account|store|magasin|boutique|"
+    # 07/10/2026 : + courtier, relation/service client, clientèle, représentant, B2B, KAM, private client, customer success ;
+    # « Business Developer », « Sales Engineer » et « ingénieur commercial » ne sont plus écartés
+    vente = re.compile(r"vendeu|vente|sales|client advisor|conseill|commercia|business develop|account|store|magasin|boutique|"
                        r"retail|caiss|h[ôo]te|customer|key holder|ambassad|promot|recrut|placement|personnel|\bIA\b|\bAI\b|"
-                       r"intelligence artificielle|automati|t[ée]l[ée]vente|chef de rayon|floor manager|trainee", re.I)
-    non = re.compile(r"CFC|AFP|apprenti|stagiaire|stage|intern\b|internship|engineer|ing[ée]nieur|d[ée]veloppeu|developer|"
+                       r"intelligence artificielle|automati|t[ée]l[ée]vente|chef de rayon|floor manager|trainee|courtier|broker|"
+                       r"relation client|service client|client[eè]le|contact ?cent|repr[ée]sentant|\bB2B\b|\bKAM\b|private client|"
+                       r"relationship manager|client manager|charg[ée]e? d.affaires|partnership", re.I)
+    non = re.compile(r"CFC|AFP|apprenti|stagiaire|stage|intern\b|internship|(?<!sales )engineer|"
+                     r"ing[ée]nieur(?! (commercial|de vente|d.affaires|des ventes))|(?<!business )d[ée]veloppeu|(?<!business )developer|"
                      r"technicien|logisti|magasinier|chauffeur|cuisin|boulang|bouch|poissonn|nurse|infirm|m[ée]decin|pharma|"
                      r"comptab|accountant|controller|finance|trader|juris|avocat|verk[äa]uf|mitarbeiter|berater|leiter|"
                      r"deutsch|german|horloger\b|postdoc|phd|doctora|professeur|teaching", re.I)

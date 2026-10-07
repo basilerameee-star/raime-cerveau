@@ -13,8 +13,10 @@ FAITS = [
     (r"allemand|german|deutsch|suisse[- ]allemand|schwiizer|italien|italian", "Non"),
     (r"permis de conduire|v[ée]hicule|voiture", "Oui"),
     (r"r[ée]sidez .*(suisse|frontali)|r[ée]gions? frontali|frontalier", "Oui"),
-    # aucune expérience professionnelle en Suisse (pas de permis G) : jamais « Oui » à une expérience située en Suisse (06/10/2026)
-    (r"exp[ée]rience.{0,120}(en suisse|in der schweiz|switzerland|march[ée] suisse)|(en suisse|switzerland).{0,60}exp[ée]rience", "Non"),
+    # quelques mois seulement en Suisse (Lazoona, Lausanne ; Adecco, intérim) : jamais « Oui » à des ANNÉES d'expérience
+    # en Suisse (06-07/10/2026) ; une expérience suisse sans durée reste « Oui » (elle existe)
+    (r"(\d+|un|une|plusieurs|quelques)\s*(ans?|ann[ée]es?|years?)\b.{0,120}(en suisse|in der schweiz|switzerland|march[ée] suisse)|"
+     r"(en suisse|switzerland|march[ée] suisse).{0,80}(\d+|plusieurs)\s*(ans?|ann[ée]es?|years?)\b", "Non"),
     (r"permis de travail|autorisation de travail|work permit|citoyen.*(ue|union europ)", "Oui"),
     (r"(ma[îi]trise|parlez|niveau|courant).*(fran[çc]ais|anglais|english|french)|bilingue|fran[çc]ais et .*anglais", "Oui"),
     (r"espagnol|spanish", "Oui"),
