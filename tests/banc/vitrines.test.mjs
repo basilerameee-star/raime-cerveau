@@ -292,3 +292,30 @@ test('01/10/2026 : une fiche sans téléphone ni e-mail cherche son numéro sur 
   assert.deepEqual([rows[0].statut, rows[0].telephone], ['a_appeler', '04 50 11 22 33']);
   assert.deepEqual([rows[1].statut, rows[1].motif], ['ecarte', 'ni téléphone ni e-mail trouvés']);
 });
+
+test('héros v3 (07/10/2026) : plein écran, nom en serif, polices hébergées par le Cockpit, rien d’inventé ; v2 inchangée', async () => {
+  const { maquettePremium } = await import('../../agents/maquette_premium.js');
+  const v = { nom: 'Bulle de beauté', metier: 'institut de beauté', ville: 'Annecy', adresse: '3 rue X, Annecy', telephone: '04 50 00 00 00' };
+  const h = maquettePremium({ ...v, horaires: ['Lun. au ven. : 9 h–19 h'] }, { images: 'https://cockpit.raime.fr/demo/img', v3: true });
+  assert.match(h, /<header class="hero">/);
+  assert.match(h, /https:\/\/cockpit\.raime\.fr\/demo\/police\/InstrumentSerif-Regular\.woff2/);
+  assert.ok(!/fonts\.googleapis|gstatic/.test(h), 'aucun appel à Google');
+  assert.match(h, /<dt>Horaires<\/dt>/);
+  assert.match(h, /Prendre rendez-vous/);
+  const sansHoraires = maquettePremium(v, { images: 'https://cockpit.raime.fr/demo/img', v3: true });
+  const heros = sansHoraires.slice(sansHoraires.indexOf('<header class="hero">'), sansHoraires.indexOf('</header>'));
+  assert.ok(heros.length > 100 && !/<dt>Horaires<\/dt>/.test(heros), 'horaires inconnus : pas d’horaires inventés dans le héros');
+  const v2 = maquettePremium(v, { images: 'https://cockpit.raime.fr/demo/img' });
+  assert.ok(!/class="hero"/.test(v2) && /class="w intro"/.test(v2), 'la maquette en ligne ne change pas avant validation');
+});
+
+test('les polices des maquettes : servies avec CORS ouvert ; un nom inattendu est refusé', async () => {
+  const { createRequire } = await import('node:module');
+  const vitrines = createRequire(import.meta.url)('../../jarvis/vitrines.cjs');
+  const { PassThrough } = await import('node:stream');
+  const reponse = () => { const r = new PassThrough(); r.resume(); r.writeHead = (c, e) => { r.code = c; r.entetes = e; }; return r; };
+  const ok = reponse(); vitrines.servirPolice('InstrumentSerif-Regular.woff2', ok);
+  assert.equal(ok.code, 200); assert.equal(ok.entetes['Access-Control-Allow-Origin'], '*'); assert.equal(ok.entetes['Content-Type'], 'font/woff2');
+  const ko = reponse(); vitrines.servirPolice('../../coffre.woff2', ko);
+  assert.equal(ko.code, 404);
+});

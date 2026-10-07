@@ -99,9 +99,10 @@ async function servirTuile(z, x, y, res, { fetch = globalThis.fetch } = {}) {
 // La simple n'a aucun script. La premium peut animer (scripts en ligne), mais dans une origine opaque (sandbox sans
 // allow-same-origin) et sans aucun accès au réseau : elle ne lit rien du Cockpit et ne charge rien dehors.
 const IMAGES = "img-src data: https://cockpit.raime.fr";
-const CSP_SIMPLE = `sandbox allow-popups allow-popups-to-escape-sandbox; default-src 'none'; style-src 'unsafe-inline'; ${IMAGES}`;
+const POLICES = "font-src https://cockpit.raime.fr";   // polices hébergées par le Cockpit (héros v3, 07/10/2026)
+const CSP_SIMPLE = `sandbox allow-popups allow-popups-to-escape-sandbox; default-src 'none'; style-src 'unsafe-inline'; ${IMAGES}; ${POLICES}`;
 const CSP_PREMIUM = "sandbox allow-scripts allow-popups allow-popups-to-escape-sandbox; default-src 'none'; script-src 'unsafe-inline'; "
-  + `style-src 'unsafe-inline'; ${IMAGES}; font-src data:; media-src data:`;
+  + `style-src 'unsafe-inline'; ${IMAGES}; font-src data: https://cockpit.raime.fr; media-src data:`;
 async function servirDemo(slug, res) {
   let r = [];
   if (/^[a-z0-9-]{3,60}$/.test(slug)) {
@@ -111,6 +112,29 @@ async function servirDemo(slug, res) {
   res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex',
     'Content-Security-Policy': r[0].premium ? CSP_PREMIUM : CSP_SIMPLE, 'X-Content-Type-Options': 'nosniff' });
   res.end(r[0].demo_html);
+}
+
+// Les polices des maquettes (Inter, Instrument Serif : licences OFL dans jarvis/interface/polices/), servies d'ici pour
+// qu'aucun visiteur d'une maquette ne soit envoyé chez Google. La page est « sandbox » (origine nulle) : CORS ouvert.
+const DOSSIER_POLICES = path.join(__dirname, 'interface', 'polices');
+function servirPolice(nom, res) {
+  const f = path.join(DOSSIER_POLICES, nom);
+  if (!/^[A-Za-z-]+\.woff2$/.test(nom) || !fs.existsSync(f)) { res.writeHead(404); res.end(); return; }
+  res.writeHead(200, { 'Content-Type': 'font/woff2', 'Cache-Control': 'public, max-age=31536000, immutable',
+    'Access-Control-Allow-Origin': '*', 'X-Content-Type-Options': 'nosniff' });
+  fs.createReadStream(f).pipe(res);
+}
+
+// L'APERÇU du héros v3 (07/10/2026) : la maquette d'un commerce refaite à la volée avec le nouveau gabarit, à l'adresse
+// /demo/v3/<slug>, SANS toucher à la maquette en ligne (demo_html) que le commerçant a reçue. Basile valide, puis on bascule.
+async function servirApercu(slug, res) {
+  const r = /^[a-z0-9-]{3,60}$/.test(slug) ? await lire('SELECT * FROM vitrines WHERE slug = $1 AND demo_html IS NOT NULL', [slug]).catch(() => []) : [];
+  if (!r[0]) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end('Cette page n’existe pas ou plus.'); return; }
+  const { maquettePremium } = await import(require('url').pathToFileURL(path.join(__dirname, 'maquette_premium.mjs')).href);
+  const html = maquettePremium(r[0], { images: 'https://cockpit.raime.fr/demo/img', v3: true });
+  res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex',
+    'Content-Security-Policy': CSP_SIMPLE, 'X-Content-Type-Options': 'nosniff' });
+  res.end(html);
 }
 
 // La fiche d'un commerce, pour l'interface : tout ce qu'il faut pour décider d'appeler.
@@ -216,4 +240,4 @@ Vitrines, envoi ${mode} : ${e.en_file} en file, ${e.envoyes_aujourdhui} parti(s)
     + `${e.envoyes} en tout, ${e.essais} essai(s)${e.refuses ? `, ${e.refuses} refusé(s)` : ''}.`;
 }
 
-module.exports = { LIEN_PAIEMENT, servirDemo, servirImage, servirTuile, remplirPhotos, fiche, liste, uneFiche, agir, envoi, changerMode, phraseEnvoi, MODES };
+module.exports = { LIEN_PAIEMENT, servirDemo, servirApercu, servirPolice, servirImage, servirTuile, remplirPhotos, fiche, liste, uneFiche, agir, envoi, changerMode, phraseEnvoi, MODES };

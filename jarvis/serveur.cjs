@@ -247,6 +247,8 @@ async function router(req, res) {
   // Les vitrines (agents/vitrines.js) : la maquette publique, la liste, la fiche d'un commerce, les gestes de Basile.
   if (m === 'GET' && (r = url.match(/^\/demo\/img\/([a-z0-9-]+)\/([1-9])\.jpg$/))) return vitrines.servirImage(r[1], Number(r[2]), res);
   if (m === 'GET' && (r = url.match(/^\/demo\/tuile\/(\d+)\/(\d+)\/(\d+)\.png$/))) return vitrines.servirTuile(Number(r[1]), Number(r[2]), Number(r[3]), res);
+  if (m === 'GET' && (r = url.match(/^\/demo\/police\/([A-Za-z-]+\.woff2)$/))) return vitrines.servirPolice(r[1], res);
+  if (m === 'GET' && (r = url.match(/^\/demo\/v3\/([a-z0-9-]+)\/?$/))) return vitrines.servirApercu(r[1], res);
   if (m === 'GET' && (r = url.match(/^\/demo\/([a-z0-9-]+)\/?$/))) return vitrines.servirDemo(r[1], res);
   // TikTok (Login Kit) : Basile connecte le compte de la marque ; l'accès va au coffre, jamais à l'écran.
   if (m === 'GET' && url === '/tiktok/connecter') {
