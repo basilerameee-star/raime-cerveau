@@ -144,7 +144,11 @@ def postuler(page, source, oid, cv, lettre, code_postal="74100", envoyer=True, t
 
     # 5. vérification
     page.get_by_role("button", name="Continuer").click()
-    page.wait_for_url(re.compile(r"/application/preview/"), timeout=20000)
+    try:
+        page.wait_for_url(re.compile(r"/application/preview/"), timeout=30000)
+    except Exception:
+        trop_vite(page)
+        raise
     page.wait_for_timeout(2500)
     verif = page.locator("main").inner_text()
     morceau = next((p for p in texte_lettre.split("\n\n")[1:] if p.strip()), texte_lettre)[:50]
@@ -165,5 +169,21 @@ def postuler(page, source, oid, cv, lettre, code_postal="74100", envoyer=True, t
 
     # 6. envoi + 7. preuve
     page.get_by_role("button", name="Envoyer ma candidature").click()
-    page.wait_for_url(re.compile(r"/application/ok/"), timeout=30000)
+    try:
+        page.wait_for_url(re.compile(r"/application/ok/"), timeout=45000)
+    except Exception:
+        # 07/10/2026 : jobup a refusé un envoi (« Trop de requêtes. Veuillez réessayer. ») et renvoyé au formulaire :
+        # rien n'est parti. On le dit tel quel pour que l'Envoyeur fasse une pause au lieu de compter un échec.
+        trop_vite(page)
+        raise
     return {"envoye": True, "url": page.url, "quand": time.strftime("%d.%m.%Y %H:%M"), "reponses": recap}
+
+
+def trop_vite(page):
+    try:
+        if page.get_by_text(re.compile("Trop de requêtes|Too many requests|Zu viele Anfragen", re.I)).count():
+            raise AToi("trop_de_requetes", "jobup demande d'attendre : rien n'est parti")
+    except AToi:
+        raise
+    except Exception:
+        pass

@@ -166,13 +166,17 @@ def passage():
                 with (DONNEES / "erreurs.log").open("a", encoding="utf-8") as fl:
                     fl.write(time.strftime("%Y-%m-%d %H:%M ") + f["id"] + "\n" + traceback.format_exc() + "\n")
             dire(f"{r['statut']:10} {f['titre'][:60]} — {f['entreprise'][:30]}")
+            if r["statut"] == "trop_de_requetes":
+                # jobup demande d'attendre (07/10/2026) : rien n'est parti, l'offre reste validée sans compter un échec ;
+                # le passage s'arrête et reprend dans 15 minutes.
+                break
             try:
                 jarvis("/envoyeur/resultat", r)
             except Exception as e:
                 dire(f"  résultat non transmis : {e}")
             if r["statut"] == "reconnexion":
                 break
-            time.sleep(20)
+            time.sleep(90)                                 # 20 s ne suffisaient pas : « Trop de requêtes » au 4e envoi
         ctx.close()
 
 
