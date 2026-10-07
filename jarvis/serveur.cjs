@@ -226,9 +226,11 @@ async function router(req, res) {
   if (await prospection.router(req, res, { url, m, envoyer, json, autorise, fichierInterface })) return;
   // Le clip farming de KinGKlip : demandes de découpe, clips prêts, liens publiés (jarvis/clips.cjs).
   if (await require('./clips.cjs').router(req, res, { url, m, envoyer, json, fichierInterface })) return;
-  if (m === 'GET' && (url === '/' || url === '/jarvis' || url === '/index.html')) return fichierInterface(res, 'index.html');
+  // 07/10/2026 : le tableau de bord EST la 3D (demande de Basile) ; l'ancienne page reste à /jarvis/classique,
+  // liée depuis le menu ··· et proposée quand l'appareil n'a pas WebGL 2. Retour arrière : rétablir ces deux lignes.
+  if (m === 'GET' && (url === '/' || url === '/jarvis' || url === '/jarvis3d')) return servir3d(req, res, path.join(TROIS_D, 'index.html'), false);
+  if (m === 'GET' && (url === '/jarvis/classique' || url === '/index.html')) return fichierInterface(res, 'index.html');
   // La 3D, à côté de la page actuelle jusqu'à l'accord de Basile (note 20, étapes 7 à 9) : / et /jarvis ne changent pas.
-  if (m === 'GET' && url === '/jarvis3d') return servir3d(req, res, path.join(TROIS_D, 'index.html'), false);
   if (m === 'GET' && url.startsWith('/3d/')) return fichier3d(req, res, url);
   if (m === 'GET' && url === '/api/reseau') return envoyer(res, 200, await reseau.reseau());
   if (m === 'GET' && /^\/(coffre\.html|manifest\.webmanifest|icone\.svg)$/.test(url)) return fichierInterface(res, url.slice(1));
