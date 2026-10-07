@@ -8,6 +8,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const zlib = require('zlib');
 const { lire, lireN8n, preparer, lireCoffre, rangerCoffre } = require('./bases.cjs');
 const esprit = require('./esprit.cjs');
 const relais = require('./relais.cjs');
@@ -19,6 +20,7 @@ const vitrines = require('./vitrines.cjs');
 const tiktok = require('./tiktok.cjs');
 const candidatures = require('./candidatures.cjs');
 const prospection = require('./prospection.cjs');
+const reseau = require('./reseau.cjs');
 const { repondreSansFrais } = require('./parole.cjs');
 
 const ICI = __dirname;
@@ -71,6 +73,46 @@ function fichierInterface(res, nom) {
   res.writeHead(200, { 'Content-Type': TYPES[path.extname(chemin)] || 'application/octet-stream', 'Cache-Control': 'no-cache',
     'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer' });
   fs.createReadStream(chemin).pipe(res);
+}
+
+// ── La 3D (07/10/2026, note 20) : /jarvis3d et ses fichiers sous /3d/ ──────────────────────────────────────────
+// Liste blanche stricte (extensions connues, « .. » refusé), empreinte de version (ETag → 304) et gzip gardés en
+// mémoire : la page passe d'environ 1,07 Mo à 330 Ko, et rien n'est retéléchargé tant qu'un fichier n'a pas changé.
+// Sans toucher au Caddyfile. vendor/ (Three.js r180, figé par ses empreintes) et la police partent en cache long :
+// changer de version de Three.js, c'est changer de dossier. La police Inter est celle de interface/polices/ (même
+// empreinte que chez Codex), servie sous /3d/polices/.
+const TROIS_D = path.join(INTERFACE, '3d');
+const FICHIER_3D = /^\/3d\/[\w./-]+\.(js|css|json|woff2|txt)$/;
+const COMPRESSIBLE = /\.(html|js|css|json|txt)$/;
+const memoire3d = new Map();   // chemin → { cle (date et taille), etag, brut, gz }
+function servir3d(req, res, chemin, cacheLong) {
+  let st; try { st = fs.statSync(chemin); } catch (e) { res.writeHead(404); res.end(); return; }
+  if (!st.isFile()) { res.writeHead(404); res.end(); return; }
+  const cle = st.mtimeMs + ':' + st.size;
+  let f = memoire3d.get(chemin);
+  if (!f || f.cle !== cle) {
+    const brut = fs.readFileSync(chemin);
+    f = { cle, brut, etag: '"' + crypto.createHash('sha256').update(brut).digest('hex').slice(0, 20) + '"',
+      gz: COMPRESSIBLE.test(chemin) ? zlib.gzipSync(brut, { level: 9 }) : null };
+    memoire3d.set(chemin, f);
+  }
+  const entetes = { ETag: f.etag, 'Cache-Control': cacheLong ? 'private, max-age=2592000' : 'no-cache', Vary: 'Accept-Encoding',
+    'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer' };
+  if ((req.headers['if-none-match'] || '').split(/\s*,\s*/).includes(f.etag)) { res.writeHead(304, entetes); res.end(); return; }
+  const gz = f.gz && /\bgzip\b/.test(req.headers['accept-encoding'] || '');
+  const corps = gz ? f.gz : f.brut;
+  res.writeHead(200, { ...entetes, 'Content-Type': TYPES[path.extname(chemin)] || 'application/octet-stream', 'Content-Length': corps.length,
+    ...(gz ? { 'Content-Encoding': 'gzip' } : {}) });
+  res.end(corps);
+}
+function fichier3d(req, res, url) {
+  if (url.includes('..') || url.includes('//')) { res.writeHead(403); res.end(); return; }
+  if (!FICHIER_3D.test(url)) { res.writeHead(404); res.end(); return; }
+  const rel = url.slice('/3d/'.length);
+  const racine = rel.startsWith('polices/') ? INTERFACE : TROIS_D;
+  const chemin = path.resolve(racine, rel);
+  if (!chemin.startsWith(racine + path.sep)) { res.writeHead(403); res.end(); return; }
+  return servir3d(req, res, chemin, /^(vendor|polices)\//.test(rel));
 }
 
 // Les livrables d'Hermes, en lecture seule : /livrables et /livrables/demande-12/app/index.html
@@ -185,6 +227,10 @@ async function router(req, res) {
   // Le clip farming de KinGKlip : demandes de découpe, clips prêts, liens publiés (jarvis/clips.cjs).
   if (await require('./clips.cjs').router(req, res, { url, m, envoyer, json, fichierInterface })) return;
   if (m === 'GET' && (url === '/' || url === '/jarvis' || url === '/index.html')) return fichierInterface(res, 'index.html');
+  // La 3D, à côté de la page actuelle jusqu'à l'accord de Basile (note 20, étapes 7 à 9) : / et /jarvis ne changent pas.
+  if (m === 'GET' && url === '/jarvis3d') return servir3d(req, res, path.join(TROIS_D, 'index.html'), false);
+  if (m === 'GET' && url.startsWith('/3d/')) return fichier3d(req, res, url);
+  if (m === 'GET' && url === '/api/reseau') return envoyer(res, 200, await reseau.reseau());
   if (m === 'GET' && /^\/(coffre\.html|manifest\.webmanifest|icone\.svg)$/.test(url)) return fichierInterface(res, url.slice(1));
   if (m === 'GET' && url === '/coffre') return fichierInterface(res, 'coffre.html');
   if (m === 'GET' && (url === '/livrables' || url.startsWith('/livrables/'))) return livrables(req, res);

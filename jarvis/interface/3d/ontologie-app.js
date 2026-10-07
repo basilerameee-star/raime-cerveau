@@ -156,4 +156,4 @@ try{
   const {SceneOntologie}=await import('./ontologie-scene.js');
   scene=new SceneOntologie({canvas:$('company-map'),onSelect:choose,onHover:hover,onFrame:placeLabels,onMetrics:m=>{$('render-metrics').textContent=`${graph.branches.length} pôles · ${graph.nodes.length} éléments · ${Number(m.drawMs||0).toFixed(1)} ms de rendu`;},onError:unavailable});
   scene.setGraph(graph);scene.setExplode(Number($('explode-range').value)/100);scene.setConnectionsVisible($('toggle-connections').getAttribute('aria-pressed')==='true');new ResizeObserver(()=>{scene.resize();placeLabels();}).observe($('map-zone'));
-}catch{unavailable();}
+}catch{$('scene').dataset.sans3d='true';unavailable();}

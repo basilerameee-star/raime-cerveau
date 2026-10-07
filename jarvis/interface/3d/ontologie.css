@@ -84,6 +84,8 @@ body[data-etat=reflexion] #anneaux .tourne{animation-duration:6s}body[data-etat=
 .spatial-label[data-status=RUNNING] i{background:var(--ambre)}.spatial-label[data-status=OFFLINE] i{background:var(--rouge)}
 .detail-status[data-status=RUNNING]{color:var(--ambre)}.detail-status[data-status=OFFLINE]{color:var(--rouge)}
 #webgl-error .bouton{display:inline-block;margin-top:15px;padding:10px 15px}
+/* Sans WebGL 2 : les commandes de la caméra n'ont rien à piloter, elles laissent la place au message et au répertoire. */
+#scene[data-sans3d=true] :is(#atlas-controls,#view-switch,.map-tools,#free-camera-guide,#navigation-help,#render-metrics){display:none}
 /* Tiroirs : titres, À appeler, e-mails, capacités, vitrines (mêmes gestes que la page actuelle). */
 .tiroir header h2{margin:0;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}.tiroir header h2 small{font-size:10px;font-weight:400;color:var(--doux)}
 .tiroir .corps{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain}
