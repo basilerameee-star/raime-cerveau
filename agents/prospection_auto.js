@@ -116,10 +116,13 @@ export const motsDuNom = (nom) => SANS_ACCENTS(joliNom(nom)).split(/[^a-z0-9]+/)
 export async function preparer({ n8n, brain, combien = 14 } = {}) {
   const exclus = new Set((await brain.query(`SELECT siren FROM appels WHERE etat = 'pas_interesse'`).catch(() => ({ rows: [] }))).rows.map((r) => r.siren));
   await n8n.query('ALTER TABLE prospects ADD COLUMN IF NOT EXISTS site_preuve text');
+  await n8n.query('ALTER TABLE prospects ADD COLUMN IF NOT EXISTS furete_note text');
   // le site ne fait foi que si le Fureteur l'a prouvé (SIREN ou nom et ville sur ses pages) : l'ancien prenait le 1er lien d'un moteur
   const { rows } = await n8n.query(`SELECT p.siren, p.name, p.sector, p.city, p.contact_email,
       CASE WHEN p.site_preuve IS NOT NULL THEN p.website END AS website FROM prospects p
     WHERE p.status = 'nouveau' AND coalesce(p.contact_email, '') LIKE '%@%'
+      -- 07/10/2026 : seulement une adresse LUE sur le site prouvé de l'entreprise (Fureteur) ; l'ancien en devinait (contact@domaine)
+      AND p.site_preuve IS NOT NULL AND p.furete_note LIKE 'adresse sur le site%'
       AND (p.sector = ANY($1::text[]) OR p.name ~* 'notaire|notarial')
       -- à but lucratif seulement (Basile, 07/10) : ni associations (AGC, Cerfrance…), ni ordres, chambres ou syndicats
       AND p.name !~* '(^|[^a-z])(assoc|association|agc|cerfrance|syndicat|f[ée]d[ée]ration|chambre|ordre des|union|mutuelle|coop[ée]rative)([^a-z]|$)'
