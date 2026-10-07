@@ -400,6 +400,41 @@ UI = {
 }
 
 STYLE = """
+/* L'AUDIT EN CARTE ANIMÉE (02/10/2026) : le fil de lumière, le classement des tâches, le plan qui se remplit. */
+.pa-etapes{margin-top:40px!important}
+.pa-etapes{list-style:none;padding:0;margin:0 0 44px;display:grid;grid-template-columns:repeat(4,1fr);gap:0;position:relative}
+.pa-etapes::before{content:"";position:absolute;left:12%;right:12%;top:17px;height:1px;background:rgba(255,255,255,.18);transform-origin:left;transform:scaleX(0);animation:pa-trace 1.4s cubic-bezier(.16,1,.3,1) .2s forwards}
+.pa-etapes::after{content:"";position:absolute;left:12%;top:15px;width:42px;height:5px;border-radius:5px;background:radial-gradient(closest-side,#fff,rgba(255,255,255,0));opacity:0;animation:pa-lumiere 3.2s linear 1.6s infinite}
+.pa-etapes li{position:relative;text-align:center;padding:0 10px;opacity:0;transform:translateY(12px);animation:pa-monte .8s cubic-bezier(.16,1,.3,1) calc(.25s + var(--k)*.22s) forwards}
+.pa-n{display:inline-grid;place-items:center;width:34px;height:34px;border-radius:50%;border:1px solid rgba(255,255,255,.4);background:#000;position:relative;z-index:1;
+  font:500 12px ui-monospace,"SF Mono",Menlo,Consolas,monospace;margin-bottom:14px;animation:pa-allume .9s ease calc(1.6s + var(--k)*.8s) 1 both}
+.pa-etapes b{display:block;font-size:18px;font-weight:600;letter-spacing:-.01em}
+.pa-etapes small{display:block;margin-top:6px;font-size:13px;line-height:1.4;color:#a6a6a6}
+.pa-deux{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:40px;padding-top:30px;border-top:1px solid rgba(255,255,255,.12)}
+.pa-doutes{list-style:none;padding:0;margin:14px 0 0}
+.pa-doutes li{padding:14px 0;border-bottom:1px solid rgba(255,255,255,.08);font-size:17px;line-height:1.35;cursor:help}
+.pa-texte{color:#a6a6a6;position:relative;transition:color .4s}
+.pa-texte.pa-repondu{color:#fff}
+.pa-texte::after{content:"";position:absolute;left:0;right:0;top:55%;height:1px;background:#a6a6a6;transform:scaleX(0);transform-origin:left;transition:transform .5s cubic-bezier(.65,0,.35,1)}
+.pa-texte.pa-barre::after{transform:scaleX(1)}
+.pa-texte.pa-repondu::after{transform:scaleX(0);transition:none}
+.pa-jours{margin:12px 0 18px;font-size:16px;color:#a6a6a6}
+.pa-jours b{display:inline-block;min-width:2ch;font-size:clamp(56px,6vw,84px);font-weight:600;letter-spacing:-.05em;line-height:1;color:#fff;font-variant-numeric:tabular-nums;margin-right:6px}
+.pa-recu{font-size:17px;line-height:1.4;color:#fff;min-height:1.4em}
+.pa-recu--2{color:#a6a6a6;margin-top:8px}
+@keyframes pa-trace{to{transform:scaleX(1)}}
+@keyframes pa-monte{to{opacity:1;transform:none}}
+@keyframes pa-apparait{to{opacity:1}}
+@keyframes pa-allume{50%{border-color:#fff;box-shadow:0 0 18px rgba(255,255,255,.55)}}
+@keyframes pa-lumiere{0%{left:12%;opacity:0}8%{opacity:1}92%{opacity:1}100%{left:calc(88% - 42px);opacity:0}}
+@media (max-width:760px){
+  .pa-etapes{grid-template-columns:1fr;gap:22px;text-align:left}
+  .pa-etapes::before,.pa-etapes::after{display:none}
+  .pa-etapes li{text-align:left;display:grid;grid-template-columns:44px 1fr;column-gap:12px;padding:0}
+  .pa-n{grid-row:span 2;margin:0}
+  .pa-deux{grid-template-columns:1fr;gap:28px}
+}
+@media (prefers-reduced-motion:reduce){.pa *,.pa *::before,.pa *::after,.pa-etapes::before,.pa-etapes::after{animation-duration:.01ms!important;animation-delay:0s!important;animation-iteration-count:1!important}}
 @font-face{font-family:Inter;font-style:normal;font-weight:100 900;font-display:swap;src:url(/fonts/InterVariable.woff2) format("woff2")}
 @font-face{font-family:Inter;font-style:italic;font-weight:400;font-display:swap;src:url(/fonts/Inter-Italic-400.woff2) format("woff2")}
 :root{--encre:#ececec; --texte:#dfe5ee; --gris:#c3ccda; --trait:rgba(255,255,255,.14); --doux:cubic-bezier(.22,1,.36,1)}
@@ -1106,11 +1141,45 @@ JS = """
   // La fenetre « Comment ça marche » des tarifs : le Score rAIme, dans la langue du moment.
   function score(oui, quoi){
     var m = document.getElementById("pc-score"); if(!m) return false;
-    if(oui) document.getElementById("pc-score-contenu").innerHTML = LANGUES[LANGUE].S[quoi] || LANGUES[LANGUE].S.arbitrage;
+    if(oui){ document.getElementById("pc-score-contenu").innerHTML = LANGUES[LANGUE].S[quoi] || LANGUES[LANGUE].S.arbitrage; animer(document.getElementById("pc-score-contenu")); }
     m.classList.toggle("pc-ouvert", oui); m.setAttribute("aria-hidden", oui ? "false" : "true");
     document.documentElement.style.overflow = oui ? "hidden" : "";
     if(oui){ var f = m.querySelector("[data-score-fermer]"); if(f) f.focus(); }
     return true;
+  }
+  // ?ouvrir=audit (ou arbitrage) : la fenêtre « Comment ça marche » s'ouvre d'elle-même, pour un lien à envoyer
+  setTimeout(function(){ var q = (location.search.match(/[?&]ouvrir=(audit|arbitrage)(?:&|$)/) || [])[1]; if(q) score(true, q); }, 700);
+  // Le mouvement sur le texte et les chiffres (02/10/2026) : un chiffre monte jusqu'à sa valeur ; un texte
+  // s'écrit en se brouillant ; un doute se barre, puis se réécrit en notre réponse.
+  var SIGNES = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#%+=";
+  function brouiller(el, cible, duree, fin){
+    var t0 = performance.now(), dep = el.textContent;
+    (function pas(){
+      var f = Math.min(1, (performance.now() - t0) / duree), n = Math.floor(cible.length * f), s = cible.slice(0, n);
+      for(var i = n; i < cible.length; i++) s += cible[i] === " " ? " " : SIGNES[(Math.random() * SIGNES.length) | 0];
+      el.textContent = f < 1 ? s : cible;
+      if(f < 1) requestAnimationFrame(pas); else if(fin) fin();
+    })();
+  }
+  function animer(racine){
+    var doux = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    [].forEach.call(racine.querySelectorAll("[data-compte]"), function(b){
+      var v = +b.getAttribute("data-compte"), t0 = 0;
+      if(doux){ b.textContent = v; return; }
+      setTimeout(function(){ t0 = performance.now(); (function pas(){
+        var f = Math.min(1, (performance.now() - t0) / 1800), e = 1 - Math.pow(2, -10 * f);
+        b.textContent = Math.round(v * (f >= 1 ? 1 : e)); if(f < 1) requestAnimationFrame(pas); })(); }, 1500);
+    });
+    [].forEach.call(racine.querySelectorAll("[data-ecrit]"), function(p, k){
+      var txt = p.textContent; if(doux) return; p.textContent = "";
+      setTimeout(function(){ brouiller(p, txt, 900); }, 2300 + k * 500);
+    });
+    [].forEach.call(racine.querySelectorAll("[data-de]"), function(s){
+      var k = +s.getAttribute("data-k"), vers = s.getAttribute("data-vers");
+      if(doux){ s.textContent = vers; s.classList.add("pa-repondu"); return; }
+      setTimeout(function(){ s.classList.add("pa-barre"); }, 1700 + k * 650);
+      setTimeout(function(){ s.classList.add("pa-repondu"); brouiller(s, vers, 800); }, 2300 + k * 650);
+    });
   }
   function reserver(oui){
     var m = document.getElementById("pc-rdv"); if(!m) return false;
@@ -1747,7 +1816,16 @@ AUDIT_TEXTES = {
     garanties=["Chaque chiffre porte son origine : mesuré chez vous, déclaré par vous, ou estimé. Une estimation "
                "est toujours signalée.",
                "Chaque gain a un indice de confiance, haut, moyen ou faible, selon la qualité des données.",
-               "L'audit sait dire non : une tâche qui ne se rembourse pas est déconseillée."]),
+               "L'audit sait dire non : une tâche qui ne se rembourse pas est déconseillée."],
+    # la carte animée (02/10/2026) : les mêmes informations, un mot et une ligne par nœud
+    courts=["Vos tâches répétitives, une par une", "Temps × fréquence × pénibilité", "Données, outils, risque",
+            "En heures et en euros par an"],
+    taches="8 tâches, avant et après le classement", top="Les 3 premières : votre plan",
+    plan_mono="Votre plan d'action", plan=["Gains rapides", "Chantiers de fond", "Optimisation"], jours="jours",
+    garanties_courtes=["Chaque chiffre dit d'où il vient", "Un indice de confiance par gain", "L'audit sait dire non"],
+    doutes_mono="Pourquoi on hésite", doutes=["« Ces chiffres sont gonflés. »", "« Ça ne marchera pas chez nous. »",
+                                              "« On va me vendre quelque chose. »"],
+    recu_mono="Ce que vous recevez", recu=["Les gains classés, tâche par tâche", "Gains rapides, chantiers de fond, optimisation"]),
   "en": dict(
     mono="How it works", titre="Your job audit, in <em>four steps.</em>",
     intro="One question: where does AI save you time, and how much? Every gain is quantified, and every figure "
@@ -1767,23 +1845,38 @@ AUDIT_TEXTES = {
     garanties=["Every figure shows its origin: measured on site, stated by you, or estimated. An estimate is always "
                "flagged.",
                "Every gain has a confidence level, high, medium or low, depending on data quality.",
-               "The audit can say no: a task that does not pay back is advised against."]),
+               "The audit can say no: a task that does not pay back is advised against."],
+    courts=["Your repetitive tasks, one by one", "Time × frequency × burden", "Data, tools, risk",
+            "In hours and euros per year"],
+    taches="8 tasks, before and after ranking", top="The top 3: your plan",
+    plan_mono="Your action plan", plan=["Quick wins", "Deeper projects", "Optimisation"], jours="days",
+    garanties_courtes=["Every figure shows its origin", "A confidence level for every gain", "The audit can say no"],
+    doutes_mono="Why people hesitate", doutes=["“These figures are inflated.”", "“It won't work for us.”",
+                                               "“They'll try to sell me something.”"],
+    recu_mono="What you receive", recu=["The gains, ranked task by task", "Quick wins, deeper projects, optimisation"]),
 }
 
 
 def audit_html(langue="fr"):
-    """La fenetre « Comment ça marche » de l'audit : quatre temps, la regle, le resultat, les garanties."""
+    """La fenêtre « Comment ça marche » de l'audit, en carte animée (02/10/2026, demande de Basile : moins de texte,
+    de l'ontologie, du mouvement sur les données) : les quatre temps reliés par un fil de lumière ; la règle montrée
+    par huit tâches qui se classent sous les yeux (les barres n'ont pas de chiffre : elles illustrent le classement) ;
+    le plan sur 90 jours qui se remplit ; les garanties en trois mots, le détail au survol. Animation pure CSS,
+    rejouée à chaque ouverture (le contenu est réinséré)."""
     A = AUDIT_TEXTES[langue]
-    return ('<p class="pc-mono">%s</p><h2 id="pc-score-titre">%s</h2><p class="pc-score-intro">%s</p>'
-            '<div class="pc-score-axes pc-score-axes--4">%s</div>'
-            '<div class="pc-score-regle"><p class="pc-mono">%s</p><p class="pc-score-formule">%s</p><p>%s</p></div>'
-            '<div class="pc-score-deux"><div><p class="pc-mono">%s</p><ul class="pc-score-garanties">%s</ul></div>'
-            '<div><p class="pc-mono">%s</p><ul class="pc-score-garanties">%s</ul></div></div>'
-            % (A["mono"], A["titre"], A["intro"],
-               "".join('<div><b>%s</b><h3>%s</h3><p>%s</p></div>' % e for e in A["etapes"]),
-               A["regle_mono"], A["formule"], A["regle"],
-               A["resultat_mono"], "".join("<li>%s</li>" % x for x in A["resultat"]),
-               A["garanties_mono"], "".join("<li>%s</li>" % g for g in A["garanties"])))
+    etapes = "".join('<li style="--k:%d"><span class="pa-n">%s</span><b>%s</b><small>%s</small></li>' % (k, e[0], e[1], c)
+                     for k, (e, c) in enumerate(zip(A["etapes"], A["courts"])))
+    # chaque doute s'affiche, puis se réécrit en notre réponse (la garantie) : data-de -> data-vers
+    doutes = "".join('<li title="%s"><span class="pa-texte" data-de="%s" data-vers="%s" data-k="%d">%s</span></li>'
+                     % (g.replace('"', "&quot;"), d.replace('"', "&quot;"), c.replace('"', "&quot;"), k, d)
+                     for k, (d, c, g) in enumerate(zip(A["doutes"], A["garanties_courtes"], A["garanties"])))
+    return ('<div class="pa"><p class="pc-mono">%s</p><h2 id="pc-score-titre">%s</h2>'
+            '<ol class="pa-etapes">%s</ol>'
+            '<div class="pa-deux"><div><p class="pc-mono">%s</p><ul class="pa-doutes">%s</ul></div>'
+            '<div><p class="pc-mono">%s</p><p class="pa-jours"><b data-compte="90">0</b> %s</p>'
+            '<p class="pa-recu" data-ecrit>%s</p><p class="pa-recu pa-recu--2" data-ecrit>%s</p></div></div></div>'
+            % (A["mono"], A["titre"], etapes, A["doutes_mono"], doutes,
+               A["recu_mono"], A["jours"], A["recu"][0], A["recu"][1]))
 
 
 def marche_mobile(T):

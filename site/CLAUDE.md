@@ -9,6 +9,7 @@
   6. recopier dans le dépôt GitHub du cerveau : `~/Projets/rAIme/cerveau/tools/site_vers_depot.sh --commit` (accord de Basile du 25/09/2026 : le site vit aussi sur GitHub, dossier `site/` du dépôt `raime-cerveau`, pour que le cerveau le lise et, plus tard, le corrige).
 
   Ne pas copier `_headers` : celui de `dist/` garde le noindex de `/d/*`.
+- **01/10/2026** : `dist/` et `public/` contiennent `tiktokaWRVaiU1dJwRAA1Djp7CPWmwC1n26DVh.txt`, le fichier de vérification de raime.fr pour TikTok for Developers. Ne jamais le supprimer, sinon l'application TikTok perd sa vérification.
 - **Aperçu privé** : `python parcours.py --noir` (sans `--prod`), puis wrangler `--branch noir` (https://noir.raime.pages.dev, en noindex). Après un build `--prod`, relancer sans `--prod` avant de redéployer l'aperçu.
 - `pages_annexes.py` lit le texte légal dans `_sauvegardes/avant-noir-prod-2026-09-25/dist/`. Un texte légal se corrige sans demander quand il décrit mal la réalité (règle de Basile du 25/09/2026) ; un nouvel engagement (prix, médiateur, adresse à publier) reste sa décision.
 - Le moteur de particules des versions bleue et rose est gardé dans `generateurs/particules_moteur.html` : `dist/index.html` ne le contient plus.
