@@ -214,6 +214,18 @@ async function liste() {
 }
 
 async function agir(id, d) {
+  // 07/10/2026 : « valider » une offre qu'aucun canal ne sert ne l'enverrait jamais (58 validées, 28 sans canal).
+  // Pour celles-là, Basile postule lui-même puis note « J'ai postulé » (statut envoyé, preuve « à la main »).
+  if (d.statut === 'valide' || d.statut === 'postule_main') {
+    const [l] = await lire('SELECT offre FROM candidatures WHERE id = $1', [id]);
+    if (!l) return { ok: false, erreur: 'offre introuvable' };
+    if (d.statut === 'valide' && !auto(l.offre)) return { ok: false, erreur: 'pas d’envoi automatique pour cette offre : postule depuis l’annonce, puis « J’ai postulé »' };
+    if (d.statut === 'postule_main') {
+      await lire(`UPDATE candidatures SET statut = 'envoye', envoi = coalesce(envoi, '{}'::jsonb) || $2::jsonb, maj = now() WHERE id = $1`,
+        [id, { manuel: true, quand: new Date().toISOString(), detail: 'postulé par Basile lui-même' }]);
+      return { ok: true };
+    }
+  }
   const champs = [], vals = [id];
   if (d.statut && ['a_valider', 'valide', 'refuse', 'entretien'].includes(d.statut)) { vals.push(d.statut); champs.push(`statut = $${vals.length}`); }
   if (d.statut === 'valide') champs.push("envoi = CASE WHEN envoi IS NULL THEN NULL ELSE envoi - 'essais' END");   // revalidée : 3 nouveaux essais

@@ -107,3 +107,14 @@ test('candidature par e-mail : une vraie consigne de l’annonce est retenue, un
   const f = (await c.file(300)).find((x) => x.id === 'banc-mail');
   assert.deepEqual([f.canal, f.email], ['email', 'rh@boutique.ch']);
 });
+
+test('une offre sans canal automatique ne se « valide » pas ; Basile note « J’ai postulé moi-même »', async () => {
+  const li = { ...OFFRE, id: 'banc-man', source: 'LinkedIn', methode: '' };
+  await c.importer([{ id: 'banc-man', offre: li, fiche: { cv: 'Vente', lettre: 'L' }, statut: 'a_toi' }]);
+  const v = await c.agir('banc-man', { statut: 'valide' });
+  assert.equal(v.ok, false);
+  assert.match(v.erreur, /postule depuis l’annonce/);
+  assert.equal((await c.agir('banc-man', { statut: 'postule_main' })).ok, true);
+  const [r] = await lire("SELECT statut, envoi->>'manuel' AS manuel FROM candidatures WHERE id = 'banc-man'");
+  assert.deepEqual([r.statut, r.manuel], ['envoye', 'true']);
+});

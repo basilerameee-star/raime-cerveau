@@ -73,6 +73,7 @@ textarea.lettre { min-height: 260px }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; grid-column: 1 / -1 }
 .actions .go { background: var(--go); color: #fff; border-color: var(--go) }
 .actions .no { color: var(--no) }
+.bouton-lien { font: 600 14px var(--f-body); border-radius: 8px; padding: 8px 12px; border: 1px solid var(--line); background: var(--surface); color: var(--accent); text-decoration: none }
 .saved { font-size: 12px; color: var(--muted); align-self: center }
 .empty { background: var(--surface); border: 1px dashed var(--line); border-radius: 12px; padding: 28px; text-align: center; color: var(--muted) }
 .desc { font-size: 13px; color: var(--muted); white-space: pre-wrap; max-height: 220px; overflow: auto; background: var(--bg); border-radius: 8px; padding: 10px }
@@ -197,8 +198,9 @@ function card(o) {
       ${cv}
     </div>
     <div class="actions">
-      ${o.statut !== "valide" && o.statut !== "envoye" ? `<button class="go" type="button" data-s="valide">Valider l'envoi</button>` : ""}
-      ${o.statut !== "a_valider" && o.statut !== "envoye" ? `<button type="button" data-s="a_valider">Remettre à valider</button>` : ""}
+      ${CANAL[o.canal] && o.statut !== "valide" && o.statut !== "envoye" ? `<button class="go" type="button" data-s="valide">Valider l'envoi</button>` : ""}
+      ${!CANAL[o.canal] && o.statut !== "envoye" ? `<a class="bouton-lien" href="${esc(o.lien)}" target="_blank" rel="noopener">Ouvrir l'annonce ↗</a><button class="go" type="button" data-s="postule_main">J'ai postulé moi-même</button>` : ""}
+      ${CANAL[o.canal] && o.statut !== "a_valider" && o.statut !== "envoye" ? `<button type="button" data-s="a_valider">Remettre à valider</button>` : ""}
       ${o.statut === "envoye" ? `<button type="button" data-s="entretien">J'ai un entretien</button>` : ""}
       ${o.statut !== "refuse" ? `<button class="no" type="button" data-s="refuse">Refuser</button>` : ""}
       <span class="saved" id="s-${esc(o.id)}"></span>
@@ -221,7 +223,9 @@ async function ecrire(id, data, msg) {
   try {
     const r = await fetch("/api/candidatures/" + encodeURIComponent(id), { method: "POST", headers: { "Content-Type": "application/json", "x-jarvis": "1" }, body: JSON.stringify(data) });
     if (!r.ok) throw new Error(r.status);
-    const o = offres.find((x) => x.id === id); if (o) Object.assign(o, data);
+    const rep = await r.json().catch(() => ({}));
+    if (rep.ok === false) { toast(rep.erreur || "Action refusée"); return }
+    const o = offres.find((x) => x.id === id); if (o) Object.assign(o, data.statut === "postule_main" ? { statut: "envoye" } : data);
     if (msg) toast(msg);
     if (document.activeElement?.tagName !== "TEXTAREA") render(); else renderHead();
   } catch (e) { toast("Enregistrement impossible (" + e.message + ") : réessaie dans un instant.") }
@@ -243,7 +247,7 @@ $("list").addEventListener("click", (e) => {
   const b = e.target.closest("button[data-s]"); if (!b) return;
   const id = b.closest(".card").dataset.id;
   if (b.dataset.s === "valide") { ouvrirValidation([offres.find((o) => o.id === id)]); return }
-  const msgs = { valide: "Validée : elle part dans les 15 minutes", refuse: "Refusée", a_valider: "Remise à valider", entretien: "Bravo, entretien noté" };
+  const msgs = { valide: "Validée : elle part dans les 15 minutes", refuse: "Refusée", a_valider: "Remise à valider", entretien: "Bravo, entretien noté", postule_main: "Notée comme envoyée par toi" };
   ecrire(id, { statut: b.dataset.s }, msgs[b.dataset.s]);
 });
 $("list").addEventListener("change", (e) => {
