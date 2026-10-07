@@ -79,9 +79,13 @@ export async function preparer({ n8n, brain, combien = 14 } = {}) {
     if (faits >= combien || exclus.has(p.siren)) continue;
     const b = brouillon(p);
     if (!b) continue;
-    await n8n.query(`INSERT INTO outreach (siren, prospect_name, segment, to_email, subject, body, status, created_at)
-      VALUES ($1, $2, $3, $4, $5, $6, 'brouillon', now())`, [p.siren, joliNom(p.name), b.segment, p.contact_email, b.sujet, b.corps]);
-    faits++;
+    // Une ligne par entreprise (outreach.siren est unique) : l'ancien e-mail annulé ou jamais reçu est remplacé.
+    const r = await n8n.query(`INSERT INTO outreach (siren, prospect_name, segment, to_email, subject, body, status, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6, 'brouillon', now())
+      ON CONFLICT (siren) DO UPDATE SET prospect_name = EXCLUDED.prospect_name, segment = EXCLUDED.segment, to_email = EXCLUDED.to_email,
+        subject = EXCLUDED.subject, body = EXCLUDED.body, status = 'brouillon', created_at = now(), sent_at = NULL, validated_at = NULL, reply_at = NULL
+      WHERE outreach.status IN ('non_recu', 'annule') RETURNING id`, [p.siren, joliNom(p.name), b.segment, p.contact_email, b.sujet, b.corps]);
+    faits += r.rowCount;
   }
   return { faits, candidats: rows.length };
 }
