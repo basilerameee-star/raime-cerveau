@@ -49,6 +49,9 @@ test('visiter : un site sans preuve est rejeté ; un site prouvé rend son adres
 test('le nom : la parenthèse qui répète le nom disparaît ; une messagerie grand public seulement si l’adresse porte le nom', async () => {
   const { joliNom, adresseFiable } = await import('../../agents/prospection_auto.js');
   assert.equal(joliNom('SURPERFORMANCE (ZONEBOURSE - SURPERFORMANCE)'), 'Surperformance');
+  assert.equal(joliNom('FIDUCIAIRE ET CONSEIL RHONE-ALPES (FIDURALP)'), 'Fiduralp', 'le nom d’usage quand le nom officiel est long');
+  assert.equal(joliNom('CAB WIRION STE FIDUC RHONE ALPES JURA'), 'Cabinet Wirion Société Fiduciaire Rhône Alpes Jura');
+  assert.equal(joliNom('DUPONT (DUPONT CONSEIL)'), 'Dupont', 'un nom court garde sa forme');
   assert.equal(adresseFiable({ name: 'CABINET DUPONT', contact_email: 'cabinet.dupont@wanadoo.fr' }), true);
   assert.equal(adresseFiable({ name: 'CABINET DUPONT', contact_email: 'jean74@orange.fr' }), false);
 });

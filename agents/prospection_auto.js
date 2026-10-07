@@ -43,7 +43,9 @@ const PETITS = new Set(['et', 'de', 'du', 'des', 'la', 'le', 'les', 'à', 'en', 
 // Le registre écrit sans accents : on rend les plus courants (« ASSOCIES » → « associés »).
 const ACCENTS = { associes: 'associés', etude: 'étude', societe: 'société', comptabilite: 'comptabilité', fiduciaire: 'fiduciaire',
   gerance: 'gérance', experts: 'experts', expert: 'expert', immobiliere: 'immobilière', geneve: 'Genève', strategie: 'stratégie',
-  developpement: 'développement', creation: 'création', reseau: 'réseau', regie: 'régie', notariale: 'notariale' };
+  developpement: 'développement', creation: 'création', reseau: 'réseau', regie: 'régie', notariale: 'notariale',
+  // abréviations du registre (« CAB WIRION STE FIDUC RHONE ALPES ») et régions
+  cab: 'cabinet', ste: 'société', fiduc: 'fiduciaire', rhone: 'Rhône', isere: 'Isère', leman: 'Léman' };
 export function joliNom(brut) {
   // « FIMECO (FIMECO) », « SURPERFORMANCE (ZONEBOURSE - SURPERFORMANCE) » : la parenthèse qui répète le nom est retirée
   const b = String(brut || ''), dehors = b.replace(/\s*\([^)]*\)/g, '').toLowerCase().trim();
@@ -52,6 +54,9 @@ export function joliNom(brut) {
     return b.toLowerCase().includes(y + ' ') || b.toLowerCase().startsWith(y) || (dehors.length >= 3 && y.includes(dehors)) ? '' : m;
   })
     .replace(FORMES, ' ').replace(/\s+/g, ' ').trim();
+  // « FIDUCIAIRE ET CONSEIL RHONE-ALPES (FIDURALP) » : le nom d'usage, court, est celui que l'entreprise se donne
+  const usage = s.match(/^(.{26,}?)\s*\(([^(),]{2,25})\)$/);
+  if (usage && !/notaire|associ/i.test(usage[2])) return joliNom(usage[2]);
   if (!s || s !== s.toUpperCase()) return court(s);
   return court(s.toLowerCase().split(' ').map((w) => ACCENTS[w] || w).map((w, i) => (i > 0 && PETITS.has(w) ? w
     : w.replace(/(^|[-'’])(\p{L})/gu, (_, a, b) => a + b.toUpperCase()))).join(' '));
