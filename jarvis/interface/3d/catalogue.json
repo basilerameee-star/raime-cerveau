@@ -1,0 +1,352 @@
+{
+  "noeuds": [
+    {
+      "id": "jarvis",
+      "nom": "Governor",
+      "role": "Recevoir les demandes et suivre leur exécution.",
+      "implementation": "Point d’entrée · orchestrateur à construire",
+      "statut": "PLANNED",
+      "modules": [],
+      "traces": []
+    },
+    {
+      "id": "watchdog",
+      "nom": "Watchdog",
+      "parent": "jarvis",
+      "role": "Surveiller les exécutions et les anomalies.",
+      "implementation": "Responsable à construire",
+      "statut": "PLANNED",
+      "modules": [],
+      "traces": []
+    },
+    {
+      "id": "data",
+      "nom": "Data",
+      "parent": "jarvis",
+      "role": "Organiser les connaissances et les sources.",
+      "implementation": "Responsable à construire",
+      "statut": "PLANNED",
+      "modules": [],
+      "traces": []
+    },
+    {
+      "id": "contenu",
+      "nom": "Content",
+      "parent": "jarvis",
+      "role": "Coordonner les profils Media et rAIme Business.",
+      "implementation": "Responsable à construire",
+      "statut": "PLANNED",
+      "modules": [],
+      "traces": []
+    },
+    {
+      "id": "croissance",
+      "nom": "Growth",
+      "parent": "jarvis",
+      "role": "Piloter la prospection et les campagnes.",
+      "implementation": "Responsable à construire",
+      "statut": "PLANNED",
+      "modules": [],
+      "traces": []
+    },
+    {
+      "id": "analytics",
+      "nom": "Analytics",
+      "parent": "jarvis",
+      "role": "Mesurer les résultats observés.",
+      "implementation": "Responsable à construire",
+      "statut": "PLANNED",
+      "modules": [],
+      "traces": []
+    },
+    {
+      "id": "finance",
+      "nom": "Finance",
+      "parent": "jarvis",
+      "role": "Suivre les revenus et les budgets.",
+      "implementation": "Responsable à construire",
+      "statut": "PLANNED",
+      "modules": [],
+      "traces": []
+    },
+    {
+      "id": "admin",
+      "nom": "Admin",
+      "parent": "jarvis",
+      "role": "Gérer les accès et les validations.",
+      "implementation": "Responsable à construire",
+      "statut": "PLANNED",
+      "modules": [],
+      "traces": []
+    },
+    {
+      "id": "builder",
+      "nom": "Builder",
+      "parent": "jarvis",
+      "role": "Construire et exécuter les outils.",
+      "implementation": "Responsable à construire",
+      "statut": "PLANNED",
+      "modules": [],
+      "traces": []
+    },
+    {
+      "id": "media",
+      "nom": "Media",
+      "parent": "contenu",
+      "role": "Profil éditorial Media.",
+      "implementation": "À construire",
+      "statut": "PLANNED",
+      "modules": [],
+      "traces": []
+    },
+    {
+      "id": "business",
+      "nom": "rAIme Business",
+      "parent": "contenu",
+      "role": "Profil éditorial rAIme Business.",
+      "implementation": "À construire",
+      "statut": "PLANNED",
+      "modules": [],
+      "traces": []
+    },
+    {
+      "id": "budget",
+      "nom": "Budget",
+      "parent": "finance",
+      "role": "Mesurer les coûts consolidés et appliquer les plafonds.",
+      "implementation": "À instrumenter",
+      "statut": "PLANNED",
+      "modules": [],
+      "traces": []
+    },
+    {
+      "id": "approbations",
+      "nom": "Approbations",
+      "parent": "admin",
+      "role": "Centraliser les décisions humaines et les permissions.",
+      "implementation": "À unifier",
+      "statut": "PLANNED",
+      "modules": [],
+      "traces": []
+    },
+    {
+      "id": "veille",
+      "nom": "Recherche",
+      "parent": "data",
+      "role": "Collecter les sources et détecter des sujets.",
+      "implementation": "Modules existants",
+      "statut": "UNKNOWN",
+      "modules": [
+        "veilleur",
+        "radar"
+      ],
+      "traces": []
+    },
+    {
+      "id": "script",
+      "nom": "Scénario",
+      "parent": "contenu",
+      "role": "Transformer un sujet documenté en script vérifiable.",
+      "implementation": "À construire",
+      "statut": "PLANNED",
+      "modules": [],
+      "traces": []
+    },
+    {
+      "id": "studio",
+      "nom": "Studio & QA",
+      "parent": "contenu",
+      "role": "Produire les médias, monter et contrôler la qualité.",
+      "implementation": "À connecter",
+      "statut": "PLANNED",
+      "modules": [],
+      "traces": []
+    },
+    {
+      "id": "publication",
+      "nom": "Publication",
+      "parent": "contenu",
+      "role": "Préparer et publier les contenus après validation.",
+      "implementation": "À construire",
+      "statut": "PLANNED",
+      "modules": [],
+      "traces": []
+    },
+    {
+      "id": "prospection",
+      "nom": "Prospection",
+      "parent": "croissance",
+      "role": "Préparer les prises de contact et suivre les réponses.",
+      "implementation": "Modules existants",
+      "statut": "UNKNOWN",
+      "modules": [
+        "heraut",
+        "reconciliateur"
+      ],
+      "traces": []
+    },
+    {
+      "id": "analyse",
+      "nom": "Analyse",
+      "parent": "analytics",
+      "role": "Comparer les performances aux objectifs.",
+      "implementation": "À construire",
+      "statut": "PLANNED",
+      "modules": [],
+      "traces": []
+    },
+    {
+      "id": "campagnes",
+      "nom": "Campagnes",
+      "parent": "croissance",
+      "role": "Préparer la stratégie publicitaire ; lancement à valider.",
+      "implementation": "Module existant",
+      "statut": "UNKNOWN",
+      "modules": [
+        "publiciste"
+      ],
+      "traces": []
+    },
+    {
+      "id": "memoire",
+      "nom": "Mémoire",
+      "parent": "data",
+      "role": "Indexer et retrouver les connaissances.",
+      "implementation": "Modules existants",
+      "statut": "UNKNOWN",
+      "modules": [
+        "bibliothecaire"
+      ],
+      "traces": []
+    },
+    {
+      "id": "execution",
+      "nom": "Exécution",
+      "parent": "builder",
+      "role": "Exécuter les demandes confiées à Hermes et produire des livrables.",
+      "implementation": "Relais existant",
+      "statut": "UNKNOWN",
+      "modules": [
+        "hermes"
+      ],
+      "traces": []
+    },
+    {
+      "id": "surveillance",
+      "nom": "Surveillance",
+      "parent": "watchdog",
+      "role": "Observer les anomalies et proposer des corrections.",
+      "implementation": "Modules existants",
+      "statut": "UNKNOWN",
+      "modules": [
+        "superviseur",
+        "cordon"
+      ],
+      "traces": []
+    },
+    {
+      "id": "modeles",
+      "nom": "Modèles",
+      "parent": "builder",
+      "role": "Évaluer les modèles et leur disponibilité.",
+      "implementation": "Modules existants",
+      "statut": "UNKNOWN",
+      "modules": [
+        "eclaireur",
+        "sas"
+      ],
+      "traces": []
+    },
+    {
+      "id": "architecte",
+      "nom": "Architecte",
+      "parent": "builder",
+      "role": "Décomposer les buts en sous-tâches, évaluer les résultats et mémoriser les corrections.",
+      "implementation": "Module existant",
+      "statut": "UNKNOWN",
+      "modules": [
+        "architecte"
+      ],
+      "traces": []
+    },
+    {
+      "id": "curieux",
+      "nom": "Curieux",
+      "parent": "data",
+      "role": "Intégrer dans la bibliothèque les pages web issues des demandes de Basile.",
+      "implementation": "Module existant",
+      "statut": "UNKNOWN",
+      "modules": [
+        "curieux"
+      ],
+      "traces": []
+    },
+    {
+      "id": "instruments",
+      "nom": "Instruments",
+      "parent": "analytics",
+      "role": "Relever les mesures déterministes utilisées par les agents de jugement.",
+      "implementation": "Module existant",
+      "statut": "UNKNOWN",
+      "modules": [
+        "instruments"
+      ],
+      "traces": []
+    },
+    {
+      "id": "penseur",
+      "nom": "Penseur",
+      "parent": "data",
+      "role": "Produire des idées nocturnes vérifiées à partir de sources observées.",
+      "implementation": "Module existant",
+      "statut": "UNKNOWN",
+      "modules": [
+        "penseur"
+      ],
+      "traces": []
+    },
+    {
+      "id": "portes",
+      "nom": "Portes",
+      "parent": "croissance",
+      "role": "Cartographier les organismes et préparer les dossiers de référencement à valider.",
+      "implementation": "Module existant",
+      "statut": "UNKNOWN",
+      "modules": [
+        "portes"
+      ],
+      "traces": []
+    },
+    {
+      "id": "reflexif",
+      "nom": "Réflexif",
+      "parent": "builder",
+      "role": "Évaluer les agents et proposer des versions de prompt inactives.",
+      "implementation": "Module existant",
+      "statut": "UNKNOWN",
+      "modules": [
+        "reflexif"
+      ],
+      "traces": []
+    },
+    {
+      "id": "sync",
+      "nom": "Synchronisation",
+      "parent": "builder",
+      "role": "Actualiser le catalogue OpenRouter et enregistrer les changements de prix.",
+      "implementation": "Module existant",
+      "statut": "UNKNOWN",
+      "modules": [
+        "sync"
+      ],
+      "traces": []
+    }
+  ],
+  "observe_le": null,
+  "historique": [],
+  "erreurs": [
+    "APERCU_HORS_LIGNE_ETATS_INDISPONIBLES"
+  ],
+  "sources": {},
+  "precision": "Catalogue statique de présentation. Aucun état opérationnel ni historique n’est inclus."
+}

@@ -1,0 +1,3 @@
+# Three.js r180 et ses addons : copiés octet pour octet depuis le paquet npm officiel (empreintes dans manifest.json
+# et studio-manifest.json, vérifiées au banc). Aucune conversion de fin de ligne, sur aucun poste.
+* -text

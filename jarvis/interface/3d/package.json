@@ -1,0 +1,5 @@
+{
+  "type": "module",
+  "private": true,
+  "description": "Interface 3D de Jarvis (Codex, 04/10/2026) : modules du navigateur, vérifiés par node --check au banc."
+}

@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#101a2a">
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Ccircle cx=%2216%22 cy=%2216%22 r=%2212%22 fill=%22none%22 stroke=%22%235ee7ff%22 stroke-width=%223%22/%3E%3Ccircle cx=%2216%22 cy=%2216%22 r=%224%22 fill=%22%235ee7ff%22/%3E%3C/svg%3E">
+<title>Jarvis 3D · rAIme</title>
+<!-- La carte 3D de Codex (04/10/2026) devenue tableau de bord de Jarvis (07/10/2026, note 20). Tous les fichiers sous /3d/ :
+     liste blanche, empreinte de version et gzip servis par jarvis/serveur.cjs. Les fonctions de la page actuelle : /3d/jarvis.js. -->
+<link rel="preload" href="/3d/polices/InterVariable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/3d/tiroirs.css">
+<link rel="stylesheet" href="/3d/ontologie.css">
+</head>
+<body data-etat="repos">
+<div id="avis" role="alert"></div>
+<div id="scene">
+  <header class="topbar">
+    <a class="marque" href="/jarvis3d" aria-label="rAIme — Jarvis 3D"><span class="workspace-symbol">✳</span><b>rAIme<span>.</span></b><span class="workspace-name">JARVIS / 3D</span></a>
+    <nav class="primary-nav" aria-label="Navigation principale"><button id="map-home" class="selected">Organisation</button><button data-tiroir="t-suivi">Données</button><button data-tiroir="t-activite">Activité <span id="n-appels"></span></button></nav>
+    <div class="system-controls"><button id="open-search" aria-label="Rechercher un agent"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/></svg></button><details id="workspace-menu"><summary aria-label="Outils et état du système">···</summary><div class="workspace-menu">
+      <span class="eyebrow">ESPACE DE SUPERVISION</span>
+      <button data-tiroir="t-conversation">Conversation</button>
+      <button data-tiroir="t-courriels">E-mails <span id="n-courriels"></span></button>
+      <button data-tiroir="t-prospection">Prospection <span id="n-brouillons"></span></button>
+      <button data-tiroir="t-vitrines">Vitrines <span id="n-vitrines"></span></button>
+      <button data-tiroir="t-capacites">Capacités</button>
+      <a href="/livrables/">Livrables ↗</a>
+      <a href="/coffre">Coffre ↗</a>
+      <span class="eyebrow menu-groupe">AUTRES PAGES</span>
+      <a href="/candidatures">Bureau ↗</a>
+      <a href="/clips">Clips ↗</a>
+      <a href="/tiktok">TikTok ↗</a>
+      <a href="/prospection">Page Prospection ↗</a>
+      <a href="/jarvis">Version classique ↗</a>
+      <div class="system-state"><span class="puce" id="p-parole" title="Comment Jarvis parle"><i></i><span>PAROLE · À VÉRIFIER</span></span><span class="puce" id="p-mains" title="Hermes, les mains"><i></i><span>MAINS · À VÉRIFIER</span></span><span class="puce" id="p-heure">--:--</span></div>
+    </div></details></div>
+  </header>
+  <main id="centre">
+    <div id="map-zone"><canvas id="company-map" tabindex="0" aria-label="Organisation en trois dimensions. Glisser pour tourner, Maj et glisser pour déplacer, molette pour avancer. La recherche et le répertoire permettent de sélectionner chaque élément." aria-describedby="map-description"></canvas><div id="spatial-labels" aria-label="Branches de l’organisation"></div></div>
+    <p id="map-description" class="sr-only" aria-live="polite">Plan de l’entreprise : sélectionne une pièce ou un agent pour explorer ses connexions.</p>
+    <div class="map-caption"><span class="eyebrow">rAIme / ORGANISATION</span><h1>L’entreprise,<br>en perspective.</h1><p id="atlas-summary">La direction, les pôles et leurs agents.</p><button id="open-directory">Explorer l’organisation <span>↗</span></button></div>
+    <section id="atlas-controls" aria-label="Exploration de l’entreprise"><div class="atlas-control-title"><span class="eyebrow">DÉPLOYER LES NIVEAUX</span><output id="explode-value" for="explode-range">0 %</output></div><label for="explode-range">Vue éclatée</label><input id="explode-range" type="range" min="0" max="100" value="0" step="1"><div class="atlas-control-actions"><span>Compacte</span><button id="toggle-connections" aria-pressed="true">Connexions à la sélection</button><span>Éclatée</span></div><button id="view-walk" type="button">Entrer dans l’entreprise ↗</button><div class="atlas-legend" aria-label="Niveaux de l’organisation"><span><i class="direction-dot"></i>Jarvis</span><span><i class="pole-dot"></i>Pôles</span><span><i class="agent-dot"></i>Agents</span></div></section>
+    <div id="view-switch" aria-label="Vue de la scène"><button id="view-perspective" class="selected" aria-pressed="true">Perspective</button><button id="view-top" aria-pressed="false">Plan</button><button id="view-free" aria-pressed="false" title="Se déplacer et regarder librement, indépendamment du centre">Libre</button></div>
+    <div id="free-camera-guide" hidden><strong>Caméra libre</strong><span>Glisser pour regarder · ZQSD / WASD pour circuler</span><span>E / C : monter / descendre · Maj : accélérer</span><span>Clic droit : déplacer · Molette : avancer</span></div>
+    <div class="map-footer"><nav id="breadcrumb" aria-label="Position dans la carte"></nav><div class="map-meta"><span id="synchro" role="status">Connexion aux observations…</span><span id="render-metrics"></span></div></div>
+    <div class="map-tools"><button id="recentrer" aria-label="Vue complète" title="Vue complète">⤢</button><button id="reduire" aria-label="Reculer">−</button><button id="agrandir" aria-label="Avancer">+</button><button id="aide-navigation" aria-label="Aide à la navigation">?</button></div>
+    <div id="navigation-help" hidden><strong>Se déplacer dans l’espace</strong><span>Libre : circuler entre les branches</span><span>Glisser : regarder · ZQSD / WASD / flèches : circuler</span><span>E / C : monter / descendre · Maj : accélérer</span><span>Clic droit ou Maj + glisser : déplacer</span><span>Molette / pincement : avancer et reculer</span><span>Perspective / Plan : explorer autour d’un élément</span><span>Barre d’espace (hors Libre) : parler à Jarvis</span><span>Échap : quitter la caméra libre et fermer les détails</span></div>
+    <div id="node-tooltip" role="tooltip" hidden></div>
+    <section id="map-search" aria-label="Répertoire de l’organisation" hidden><div class="search-heading"><span class="eyebrow">EXPLORER L’ORGANISATION</span><button id="close-search" aria-label="Fermer le répertoire">×</button></div><label class="sr-only" for="search-input">Rechercher dans l’entreprise</label><input id="search-input" autocomplete="off" placeholder="Département, agent, outil…"><div id="search-results"></div><small id="branch-note">12 branches visuelles · organisation cible</small></section>
+    <section id="webgl-error" role="alert" hidden><h2>La scène 3D est indisponible</h2><p id="webgl-error-message"></p><p>Jarvis, les tiroirs et le répertoire restent utilisables ici.</p><button id="fallback-directory">Ouvrir le répertoire</button> <a class="bouton" href="/jarvis">Version classique ↗</a></section>
+  </main>
+  <aside id="inspecteur" role="dialog" aria-label="Détails de l’élément sélectionné" hidden><button id="fermer-inspecteur" aria-label="Fermer la fiche">×</button><div id="fiche"></div></aside>
+  <div id="echange">
+    <div id="core-heading"><button id="core-toggle" type="button" aria-expanded="false" aria-controls="core-conversation"><span class="core-symbol" aria-hidden="true">◉</span><span><strong>Jarvis</strong><small>Direction · conversation · données</small></span><span class="core-chevron" aria-hidden="true">⌃</span></button><button type="button" id="core-locate" aria-label="Explorer Jarvis dans la scène" title="Explorer Jarvis">⌖</button></div>
+    <section id="core-conversation" aria-label="Espace central Jarvis" hidden>
+      <div class="core-voix">
+        <button type="button" id="reacteur" title="Touche la sphère pour parler (ou barre d'espace)" aria-label="Conversation orale avec Jarvis">
+          <svg id="anneaux" viewBox="0 0 200 200" aria-hidden="true">
+            <g class="tourne3"><circle cx="100" cy="100" r="97" fill="none" stroke="rgba(143,184,255,.2)" stroke-width=".6" stroke-dasharray="1 3"/></g>
+            <g class="tourne"><circle cx="100" cy="100" r="92" fill="none" stroke="rgba(143,184,255,.4)" stroke-width=".8" stroke-dasharray="40 8 4 8 60 12 2 10"/></g>
+            <g class="tourne2"><circle cx="100" cy="100" r="86" fill="none" stroke="rgba(143,184,255,.25)" stroke-width="1.6" stroke-dasharray="3 5"/></g>
+          </svg>
+          <canvas id="sphere" aria-hidden="true"></canvas>
+        </button>
+        <div id="voice-transcript"><div id="etat">en veille</div><div id="sous-titres" aria-live="polite"><div id="toi"></div><div id="lui"></div></div><p id="core-intro">Touche la sphère pour parler, écris ou dicte. Sur la carte, sélectionne un point pour explorer ses liens.</p></div>
+      </div>
+      <div class="core-cerveau" aria-label="Le cerveau en bref">
+        <button type="button" data-tiroir="t-suivi"><strong id="j-agents">–</strong><span>agents actifs (24 h)</span></button>
+        <button type="button" data-tiroir="t-suivi"><strong id="j-questions">–</strong><span>décisions attendues</span></button>
+        <button type="button" data-tiroir="t-prospection"><strong id="j-brouillons">–</strong><span>brouillons à valider</span></button>
+        <button type="button" data-tiroir="t-activite"><strong id="j-appels">–</strong><span>à appeler</span></button>
+      </div>
+      <div class="core-data"><div><strong id="core-poles">12</strong><span>pôles</span></div><div><strong id="core-nodes">–</strong><span>éléments</span></div><div><strong id="core-links">–</strong><span>rattachements</span></div><button type="button" data-tiroir="t-suivi">Ouvrir les données ↗</button></div>
+    </section>
+    <form id="barre" autocomplete="off">
+      <button type="button" class="rond" id="b-conversation" title="Conversation orale : il t'écoute, te répond à voix haute, puis t'écoute de nouveau" aria-label="Conversation orale">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 12a9 9 0 0 1 18 0v5a2 2 0 0 1-2 2h-1v-6h3M3 12v5a2 2 0 0 0 2 2h1v-6H3"/></svg></button>
+      <input id="saisie" placeholder="Écris à Jarvis, ou dicte avec le micro…" aria-label="Ton message" maxlength="4000">
+      <button type="button" class="rond" id="b-dicter" title="Dicter : ta voix devient du texte dans la barre" aria-label="Dicter">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+      <button type="button" class="rond" id="b-muet" title="Voix de Jarvis : activée" aria-label="Couper la voix">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 9h4l5-4v14l-5-4H4z"/><path id="onde" d="M17 9a4 4 0 0 1 0 6M19.5 6.5a8 8 0 0 1 0 11"/></svg></button>
+      <button class="rond" id="envoyer" title="Envoyer" aria-label="Envoyer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+    </form>
+  </div>
+</div>
+
+<aside class="tiroir" id="t-activite" aria-label="Activité"><header><h2>Activité <small>appels, rappels, revenus</small></h2><button class="fermer" aria-label="Fermer">×</button></header><div class="corps">
+    <div class="panneau" id="bloc-appels">
+      <h2>À appeler <small id="a-n"></small></h2>
+      <div id="appels"><p class="vide">Personne à relancer pour l'instant.</p></div>
+    </div>
+    <div class="panneau" id="bloc-rappels" hidden><h2>Rappels</h2><ul class="fil" id="rappels"></ul></div>
+    <div class="panneau">
+      <h2>Monétisation <small>2 000 € / mois sur chacune</small></h2>
+      <div class="objectif">
+        <div class="jauge"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="42" fill="none" stroke="rgba(143,184,255,.14)" stroke-width="7"/>
+          <circle id="arc" cx="50" cy="50" r="42" fill="none" stroke="url(#degrade)" stroke-width="7" stroke-linecap="round" stroke-dasharray="0 264"/>
+          <defs><linearGradient id="degrade"><stop offset="0" stop-color="#8fb8ff"/><stop offset="1" stop-color="#86cfb3"/></linearGradient></defs></svg>
+          <div class="val"><div><span id="o-pct">0 %</span><small>DU MOIS</small></div></div></div>
+        <div class="info"><b id="o-mois">0 €</b> ce mois sur TikTok, YouTube et Instagram.<br><span id="o-detail"></span><br><span id="o-reste"></span><br>
+          <button class="bouton" id="o-ajouter" type="button" style="margin-top:8px;white-space:nowrap">+ Revenu</button></div>
+      </div>
+      <form class="encaisse" id="f-encaisse"><input name="montant" inputmode="decimal" placeholder="Montant €" required><select name="plateforme" style="flex:1 1 110px;height:34px;border:1px solid var(--trait);border-radius:7px;color:inherit"><option value="instagram">Instagram</option><option value="tiktok">TikTok</option><option value="youtube">YouTube</option><option value="facebook">Facebook (hors objectif)</option><option value="boutique">Ventes de produits (hors objectif)</option><option value="autre">Autre contenu (hors objectif)</option><option value="raime">Vente rAIme (hors objectif)</option></select><input name="source" placeholder="Détail (ex. bonus Reels, partenariat)" required><button class="bouton">Noter</button></form>
+    </div>
+</div></aside>
+<aside class="tiroir" id="t-suivi" aria-label="Données"><header><h2>Données <small>le cerveau, ses décisions, sa nuit</small></h2><button class="fermer" aria-label="Fermer">×</button></header><div class="corps">
+    <div class="panneau">
+      <h2>Le cerveau <small id="version"></small></h2>
+      <div class="chiffres">
+        <div class="chiffre"><b id="c-agents">–</b><span>agents actifs (24 h)</span></div>
+        <div class="chiffre"><b id="c-biblio">–</b><span>passages en mémoire</span></div>
+        <div class="chiffre"><b id="c-veille">–</b><span>trouvailles de veille (24 h)</span></div>
+        <div class="chiffre"><b id="c-brouillons">–</b><span>brouillons à valider</span></div>
+      </div>
+    </div>
+    <div class="panneau" id="bloc-questions" hidden><h2>Il attend ta décision</h2><ul class="fil" id="questions"></ul></div>
+    <div class="panneau"><h2>Pensée de la nuit</h2><ul class="fil" id="pensee"><li class="vide">Pas encore de pensée.</li></ul></div>
+    <div class="panneau"><h2>Ce qui a bougé <small>48 h</small></h2><ul class="fil" id="journal"><li class="vide">Rien de neuf.</li></ul></div>
+</div></aside>
+<aside class="tiroir" id="t-conversation" aria-label="Conversation">
+  <header><h2>Conversation <small>les 40 derniers messages</small></h2><button class="fermer" aria-label="Fermer">×</button></header>
+  <div class="corps" id="historique"></div>
+</aside>
+<aside class="tiroir" id="t-courriels" aria-label="E-mails">
+  <header><h2>E-mails <small>triés par Jarvis · lecture seule</small></h2><button class="fermer" aria-label="Fermer">×</button></header>
+  <div class="corps"><button class="bouton" id="c-relever" type="button" style="margin-bottom:14px">↻ Relever maintenant</button><div id="courriels"></div></div>
+</aside>
+<aside class="tiroir" id="t-capacites" aria-label="Capacités">
+  <header><h2>Capacités <small>ce qu'il sait faire, pour de vrai</small></h2><button class="fermer" aria-label="Fermer">×</button></header>
+  <div class="corps" id="capacites"></div>
+</aside>
+<aside class="tiroir" id="t-vitrines" aria-label="Vitrines">
+  <header><h2>Vitrines <small>sites à 500 € · rien ne part sans toi</small></h2><button class="fermer" aria-label="Fermer">×</button></header>
+  <div class="corps"><div class="envoi-vitrines" id="envoi-vitrines"></div><div id="vitrines-reponses"></div><div id="vitrines"></div></div>
+</aside>
+<aside class="tiroir" id="t-prospection" aria-label="Prospection">
+  <header><h2>Prospection <small>rien ne part sans toi</small></h2><button class="fermer" aria-label="Fermer">×</button></header>
+  <div class="corps" id="brouillons"></div>
+</aside>
+
+<script src="/3d/jarvis.js" defer></script>
+<script type="importmap">{"imports":{"three":"/3d/vendor/three.module.js"}}</script>
+<script type="module" src="/3d/ontologie-app.js"></script>
+</body>
+</html>
