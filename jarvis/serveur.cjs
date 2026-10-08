@@ -236,6 +236,8 @@ const RANGEMENTS = {
   CEREBRAS_API_KEY: 'Clé Cerebras (gratuite)', GMAIL_ADRESSE: 'Ton adresse Gmail', GMAIL_MOT_DE_PASSE_APPLI: "Mot de passe d'application Gmail",
   META_ACCESS_TOKEN: 'Clé Meta', AGENDA_LIEN: 'Lien de ta page de réservation',
   JARVIS_VOIX: 'Voix de Jarvis (Gemini : Charon, Puck, Kore, Fenrir…)', AGENDA_ICAL: 'Adresse secrète iCal de ton Google Agenda (lecture seule)', METEO_VILLE: 'Ta ville, pour la météo',
+  // 08/10/2026 : Places API (New), recherche texte : téléphone et site des commerces et cabinets (vitrines, entreprises sans site)
+  GOOGLE_PLACES_API_KEY: 'Clé Google Places (Places API New : commerces, téléphones, sites)',
 };
 const NOM_LIBRE = /^[A-Z][A-Z0-9_]{2,40}$/;
 
