@@ -565,8 +565,9 @@
       "titre": "Agent bourse : analyse et portefeuille simulé d’abord",
       "il_faut": "Demande de Basile du 07/10/2026 (elle remplace « aucun trading » du point 42 pour ce point). Claude ne passe jamais d’ordre ni ne déplace d’argent et ne donne pas de conseil en investissement : l’agent tourne d’abord en portefeuille simulé, mesuré ; le compte de courtage, l’argent et l’activation réelle restent à Basile.",
       "fini_quand": "Un portefeuille simulé tenu chaque jour, avec ses règles écrites et sa performance comparée à un indice, visible dans Jarvis ; décision de Basile ensuite.",
-      "etat": "attend_basile",
-      "rang": 55
+      "etat": "en_cours",
+      "rang": 55,
+      "avance": "08/10/2026 : réponses de Basile (tous les univers, plusieurs stratégies, 1 000 € fictifs). Agent agents/bourse.js : long terme diversifié, tendance (moyenne 200 jours), momentum grandes actions, et l'indice Monde en référence ; ETF UCITS (achetables en France), frais et change comptés ; simulation tenue chaque soir + rétro-test 12 mois ; /api/bourse et e-mail du matin. Reste : des semaines de mesure."
     },
     {
       "n": 56,

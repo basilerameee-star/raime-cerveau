@@ -77,6 +77,9 @@ export const RYTHMES = [
   // relue par Jarvis au matin. Entre 2 h et 5 h, heure de Paris, une fois par nuit.
   // 08/10/2026 : retiré, remplacé par le Directeur (agents/directeur.js, un seul flux de réflexion). 
   // { nom: 'penseur',      module: './penseur.js',     fn: 'penser',      toutes: 12 * H, besoinN8n: false, args: { garder: true }, heures: [2, 5] },
+  // LA BOURSE EN SIMULATION (08/10/2026, point 55) : chaque soir après la clôture de New York (22 h-24 h à Paris), les cours
+  // (Yahoo, Binance, BCE) et quatre portefeuilles fictifs de 1 000 € recalculés. Aucun ordre réel, aucun conseil.
+  { nom: 'bourse',       module: './bourse.js',      fn: 'passer',      toutes: 20 * H, besoinN8n: false, heures: [22, 24] },
   // LE DIRECTEUR (08/10/2026, points 41 et 58) : une fois par jour, entre 5 h et 7 h à Paris (avant l'e-mail de 7 h 30),
   // l'état réel de chaque agent, ce que la maison a produit, les alertes, les idées de la nuit jugées par le goût (le
   // penseur est appelé par lui), au plus un diagnostic confié à Hermes, et UN bilan. Il remplace l'architecte, le
