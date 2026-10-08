@@ -1,7 +1,7 @@
 // L'AGENDA DES RELANCES (08/10/2026) : ce que Basile choisit de rappeler revient le jour J, en tête, et y reste tant qu'il
 // ne l'a pas traité ; les dates se disent en français ; une cible n'a qu'une relance ouverte ; écrire exige l'en-tête maison ;
 // les « plus tard » d'avant sont repris une seule fois ; la liste d'appels ne montre plus les fiches écartées et dit le vrai métier.
-import './outils.mjs';
+// (sans tests/banc/outils.mjs : il coupe tout le réseau, et ce test parle au Cockpit lancé ici, comme jarvis.test.mjs)
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -89,8 +89,10 @@ test('une relance sur un prospect : le nom vient du registre, une seule relance 
   const rep = await a.agir(r.id, { action: 'reporter', dans: 7, note: 'en congés' });
   assert.equal(rep.ok, true);
   const f = await a.fiche(r.id);
-  const gestes = (f.historique || f.histoire || []).map((h) => h.geste);
-  assert.ok(gestes.includes('cree') && gestes.filter((g) => g === 'reporte').length >= 2, `historique : ${gestes.join(',')}`);
+  const lignes = (f.historique || []).map((h) => h.quoi);
+  assert.ok(lignes.some((q) => /^Relance prévue/.test(q)), `historique : ${lignes.join(' | ')}`);
+  assert.ok(lignes.filter((q) => /^Relance déplacée/.test(q)).length >= 2, 'deux reports : la seconde demande, puis « en congés »');
+  assert.ok(lignes.some((q) => /en congés/.test(q)), 'la note du report est gardée');
   assert.equal((await a.creer({ cible_type: 'prospect', cible_id: '12', dans: 1 })).ok, false, 'un siren a neuf chiffres');
 });
 
