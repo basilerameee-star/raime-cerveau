@@ -7,10 +7,13 @@ cockpit.raime.fr/navigateur/ (derrière le mot de passe du Cockpit) : Basile s'y
 l'Envoyeur ne voit ni ne stocke aucun mot de passe.
 
 Données (HORS dépôt, volume /data) : jeton.txt, profil_candidat.json, cv/*.pdf, offres.json, deja_dans_jarvis.json.
-Commandes : python serveur.py            -> la boucle
-            python serveur.py connexion  -> ouvre les pages de connexion (Basile se connecte, puis ferme)
-            python serveur.py passage    -> un passage d'envoi tout de suite
-            python serveur.py collecte   -> une collecte tout de suite
+Commandes : python serveur.py                      -> la boucle
+            python serveur.py connexion [url…]     -> ouvre les pages de connexion (Basile se connecte ; 30 min au plus,
+                                                      fin anticipée : touch /data/connexion_fin) ; la boucle est en pause
+            python serveur.py passage              -> un passage d'envoi tout de suite
+            python serveur.py collecte             -> une collecte tout de suite
+            python serveur.py essai <id> [canal]   -> essai à blanc sur une offre : tout est rempli, RIEN n'est envoyé,
+                                                      une capture par étape dans /data/echecs
 """
 import json
 import os
@@ -19,10 +22,12 @@ import sys
 import time
 import traceback
 import urllib.request
+from contextlib import contextmanager
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
 
+import michaelpage
 from jobcloud import AToi, postuler
 
 DONNEES = Path(os.environ.get("DONNEES", "/data"))
@@ -31,9 +36,9 @@ JOURNAL = DONNEES / "envoyeur.log"
 CV = {"Vente": "CV_Suisse_Vente", "Commercial": "CV_Suisse_Commercial", "Sales EN": "CV_Suisse_Sales_EN",
       "Vente + IA": "CV_Suisse_Vente_IA", "Commercial (France)": "CV_Basile_Rame_Commercial"}
 PAR_PASSAGE = int(os.environ.get("PAR_PASSAGE", "15"))
-SITES_CONNEXION = ["https://www.jobup.ch/fr/login/", "https://www.jobs.ch/fr/login/", "https://secure.indeed.com/auth",
-                   "https://www.hellowork.com/fr-fr/candidat/connexion.html", "https://www.welcometothejungle.com/fr/signin",
-                   "https://candidat.francetravail.fr/espacepersonnel/"]
+# 08/10/2026 : Michael Page en premier (canal en préparation) ; les sites français sont retirés (France abandonnée le 06/10)
+SITES_CONNEXION = ["https://www.michaelpage.ch/fr/mypage", "https://www.jobup.ch/fr/login/", "https://www.jobs.ch/fr/login/",
+                   "https://secure.indeed.com/auth"]
 
 
 def dire(t):
@@ -103,13 +108,28 @@ def dossier(ctx, f, p):
     return dos
 
 
-def jobcloud(page, f, dos, p):
+def jobcloud(page, f, dos, p, envoyer=True):
     return postuler(page, f["source"], f["id"], dos / "CV_Basile_Rame.pdf", dos / "Lettre_Basile_Rame.pdf",
-                    code_postal=p.get("code_postal", ""), texte_lettre=f.get("lettre") or "", email=p["email"], profil=p)
+                    code_postal=p.get("code_postal", ""), envoyer=envoyer, texte_lettre=f.get("lettre") or "",
+                    email=p["email"], profil=p)
 
 
-# Un canal = une façon de postuler sans Basile. Jarvis ne propose à la validation que les offres de ces canaux.
-POSTULER = {"jobcloud": jobcloud}
+def michael_page(page, f, dos, p, envoyer=True):
+    return michaelpage.postuler(page, f, dos, p, envoyer=envoyer, journal=dire)
+
+
+# Un canal = une façon de postuler sans Basile. Jarvis ne propose à la validation que les offres des canaux de sa liste
+# CANAUX_AUTO (jarvis/candidatures.cjs) : « michaelpage » n'y entre qu'après un essai à blanc validé par Basile (08/10/2026).
+POSTULER = {"jobcloud": jobcloud, "michaelpage": michael_page}
+
+
+def canal_de(o):
+    """Le canal d'une offre de offres.json (même règle que canal() dans Jarvis, pour les sources de l'Envoyeur)."""
+    if o.get("source") == "Michael Page":
+        return "michaelpage"
+    if o.get("source") in ("jobup", "jobs.ch"):
+        return "jobcloud"
+    return ""
 
 
 def capture(page, oid):
@@ -139,7 +159,11 @@ def passage():
         page = ctx.new_page()
         envoyes = DONNEES / "envoyes.txt"              # mémoire locale : jamais deux fois la même candidature,
         deja = set(envoyes.read_text().split()) if envoyes.exists() else set()   # même si Jarvis n'a pas reçu la preuve
-        for f in auto:
+        bloques = set()                                # 08/10/2026 : un site qui demande de se reconnecter ou montre un
+        for f in auto:                                 # captcha n'est plus sollicité de tout le passage ; les autres continuent
+            canal = f.get("canal", "jobcloud")
+            if canal in bloques:
+                continue
             r = {"id": f["id"], "source": f["source"]}
             if f["id"] in deja:
                 r.update(statut="deja", detail="déjà envoyée par l'Envoyeur (preuve renvoyée)")
@@ -150,7 +174,7 @@ def passage():
                 continue
             try:
                 dos = dossier(ctx, f, p)
-                out = POSTULER[f.get("canal", "jobcloud")](page, f, dos, p)
+                out = POSTULER[canal](page, f, dos, p)
                 r.update(out)
                 r["statut"] = "envoye" if out.get("envoye") else "deja"
                 with envoyes.open("a") as fe:
@@ -174,8 +198,9 @@ def passage():
                 jarvis("/envoyeur/resultat", r)
             except Exception as e:
                 dire(f"  résultat non transmis : {e}")
-            if r["statut"] == "reconnexion":
-                break
+            if r["statut"] in ("reconnexion", "captcha"):
+                bloques.add(canal)
+                continue
             time.sleep(90)                                 # 20 s ne suffisaient pas : « Trop de requêtes » au 4e envoi
         ctx.close()
 
@@ -236,15 +261,100 @@ def collecte():
     dire(f"collecte : {len(lot)} offres pertinentes, {ajout} nouvelles pour Jarvis")
 
 
-def connexion():
-    """Ouvre les pages de connexion dans le navigateur visible via noVNC ; se ferme seule après 30 minutes."""
-    with sync_playwright() as pw:
-        ctx = contexte(pw)
-        for u in SITES_CONNEXION:
-            ctx.new_page().goto(u)
-        dire("connexion : pages ouvertes, Basile se connecte (30 min)")
-        time.sleep(1800)
+@contextmanager
+def en_pause():
+    """La boucle attend le temps d'un geste à part (connexion, essai) : le profil du navigateur ne s'ouvre qu'une fois.
+    Seule la pause posée ici est retirée ici : une pause voulue par Basile reste en place (08/10/2026)."""
+    pause = DONNEES / "pause"
+    posee = not pause.exists()
+    if posee:
+        DONNEES.mkdir(parents=True, exist_ok=True)
+        pause.touch()
+    try:
+        yield
+    finally:
+        if posee:
+            pause.unlink(missing_ok=True)
+
+
+def ouvrir(pw, essais=40):
+    """Le navigateur, quand la boucle a fini son passage en cours (le profil est verrouillé tant qu'elle s'en sert)."""
+    for i in range(essais):
+        try:
+            return contexte(pw)
+        except Exception as e:
+            if i == essais - 1 or not re.search(r"singleton|lock|already in use|profile", str(e), re.I):
+                raise
+            if i == 0:
+                dire("navigateur occupé par un passage en cours : attente (20 min au plus)")
+            time.sleep(30)
+
+
+def connexion(*urls):
+    """Ouvre les pages de connexion dans le navigateur visible via noVNC (Basile se connecte) ; se ferme seule après
+    30 minutes, ou dès que /data/connexion_fin existe. Sans adresse : SITES_CONNEXION (Michael Page en premier)."""
+    fin = DONNEES / "connexion_fin"
+    fin.unlink(missing_ok=True)
+    with en_pause(), sync_playwright() as pw:
+        ctx = ouvrir(pw)
+        for u in urls or SITES_CONNEXION:
+            try:
+                ctx.new_page().goto(u)
+            except Exception as e:
+                dire(f"connexion : {u} ne s'ouvre pas ({str(e)[:120]})")
+        dire("connexion : pages ouvertes, Basile se connecte (30 min au plus, boucle en pause)")
+        for _ in range(360):
+            if fin.exists():
+                break
+            time.sleep(5)
         ctx.close()
+    fin.unlink(missing_ok=True)
+    dire("connexion : navigateur fermé, la boucle reprend")
+
+
+def essai(oid="", canal=""):
+    """Essai à blanc d'un canal sur UNE offre (08/10/2026) : tout est rempli comme pour de vrai, puis arrêt juste avant
+    l'envoi. Une capture par étape dans /data/echecs ; le résultat va au journal, rien à Jarvis, rien n'est envoyé.
+    L'offre est prise dans la file de Jarvis (avec sa lettre validée) ou, à défaut, dans offres.json (sans lettre)."""
+    if not oid:
+        dire("essai : python serveur.py essai <id de l'offre> [canal]")
+        return
+    f = None
+    try:
+        f = next((x for x in jarvis("/envoyeur/file") if x.get("id") == oid), None)
+    except Exception as e:
+        dire(f"essai : file de Jarvis illisible ({str(e)[:120]}), offre cherchée dans offres.json")
+    if f is None:
+        base = json.loads((DONNEES / "offres.json").read_text(encoding="utf-8"))
+        o = base.get(oid) or next((x for x in base.values() if x.get("id") == oid), None)
+        if not o:
+            dire(f"essai : offre {oid} introuvable (ni dans la file de Jarvis, ni dans offres.json)")
+            return
+        f = {"id": o["id"], "source": o.get("source", ""), "lien": o.get("lien", ""), "titre": o.get("titre", ""),
+             "entreprise": o.get("entreprise", ""), "pays": o.get("pays", "CH"), "methode": o.get("methode", ""),
+             "cv": None, "langue": None, "lettre": ""}
+    canal = canal or f.get("canal") or canal_de(f)
+    if canal not in POSTULER:
+        dire(f"essai : pas de canal automatique pour {oid} ({f.get('source')})")
+        return
+    p = profil()
+    with en_pause(), sync_playwright() as pw:
+        ctx = ouvrir(pw)
+        page = ctx.new_page()
+        try:
+            dos = dossier(ctx, f, p)
+            out = POSTULER[canal](page, f, dos, p, envoyer=False)
+            if canal != "michaelpage":                     # les autres canaux ne font pas leurs captures eux-mêmes
+                capture(page, f"{oid}-essai-fin")
+            dire(f"essai {oid} ({canal}) : {json.dumps(out, ensure_ascii=False)[:1800]}")
+        except AToi as e:
+            capture(page, f"{oid}-essai-arret")
+            dire(f"essai {oid} ({canal}) : arrêt « {e.motif} » — {e.detail} (capture {oid}-essai-arret.png)")
+        except Exception as e:
+            capture(page, f"{oid}-essai-erreur")
+            dire(f"essai {oid} ({canal}) : erreur {type(e).__name__}: {str(e)[:300]}")
+        finally:
+            ctx.close()
 
 
 def boucle():
@@ -267,4 +377,6 @@ def boucle():
 
 
 if __name__ == "__main__":
-    {"connexion": connexion, "passage": passage, "collecte": collecte}.get(sys.argv[1] if len(sys.argv) > 1 else "", boucle)()
+    commande, args = (sys.argv[1] if len(sys.argv) > 1 else ""), sys.argv[2:]
+    {"connexion": lambda: connexion(*args), "passage": passage, "collecte": collecte,
+     "essai": lambda: essai(*args[:2])}.get(commande, boucle)()

@@ -143,7 +143,7 @@ const ETAPES = [
 ];
 const AVIS = { postuler: "Postuler", avis: "Ton avis", ecarte: "Écartée" };
 const STATUT = { a_valider: "À valider", valide: "Validée", envoye: "Envoyée", a_toi: "À toi", entretien: "Entretien", refuse: "Refusée" };
-let offres = [], etape = "a_valider", meta = null;
+let offres = [], etape = "a_valider", meta = null, canaux = null;
 const ouverts = new Set();
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -171,7 +171,9 @@ function renderHead() {
 }
 
 const nouvelle = (o) => o.statut === "a_valider" && o.arrivee && Date.now() - new Date(o.arrivee) < 864e5;
-const CANAL = { jobcloud: "Candidature simplifiée", hellowork: "Candidature HelloWork", email: "Candidature par e-mail" };
+const CANAL = { jobcloud: "Candidature simplifiée", hellowork: "Candidature HelloWork", email: "Candidature par e-mail", michaelpage: "Candidature Michael Page" };
+// 08/10/2026 : « part seule » seulement si Jarvis sert ce canal (liste « canaux » de /api/candidatures) ; sinon, à faire soi-même
+const part = (o) => !!CANAL[o.canal] && (!canaux || canaux.includes(o.canal));
 
 function card(o) {
   const alertes = (o.alertes || []).map((a) => `<span class="chip">${esc(a)}</span>`).join("");
@@ -192,15 +194,15 @@ function card(o) {
       <a href="${esc(o.lien)}" target="_blank" rel="noopener">Voir l'annonce sur ${esc(o.source)} ↗</a>
       <div class="kv"><b>Canal</b>${o.canal === "email" && o.candidature_email
         ? `Candidature par e-mail à <b>${esc(o.candidature_email.email)}</b>, depuis ton Gmail (lettre dans le message, CV joint) : part seule<br><small>Consigne de l’annonce : « ${esc(o.candidature_email.phrase.slice(-220))} »</small>`
-        : esc(CANAL[o.canal] ? CANAL[o.canal] + " " + o.source + " : part seule" : (o.source || "") + " : envoi à faire toi-même")}</div>
+        : esc(part(o) ? CANAL[o.canal] + " " + o.source + " : part seule" : (o.source || "") + " : envoi à faire toi-même")}</div>
       <div class="kv"><b>Langue</b>${esc(o.langue)}</div>
       ${o.envoi ? `<div class="kv"><b>${o.statut === "a_toi" ? "À toi" : "Preuve d'envoi"}</b>${esc(o.envoi.quand || o.envoi.recu_le || "")} ${esc(o.envoi.source || "")}${o.envoi.detail ? "<br>" + esc(o.envoi.detail) : ""}${o.envoi.reponses ? "<br>" + esc(o.envoi.reponses) : ""}${o.envoi.url ? `<br><a href="${esc(o.envoi.url)}" target="_blank" rel="noopener">page de confirmation ↗</a>` : ""}</div>` : ""}
       ${cv}
     </div>
     <div class="actions">
-      ${CANAL[o.canal] && o.statut !== "valide" && o.statut !== "envoye" ? `<button class="go" type="button" data-s="valide">Valider l'envoi</button>` : ""}
-      ${!CANAL[o.canal] && o.statut !== "envoye" ? `<a class="bouton-lien" href="${esc(o.lien)}" target="_blank" rel="noopener">Ouvrir l'annonce ↗</a><button class="go" type="button" data-s="postule_main">J'ai postulé moi-même</button>` : ""}
-      ${CANAL[o.canal] && o.statut !== "a_valider" && o.statut !== "envoye" ? `<button type="button" data-s="a_valider">Remettre à valider</button>` : ""}
+      ${part(o) && o.statut !== "valide" && o.statut !== "envoye" ? `<button class="go" type="button" data-s="valide">Valider l'envoi</button>` : ""}
+      ${!part(o) && o.statut !== "envoye" ? `<a class="bouton-lien" href="${esc(o.lien)}" target="_blank" rel="noopener">Ouvrir l'annonce ↗</a><button class="go" type="button" data-s="postule_main">J'ai postulé moi-même</button>` : ""}
+      ${part(o) && o.statut !== "a_valider" && o.statut !== "envoye" ? `<button type="button" data-s="a_valider">Remettre à valider</button>` : ""}
       ${o.statut === "envoye" ? `<button type="button" data-s="entretien">J'ai un entretien</button>` : ""}
       ${o.statut !== "refuse" ? `<button class="no" type="button" data-s="refuse">Refuser</button>` : ""}
       <span class="saved" id="s-${esc(o.id)}"></span>
@@ -292,6 +294,7 @@ async function charger() {
     const r = await fetch("/api/candidatures", { cache: "no-store" });
     const d = await r.json();
     offres = d.offres || [];
+    if (Array.isArray(d.canaux)) canaux = d.canaux;
     const c = d.compte || {};
     meta = `${Object.values(c).reduce((a, b) => a + b, 0)} offres reçues · ${c.nouvelle || 0} en préparation · ${c.ecartee || 0} écartées par Jarvis`
       + (c.hors_auto ? ` · ${c.hors_auto} sans envoi automatique (LinkedIn, sites d'entreprise), non proposées` : "");

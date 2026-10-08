@@ -19,11 +19,15 @@ const CV = ['Vente', 'Commercial', 'Sales EN', 'Vente + IA'];
 // Les canaux que l'Envoyeur sait servir seul (06/10/2026). « Valider » doit vouloir dire « envoyé » (Basile) : une offre
 // d'un autre canal (LinkedIn, site d'entreprise…) n'est plus proposée à la validation ; elle est rangée « hors_auto »
 // et seulement comptée. Un canal ajouté ici fait revenir ses offres (reclasser).
+// 08/10/2026 : « michaelpage » (envoyeur/michaelpage.py) existe, mais n'entre dans cette liste qu'après un essai à blanc
+// réussi et validé par Basile (python serveur.py essai <id>) : d'ici là ses offres restent « hors_auto ».
 const CANAUX_AUTO = (process.env.CANAUX_AUTO || 'jobcloud,email').split(',').map((s) => s.trim()).filter(Boolean);
 function canal(o) {
   o = o || {};
   if ((o.source === 'jobup' || o.source === 'jobs.ch') && String(o.methode || '').endsWith('FORMULAR')) return 'jobcloud';
   if (o.source === 'HelloWork') return 'hellowork';
+  // une annonce Michael Page se postule sur michaelpage.ch, même si son texte cite une adresse e-mail
+  if (o.source === 'Michael Page') return 'michaelpage';
   if (adresseCandidature(o)) return 'email';
   return 'manuel';
 }
@@ -281,13 +285,16 @@ async function file(max = 300) {
 // vraie est inconnue : revient à Basile tout de suite. Tout autre échec (formulaire, reconnexion, panne) reste dans la file et
 // réessaie au passage suivant ; au 3e échec, elle revient à Basile avec la raison (et une alerte : clippeur/veille_candidatures.py).
 // Plus jamais une candidature validée rangée sans bruit (06/10/2026).
+// 08/10/2026 : reviennent aussi tout de suite à Basile, sans nouvel essai : un captcha (jamais résolu par l'Envoyeur) et un
+// envoi « incertain » (bouton cliqué, confirmation non reconnue : la renvoyer pourrait postuler deux fois).
+const A_TOI_TOUT_DE_SUITE = ['question', 'captcha', 'incertain'];
 async function resultat(d) {
   if (!d || !d.id) return { ok: false };
   const [avant] = await lire('SELECT envoi FROM candidatures WHERE id = $1', [String(d.id)]);
   const reussi = d.statut === 'envoye' || d.statut === 'deja';
   const essais = reussi ? ((avant && avant.envoi && avant.envoi.essais) || 0) : ((avant && avant.envoi && avant.envoi.essais) || 0) + 1;
   const statut = reussi ? 'envoye' : d.statut === 'expiree' ? 'ecartee'
-    : d.statut === 'question' || essais >= ESSAIS_MAX ? 'a_toi' : 'valide';
+    : A_TOI_TOUT_DE_SUITE.includes(d.statut) || essais >= ESSAIS_MAX ? 'a_toi' : 'valide';
   await lire('UPDATE candidatures SET statut = $2, envoi = $3, maj = now() WHERE id = $1',
     [String(d.id), statut, { ...d, essais, recu_le: new Date().toISOString() }]);
   return { ok: true, statut, essais };

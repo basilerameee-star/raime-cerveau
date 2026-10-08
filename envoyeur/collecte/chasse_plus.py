@@ -30,6 +30,10 @@ LI_URL = ("https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/searc
           "keywords={k}&location={l}&f_TPR=r1209600&start={s}")
 LI_DETAIL = "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/{id}"
 MP_URL = "https://www.michaelpage.ch/fr/jobs/{k}/{l}"
+# 08/10/2026 : plus de mots et toute la Suisse romande (le filtre de serveur.py garde ensuite la vente et la zone) ;
+# un mot sans résultat dans un lieu répond 404, une page de résultats montre 20 annonces et « rel=next » s'il y en a d'autres
+MP_TERMES = ("vente", "commercial", "retail", "sales", "business-developer", "account-manager", "client", "vendeur")
+MP_LIEUX = ("geneve", "lausanne", "vaud", "fribourg", "neuchatel", "valais", "suisse-romande")
 
 
 def cle(titre, entreprise):
@@ -108,18 +112,48 @@ def globus():
                "source": "Globus", "lien": lien}
 
 
+def cartes_mp(page):
+    """Les annonces d'une page de résultats Michael Page, carte par carte : réf, lien, titre, lieu et contrat tels
+    qu'affichés (08/10/2026 ; avant, le titre était coupé au premier « Genève » et les annonces en anglais, en
+    /job-detail/ sans /fr/, étaient manquées)."""
+    for carte in page.split('<li class="views-row">')[1:]:
+        m = re.search(r'href="((?:/fr)?/job-detail/[^"]+?/ref/([a-z0-9-]+)[^"]*)"', carte)
+        titre = re.search(r"<h3[^>]*>\s*<a[^>]*>(.*?)</a>", carte, re.S)
+        if not m or not titre:
+            continue
+        lieu = re.search(r'class="job-location">(.*?)</div>', carte, re.S)
+        contrat = re.search(r'class="job-contract-type">(.*?)</div>', carte, re.S)
+        yield {"ref": m.group(2), "lien": "https://www.michaelpage.ch" + html.unescape(m.group(1)), "titre": texte(titre.group(1)),
+               "lieu": texte(lieu.group(1)) if lieu else "", "contrat": texte(contrat.group(1)) if contrat else ""}
+
+
 def michael_page():
-    for k in ("vente", "commercial", "retail"):
-        for l in ("geneve", "lausanne", "vaud"):
-            try:
-                p = get(MP_URL.format(k=k, l=l))
-            except Exception:
-                continue
-            for m in re.finditer(r'href="(/fr/job-detail/[^"]+/ref/([a-z0-9-]+))"', p):
-                debut = p.find(">", m.end()) + 1
-                bloc = texte(p[debut:debut + 1500]).split(" Sauvegarder")[0]
-                yield {"ref": m.group(2), "lien": "https://www.michaelpage.ch" + m.group(1), "bloc": bloc}
-            time.sleep(0.8)
+    vus = set()
+    for k in MP_TERMES:
+        for l in MP_LIEUX:
+            for n in range(4):                             # 80 annonces au plus par mot et par lieu
+                try:
+                    p = get(MP_URL.format(k=k, l=l) + (f"?page={n}" if n else ""))
+                except Exception:
+                    break                                  # 404 : aucune annonce pour ce mot dans ce lieu
+                for c in cartes_mp(p):
+                    if c["ref"] not in vus:
+                        vus.add(c["ref"])
+                        yield c
+                time.sleep(0.8)
+                if 'rel="next"' not in p:
+                    break
+
+
+def mp_description(lien):
+    """Le texte de l'annonce seul (sans les menus du site)."""
+    p = get(lien)
+    i = p.find('class="job-advert full')
+    j = p.find("job-contact-info", i) if i >= 0 else -1
+    bloc = p[i:j] if i >= 0 and j > i else p
+    bloc = re.sub(r"<script.*?</script>|<style.*?</style>", "", bloc, flags=re.S)
+    t = html.unescape(re.sub(r"<[^>]+>", " ", re.sub(r"<br\s*/?>|</li>|</p>|</h\d>", "\n", bloc)))
+    return re.sub(r"\n\s*\n+", "\n", re.sub(r"[ \t]+", " ", t)).strip()[:9000]
 
 
 def main():
@@ -166,19 +200,24 @@ def main():
         except Exception as e:
             print(f"  ! {gen.__name__}: {e}", file=sys.stderr)
         print(f"site {gen.__name__} : +{ajout}", file=sys.stderr)
-    # 4. Michael Page
-    for r in michael_page():
-        b = r["bloc"]
-        lieu = "Genève" if "Genève" in b else ("Lausanne" if "Lausanne" in b else "Vaud")
-        ajoute("mp-" + r["ref"], {"titre": b.split(" Genève")[0].split(" Lausanne")[0][:120], "entreprise": "Michael Page (client)",
-                                  "lieu": lieu, "source": "Michael Page", "lien": r["lien"]})
+    # 4. Michael Page (le lieu affiché par l'annonce ; la zone est filtrée ensuite, comme pour les autres sources)
+    try:
+        for r in michael_page():
+            ajoute("mp-" + r["ref"], {"titre": r["titre"][:160], "entreprise": "Michael Page (client)",
+                                      "lieu": r["lieu"] or "Suisse romande", "contrat": r["contrat"], "source": "Michael Page",
+                                      "lien": r["lien"]})
+    except Exception as e:
+        print(f"  ! michael page: {e}", file=sys.stderr)
+    print(f"michael page : +{ajout}", file=sys.stderr)
     # descriptions des nouvelles offres dans la zone
     for o in base.values():
         if o["statut"] == "nouvelle" and "description" not in o and ZONE.search(o.get("lieu") or ""):
             try:
                 if o["source"] == "LinkedIn":
                     o["description"] = linkedin_desc(o["id"][3:]); time.sleep(1.2)
-                elif o["source"] in ("Michael Page", "Manor", "Globus"):
+                elif o["source"] == "Michael Page":
+                    o["description"] = mp_description(o["lien"]); time.sleep(0.6)
+                elif o["source"] in ("Manor", "Globus"):
                     o["description"] = texte(get(o["lien"]))[:9000]
                 else:
                     o["description"] = description(o["source"], o["id"]); time.sleep(0.4)
