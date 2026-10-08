@@ -145,7 +145,7 @@ const NOMS = { bibliothecaire: 'Bibliothèque', veilleur: 'Veille', portes: "Por
   penseur: 'Penseur', publiciste: 'Publicité', reconciliateur: 'Réponses', curieux: 'Curieux', econome: 'Économe',
   prospective: 'Prospective', applicateur: 'Mise en service', executant: 'Hermes', heraut: 'Héraut', eclaireur: 'Éclaireur des modèles', radar: 'Radar', vitrines: 'Vitrines' };
 async function etat() {
-  const [ordres, journal, pensee, questions, agents, biblio, veille, prospection, revenus, mains, encaisse, courriels, echus, rappels, relances, envoiVitrines, jourAgenda] = await Promise.all([
+  const [ordres, journal, pensee, questions, agents, biblio, veille, prospection, revenus, mains, encaisse, courriels, echus, rappels, relances, envoiVitrines, jourAgenda, direction] = await Promise.all([
     lire(`SELECT id, texte, etat, pour, round(extract(epoch FROM now() - cree_le) / 60)::int AS minutes, left(coalesce(reponse, ''), 600) AS reponse
       FROM commandes WHERE etat IN ('a_faire','en_cours') OR traite_le > now() - interval '72 hours' ORDER BY cree_le DESC LIMIT 12`),
     lire("SELECT acteur, left(changement, 200) AS changement, created_at FROM journal WHERE created_at > now() - interval '48 hours' ORDER BY created_at DESC LIMIT 12"),
@@ -164,6 +164,8 @@ async function etat() {
     appels.aFaire(40).catch(() => ({ total: 0, liste: [] })),   // la liste « À appeler » du panneau de gauche (03/10/2026)
     vitrines.envoi().catch(() => ({ mode: 'absent' })),
     agenda.jour().catch(() => null),   // l'agenda (08/10/2026) : le résumé chiffré et les alertes du jour, base du cerveau seulement
+    // le dernier bilan du Directeur (agents/directeur.js, 08/10/2026) : une ligne, la plus récente
+    lire(`SELECT le, texte, jsonb_array_length(bilan->'alertes') AS alertes FROM direction ORDER BY le DESC LIMIT 1`).then((r) => r[0] || null).catch(() => null),
   ]);
   const coffre = lireCoffre();
   return {
@@ -182,6 +184,8 @@ async function etat() {
     appels: { a_faire: relances.total, prochains: relances.liste },
     // L'agenda : rappels du jour, en retard, argent du mois (table revenus), les alertes en tête (10 au plus), et celles
     // à signaler UNE fois (notification) ; une relance échue reste dans alertes tant que Basile ne l'a pas traitée.
+    // Le Directeur : le bilan du jour (faits comptés en base, alertes, idées jugées), un seul flux de réflexion.
+    direction: direction ? { le: direction.le, alertes: Number(direction.alertes) || 0, texte: direction.texte } : null,
     agenda: jourAgenda || { compteurs: { du_jour: 0, en_retard: 0, semaine: 0, ouvertes: 0, argent_mois: 0, decisions: 0 }, alertes: [], a_signaler: [] },
     // L'envoi des vitrines : le mode (pause, test, live) et combien sont partis.
     vitrines_envoi: envoiVitrines,
@@ -204,9 +208,12 @@ async function rapport() {
   const br = (await lireN8n("SELECT count(*)::int AS n FROM outreach WHERE status = 'brouillon'"))[0];
   const qs = await lire("SELECT question FROM demandes WHERE etat = 'ouverte' AND pour_basile ORDER BY bloquant DESC, cree_le DESC LIMIT 3");
   // 08/10/2026 : en premier, les relances du jour et en retard (10 au plus), avec le numéro ou l'adresse et le pourquoi.
+  const [dernierBilan] = await lire(`SELECT texte FROM direction WHERE le > now() - interval '30 hours' ORDER BY le DESC LIMIT 1`).catch(() => []);
   const relances = await agenda.relancesDuJour().catch(() => ({ titre: 'Tes relances du jour', lignes: ['Agenda illisible ce matin.'] }));
   return { sections: [
     { titre: relances.titre, lignes: relances.lignes },
+    // 08/10/2026 : le bilan du Directeur (agents/directeur.js) ; il remplace les bilans séparés des anciens agents de réflexion
+    { titre: 'La direction : le bilan du jour', lignes: dernierBilan ? dernierBilan.texte.split(String.fromCharCode(10)) : ['Pas encore de bilan : le Directeur passe entre 5 h et 7 h.'] },
     { titre: 'Le cerveau cette nuit : sa pensée', lignes: pensee.length ? pensee.map((p) => `${p.titre} — ${court(p.proposition, 220)}`) : ['Pas de pensée cette nuit.'] },
     { titre: 'Tes ordres faits (24 h)', lignes: faites.length ? faites.map((c) => `n°${c.id} — ${court(c.texte, 90)} → ${court(c.reponse, 200)}`) : ['Aucun.'] },
     { titre: 'Améliorations mises en service seul (24 h)', lignes: mep.length ? mep.map((j) => court(j.changement, 160)) : ['Aucune.'] },
@@ -261,6 +268,11 @@ async function router(req, res) {
   }
   if (m === 'GET' && url === '/api/etat') return envoyer(res, 200, await etat());
   if (m === 'GET' && url === '/api/rapport') return envoyer(res, 200, await rapport());
+  // Le dernier bilan complet du Directeur (agents, production, alertes, idées, ordre confié à Hermes).
+  if (m === 'GET' && url === '/api/direction') {
+    const [d] = await lire('SELECT le, bilan, texte FROM direction ORDER BY le DESC LIMIT 1').catch(() => []);
+    return envoyer(res, 200, d || { bilan: null, texte: 'Pas encore de bilan.' });
+  }
   // Les workflows n8n (le Réceptionniste qui classe les réponses…) parlent sans frais : même forme qu'OpenAI,
   // servie par les modèles gratuits puis le local (01/10/2026 : OpenRouter n'a plus de crédit). n8n appelle cockpit:8090
   // sur le réseau interne ; de dehors, /api/ reste derrière le mot de passe du Cockpit.

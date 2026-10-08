@@ -92,6 +92,8 @@ async function etatDuCerveau(message = '') {
   if (pr[0]) t += `\nProspection : ${pr[0].b} brouillons d'e-mails à valider par Basile ; ${pr[0].e} envoyés ces 24 h.`;
   t += await require('./appels.cjs').phrase(); // les relances téléphoniques à J+7 (30/09/2026)
   t += await require('./agenda.cjs').phrase(); // l'agenda : relances du jour et en retard (08/10/2026)
+  // le bilan du Directeur (08/10/2026) : ce que la maison a produit et ce qui bute, en faits comptés
+  try { const [d] = await lire("SELECT texte FROM direction WHERE le > now() - interval '30 hours' ORDER BY le DESC LIMIT 1"); if (d) t += String.fromCharCode(10) + 'Bilan du Directeur ce matin : ' + d.texte.split(String.fromCharCode(10)).join(' ').slice(0, 900); } catch (e) { /* pas encore de bilan */ }
   t += await require('./vitrines.cjs').phraseEnvoi(); // l'envoi des vitrines : mode et chiffres (01/10/2026)
   t += require('./feuille.cjs').phrase(); // la feuille de route décidée avec Basile (30/09/2026)
   t += await require('./clips.cjs').phrase(); // le clip farming : routine et état du jour (02/10/2026)

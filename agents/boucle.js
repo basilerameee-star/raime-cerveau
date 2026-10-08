@@ -21,7 +21,8 @@ const RYTHMES = [
   { nom: 'radar', module: './radar.js', fn: 'scruter', toutes: 6 * H, besoinN8n: true },
   // Le plus fréquent : une réponse non réconciliée est une réponse invisible.
   { nom: 'reconciliateur', module: './reconciliateur.js', fn: 'reconcilier', toutes: 2 * H, besoinN8n: true },
-  { nom: 'superviseur',  module: './superviseur.js', fn: 'superviser', toutes: 4 * H,   besoinN8n: true },
+  // 08/10/2026 : retiré, remplacé par le Directeur (agents/directeur.js, un seul flux de réflexion). 
+  // { nom: 'superviseur',  module: './superviseur.js', fn: 'superviser', toutes: 4 * H,   besoinN8n: true },
   // EN PAUSE depuis le 2026-09-23, sur la parole de Basile : « on ne s'est pas mis d'accord
   // sur l'e-mail ». Le Heraut ne redige plus de brouillons tant que le nouveau message n'est
   // pas valide. Pour le relancer : retirer les deux barres de commentaire ci-dessous.
@@ -36,7 +37,8 @@ const RYTHMES = [
   { nom: 'sans_site',    module: './sans_site.js',   fn: 'depuisSherlock', toutes: 2 * H, besoinN8n: true },
   // Le reflexif passe chaque jour : il mesure les agents, designe le maillon faible et propose
   // une version de prompt INACTIVE, jamais activee par lui-meme. Mesure du 2026-09-23 : 0,0028 $.
-  { nom: 'reflexif',     module: './reflexif.js',    fn: 'reflechir',   toutes: 24 * H, besoinN8n: true },
+  // 08/10/2026 : retiré, remplacé par le Directeur (agents/directeur.js, un seul flux de réflexion). 
+  // { nom: 'reflexif',     module: './reflexif.js',    fn: 'reflechir',   toutes: 24 * H, besoinN8n: true },
   // L'éclaireur : les modèles GRATUITS, repérés, mesurés par la batterie de métrologie, et les meilleurs
   // adoptés par la parole (jarvis/parole.cjs). Le 30/09/2026, la chaîne des modèles PAYANTS (sync du
   // catalogue OpenRouter, sas.balayer, chasseur, métrologue) est retirée : OpenRouter est coupé depuis le 26/09.
@@ -46,7 +48,8 @@ const RYTHMES = [
   { nom: 'bibliothecaire', module: './bibliothecaire.js', fn: 'ranger', toutes: 12 * H, besoinN8n: false },
   // L'agent reflexif : il tient les buts, choisit ses sous-taches, s'evalue, corrige ses
   // croyances et pose ses questions a Basile. Premier cycle v2 mesure : 0,0062 $.
-  { nom: 'architecte',   module: './architecte.js',  fn: 'architecte',  toutes: 6 * H, besoinN8n: true },
+  // 08/10/2026 : retiré, remplacé par le Directeur (agents/directeur.js, un seul flux de réflexion). 
+  // { nom: 'architecte',   module: './architecte.js',  fn: 'architecte',  toutes: 6 * H, besoinN8n: true },
   // Le savoir general : 23 domaines voulus par Basile (finance, droit, sante, sciences,
   // quantique, philosophie, metaphysique, spiritualite, esoterisme...). 30 articles par
   // domaine et par jour, source Wikipedia (CC BY-SA), sans cle ni depense.
@@ -61,7 +64,8 @@ const RYTHMES = [
   // Les yeux dehors : forums, depots de code, nouveaux modeles, travaux de recherche.
   // Quatre API publiques, tri par du code, rangement dans la bibliotheque. Cout : zero.
   { nom: 'veilleur',     module: './veilleur.js',    fn: 'veiller',     toutes: 24 * H, besoinN8n: false },
-  { nom: 'prospective',  module: './prospective.js', fn: 'projeter',    toutes: 7 * 24 * H, besoinN8n: false },
+  // 08/10/2026 : retiré, remplacé par le Directeur (agents/directeur.js, un seul flux de réflexion). 
+  // { nom: 'prospective',  module: './prospective.js', fn: 'projeter',    toutes: 7 * 24 * H, besoinN8n: false },
   // Les portes d'entrée (CCI, organismes de formation) : 40 sites lus par jour, robots.txt
   // respecté ; un lot de 30 portes présenté à Basile quand il est prêt. RIEN n'est envoyé ici.
   { nom: 'portes',       module: './portes.js',      fn: 'portes',      toutes: 24 * H, besoinN8n: true },
@@ -79,7 +83,13 @@ const RYTHMES = [
   { nom: 'apis',         module: './apis_publiques.js', fn: 'actualiser', toutes: 7 * 24 * H, besoinN8n: false },
   // Le penseur : la pensée de la nuit (au plus trois idées sourcées, sans conseil de placement),
   // relue par Jarvis au matin. Entre 2 h et 5 h, heure de Paris, une fois par nuit.
-  { nom: 'penseur',      module: './penseur.js',     fn: 'penser',      toutes: 12 * H, besoinN8n: false, args: { garder: true }, heures: [2, 5] },
+  // 08/10/2026 : retiré, remplacé par le Directeur (agents/directeur.js, un seul flux de réflexion). 
+  // { nom: 'penseur',      module: './penseur.js',     fn: 'penser',      toutes: 12 * H, besoinN8n: false, args: { garder: true }, heures: [2, 5] },
+  // LE DIRECTEUR (08/10/2026, points 41 et 58) : une fois par jour, entre 5 h et 7 h à Paris (avant l'e-mail de 7 h 30),
+  // l'état réel de chaque agent, ce que la maison a produit, les alertes, les idées de la nuit jugées par le goût (le
+  // penseur est appelé par lui), au plus un diagnostic confié à Hermes, et UN bilan. Il remplace l'architecte, le
+  // superviseur, le réflexif, la prospective et le penseur comme agents séparés.
+  { nom: 'directeur',    module: './directeur.js',   fn: 'diriger',     toutes: 24 * H, besoinN8n: true, heures: [5, 7] },
 ];
 
 const dernier = {};
@@ -127,7 +137,7 @@ async function executer(tache, brain, n8n) {
       execSync('node agents/prospection_auto.js 14', { stdio: 'inherit', cwd: '/app' });
     } else {
       const mod = await import(tache.module);
-      await mod[tache.fn]({ brain, n8n, ...(tache.args || {}) });
+      await mod[tache.fn]({ brain, n8n, rythmes: RYTHMES, ...(tache.args || {}) });   // les rythmes : pour le Directeur
     }
     console.log(`[${new Date().toISOString()}] ✓ ${tache.nom} terminé en ${Math.round((Date.now() - t0) / 1000)}s`);
     await noterPassage(brain, tache.nom, 'ok', Date.now() - t0);
