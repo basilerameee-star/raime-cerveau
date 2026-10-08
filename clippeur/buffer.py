@@ -21,7 +21,7 @@ import urllib.request
 from file import sql, CLIPS, COFFRE, prevenir
 
 VERROU = "/tmp/clippeur-buffer.lock"
-RALENTI = "/tmp/clippeur-buffer-429"                       # posé quand Buffer répond « trop de demandes » : 30 min de silence
+RALENTI = "/tmp/clippeur-buffer-429"                       # posé quand Buffer répond « trop de demandes » : l’heure de reprise
 SERVICES = {"youtube": "youtube", "tiktok": "tiktok", "instagram": "instagram"}
 
 
@@ -32,16 +32,51 @@ def cle():
     return ""
 
 
+# 08/10/2026 : l'API de Buffer permet 250 appels par jour (fenêtre glissante de 24 h, en-tête « ratelimit »). Le relais
+# s'en tient à 200 par jour (compteur par date, fichier COMPTE) et, refusé, attend exactement le délai que Buffer donne
+# (« Retry-After », écrit dans RALENTI) au lieu d'un silence fixe.
+COMPTE = "/tmp/clippeur-buffer-compte"
+PLAFOND_JOUR = 200
+
+
+def appels_du_jour():
+    try:
+        jour, n = open(COMPTE, encoding="utf-8").read().split()
+        return int(n) if jour == time.strftime("%Y-%m-%d") else 0
+    except (OSError, ValueError):
+        return 0
+
+
+def attente_restante():
+    """Les secondes à attendre encore après un refus de Buffer (0 : on peut appeler)."""
+    try:
+        jusqua = float(open(RALENTI, encoding="utf-8").read().strip() or 0)
+    except (OSError, ValueError):
+        jusqua = 0
+    if not jusqua and os.path.exists(RALENTI):                 # ancien format (fichier vide) : 2 h après sa pose
+        jusqua = os.path.getmtime(RALENTI) + 7200
+    return max(0, jusqua - time.time())
+
+
 def buffer(requete, variables=None):
+    if appels_du_jour() >= PLAFOND_JOUR:
+        raise TropDeDemandes("Buffer : plafond du jour du relais atteint (%d appels)" % PLAFOND_JOUR)
     k = cle()
     req = urllib.request.Request("https://api.buffer.com", data=json.dumps({"query": requete, "variables": variables or {}}).encode(),
                                  headers={"Content-Type": "application/json", "Authorization": "Bearer " + k})
+    with open(COMPTE, "w", encoding="utf-8") as f:
+        f.write("%s %d" % (time.strftime("%Y-%m-%d"), appels_du_jour() + 1))
     try:
         d = json.loads(urllib.request.urlopen(req, timeout=60).read().decode())
     except urllib.error.HTTPError as e:
         if e.code == 429:
-            open(RALENTI, "w").close()
-            raise TropDeDemandes("Buffer : trop de demandes")
+            try:
+                attendre = max(600, min(86400, int(e.headers.get("Retry-After") or 7200)))
+            except ValueError:
+                attendre = 7200
+            with open(RALENTI, "w", encoding="utf-8") as f:
+                f.write(str(time.time() + attendre))
+            raise TropDeDemandes("Buffer : trop de demandes (reprise dans %d min)" % (attendre // 60))
         raise
     if d.get("errors"):
         raise RuntimeError(json.dumps(d["errors"])[:300].replace(k, "***"))
@@ -163,8 +198,8 @@ def main():
         fcntl.flock(verrou, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except OSError:
         return
-    if os.path.exists(RALENTI) and time.time() - os.path.getmtime(RALENTI) < 7200:
-        return                                             # 08/10/2026 : 2 h de silence après un refus (30 min ne suffisaient pas)
+    if attente_restante() > 0 or appels_du_jour() >= PLAFOND_JOUR:
+        return                                             # 08/10/2026 : le délai donné par Buffer, et 200 appels par jour au plus
     sql("""CREATE TABLE IF NOT EXISTS clips_buffer (id serial PRIMARY KEY, campagne text NOT NULL, clip text NOT NULL,
            plateforme text NOT NULL, quand timestamptz NOT NULL, etat text NOT NULL DEFAULT 'a_faire', post_id text, lien text,
            message text, cree_le timestamptz NOT NULL DEFAULT now(), maj timestamptz NOT NULL DEFAULT now(),
