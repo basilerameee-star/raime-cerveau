@@ -13,8 +13,9 @@
 // mieux vaut ne pas rapprocher que rapprocher à tort — un mauvais numéro coûte un appel
 // perdu et une crédibilité entamée.
 import pg from 'pg';
+// 08/10/2026 : plusieurs serveurs Overpass, un nouvel essai sur 429 ou 504 (overpass-api.de seul était saturé).
+import { overpass } from './overpass.js';
 
-const OVERPASS = 'https://overpass-api.de/api/interpreter';
 const BBOX_74 = '45.68,5.80,46.41,7.05';   // Haute-Savoie
 const TYPES = ['accountant', 'lawyer', 'notary', 'tax_advisor', 'consulting', 'educational_institution'];
 
@@ -38,14 +39,7 @@ const telNormalise = (t) => {
 
 async function interroger(type) {
   const q = `[out:json][timeout:25];nwr["office"="${type}"](${BBOX_74});out tags center;`;
-  const r = await fetch(OVERPASS, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded',
-               'User-Agent': 'raime-cartographe/1.0 (cabinet conseil; contact@raime.fr)' },
-    body: 'data=' + encodeURIComponent(q),
-  });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  const d = await r.json();
+  const d = await overpass(q, { delai: 60000 });   // par cadre (bbox) : valable sur tous les serveurs
   return (d.elements || []).map((e) => {
     const t = e.tags || {};
     return {
