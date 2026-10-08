@@ -68,7 +68,10 @@ export async function production({ brain, n8n }) {
   const e = await un(brain, `SELECT coalesce(sum(montant_eur), 0)::float AS eur FROM revenus
     WHERE le >= date_trunc('month', now() AT TIME ZONE '${ZONE}') AT TIME ZONE '${ZONE}'`);
   const d = await un(brain, `SELECT count(*)::int AS n FROM demandes WHERE etat = 'ouverte' AND pour_basile`);
-  return { candidatures: c, prospection: o, fureteur: f, vitrines: v, appels: a, agenda: r, revenus_mois: e ? e.eur : null, decisions: d ? d.n : null };
+  // le pôle de recherche (agents/veilleur.js, veillerPoles) et les agents de trading simulés (agents/trading.js)
+  const veille = await un(brain, `SELECT count(*)::int AS n FROM veille_poles WHERE vu_le > now() - interval '24 hours'`);
+  const trading = await un(brain, `SELECT count(*)::int AS n FROM trading_operations WHERE le > now() - interval '24 hours'`);
+  return { candidatures: c, prospection: o, fureteur: f, vitrines: v, appels: a, agenda: r, revenus_mois: e ? e.eur : null, decisions: d ? d.n : null, veille: veille ? veille.n : null, trading: trading ? trading.n : null };
 }
 
 // 3. Les alertes : des règles, écrites ici. Chacune dit le fait et ce qu'il faut faire ; « qui » dit si c'est pour Basile.
@@ -152,6 +155,7 @@ export function rediger(b) {
     + `${n(v && v.trouves)} commerce(s) trouvé(s), ${n(v && v.envoyes)} vitrine(s) envoyée(s) ; ${n(f && f.adresses)} adresse(s) prouvée(s) ; ${n(p.appels && p.appels.notes)} appel(s) noté(s).`);
   lignes.push(`En attente : ${n(c && c.a_valider)} offre(s) à valider, ${n(o && o.brouillons)} brouillon(s) de prospection, ${n(v && v.brouillons)} vitrine(s) à valider, `
     + `${n(p.agenda && p.agenda.dues)} relance(s) du jour, ${n(p.decisions)} décision(s). Revenus du mois : ${n(p.revenus_mois)} €.`);
+  if (p.veille != null || p.trading != null) lignes.push(`Recherche : ${n(p.veille)} trouvaille(s) neuve(s) pour les agents ; trading simulé : ${n(p.trading)} opération(s) en 24 h.`);
   const ok = b.agents.filter((a) => a.etat === 'a_jour').length;
   lignes.push(`Agents : ${ok} à jour sur ${b.agents.length}${maison.length ? ` ; ${maison.map((a) => a.texte).join(' ')}` : ' ; aucune panne.'}`);
   if (b.ordre && b.ordre.ordre) lignes.push(`Diagnostic confié à Hermes (ordre n°${b.ordre.ordre}) : ${b.ordre.agent}.`);

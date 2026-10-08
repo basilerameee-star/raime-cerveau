@@ -128,10 +128,22 @@ export async function service({ brain, f = globalThis.fetch, journal = (t) => co
     await brain.query('INSERT INTO trading_operations (agent, symbole, le, sens, prix, montant, frais) VALUES ($1,$2,$3,$4,$5,$6,$7)', [agent, symbole, le, op.sens, prix, op.montant, op.frais]);
   };
   const dernierPrix = {};
+  // au démarrage, chaque agent applique sa règle à la dernière bougie fermée : la semaine, le mois et le trimestre
+  // n'attendent pas leur prochaine clôture (lundi, le 1er du mois, la fin du trimestre) pour prendre position
+  for (const s of SYMBOLES) {
+    const m = series[`${s}:minute`] || [];
+    if (m.length) dernierPrix[s] = m[m.length - 1];
+  }
+  const maintenant = new Date().toISOString();
+  for (const agent of Object.keys(ECHELLES)) for (const s of SYMBOLES) {
+    const serie = series[`${s}:${agent}`] || [];
+    if (serie.length && dernierPrix[s]) await pas(agent, s, dernierPrix[s], maintenant).catch((e) => journal(`démarrage ${agent} ${s} : ${e.message}`));
+  }
   const valoriser = async (agent, le) => {
     const v = SYMBOLES.reduce((t, s) => { const p = portefeuilles[`${agent}:${s}`]; return t + p.liquidites + p.quantite * (dernierPrix[s] || 0); }, 0);
     if (SYMBOLES.every((s) => dernierPrix[s])) await brain.query('INSERT INTO trading_valeurs (agent, le, valeur) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING', [agent, le, v]);
   };
+  for (const a of Object.keys(ECHELLES)) await valoriser(a, maintenant).catch(() => {});
 
   const recevoir = async (b) => {
     if (!b || !b.fermee) return;

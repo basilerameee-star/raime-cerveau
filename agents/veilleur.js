@@ -281,7 +281,86 @@ export async function veiller({ brain, sources = Object.keys(SOURCES) }) {
   return { retenus, pannes };
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+// ── LE PÔLE DE RECHERCHE PAR AGENT (08/10/2026) ─────────────────────────────────────────────
+// Basile : « il faudrait un fureteur, un veilleur, un radar qui fasse de la recherche pour chaque agent en ligne ; on a
+// toujours besoin de data : le pôle de recherche doit nourrir, en plus de l'expérience de chaque agent, de la data
+// extérieure. » Chaque jour, pour chaque pôle : GitHub (dépôts actifs), Hacker News (discussions), arXiv (travaux), par
+// des API publiques et gratuites ; les trouvailles sont rangées AU NOM du pôle (table veille_poles), lisibles par l'agent
+// (pourPole) et comptées par le Directeur. Rien n'est installé ni exécuté : ce qui doit l'être passe par Basile.
+export const POLES = {
+  trading: { github: 'trading strategy backtest crypto', hn: 'trading strategy', arxiv: 'cat:q-fin.TR' },
+  bourse: { github: 'portfolio backtest etf', hn: 'index fund investing', arxiv: 'cat:q-fin.PM' },
+  prospection: { github: 'cold email outreach automation', hn: 'cold email', arxiv: null },
+  vitrines: { github: 'website builder small business', hn: 'small business website', arxiv: null },
+  clipping: { github: 'auto clip shorts highlight video', hn: 'short form video', arxiv: 'all:"video highlight detection"' },
+  dropshipping: { github: 'dropshipping product research', hn: 'dropshipping', arxiv: null },
+  revenus: { github: 'micro saas api monetization', hn: 'side project revenue', arxiv: null },
+  agents: { github: 'ai agent framework', hn: 'ai agents', arxiv: 'cat:cs.MA' },
+};
+const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function pourGithub(q) {
+  const depuis = new Date(Date.now() - 30 * JOUR).toISOString().slice(0, 10);
+  const d = await json(`https://api.github.com/search/repositories?q=${encodeURIComponent(`${q} pushed:>${depuis} stars:>50`)}&sort=stars&order=desc&per_page=8`,
+    { ...H(), Accept: 'application/vnd.github+json' });
+  return (d.items || []).map((r) => ({ source: 'github', titre: r.full_name, lien: r.html_url, score: Math.min(10, Math.round(Math.log10(1 + r.stargazers_count) * 2.5)),
+    detail: `${r.stargazers_count} étoiles · ${r.language || 'texte'} · ${r.license ? r.license.spdx_id : 'licence ?'} · ${(r.description || '').slice(0, 160)}` }));
+}
+async function pourHackernews(q) {
+  const depuis = Math.floor((Date.now() - 14 * JOUR) / 1000);
+  const d = await json(`https://hn.algolia.com/api/v1/search?query=${encodeURIComponent(q)}&tags=story&numericFilters=created_at_i>${depuis},points>15&hitsPerPage=8`);
+  return (d.hits || []).map((h) => ({ source: 'hackernews', titre: h.title || '', lien: h.url || `https://news.ycombinator.com/item?id=${h.objectID}`,
+    score: Math.min(10, Math.round(Math.log10(1 + (h.points || 0)) * 3)), detail: `${h.points} points · ${h.num_comments || 0} commentaires` }));
+}
+async function pourArxiv(q) {
+  const x = await texte(`http://export.arxiv.org/api/query?search_query=${encodeURIComponent(q)}&sortBy=submittedDate&sortOrder=descending&max_results=6`);
+  return x.split('<entry>').slice(1).map((e) => {
+    const p = (b) => (e.match(new RegExp(`<${b}[^>]*>([\\s\\S]*?)</${b}>`)) || [, ''])[1].replace(/\s+/g, ' ').trim();
+    return { source: 'arxiv', titre: p('title'), lien: (e.match(/<id>(.*?)<\/id>/) || [, ''])[1], score: 5, detail: `${p('published').slice(0, 10)} · ${p('summary').slice(0, 200)}` };
+  });
+}
+
+export async function veillerPoles({ brain, poles = Object.keys(POLES), attente = 7000, sources = { github: pourGithub, hackernews: pourHackernews, arxiv: pourArxiv } } = {}) {
+  await brain.query(`CREATE TABLE IF NOT EXISTS veille_poles (id bigserial PRIMARY KEY, pole text NOT NULL, source text NOT NULL, titre text NOT NULL,
+    lien text NOT NULL, detail text, score int NOT NULL, vu_le timestamptz NOT NULL DEFAULT now(), UNIQUE (pole, lien))`);
+  const neuves = {}, pannes = [];
+  for (const pole of poles) {
+    neuves[pole] = 0;
+    for (const [src, cle] of [['github', 'github'], ['hackernews', 'hn'], ['arxiv', 'arxiv']]) {
+      const q = POLES[pole][cle];
+      if (!q) continue;
+      try {
+        for (const it of await sources[src](q)) {
+          if (!it.lien || !it.titre) continue;
+          const r = await brain.query(`INSERT INTO veille_poles (pole, source, titre, lien, detail, score) VALUES ($1,$2,$3,$4,$5,$6)
+            ON CONFLICT (pole, lien) DO NOTHING`, [pole, it.source, it.titre.slice(0, 300), it.lien, (it.detail || '').slice(0, 400), it.score]);
+          neuves[pole] += r.rowCount;
+        }
+      } catch (e) { pannes.push(`${pole}/${src} : ${String(e.message).slice(0, 60)}`); }
+      if (attente) await dormir(attente);   // GitHub sans clé : 10 recherches par minute au plus
+    }
+  }
+  const total = Object.values(neuves).reduce((a, b) => a + b, 0);
+  await brain.query('INSERT INTO journal(acteur, changement, motif) VALUES ($1, $2, $3)', ['veilleur',
+    `Pôle de recherche : ${total} trouvaille(s) neuve(s) — ${Object.entries(neuves).map(([p, n]) => `${p} ${n}`).join(', ')}`,
+    pannes.length ? `sources muettes : ${pannes.join(' | ')}` : 'GitHub, Hacker News et arXiv lus pour chaque pôle.']).catch(() => {});
+  return { neuves, pannes };
+}
+
+// Ce que la veille a trouvé pour un pôle (un agent la lit avant de décider), les meilleures d'abord.
+export async function pourPole(brain, pole, { jours = 30, n = 10 } = {}) {
+  const { rows } = await brain.query(`SELECT source, titre, lien, detail, score, vu_le FROM veille_poles WHERE pole = $1 AND vu_le > now() - make_interval(days => $2)
+    ORDER BY score DESC, vu_le DESC LIMIT $3`, [pole, jours, n]);
+  return rows;
+}
+
+if (import.meta.url === `file://${process.argv[1]}` && process.argv[2] === 'poles') {
+  const { db } = await import('./lib.js');
+  const brain = db(); await brain.connect();
+  const r = await veillerPoles({ brain });
+  console.log('pôles :', JSON.stringify(r.neuves), r.pannes.length ? `\nsources muettes : ${r.pannes.join(' | ')}` : '');
+  await brain.end();
+} else if (import.meta.url === `file://${process.argv[1]}`) {
   const { db } = await import('./lib.js');
   const brain = db(); await brain.connect();
   const r = await veiller({ brain });

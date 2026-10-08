@@ -77,6 +77,9 @@ export const RYTHMES = [
   // relue par Jarvis au matin. Entre 2 h et 5 h, heure de Paris, une fois par nuit.
   // 08/10/2026 : retiré, remplacé par le Directeur (agents/directeur.js, un seul flux de réflexion). 
   // { nom: 'penseur',      module: './penseur.js',     fn: 'penser',      toutes: 12 * H, besoinN8n: false, args: { garder: true }, heures: [2, 5] },
+  // LE PÔLE DE RECHERCHE PAR AGENT (08/10/2026, demande de Basile) : chaque jour, GitHub, Hacker News et arXiv pour chaque
+  // agent (trading, bourse, prospection, vitrines, clipping, dropshipping, revenus, agents IA), rangés à son nom (veille_poles).
+  { nom: 'poles',        module: './veilleur.js',    fn: 'veillerPoles', toutes: 24 * H, besoinN8n: false },
   // LA BOURSE EN SIMULATION (08/10/2026, point 55) : chaque soir après la clôture de New York (22 h-24 h à Paris), les cours
   // (Yahoo, Binance, BCE) et quatre portefeuilles fictifs de 1 000 € recalculés. Aucun ordre réel, aucun conseil.
   { nom: 'bourse',       module: './bourse.js',      fn: 'passer',      toutes: 20 * H, besoinN8n: false, heures: [22, 24] },
