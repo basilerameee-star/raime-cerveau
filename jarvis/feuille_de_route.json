@@ -555,8 +555,9 @@
       "moteur": "Socle",
       "titre": "Le veilleur GitHub se met à jour : il fouille GitHub, essaie et propose les outils et agents utiles",
       "fini_quand": "Le veilleur (qui lit déjà GitHub, Hacker News, Hugging Face, arXiv) passe à l’acte : pour chaque outil ou agent open source utile à un point de cette feuille, il l’essaie sur le banc, écrit ce qu’il apporte, et ouvre un chantier ; l’installation se fait après accord. Demande de Basile du 07/10/2026.",
-      "etat": "a_faire",
-      "rang": 54
+      "etat": "en_cours",
+      "rang": 54,
+      "avance": "08/10/2026 : pôle de recherche par agent (agents/veilleur.js, veillerPoles) : chaque jour, GitHub, Hacker News et arXiv pour trading, bourse, prospection, vitrines, clipping, dropshipping, revenus et agents IA, rangés au nom de chacun (veille_poles), comptés par le Directeur ; 51 trouvailles au premier passage. Reste : l'essai sur le banc (en bac à sable) et le chantier ouvert, après accord."
     },
     {
       "n": 55,
