@@ -11,6 +11,8 @@
 //   ③ on préfère le fixe local (04) au mobile : on appelle un cabinet, pas une personne
 //   ④ on écarte les numéros surtaxés (08) et les numéros trop répétitifs (gabarits)
 import pg from 'pg';
+// 08/10/2026 : la règle des numéros vit dans jarvis/telephone.cjs, partagée avec le Fureteur, les sans-site et le Cockpit.
+import { normaliser } from '../jarvis/telephone.cjs';
 
 const UA = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
@@ -33,28 +35,14 @@ async function page(url) {
   } catch { return null; } finally { clearTimeout(t); }
 }
 
-// Normalise vers 0XXXXXXXXX, ou null si ce n'est pas un numéro français plausible.
-function normaliser(brut) {
-  let c = String(brut).replace(/[^\d+]/g, '');
-  if (c.startsWith('0033')) c = '+33' + c.slice(4);
-  if (c.startsWith('+33')) c = '0' + c.slice(3);
-  if (!/^0[1-9]\d{8}$/.test(c)) return null;
-  if (c.startsWith('08')) return null;                 // surtaxé
-  if (/^(\d)\1{8}$/.test(c.slice(1))) return null;     // 0111111111 : gabarit de démonstration
-  if (/^0[1-9]0{8}$/.test(c)) return null;
-  // Numeros de demonstration sequentiels : 06 12 34 56 78, 01 23 45 67 89.
-  if ('0123456789'.includes(c.slice(1)) || '9876543210'.includes(c.slice(1))) return null;
-  if (/12345678|23456789|98765432|87654321/.test(c)) return null;   // 06 12 34 56 78 : le numéro des gabarits de site (07/10/2026)
-  return c;
-}
-
 // Un numéro précédé de « fax » dans les 40 caractères qui le précèdent n'est pas un contact.
 function estFax(html, index) {
   const avant = html.slice(Math.max(0, index - 60), index).toLowerCase();
   return /fax|t[ée]l[ée]copie/.test(avant);
 }
 
-export function extraire(html) {
+// accepte (08/10/2026) : un filtre en plus, par exemple l'indicatif du département (le Fureteur s'en sert).
+export function extraire(html, accepte = () => true) {
   const texte = String(html).replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ');
   const trouves = new Map();
 
@@ -63,13 +51,13 @@ export function extraire(html) {
   let m;
   while ((m = reTel.exec(texte))) {
     const n = normaliser(m[1]);
-    if (n && !trouves.has(n)) trouves.set(n, { numero: n, source: 'lien tel:', poids: 3 });
+    if (n && accepte(n) && !trouves.has(n)) trouves.set(n, { numero: n, source: 'lien tel:', poids: 3 });
   }
 
   const reTexte = /(?:\+33|0033|0)\s?[1-9](?:[\s.\-]?\d{2}){4}/g;
   while ((m = reTexte.exec(texte))) {
     const n = normaliser(m[0]);
-    if (!n) continue;
+    if (!n || !accepte(n)) continue;
     if (estFax(texte, m.index)) continue;
     if (!trouves.has(n)) trouves.set(n, { numero: n, source: 'texte', poids: 1 });
   }

@@ -6,6 +6,8 @@
 const fs = require('fs');
 const path = require('path');
 const { lire, lireN8n, lireCoffre } = require('./bases.cjs');
+const { normaliser, lisible } = require('./telephone.cjs');
+const { annuaires } = require('./sans_site.cjs');
 
 // La maquette premium (point 16) : Hermes la livre dans son dossier de travail, lu ici en lecture seule.
 const LIVRABLES = process.env.LIVRABLES_DIR || '/travail';
@@ -147,7 +149,12 @@ function fiche(v, adresse) {
     maquette: v.slug ? `${adresse}/demo/${v.slug}` : null, carte: v.carte,
     statut: v.statut, motif: v.motif, envoye_le: v.envoye_le, jours_depuis_envoi: jours, note: v.note,
     pays: v.pays || 'FR', region: v.departement || null,
-    brouillon: v.sujet ? { sujet: v.sujet, corps: v.corps } : null, paiement: LIEN_PAIEMENT, source: v.source === 'google' ? 'Google' : 'OpenStreetMap',
+    brouillon: v.sujet ? { sujet: v.sujet, corps: v.corps } : null, paiement: LIEN_PAIEMENT,
+    // 08/10/2026 : les entreprises sans site viennent du registre public des entreprises (agents/sans_site.js)
+    source: v.source === 'google' ? 'Google' : v.source === 'sirene' ? 'Registre des entreprises' : 'OpenStreetMap',
+    telephone_source: v.telephone_source || null,
+    // où Basile lit lui-même le numéro : la page trouvée sur le portail de la profession, l'annuaire officiel, Pages Jaunes
+    annuaires: [...(v.site_etat === 'portail' && v.site ? [{ nom: 'Sa page sur le portail de la profession (trouvée par la recherche)', url: v.site }] : []), ...annuaires(v)],
     premium: v.premium_commande ? { commande: v.premium_commande, prete: fs.existsSync(fichierPremium(v.premium_commande)),
       apercu: `${adresse}/livrables/demande-${v.premium_commande}/app/index.html`, publiee_le: v.premium_le || null } : null,
   };
@@ -170,7 +177,7 @@ async function uneFiche(id, adresse) {
 
 // Les gestes de Basile. « valider » met le brouillon dans la file du workflow n8n « Vitrines · Envoi » (agents/vitrines.js,
 // synchroniser) : rien ne part d'ici, et le réglage d'envoi (test ou live) reste dans la base n8n.
-async function agir(id, { action, note = null } = {}) {
+async function agir(id, { action, note = null, numero = null } = {}) {
   // La maquette premium remplace la simple sur la même adresse publique (le commerçant garde son lien) ; la simple est gardée.
   if (action === 'publier_premium' || action === 'retablir_simple') {
     await lire(COLONNES);
@@ -198,8 +205,27 @@ async function agir(id, { action, note = null } = {}) {
     await lire('UPDATE vitrines SET note = $2, maj_le = now() WHERE id = $1', [Number(id), note ? String(note).slice(0, 500) : null]);
     return { ok: true };
   }
+  // 08/10/2026 : une fiche « à compléter » (entreprise sans site, sans numéro) reçoit le numéro que Basile a lu dans
+  // l'annuaire de la profession ; elle passe dans les appels. Un numéro français seulement (10 chiffres, ni 08, ni gabarit).
+  if (action === 'telephone') {
+    const n = normaliser(numero);
+    if (!n) return { ok: false, erreur: 'numéro français attendu : 10 chiffres (04 50 12 34 56), ni 08 ni numéro de démonstration' };
+    await lire('ALTER TABLE vitrines ADD COLUMN IF NOT EXISTS telephone_source text');
+    const [v] = await lire(`UPDATE vitrines SET telephone = $2, telephone_source = 'saisi par Basile', statut = 'a_appeler',
+      motif = 'numéro lu par Basile dans un annuaire', maj_le = now() WHERE id = $1 AND statut = 'a_completer' RETURNING *`, [Number(id), lisible(n)]);
+    if (!v) return { ok: false, erreur: 'seule une fiche « à compléter » reçoit un numéro' };
+    // la maquette montre désormais le bouton d'appel (jamais une maquette premium publiée par Basile)
+    if (v.demo_html && !v.premium_le) {
+      try {
+        const { maquettePremium } = await import(require('url').pathToFileURL(path.join(__dirname, 'maquette_premium.mjs')).href);
+        await lire('UPDATE vitrines SET demo_html = $2 WHERE id = $1', [v.id, maquettePremium(v, { images: `${process.env.VITRINE_ADRESSE || 'https://cockpit.raime.fr'}/demo/img` })]);
+      } catch { /* l'ancienne maquette reste : le numéro est enregistré */ }
+    }
+    await lire(`INSERT INTO journal(acteur, changement, motif) VALUES('basile', $1, $2)`, [`Vitrine n°${id} : numéro saisi, à appeler`, v.nom]);
+    return { ok: true, telephone: v.telephone };
+  }
   const etat = ACTIONS[action];
-  if (!etat) return { ok: false, erreur: `action attendue : ${[...Object.keys(ACTIONS), 'note', 'publier_premium', 'retablir_simple'].join(', ')}` };
+  if (!etat) return { ok: false, erreur: `action attendue : ${[...Object.keys(ACTIONS), 'note', 'telephone', 'publier_premium', 'retablir_simple'].join(', ')}` };
   const r = await lire(`UPDATE vitrines SET statut = $2, note = coalesce($3, note), maj_le = now()
     WHERE id = $1 AND ($2 <> 'valide' OR statut = 'brouillon') RETURNING id`, [Number(id), etat, note ? String(note).slice(0, 500) : null]);
   if (!r.length) return { ok: false, erreur: action === 'valider' ? 'seul un brouillon se valide' : 'commerce introuvable' };

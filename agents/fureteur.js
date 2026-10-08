@@ -10,10 +10,19 @@
 // recherches espacées. Un site n'est retenu que s'il PROUVE être celui de l'entreprise : son SIREN sur ses pages
 // (les mentions légales l'y obligent), ou son nom et sa ville. L'adresse doit être écrite sur ce site ; jamais devinée.
 // Chaque fiche essayée est datée : on n'y revient pas avant 30 jours. Aucun modèle : rien d'inventé, aucun coût.
+//
+// 08/10/2026 — trois verdicts, plus de « rien trouvé » fourre-tout (Basile : « n'oublie pas les entreprises qui n'ont
+// PAS de site ; on n'écarte pas des profils pour rien ») ; la colonne prospects.site_statut les garde :
+//   prouve  : un site porte son SIREN, ou son nom et sa ville ;
+//   absent  : ni les domaines tirés du nom, ni une recherche qui marche n'ont donné de site à elle ;
+//   portail : on ne la trouve que sur un portail de sa profession (notaires.fr, avocat.fr, experts-comptables…) ;
+//   inconnu : le moteur était fermé ou muet, rien n'est affirmé ; la fiche revient le lendemain, jamais bloquée 30 jours.
+// Les entreprises « absent » et « portail » ne sont plus perdues : agents/sans_site.js en fait des fiches à appeler.
 import pg from 'pg';
 import dns from 'node:dns/promises';
 import { joliNom, adresseFiable, motsDuNom, SANS_ACCENTS, METIERS, NAF_EXCLUS } from './prospection_auto.js';
 import { extraire as extraireTelephone } from './annuaire.js';
+import { coherent } from '../jarvis/telephone.cjs';
 
 const UA = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
@@ -22,9 +31,13 @@ const UA = {
 };
 const TIMEOUT = 8000;
 // Ni annuaires, ni réseaux, ni moteurs : un résultat de recherche de ce genre n'est jamais le site de l'entreprise.
-const RACINES = /(^|\.)(linkedin|facebook|instagram|twitter|x|youtube|wikipedia|societe|pappers|verif|infogreffe|manageo|score3|bodacc|pagesjaunes|kompass|europages|cylex|118000|118712|mappy|google|yelp|trustpilot|indeed|glassdoor|hellowork|welcometothejungle|lefigaro|leparisien|journaldunet|b-reputation|businesscoot|corporama|societeinfo|bilansgratuits|brave|duckduckgo|mojeek|bing|ecosia|qwant|buttondown|mastodon|lesentreprises|rubypayeur|doctrine|justacote|hoodspot|tiktok|pinterest|apple|waze|tripadvisor|annuaire-entreprises|pappers|legalstart|legalplace|infonet|entreprises-lefigaro|dnb|bfmtv|ouest-france|ledauphine)\.[a-z]{2,6}(\.[a-z]{2})?$/;
+const RACINES = /(^|\.)(linkedin|facebook|instagram|twitter|x|youtube|wikipedia|societe|pappers|verif|infogreffe|manageo|score3|bodacc|pagesjaunes|kompass|europages|cylex|118000|118712|mappy|google|yelp|trustpilot|indeed|glassdoor|hellowork|welcometothejungle|lefigaro|leparisien|journaldunet|b-reputation|businesscoot|corporama|societeinfo|bilansgratuits|brave|duckduckgo|mojeek|bing|ecosia|qwant|buttondown|mastodon|lesentreprises|rubypayeur|doctrine|justacote|hoodspot|tiktok|pinterest|apple|waze|tripadvisor|annuaire-entreprises|pappers|legalstart|legalplace|infonet|entreprises-lefigaro|dnb|bfmtv|ouest-france|ledauphine|fichesociete)\.[a-z]{2,6}(\.[a-z]{2})?$/;
+// 08/10/2026 : fichesociete.fr ajouté — une fiche d'annuaire porte le SIREN, elle « prouvait » donc être le site (IMMONTAGNE).
+// Les portails des professions : la page d'une étude sur notaires.fr n'est pas son site, mais dit qu'elle n'en a peut-être
+// pas d'autre (verdict « portail »). Les sites des études en *.notaires.fr, eux, sont les leurs.
 const PORTAILS = new Set(['notaires.fr', 'immobilier.notaires.fr', 'avocat.fr', 'cnb.avocat.fr', 'experts-comptables.fr', 'experts-comptables.org']);
-const PAS_UN_SITE = (h) => !h || RACINES.test(h) || PORTAILS.has(h) || /\.gouv\.fr$|annuaire/.test(h);
+export const estPortail = (h) => PORTAILS.has(h) || /^(annuaire\.)?experts-comptables\.[a-z]{2,4}$/.test(h);
+const PAS_UN_SITE = (h) => !h || RACINES.test(h) || estPortail(h) || /\.gouv\.fr$|annuaire/.test(h);
 const PAGES_UTILES = /contact|mention|legal|l[eé]gales|propos|cabinet|equipe|[eé]quipe|qui-sommes|nous-trouver|office|etude/i;
 
 const dort = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -110,64 +123,119 @@ export async function visiter(url, p, lire = lirePage) {
   const ok = preuve(texte(tout), p);
   if (!ok) return { site: base, preuve: null };
   const email = choisirAdresse(adressesDe(tout), p, base);
+  // 08/10/2026 : les précautions de l'annuaire — ni gabarit (06 12 34 56 78), ni surtaxé, et un indicatif qui va avec le
+  // département de l'entreprise quand il est connu (un cabinet d'Annecy ne répond pas au standard de son siège à Pau).
   let telephone = null;
-  for (const x of pages) { const t = extraireTelephone(x.html); if (t) { telephone = t.numero; break; } }
+  for (const x of pages) { const t = extraireTelephone(x.html, (n) => coherent(n, p.departement)); if (t) { telephone = t.numero; break; } }
   return { site: base, preuve: ok, email, telephone };
 }
 
 // Une recherche Brave, page publique, au plus quelques-unes par passage, espacées. Si le moteur répond autre chose
 // qu'une page de résultats (blocage, vérification « êtes-vous humain »), on s'arrête : on ne contourne jamais.
 // Fermé, il le reste 24 heures : on ne revient pas frapper à une porte qui a dit non (429 et vérification le 07/10/2026).
-let moteurFerme = false, fermeJusqua = 0;
-async function chercher(q) {
-  if (moteurFerme || Date.now() < fermeJusqua) { moteurFerme = true; return []; }
-  const r = await lirePage(`https://search.brave.com/search?q=${encodeURIComponent(q)}&source=web`);
-  if (!r || /captcha|are you a (human|robot)|unusual traffic/i.test(r.html.slice(0, 20000))) { moteurFerme = true; fermeJusqua = Date.now() + 24 * 3600_000; return []; }
-  const vus = new Set(), sites = [];
-  for (const m of r.html.matchAll(/href="(https?:\/\/[^"]+)"/gi)) {
+// Rend { ferme, sites, portails, vide } : vide quand la page ne montre aucun résultat (ni site, ni annuaire, ni portail).
+let fermeJusqua = 0;
+// les liens du moteur lui-même, pied de page compris (brave.com, status.brave.app, hackerone.com : relevés le 08/10/2026)
+const MOTEUR = (h) => /(^|\.)brave\.(com|app)$|search\.|(^|\.)hackerone\.com$/.test(h);
+export function lireResultats(html) {
+  const vus = new Set(), sites = [], portails = [];
+  let resultats = 0;
+  for (const m of String(html || '').matchAll(/href="(https?:\/\/[^"]+)"/gi)) {
     const h = hote(m[1]);
-    if (vus.has(h) || PAS_UN_SITE(h) || /search\./.test(h)) continue;
+    if (!h || MOTEUR(h)) continue;
+    resultats++;
+    // la page d'une étude sur son portail (notaires.fr/fr/office/…), jamais l'accueil du portail
+    if (estPortail(h)) { try { if (new URL(m[1]).pathname.length > 1 && portails.length < 3 && !portails.includes(m[1])) portails.push(m[1]); } catch { /* lien illisible */ } continue; }
+    if (vus.has(h) || PAS_UN_SITE(h) || sites.length >= 4) continue;
     vus.add(h); sites.push(`https://${h}`);
-    if (sites.length >= 4) break;
   }
-  return sites;
+  return { sites, portails, vide: resultats === 0 };
+}
+async function chercher(q, lire = lirePage) {
+  if (Date.now() < fermeJusqua) return { ferme: true, sites: [], portails: [], vide: true };
+  const r = await lire(`https://search.brave.com/search?q=${encodeURIComponent(q)}&source=web`);
+  if (!r || /captcha|are you a (human|robot)|unusual traffic/i.test(r.html.slice(0, 20000))) {
+    fermeJusqua = Date.now() + 24 * 3600_000;
+    return { ferme: true, sites: [], portails: [], vide: true };
+  }
+  return { ferme: false, ...lireResultats(r.html) };
+}
+// La recherche témoin : quand une recherche ne rend rien du tout, une recherche qui rend toujours quelque chose dit si
+// le moteur marche (alors l'entreprise n'a vraiment rien) ou s'il est muet (alors rien n'est affirmé). Une fois par passage.
+const TEMOIN = 'mairie annecy';
+
+// Le verdict d'une fiche (08/10/2026). Sans recherche faite, aucun verdict : la fiche revient au passage suivant.
+export function verdict({ prouve = false, recherche = false, ferme = false, muet = false, portails = 0 } = {}) {
+  if (prouve) return 'prouve';
+  if (!recherche) return null;
+  if (ferme || muet) return 'inconnu';
+  return portails ? 'portail' : 'absent';
 }
 
 // Une fiche : le site connu d'abord (il doit, lui aussi, prouver qu'il est le bon), puis les domaines du nom, puis la recherche.
-export async function fureter(p, { recherche = true } = {}) {
-  const essais = [];
-  if (p.website) essais.push(/^https?:\/\//.test(p.website) ? p.website : `https://${p.website}`);
-  for (const d of domainesDevines(p)) if (await existe(d)) essais.push(`https://${d}`);
+// Rend { statut: 'prouve', site, preuve, email, telephone }, ou { statut: 'absent' | 'portail' | 'inconnu' | null, portails }.
+// o : l'état du passage (moteur fermé ou muet, recherche témoin faite) et, pour le banc, lire / chercher / existe / attente.
+export async function fureter(p, { recherche = true, etat = { ferme: false, temoin: null }, ...o } = {}) {
+  const lire = o.lire || lirePage, cherche = o.chercher || ((q) => chercher(q, lire)), resout = o.existe || existe;
+  const essais = [], portails = [];
+  if (p.website) {
+    const u = /^https?:\/\//.test(p.website) ? p.website : `https://${p.website}`;
+    if (estPortail(hote(u)) && new URL(u).pathname.length > 1) portails.push(u); else essais.push(u);
+  }
+  for (const d of domainesDevines(p)) if (await resout(d)) essais.push(`https://${d}`);
   const faits = new Set();
   const tenter = async (url) => {
     const h = hote(url);
     if (!h || faits.has(h)) return null;
     faits.add(h);
-    const v = await visiter(url, p).catch(() => null);
-    return v && v.preuve ? v : null;
+    const v = await visiter(url, p, lire).catch(() => null);
+    return v && v.preuve ? { statut: 'prouve', ...v } : null;
   };
   for (const u of essais) { const v = await tenter(u); if (v) return v; }
-  if (recherche) {
-    await dort(3000 + Math.random() * 3000);
-    for (const u of await chercher(`${joliNom(p.name)} ${SANS_ACCENTS(p.city || '').toLowerCase()}`)) { const v = await tenter(u); if (v) return v; }
+  if (!recherche) return { statut: null, portails };
+  let muet = false;
+  if (!etat.ferme) {
+    await dort(o.attente ?? 3000 + Math.random() * 3000);
+    const r = await cherche(`${joliNom(p.name)} ${SANS_ACCENTS(p.city || '').toLowerCase()}`);
+    if (r.ferme) etat.ferme = true;
+    else {
+      for (const u of r.portails) if (!portails.includes(u)) portails.push(u);
+      for (const u of r.sites) { const v = await tenter(u); if (v) return v; }
+      if (r.vide) {
+        if (etat.temoin === null) {
+          const t = await cherche(TEMOIN);
+          etat.temoin = !t.ferme && !t.vide;
+          // muet pour le témoin aussi : inutile d'insister pendant ce passage
+          if (!etat.temoin) etat.ferme = true;
+        }
+        muet = !etat.temoin;
+      }
+    }
   }
-  return null;
+  return { statut: verdict({ recherche: true, ferme: etat.ferme, muet, portails: portails.length }), portails };
 }
 
-export async function passer({ n8n, brain, combien = 25, recherches = 15, dureeMax = 4 * 60_000 } = {}) {
+// outils : pour le banc seulement (lire, chercher, existe, attente), passés tels quels à fureter().
+export async function passer({ n8n, brain, combien = 25, recherches = 15, dureeMax = 4 * 60_000, outils = {} } = {}) {
   await n8n.query('ALTER TABLE prospects ADD COLUMN IF NOT EXISTS site_preuve text');
   await n8n.query('ALTER TABLE prospects ADD COLUMN IF NOT EXISTS furete_le timestamptz');
   await n8n.query('ALTER TABLE prospects ADD COLUMN IF NOT EXISTS furete_note text');
-  moteurFerme = false;
+  await n8n.query('ALTER TABLE prospects ADD COLUMN IF NOT EXISTS site_statut text');
+  // 08/10/2026 : les fiches d'avant les trois verdicts. Un site prouvé l'est toujours ; « aucun site prouvé (moteur fermé) »
+  // ne prouvait rien : la fiche est rendue au Fureteur tout de suite, au lieu d'attendre 30 jours.
+  await n8n.query(`UPDATE prospects SET site_statut = 'prouve' WHERE site_preuve IS NOT NULL AND site_statut IS NULL`);
+  await n8n.query(`UPDATE prospects SET furete_le = NULL WHERE site_statut IS NULL AND site_preuve IS NULL
+    AND furete_le IS NOT NULL AND furete_note LIKE 'aucun site prouvé (moteur fermé)%'`);
+  const etat = { ferme: false, temoin: null };
   // D'abord les métiers qui ont un pré-audit (l'e-mail part), puis les autres entreprises à but lucratif ; les fiches
   // dont le site n'a jamais été prouvé (celles de l'ancien Fureteur) passent avant les autres.
-  const { rows } = await n8n.query(`SELECT siren, name, city, website, contact_email, telephone FROM prospects
+  const { rows } = await n8n.query(`SELECT siren, name, city, departement, website, contact_email, telephone FROM prospects
     WHERE status = 'nouveau' AND site_preuve IS NULL AND (furete_le IS NULL OR furete_le < now() - interval '30 days')
       -- seulement les métiers qui ont un pré-audit (l'e-mail peut partir), jamais les codes exclus (07/10/2026)
       AND (sector = ANY($1::text[]) OR name ~* 'notaire|notarial') AND coalesce(naf, '') <> ALL($3::text[])
     ORDER BY (sector = ANY($1::text[]) OR name ~* 'notaire|notarial') DESC, (website IS NOT NULL) DESC,
       (departement = '74') DESC, effectif_est DESC NULLS LAST, score DESC NULLS LAST LIMIT $2`, [Object.keys(METIERS), combien, NAF_EXCLUS]);
-  const bilan = { examinees: 0, prouves: 0, adresses: 0, retirees: 0, telephones: 0, moteur: 'ouvert' };
+  const bilan = { examinees: 0, prouves: 0, absents: 0, portails: 0, inconnus: 0, adresses: 0, retirees: 0, telephones: 0, moteur: 'ouvert' };
   const debut = Date.now();
   let cherchees = 0;
   for (const p of rows) {
@@ -175,8 +243,9 @@ export async function passer({ n8n, brain, combien = 25, recherches = 15, dureeM
     bilan.examinees++;
     const recherche = cherchees < recherches;
     if (recherche) cherchees++;
-    const v = await fureter(p, { recherche }).catch(() => null);
-    if (v) {
+    // une panne pendant la fiche ne prouve rien : « inconnu », elle revient le lendemain
+    const v = await fureter(p, { recherche, etat, ...outils }).catch(() => ({ statut: recherche ? 'inconnu' : null, portails: [] }));
+    if (v.statut === 'prouve') {
       bilan.prouves++;
       // Un site prouvé : l'adresse vient de lui. L'ancienne adresse n'est gardée que si elle tient face à ce site.
       const garde = !v.email && p.contact_email && adresseFiable({ name: p.name, contact_email: p.contact_email, website: v.site }) ? p.contact_email : null;
@@ -184,10 +253,10 @@ export async function passer({ n8n, brain, combien = 25, recherches = 15, dureeM
       if (v.email && v.email !== p.contact_email) bilan.adresses++;
       if (p.contact_email && !email) bilan.retirees++;
       if (v.telephone && !p.telephone) bilan.telephones++;
-      await n8n.query(`UPDATE prospects SET website = $2, site_preuve = $3, contact_email = $4, furete_le = now(), furete_note = $5,
+      await n8n.query(`UPDATE prospects SET website = $2, site_preuve = $3, contact_email = $4, furete_le = now(), furete_note = $5, site_statut = 'prouve',
           telephone = coalesce(telephone, $6), telephone_source = CASE WHEN telephone IS NULL AND $6::text IS NOT NULL THEN 'site (fureteur)' ELSE telephone_source END
         WHERE siren = $1`, [p.siren, v.site, v.preuve, email, email ? `adresse sur le site (${v.preuve})` : `site prouvé (${v.preuve}), aucune adresse écrite`, v.telephone]);
-    } else if (!recherche) {
+    } else if (!v.statut) {
       // pas encore cherché sur le moteur : seule l'adresse sans preuve est réglée, la fiche revient en tête au passage suivant
       const garde = p.contact_email && adresseFiable({ name: p.name, contact_email: p.contact_email }) ? p.contact_email : null;
       if (p.contact_email && !garde) { bilan.retirees++; await n8n.query('UPDATE prospects SET contact_email = $2 WHERE siren = $1', [p.siren, garde]); }
@@ -195,15 +264,22 @@ export async function passer({ n8n, brain, combien = 25, recherches = 15, dureeM
       // Aucun site prouvé : une adresse posée par l'ancien Fureteur sans preuve n'est gardée que si son domaine porte le nom.
       const garde = p.contact_email && adresseFiable({ name: p.name, contact_email: p.contact_email }) ? p.contact_email : null;
       if (p.contact_email && !garde) bilan.retirees++;
-      // le site enregistré (souvent le 1er lien d'un moteur : buttondown.email/Mojeek, rubypayeur…) a été visité sans preuve : retiré
-      await n8n.query(`UPDATE prospects SET contact_email = $2, website = NULL, furete_le = now(), furete_note = $3 WHERE siren = $1`,
-        [p.siren, garde, (moteurFerme ? 'aucun site prouvé (moteur fermé)' : 'aucun site prouvé') + (p.website ? ` ; ancien site sans preuve retiré : ${String(p.website).slice(0, 120)}` : '')]);
+      bilan[{ absent: 'absents', portail: 'portails', inconnu: 'inconnus' }[v.statut]]++;
+      const note = v.statut === 'inconnu' ? 'site non vérifié (moteur fermé ou muet) : nouvel essai demain'
+        : v.statut === 'portail' ? `aucun site prouvé ; seulement sur le portail de sa profession : ${String(v.portails[0]).slice(0, 160)}`
+          : 'aucun site prouvé';
+      // le site enregistré (souvent le 1er lien d'un moteur : buttondown.email/Mojeek, rubypayeur…) a été visité sans preuve : retiré.
+      // « inconnu » : daté de 29 jours, la fiche revient dès le lendemain (jamais bloquée 30 jours sur une recherche qui n'a pas eu lieu).
+      await n8n.query(`UPDATE prospects SET contact_email = $2, website = NULL, furete_note = $3, site_statut = $4,
+          furete_le = CASE WHEN $4 = 'inconnu' THEN now() - interval '29 days' ELSE now() END WHERE siren = $1`,
+        [p.siren, garde, note + (p.website ? ` ; ancien site sans preuve retiré : ${String(p.website).slice(0, 120)}` : ''), v.statut]);
     }
   }
-  if (moteurFerme) bilan.moteur = 'fermé (on ne contourne pas)';
+  if (etat.ferme) bilan.moteur = 'fermé ou muet (on ne contourne pas)';
   if (brain) {
     await brain.query('INSERT INTO journal(acteur, changement, motif) VALUES($1,$2,$3)', ['fureteur',
-      `${bilan.examinees} fiches : ${bilan.prouves} sites prouvés, ${bilan.adresses} adresses trouvées, ${bilan.retirees} adresses sans preuve retirées, ${bilan.telephones} téléphones`,
+      `${bilan.examinees} fiches : ${bilan.prouves} sites prouvés, ${bilan.absents} sans site, ${bilan.portails} sur un portail seulement, ${bilan.inconnus} à revoir demain, `
+        + `${bilan.adresses} adresses trouvées, ${bilan.retirees} adresses sans preuve retirées, ${bilan.telephones} téléphones`,
       `Un site n'est retenu que s'il porte le SIREN, ou le nom et la ville, de l'entreprise ; l'adresse doit y être écrite. Moteur : ${bilan.moteur}.`]).catch(() => {});
   }
   return bilan;

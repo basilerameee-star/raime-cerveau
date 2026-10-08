@@ -1,0 +1,492 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Agenda · rAIme</title>
+<!-- L'AGENDA DE BASILE (08/10/2026) : en haut, le résumé chiffré et les alertes ; à gauche, les relances par échéance
+     (10 par groupe, le reste derrière « voir tout ») ; à droite, la semaine, où une carte se glisse sur un autre jour.
+     Un clic sur une carte ouvre sa fiche : le contact, pourquoi rappeler, ce qui a été envoyé, l'histoire, les états
+     d'après l'appel et les reports. Routes : /api/agenda… (jarvis/agenda.cjs). Rien n'est appelé ni envoyé d'ici. -->
+<style>
+@font-face { font-family: Inter; src: url(/3d/polices/InterVariable.woff2) format("woff2"); font-weight: 100 900; font-display: swap }
+:root { --fond: #FFFFFF; --surface: #F6F7F9; --trait: #E3E6EB; --gris: #5F6B7A; --encre: #121820; --accent: #C9245F; --vert: #0F7A52; --ambre: #A15C00 }
+* { box-sizing: border-box }
+html { background: var(--fond) }
+body { margin: 0; background: var(--fond); color: var(--encre); font: 14px/1.5 Inter, system-ui, -apple-system, "Segoe UI", sans-serif }
+h1, h2, h3 { margin: 0; font-weight: 600 }
+h1 { font-size: 22px; letter-spacing: -.01em }
+h2 { font-size: 16px }
+h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--gris); font-weight: 600; margin-bottom: 8px }
+a { color: var(--encre) }
+em { font-style: italic }
+.petit { font-size: 12px } .gris { color: var(--gris) }
+button, input, select, textarea { font: inherit; color: inherit }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px }
+.bouton { font-weight: 600; font-size: 14px; border: 1px solid var(--trait); background: var(--fond); border-radius: 8px; padding: 7px 12px; cursor: pointer; white-space: nowrap }
+.bouton:hover { border-color: var(--gris) }
+.bouton.plein { background: var(--accent); border-color: var(--accent); color: #fff }
+.bouton.choisi { border-color: var(--encre); background: var(--surface) }
+.bouton:disabled { opacity: .5; cursor: progress }
+.lien { border: 0; background: none; padding: 0; color: var(--encre); text-decoration: underline; cursor: pointer; font-size: 14px }
+.lien.danger { color: var(--accent) }
+input[type=text], input[type=date], input[type=search], textarea { border: 1px solid var(--trait); border-radius: 8px; padding: 8px 10px; background: var(--fond); min-width: 0 }
+textarea { width: 100%; min-height: 64px; resize: vertical }
+
+.haut { padding: 16px 24px 4px; border-bottom: 1px solid var(--trait) }
+.ligne { display: flex; align-items: center; gap: 12px 16px; flex-wrap: wrap }
+.ligne h1 { flex: 1 }
+.retour { font-size: 14px; text-decoration: none; color: var(--gris) }
+.compteurs { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 16px 0 12px }
+.compteur { background: var(--surface); border: 1px solid var(--trait); border-radius: 12px; padding: 10px 14px; text-align: left; cursor: pointer }
+.compteur b { display: block; font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.3 }
+.compteur span { font-size: 12px; color: var(--gris) }
+.compteur.alerte { border-color: var(--accent) } .compteur.alerte b { color: var(--accent) }
+.compteur.ok b { color: var(--vert) }
+.alertes { border: 1px solid var(--accent); background: color-mix(in srgb, var(--accent) 5%, #fff); border-radius: 12px; padding: 12px 14px; margin: 0 0 12px }
+.alertes h2 { color: var(--accent); margin-bottom: 8px }
+.alerte-ligne { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; padding: 6px 0; border-top: 1px solid color-mix(in srgb, var(--accent) 15%, #fff); align-items: center }
+.alerte-ligne:first-of-type { border-top: 0 }
+.alerte-ligne button.nom { border: 0; background: none; padding: 0; font-weight: 600; text-align: left; cursor: pointer; text-decoration: underline; text-decoration-color: var(--trait) }
+.alerte-ligne .motif { grid-column: 1 / -1; font-size: 12px; color: var(--gris) }
+
+.grille { display: grid; grid-template-columns: minmax(300px, 420px) minmax(0, 1fr); gap: 24px; padding: 16px 24px 48px; align-items: start }
+.groupe { margin-bottom: 20px }
+.groupe-tete { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px }
+.groupe-tete h2 { font-size: 16px }
+.groupe-tete .n { font-size: 12px; color: var(--gris) }
+.groupe.en_retard .groupe-tete h2 { color: var(--accent) }
+.cartes { display: grid; gap: 8px }
+.carte { background: var(--fond); border: 1px solid var(--trait); border-left: 3px solid var(--trait); border-radius: 8px; padding: 8px 10px; cursor: pointer; min-width: 0 }
+.carte:hover { border-color: var(--gris); border-left-color: var(--gris) }
+.carte.prio-3, .carte.retard { border-left-color: var(--accent) }
+.carte.faite { opacity: .55; cursor: pointer }
+.carte[draggable=true] { cursor: grab }
+.carte.glisse { opacity: .4 }
+.c-haut { display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap }
+.c-nom { font-weight: 600; overflow-wrap: anywhere }
+.c-motif { font-size: 12px; color: var(--gris); overflow-wrap: anywhere }
+.c-bas { display: flex; gap: 10px; flex-wrap: wrap; font-size: 12px; margin-top: 2px }
+.c-bas a { text-decoration: none; font-weight: 600 }
+.tag { font-size: 12px; padding: 0 8px; border-radius: 999px; background: var(--surface); color: var(--gris); white-space: nowrap }
+.tag.retard { color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, #fff) }
+.tag.chaud { color: var(--vert); background: color-mix(in srgb, var(--vert) 8%, #fff) }
+.tag.ambre { color: var(--ambre); background: color-mix(in srgb, var(--ambre) 8%, #fff) }
+.vide { font-size: 14px; color: var(--gris); padding: 8px 0 }
+.voir-tout { margin-top: 6px }
+
+.bloc { border-top: 1px solid var(--trait); padding-top: 16px; margin-top: 8px }
+.decision { padding: 10px 0; border-bottom: 1px solid var(--trait) }
+.decision p { margin: 0 0 6px }
+.decision .actions { display: flex; gap: 8px; flex-wrap: wrap }
+.decision input { flex: 1 1 180px }
+
+.semaine-tete { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap }
+.semaine-tete h2 { flex: 1; font-size: 16px }
+.semaine-boite { overflow-x: auto; padding-bottom: 4px }
+.semaine { display: grid; grid-template-columns: repeat(7, minmax(118px, 1fr)); gap: 8px; min-width: 860px }
+.jour { background: var(--surface); border: 1px solid var(--trait); border-radius: 10px; min-height: 260px; padding: 8px; display: flex; flex-direction: column; gap: 6px }
+.jour.auj { border-color: var(--encre) }
+.jour.passe { background: var(--fond) }
+.jour.cible { outline: 2px dashed var(--accent); outline-offset: -2px }
+.jour-tete { font-size: 12px; color: var(--gris); display: flex; justify-content: space-between }
+.jour.auj .jour-tete { color: var(--encre); font-weight: 600 }
+.jour .carte { padding: 6px 8px }
+.jour .c-motif { display: none }
+.evt { font-size: 12px; border-radius: 6px; padding: 4px 6px; background: var(--fond); border: 1px dashed var(--trait); color: var(--gris); overflow-wrap: anywhere }
+.evt b { color: var(--encre); font-weight: 600 }
+
+.voile { position: fixed; inset: 0; background: rgba(18, 24, 32, .18); z-index: 19 }
+.tiroir { position: fixed; top: 0; right: 0; bottom: 0; width: min(540px, 100%); background: var(--fond); border-left: 1px solid var(--trait);
+  box-shadow: -12px 0 40px rgba(18, 24, 32, .08); overflow: auto; padding: 24px 24px 48px; z-index: 20 }
+.fermer { position: absolute; top: 12px; right: 14px; border: 0; background: none; font-size: 26px; line-height: 1; color: var(--gris); cursor: pointer }
+.tiroir section { border-top: 1px solid var(--trait); padding: 14px 0 }
+.tiroir h2 { font-size: 22px; margin: 4px 32px 6px 0; overflow-wrap: anywhere }
+.contact { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 14px; margin-bottom: 12px }
+.contact a { font-weight: 600 }
+.boutons { display: flex; flex-wrap: wrap; gap: 8px }
+.boutons + .boutons { margin-top: 8px }
+.date-ligne { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 8px }
+.histo { list-style: none; margin: 0; padding: 0; font-size: 14px }
+.histo li { padding: 6px 0; border-top: 1px solid var(--trait); display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 8px }
+.histo li:first-child { border-top: 0 }
+.histo time { color: var(--gris); font-size: 12px; padding-top: 2px }
+.envoye { list-style: none; margin: 0; padding: 0 }
+.envoye li { padding: 4px 0 }
+.resultats { display: grid; gap: 6px; margin-top: 8px }
+.resultats button { text-align: left; border: 1px solid var(--trait); border-radius: 8px; background: var(--fond); padding: 8px 10px; cursor: pointer }
+.resultats button:hover { border-color: var(--gris) }
+.resultats button.choisi { border-color: var(--encre); background: var(--surface) }
+.onglets { display: flex; gap: 8px; margin: 8px 0 12px }
+.champ { display: grid; gap: 4px; margin-bottom: 12px }
+.champ label { font-size: 12px; color: var(--gris) }
+.cache { display: none }
+.toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--encre); color: var(--fond);
+  padding: 10px 16px; border-radius: 8px; font-size: 14px; z-index: 40; max-width: calc(100vw - 32px) }
+
+@media (max-width: 900px) {
+  .haut { padding: 12px 16px 4px }
+  .grille { grid-template-columns: minmax(0, 1fr); padding: 12px 16px 48px }
+  .tiroir { padding: 20px 16px 48px }
+}
+</style>
+</head>
+<body>
+<header class="haut">
+  <div class="ligne">
+    <a class="retour" href="/">← Cockpit</a>
+    <h1>Agenda <span class="petit gris" id="date-jour"></span></h1>
+    <button class="bouton plein" id="b-ajouter" type="button">+ Ajouter</button>
+  </div>
+  <div class="compteurs" id="compteurs" aria-label="Résumé"></div>
+  <div class="alertes" id="alertes" hidden></div>
+</header>
+<main class="grille">
+  <section aria-label="Relances par échéance">
+    <div id="groupes"><p class="vide">Chargement…</p></div>
+    <section class="bloc" id="bloc-decisions" hidden><h2>Décisions qui t’attendent</h2><div id="decisions"></div></section>
+  </section>
+  <section aria-label="La semaine">
+    <div class="semaine-tete">
+      <button class="bouton" id="sem-prec" type="button" aria-label="Semaine précédente">‹</button>
+      <h2 id="sem-titre">Semaine</h2>
+      <button class="bouton" id="sem-auj" type="button">Cette semaine</button>
+      <button class="bouton" id="sem-suiv" type="button" aria-label="Semaine suivante">›</button>
+    </div>
+    <p class="petit gris" id="google-msg" hidden></p>
+    <div class="semaine-boite"><div class="semaine" id="semaine"></div></div>
+    <p class="petit gris">Glisse une carte sur un autre jour pour la reporter.</p>
+  </section>
+</main>
+<div class="voile" id="voile" hidden></div>
+<aside class="tiroir" id="tiroir" hidden aria-label="Détail"><button class="fermer" id="t-fermer" type="button" aria-label="Fermer">×</button><div id="t-corps"></div></aside>
+<div class="toast" id="toast" role="status" hidden></div>
+<script>
+'use strict';
+const $ = (id) => document.getElementById(id);
+const ici = (id) => document.getElementById(id);   // les champs du tiroir, créés à la demande
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const ECRIRE = { 'Content-Type': 'application/json', 'X-Jarvis': '1' };
+const RAPIDES = [['demain', { dans: 1 }], ['3 jours', { dans: 3 }], ['1 semaine', { dans: 7 }], ['2 semaines', { dans: 14 }], ['1 mois', { dans_mois: 1 }],
+  ['3 mois', { dans_mois: 3 }], ['6 mois', { dans_mois: 6 }], ['1 an', { dans_mois: 12 }]];
+const ETATS = [['joint', 'Joint'], ['pas_joint', 'Pas joint · nouvel essai dans 7 jours'], ['rappeler', 'Rappeler le…'], ['interesse', 'Intéressé · suite dans 2 jours'],
+  ['pas_interesse', 'Pas intéressé'], ['gagne', 'Gagné']];
+const GROUPES = [['en_retard', 'En retard'], ['aujourdhui', 'Aujourd’hui'], ['demain', 'Demain'], ['semaine', 'Cette semaine'], ['plus_tard', 'Plus tard']];
+const TYPES = { prospect: 'Entreprise', vitrine: 'Vitrine', candidature: 'Candidature', contact: 'Contact', decision: 'Décision', tache: 'Tâche' };
+const RESULTATS = { joint: 'joint', pas_joint: 'pas joint', rappeler: 'à rappeler', interesse: 'intéressé', pas_interesse: 'pas intéressé', gagne: 'gagné', fait: 'fait' };
+const JOURS = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'];
+const MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+const MAX_PAR_GROUPE = 10;
+
+const versUtc = (j) => { const p = j.split('-').map(Number); return Date.UTC(p[0], p[1] - 1, p[2]); };
+const plus = (j, n) => new Date(versUtc(j) + n * 864e5).toISOString().slice(0, 10);
+const lundi = (j) => plus(j, -((new Date(versUtc(j)).getUTCDay() + 6) % 7));
+const nomJour = (j) => { const d = new Date(versUtc(j)); return JOURS[d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + MOIS[d.getUTCMonth()]; };
+const court = (j) => (j ? j.slice(8, 10) + '/' + j.slice(5, 7) : '');
+const tel = (t) => String(t || '').replace(/[^0-9+]/g, '');
+const euros = (n) => Number(n || 0).toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' €';
+
+let donnees = { jour: null, items: [], semaine: null };
+let debutSemaine = null, ouvert = null, voirTout = {}, glisse = null;
+
+function toast(t) { const e = $('toast'); e.textContent = t; e.hidden = false; clearTimeout(toast.m); toast.m = setTimeout(() => { e.hidden = true; }, 3200); }
+async function lireJson(url) { const r = await fetch(url, { cache: 'no-store' }); if (!r.ok) throw new Error(String(r.status)); return r.json(); }
+// Un geste : le bouton se grise tout de suite (jamais deux envois), et revient s'il est refusé.
+async function poster(url, data, bouton) {
+  if (bouton) { if (bouton.disabled) return null; bouton.disabled = true; }
+  try {
+    const r = await fetch(url, { method: 'POST', headers: ECRIRE, body: JSON.stringify(data) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || d.ok === false) { toast(d.erreur || 'Refusé'); if (bouton) bouton.disabled = false; return null; }
+    return d;
+  } catch (e) { toast('Jarvis ne répond pas'); if (bouton) bouton.disabled = false; return null; }
+}
+
+// ── Le résumé et les alertes ─────────────────────────────────────────────────────────────
+function rendreResume() {
+  const j = donnees.jour, c = j.compteurs;
+  $('date-jour').textContent = nomJour(j.aujourdhui);
+  const cases = [
+    ['aujourdhui', c.du_jour, 'rappels du jour', c.du_jour ? 'alerte' : 'ok'],
+    ['en_retard', c.en_retard, 'en retard', c.en_retard ? 'alerte' : ''],
+    ['semaine', c.semaine, 'dans les 7 jours', ''],
+    ['argent', euros(c.argent_mois), 'argent du mois (revenus notés)', ''],
+    ['decisions', c.decisions, 'décisions qui t’attendent', ''],
+  ];
+  $('compteurs').innerHTML = cases.map((x) => `<button type="button" class="compteur ${x[3]}" data-aller="${x[0]}"><b>${esc(x[1])}</b><span>${esc(x[2])}</span></button>`).join('');
+  const a = j.alertes || [];
+  $('alertes').hidden = !a.length;
+  $('alertes').innerHTML = a.length ? `<h2>À faire maintenant</h2>` + a.map((x) => `<div class="alerte-ligne">
+      <button type="button" class="nom" data-id="${x.id}">${esc(x.nom)}</button>
+      <span>${x.telephone ? `<a href="tel:${esc(tel(x.telephone))}">${esc(x.telephone)}</a>` : x.email ? `<a href="mailto:${esc(x.email)}">${esc(x.email)}</a>` : ''}</span>
+      <span class="motif">${esc(x.motif || '')}${x.retard ? ` · <b class="tag retard">${esc(x.retard)}</b>` : ''}${x.priorite === 3 ? ' · <b class="tag chaud">prioritaire</b>' : ''}</span></div>`).join('') : '';
+}
+
+// ── Les groupes : 10 par groupe, le reste derrière « voir tout » ─────────────────────────────
+function carte(x, glissable) {
+  const tag = x.retard ? `<span class="tag retard">${esc(x.retard)}</span>` : x.statut !== 'a_faire' ? `<span class="tag">${esc(RESULTATS[x.resultat] || x.statut)}</span>` : '';
+  const prio = x.priorite === 3 && x.statut === 'a_faire' ? '<span class="tag chaud">prioritaire</span>' : '';
+  const joindre = x.telephone ? `<a href="tel:${esc(tel(x.telephone))}">${esc(x.telephone)}</a>` : x.email ? `<a href="mailto:${esc(x.email)}">${esc(x.email)}</a>` : '';
+  return `<article class="carte prio-${x.priorite}${x.retard ? ' retard' : ''}${x.statut !== 'a_faire' ? ' faite' : ''}" data-id="${x.id}" tabindex="0"${glissable && x.statut === 'a_faire' ? ' draggable="true"' : ''}>
+    <div class="c-haut"><span class="c-nom">${esc(x.nom)}</span>${prio}${tag}</div>
+    <div class="c-motif">${esc(x.motif || '')}${x.note ? ' · ' + esc(x.note) : ''}</div>
+    <div class="c-bas">${joindre}<span class="gris">${esc(TYPES[x.cible_type] || '')}${x.groupe === 'semaine' || x.groupe === 'plus_tard' ? ' · ' + esc(nomJour(x.jour)) : ''}</span></div></article>`;
+}
+function rendreGroupes() {
+  const items = donnees.items || [];
+  const html = GROUPES.map(([g, titre]) => {
+    const l = items.filter((x) => x.groupe === g);
+    if (!l.length && g !== 'aujourdhui' && g !== 'en_retard') return '';
+    const vus = voirTout[g] ? l : l.slice(0, MAX_PAR_GROUPE);
+    return `<div class="groupe ${g}" id="g-${g}"><div class="groupe-tete"><h2>${titre}</h2><span class="n">${l.length}</span></div>
+      <div class="cartes">${vus.length ? vus.map((x) => carte(x, false)).join('') : `<p class="vide">${g === 'en_retard' ? 'Rien en retard.' : 'Rien pour aujourd’hui.'}</p>`}</div>
+      ${l.length > MAX_PAR_GROUPE ? `<button type="button" class="lien voir-tout" data-groupe="${g}">${voirTout[g] ? 'réduire' : `voir tout (${l.length})`}</button>` : ''}</div>`;
+  }).join('');
+  $('groupes').innerHTML = html || '<p class="vide">Aucune relance prévue.</p>';
+}
+function rendreDecisions() {
+  const d = donnees.jour.decisions || [];
+  $('bloc-decisions').hidden = !d.length;
+  $('decisions').innerHTML = d.map((x) => `<div class="decision" data-decision="${x.id}"><p><b>${esc(x.question)}</b>${x.bloquant ? ' <span class="tag ambre">bloquant</span>' : ''}</p>
+    ${x.pourquoi ? `<p class="petit gris">${esc(x.pourquoi)}</p>` : ''}
+    <div class="actions"><input type="text" placeholder="Ta réponse" aria-label="Ta réponse" maxlength="2000"><button type="button" class="bouton" data-repondre="1">Répondre</button><button type="button" class="lien" data-ecarter="1">Écarter</button></div></div>`).join('');
+}
+
+// ── La semaine : 7 colonnes, glisser une carte sur un jour la reporte ─────────────────────────
+function rendreSemaine() {
+  const s = donnees.semaine; if (!s) return;
+  const auj = donnees.jour.aujourdhui;
+  $('sem-titre').textContent = 'Semaine du ' + nomJour(s.du) + ' au ' + nomJour(s.au);
+  const g = s.google || { configure: false, evenements: [] };
+  $('google-msg').hidden = !g.message;
+  $('google-msg').innerHTML = g.message ? esc(g.message) + (g.configure ? '' : ' · <a href="/coffre">ouvrir le coffre</a>') : '';
+  let html = '';
+  for (let i = 0; i < 7; i++) {
+    const j = plus(s.du, i);
+    const items = (s.items || []).filter((x) => x.jour === j);
+    const evts = (g.evenements || []).filter((e) => e.jour === j);
+    html += `<div class="jour${j === auj ? ' auj' : ''}${j < auj ? ' passe' : ''}" data-jour="${j}"><div class="jour-tete"><span>${esc(nomJour(j))}</span>${j === auj ? '<span>aujourd’hui</span>' : ''}</div>`
+      + evts.map((e) => `<div class="evt">${e.heure ? `<b>${esc(e.heure)}</b> ` : ''}${esc(e.titre)}${e.lieu ? ' · ' + esc(e.lieu) : ''}</div>`).join('')
+      + items.map((x) => carte(x, true)).join('') + '</div>';
+  }
+  $('semaine').innerHTML = html;
+}
+
+async function chargerSemaine() {
+  const du = debutSemaine, au = plus(du, 6);
+  try { donnees.semaine = await lireJson('/api/agenda?du=' + du + '&au=' + au); rendreSemaine(); } catch (e) { toast('La semaine ne se charge pas'); }
+}
+async function charger() {
+  try {
+    const r = await Promise.all([lireJson('/api/agenda/jour'), lireJson('/api/agenda')]);
+    donnees.jour = r[0]; donnees.items = r[1].items || [];
+    if (!debutSemaine) debutSemaine = lundi(donnees.jour.aujourdhui);
+    rendreResume(); rendreGroupes(); rendreDecisions();
+    await chargerSemaine();
+  } catch (e) { $('groupes').innerHTML = '<p class="vide">Jarvis ne répond pas pour l’instant : nouvel essai dans une minute.</p>'; }
+}
+
+// ── La fiche d'une relance ─────────────────────────────────────────────────────────────────
+function ouvrirTiroir(html) { $('t-corps').innerHTML = html; $('tiroir').hidden = false; $('voile').hidden = false; }
+function fermerTiroir() { $('tiroir').hidden = true; $('voile').hidden = true; ouvert = null; }
+const rapides = (attr) => RAPIDES.map((r, i) => `<button type="button" class="bouton" data-${attr}="${i}">${r[0]}</button>`).join('');
+async function ouvrirFiche(id) {
+  ouvert = { type: 'fiche', id: Number(id) };
+  ouvrirTiroir('<p class="gris">Chargement…</p>');
+  let f;
+  try { f = await lireJson('/api/agenda/' + Number(id) + '/historique'); } catch (e) { $('t-corps').innerHTML = '<p class="gris">Fiche introuvable.</p>'; return; }
+  if (!ouvert || ouvert.id !== Number(id)) return;
+  const x = f.item, c = f.contact || {};
+  const ouverte = x.statut === 'a_faire';
+  const joindre = [
+    c.telephone ? `<a href="tel:${esc(tel(c.telephone))}">${esc(c.telephone)}</a>${c.numero_verifie === false ? ' <span class="tag ambre">numéro non vérifié</span>' : ''}` : '',
+    c.email ? `<a href="mailto:${esc(c.email)}">${esc(c.email)}</a>` : '',
+    c.ville ? esc(c.ville) : '', c.activite ? esc(c.activite) : '', c.naf ? 'NAF ' + esc(c.naf) : '',
+    c.site ? `<a href="https://${esc(c.site)}" target="_blank" rel="noopener">${esc(c.site)}</a>` : '',
+    c.ecarte ? '<span class="tag retard">écarté</span>' : '',
+  ].filter(Boolean).map((s) => `<span>${s}</span>`).join('');
+  $('t-corps').innerHTML = `
+    <span class="petit gris">${esc(TYPES[x.cible_type] || '')} · ${ouverte ? 'prévue le ' + esc(nomJour(x.jour)) : esc(RESULTATS[x.resultat] || x.statut)}</span>
+    <h2>${esc(c.nom || x.nom)}</h2>
+    <div class="contact">${joindre || '<span class="gris">Pas de coordonnées</span>'}</div>
+    <section><h3>Pourquoi rappeler</h3><p style="margin:0">${esc(x.motif || '—')}${x.retard ? ` <span class="tag retard">${esc(x.retard)}</span>` : ''}${x.priorite === 3 ? ' <span class="tag chaud">prioritaire</span>' : ''}</p>
+      ${x.note ? `<p class="petit gris" style="margin:6px 0 0">Dernière note : ${esc(x.note)}</p>` : ''}</section>
+    ${ouverte ? `<section><h3>Après l’appel</h3>
+      <div class="boutons" id="f-etats">${ETATS.map((e) => `<button type="button" class="bouton" data-etat="${e[0]}">${e[1]}</button>`).join('')}</div>
+      <div class="cache" id="f-rappeler"><p class="petit gris" style="margin:8px 0 4px">Rappeler quand ?</p><div class="boutons">${rapides('rappel')}</div>
+        <div class="date-ligne"><input type="date" id="f-rappel-date" aria-label="Date du rappel" min="${esc(donnees.jour.aujourdhui)}"><button type="button" class="bouton" data-rappel-date="1">Rappeler ce jour-là</button></div></div>
+      </section>
+      <section><h3>Reporter</h3><div class="boutons">${rapides('reporter')}</div>
+        <div class="date-ligne"><input type="date" id="f-date" aria-label="Date précise" min="${esc(donnees.jour.aujourdhui)}"><button type="button" class="bouton" data-reporter-date="1">Reporter à cette date</button></div></section>` : ''}
+    <section><h3>Note</h3><textarea id="f-note" maxlength="500" placeholder="Ce qui s’est dit (gardé avec la relance et dans l’historique)"></textarea>
+      <div class="boutons" style="margin-top:8px"><button type="button" class="bouton" data-noter="1">Garder la note</button></div></section>
+    <section><h3>Ce qui a été envoyé</h3>${(f.envoye || []).length ? `<ul class="envoye">${f.envoye.map((e) => `<li>${e.lien ? `<a href="${esc(e.lien)}" target="_blank" rel="noopener">${esc(e.libelle)} ↗</a>` : esc(e.libelle)}</li>`).join('')}</ul>` : '<p class="gris" style="margin:0">Rien d’envoyé.</p>'}</section>
+    <section><h3>Historique</h3>${(f.historique || []).length ? `<ul class="histo">${f.historique.map((h) => `<li><time>${esc(court(h.le.slice(0, 10)))}</time><span>${esc(h.quoi)}</span></li>`).join('')}</ul>` : '<p class="gris" style="margin:0">Rien encore.</p>'}</section>
+    ${ouverte ? `<section><h3>Pas pour nous</h3><p class="petit gris" style="margin:0 0 8px">Mal classé, hors cible : la fiche est écartée pour de bon (plus d’e-mail, plus d’appel), le motif part au journal.</p>
+      <div class="date-ligne"><input type="text" id="f-motif-exclu" placeholder="Motif (ex. association, mauvais métier)" maxlength="300" style="flex:1 1 220px"><button type="button" class="lien danger" data-mal-classe="1">Pas pour nous / mal classé</button></div>
+      <p style="margin:12px 0 0"><button type="button" class="lien" data-annuler="1">Annuler cette relance</button></p></section>` : ''}`;
+}
+async function agir(data, bouton, message) {
+  const note = ici('f-note') ? ici('f-note').value.trim() : '';
+  const d = await poster('/api/agenda/' + ouvert.id, note && !data.note ? Object.assign({ note: note }, data) : data, bouton);
+  if (!d) return;
+  toast(message(d));
+  if (data.action === 'noter') { await ouvrirFiche(ouvert.id); } else fermerTiroir();
+  charger();
+}
+const suiteTexte = (d) => (d.suivant ? ' · relance le ' + court(d.suivant.jour) : '');
+
+// ── Ajouter : un contact (recherche, ou numéro / e-mail brut) ou une tâche ─────────────────────
+function ouvrirAjout() {
+  ouvert = { type: 'ajout', choix: null, quand: null, mode: 'contact' };
+  ouvrirTiroir(`<h2>Ajouter une relance</h2>
+    <div class="onglets"><button type="button" class="bouton choisi" data-mode="contact">Un contact</button><button type="button" class="bouton" data-mode="tache">Une tâche</button></div>
+    <div id="a-contact"><div class="champ"><label for="a-recherche">Qui ? (nom, siren, téléphone ou e-mail)</label><input type="search" id="a-recherche" autocomplete="off" maxlength="120"></div>
+      <div class="resultats" id="a-resultats"></div>
+      <div class="champ" style="margin-top:12px"><label for="a-motif">Pourquoi le rappeler</label><input type="text" id="a-motif" maxlength="300" placeholder="ex. a demandé un devis, relancer après le salon"></div></div>
+    <div id="a-tache" class="cache"><div class="champ"><label for="a-quoi">Que faut-il faire ?</label><input type="text" id="a-quoi" maxlength="200"></div></div>
+    <div class="champ"><label>Quand</label><div class="boutons"><button type="button" class="bouton" data-quand="auj">aujourd’hui</button>${rapides('quand')}</div>
+      <div class="date-ligne"><input type="date" id="a-date" aria-label="Date précise" min="${esc(donnees.jour ? donnees.jour.aujourdhui : '')}"></div></div>
+    <div class="champ"><label><input type="checkbox" id="a-prio"> prioritaire (a répondu, ou a demandé à être rappelé)</label></div>
+    <div class="champ"><label for="a-note">Note</label><textarea id="a-note" maxlength="500"></textarea></div>
+    <button type="button" class="bouton plein" id="a-enregistrer">Enregistrer</button>`);
+  setTimeout(() => { const i = ici('a-recherche'); if (i) i.focus(); }, 30);
+}
+let minuteurRecherche = 0;
+async function chercher(q) {
+  const boite = ici('a-resultats'); if (!boite) return;
+  if (q.trim().length < 2) { boite.innerHTML = ''; return; }
+  try {
+    const d = await lireJson('/api/agenda/contacts?q=' + encodeURIComponent(q.trim()));
+    if (!ouvert || ouvert.type !== 'ajout') return;
+    ouvert.trouves = d.contacts || [];
+    boite.innerHTML = ouvert.trouves.length ? ouvert.trouves.map((c, i) => `<button type="button" data-choix="${i}"><b>${esc(c.nom)}</b><br><span class="petit gris">${esc([c.telephone, c.email, c.detail].filter(Boolean).join(' · '))}</span></button>`).join('')
+      : '<p class="petit gris" style="margin:0">Personne trouvé. Tape un numéro ou une adresse e-mail pour l’ajouter tel quel.</p>';
+  } catch (e) { boite.innerHTML = ''; }
+}
+async function enregistrer(bouton) {
+  const o = ouvert;
+  const quand = ici('a-date').value ? { echeance: ici('a-date').value } : o.quand;
+  if (!quand) { toast('Choisis quand'); return; }
+  const base = { note: ici('a-note').value.trim(), priorite: ici('a-prio').checked ? 3 : 2 };
+  let corps;
+  if (o.mode === 'tache') {
+    const quoi = ici('a-quoi').value.trim(); if (!quoi) { toast('Que faut-il faire ?'); return; }
+    corps = Object.assign({ cible_type: 'tache', nom: quoi, motif: quoi }, base, quand);
+  } else {
+    const c = o.choix; if (!c) { toast('Choisis un contact dans la liste'); return; }
+    corps = Object.assign({ cible_type: c.cible_type, cible_id: c.cible_id, nom: c.nom, telephone: c.telephone, email: c.email, motif: ici('a-motif').value.trim() }, base, quand);
+  }
+  const d = await poster('/api/agenda', corps, bouton);
+  if (!d) return;
+  toast((d.deplace ? 'Relance déjà prévue, déplacée au ' : 'Ajoutée pour le ') + court(d.item.jour));
+  fermerTiroir(); charger();
+}
+
+// ── Les événements ─────────────────────────────────────────────────────────────────────────
+document.addEventListener('click', async (e) => {
+  const t = e.target;
+  if (t.closest('a')) return;
+  const b = t.closest('button');
+  const carteVisee = t.closest('.carte');
+  if (carteVisee && !b) { ouvrirFiche(carteVisee.dataset.id); return; }
+  if (!b) return;
+  if (b.dataset.aller) {
+    const cible = { aujourdhui: 'g-aujourdhui', en_retard: 'g-en_retard', semaine: 'g-semaine' }[b.dataset.aller];
+    if (cible && $(cible)) $(cible).scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (b.dataset.aller === 'decisions' && !$('bloc-decisions').hidden) $('bloc-decisions').scrollIntoView({ behavior: 'smooth' });
+    return;
+  }
+  if (b.classList.contains('nom') && b.dataset.id) { ouvrirFiche(b.dataset.id); return; }
+  if (b.dataset.groupe) { voirTout[b.dataset.groupe] = !voirTout[b.dataset.groupe]; rendreGroupes(); return; }
+  if (b.dataset.repondre || b.dataset.ecarter) {
+    const bloc = b.closest('[data-decision]'), reponse = bloc.querySelector('input').value.trim();
+    if (b.dataset.repondre && !reponse) { toast('Écris ta réponse'); return; }
+    const d = await poster('/api/decisions/' + bloc.dataset.decision, b.dataset.ecarter ? { ecarter: true } : { reponse: reponse }, b);
+    if (d) { toast(b.dataset.ecarter ? 'Décision écartée' : 'Réponse transmise'); charger(); }
+    return;
+  }
+  if (!ouvert) return;
+  if (ouvert.type === 'fiche') {
+    if (b.dataset.etat) {
+      if (b.dataset.etat === 'rappeler') { ici('f-rappeler').classList.toggle('cache'); return; }
+      await agir({ action: 'fait', resultat: b.dataset.etat }, b, (d) => 'Noté : ' + RESULTATS[b.dataset.etat] + suiteTexte(d));
+    } else if (b.dataset.rappel != null) {
+      await agir(Object.assign({ action: 'fait', resultat: 'rappeler' }, RAPIDES[+b.dataset.rappel][1]), b, (d) => 'À rappeler' + suiteTexte(d));
+    } else if (b.dataset.rappelDate) {
+      if (!ici('f-rappel-date').value) { toast('Choisis la date'); return; }
+      await agir({ action: 'fait', resultat: 'rappeler', echeance: ici('f-rappel-date').value }, b, (d) => 'À rappeler' + suiteTexte(d));
+    } else if (b.dataset.reporter != null) {
+      await agir(Object.assign({ action: 'reporter' }, RAPIDES[+b.dataset.reporter][1]), b, (d) => 'Reportée au ' + court(d.item.jour));
+    } else if (b.dataset.reporterDate) {
+      if (!ici('f-date').value) { toast('Choisis la date'); return; }
+      await agir({ action: 'reporter', echeance: ici('f-date').value }, b, (d) => 'Reportée au ' + court(d.item.jour));
+    } else if (b.dataset.noter) {
+      if (!ici('f-note').value.trim()) { toast('La note est vide'); return; }
+      await agir({ action: 'noter', note: ici('f-note').value.trim() }, b, () => 'Note gardée');
+    } else if (b.dataset.malClasse) {
+      if (!confirm('Écarter cette fiche pour de bon (plus d’e-mail, plus d’appel) ?')) return;
+      await agir({ action: 'mal_classe', note: ici('f-motif-exclu').value.trim() }, b, () => 'Écarté : motif gardé au journal');
+    } else if (b.dataset.annuler) {
+      await agir({ action: 'annuler' }, b, () => 'Relance annulée');
+    }
+    return;
+  }
+  if (ouvert.type === 'ajout') {
+    if (b.dataset.mode) {
+      ouvert.mode = b.dataset.mode;
+      document.querySelectorAll('[data-mode]').forEach((x) => x.classList.toggle('choisi', x === b));
+      ici('a-contact').classList.toggle('cache', ouvert.mode !== 'contact'); ici('a-tache').classList.toggle('cache', ouvert.mode !== 'tache');
+    } else if (b.dataset.choix != null) {
+      ouvert.choix = ouvert.trouves[+b.dataset.choix];
+      document.querySelectorAll('[data-choix]').forEach((x) => x.classList.toggle('choisi', x === b));
+    } else if (b.dataset.quand != null) {
+      ouvert.quand = b.dataset.quand === 'auj' ? { echeance: donnees.jour.aujourdhui } : RAPIDES[+b.dataset.quand][1];
+      ici('a-date').value = '';
+      document.querySelectorAll('[data-quand]').forEach((x) => x.classList.toggle('choisi', x === b));
+    } else if (b.id === 'a-enregistrer') await enregistrer(b);
+  }
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !$('tiroir').hidden) fermerTiroir();
+  if (e.key === 'Enter' && e.target.classList && e.target.classList.contains('carte')) ouvrirFiche(e.target.dataset.id);
+});
+document.addEventListener('input', (e) => {
+  if (e.target.id === 'a-recherche') { clearTimeout(minuteurRecherche); const v = e.target.value; minuteurRecherche = setTimeout(() => chercher(v), 250); }
+  if (e.target.id === 'a-date' && ouvert && ouvert.type === 'ajout') { ouvert.quand = null; document.querySelectorAll('[data-quand]').forEach((x) => x.classList.remove('choisi')); }
+});
+$('t-fermer').addEventListener('click', fermerTiroir);
+$('voile').addEventListener('click', fermerTiroir);
+$('b-ajouter').addEventListener('click', ouvrirAjout);
+$('sem-prec').addEventListener('click', () => { debutSemaine = plus(debutSemaine, -7); chargerSemaine(); });
+$('sem-suiv').addEventListener('click', () => { debutSemaine = plus(debutSemaine, 7); chargerSemaine(); });
+$('sem-auj').addEventListener('click', () => { if (donnees.jour) { debutSemaine = lundi(donnees.jour.aujourdhui); chargerSemaine(); } });
+
+// Glisser-déposer dans la semaine : la carte lâchée sur un jour y est reportée (jamais sur un jour passé).
+$('semaine').addEventListener('dragstart', (e) => {
+  const c = e.target.closest && e.target.closest('.carte[draggable=true]'); if (!c) return;
+  glisse = c.dataset.id; c.classList.add('glisse');
+  e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', glisse);
+});
+$('semaine').addEventListener('dragend', (e) => { const c = e.target.closest && e.target.closest('.carte'); if (c) c.classList.remove('glisse'); glisse = null;
+  document.querySelectorAll('.jour.cible').forEach((x) => x.classList.remove('cible')); });
+$('semaine').addEventListener('dragover', (e) => {
+  const j = e.target.closest('.jour'); if (!j || !glisse) return;
+  e.preventDefault(); e.dataTransfer.dropEffect = 'move';
+  document.querySelectorAll('.jour.cible').forEach((x) => { if (x !== j) x.classList.remove('cible'); });
+  j.classList.add('cible');
+});
+$('semaine').addEventListener('drop', async (e) => {
+  const j = e.target.closest('.jour'); if (!j) return;
+  e.preventDefault(); j.classList.remove('cible');
+  const id = e.dataTransfer.getData('text/plain') || glisse; glisse = null;
+  if (!id || !donnees.jour) return;
+  if (j.dataset.jour < donnees.jour.aujourdhui) { toast('Ce jour est passé'); return; }
+  const actuel = (donnees.semaine.items || []).find((x) => String(x.id) === String(id));
+  if (actuel && actuel.jour === j.dataset.jour) return;
+  const d = await poster('/api/agenda/' + Number(id), { action: 'reporter', echeance: j.dataset.jour });
+  if (d) { toast('Reportée au ' + court(d.item.jour)); charger(); }
+});
+
+charger();
+setInterval(() => { if (!document.hidden && !glisse) charger(); }, 60000);
+</script>
+</body></html>
