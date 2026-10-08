@@ -12,10 +12,10 @@ import { OUTILS } from '../../agents/raime_mcp.js';
 const require = createRequire(import.meta.url);
 const { F, resume, phrase } = require('../../jarvis/feuille.cjs');
 
-test('58 points, numéros et rangs uniques ; chaque point dit quand il est fini ; le groupe « basile » dit ce qu’il faut', () => {
-  assert.equal(F.points.length, 58);
-  assert.deepEqual(F.points.map((p) => p.n).sort((a, b) => a - b), Array.from({ length: 58 }, (_, i) => i + 1));
-  assert.equal(new Set(F.points.map((p) => p.rang)).size, 58);
+test('59 points, numéros et rangs uniques ; chaque point dit quand il est fini ; le groupe « basile » dit ce qu’il faut', () => {
+  assert.equal(F.points.length, 59);
+  assert.deepEqual(F.points.map((p) => p.n).sort((a, b) => a - b), Array.from({ length: 59 }, (_, i) => i + 1));
+  assert.equal(new Set(F.points.map((p) => p.rang)).size, 59);
   for (const p of F.points) {
     assert.ok(['seul', 'basile'].includes(p.groupe), `n°${p.n}`);
     assert.ok(['a_faire', 'en_cours', 'fait', 'attend_basile'].includes(p.etat), `n°${p.n}`);
@@ -33,10 +33,10 @@ test('la copie Markdown du dépôt est à jour (sinon : node tools/feuille_vers_
 
 test('Jarvis, les agents et Hermes la lisent', async () => {
   const r = resume();
-  assert.equal(r.total, 58);
+  assert.equal(r.total, 59);
   assert.equal(r.prochains[0].n, [...F.points].filter((p) => p.groupe === 'seul' && p.etat === 'a_faire').sort((a, b) => a.rang - b.rang)[0].n);
-  assert.match(phrase(), /Feuille de route : \d+ point\(s\) fait\(s\) sur 58/);
+  assert.match(phrase(), /Feuille de route : \d+ point\(s\) fait\(s\) sur 59/);
   const cap = rediger({ ordres: null, enEchec: [], revenus: null, buts: [], lecons: [], regime: null, jugements: [] });
-  assert.match(cap, /LA FEUILLE DE ROUTE \(\d+\/58 faits\) : prochains points : n°\d+/);
+  assert.match(cap, /LA FEUILLE DE ROUTE \(\d+\/59 faits\) : prochains points : n°\d+/);
   assert.match(await OUTILS.feuille_de_route_lire.faire({}), /^# Feuille de route du cerveau rAIme/);
 });

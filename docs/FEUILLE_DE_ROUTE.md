@@ -1,10 +1,10 @@
 # Feuille de route du cerveau rAIme
 
-*Mise à jour : 2026-10-07. Fichier produit depuis `jarvis/feuille_de_route.json` (la source) : ne pas le modifier à la main.*
+*Mise à jour : 2026-10-08. Fichier produit depuis `jarvis/feuille_de_route.json` (la source) : ne pas le modifier à la main.*
 
 Décidée avec Basile le 30/09/2026. Cette liste fait foi : chaque session (Claude, routines, Codex) la reprend là où elle en est, jusqu'à ce que tout soit fait.
 
-**Avancement : 2 point(s) fait(s) sur 58.**
+**Avancement : 3 point(s) fait(s) sur 59.**
 
 ## Règles
 
@@ -59,6 +59,7 @@ Décidée avec Basile le 30/09/2026. Cette liste fait foi : chaque session (Clau
 | 53 | 53 | Moteur 3 : clip farming (KinGKlip) | Agent Analytics : vues, rétention, likes, partages par clip (YouTube, TikTok, Instagram) pour savoir ce qui marche | — | Chaque jour, les statistiques de chaque clip publié (via Buffer, qui les fournit, puis les API des plateformes) sont rangées par campagne ; un retour hebdomadaire par e-mail dit quels sujets, durées, accroches et heures font le plus de vues payées ; le clippeur et la sélection des campagnes en tiennent compte. Demande de Basile du 02/10/2026. | à faire |
 | 54 | 54 | Socle | Le veilleur GitHub se met à jour : il fouille GitHub, essaie et propose les outils et agents utiles | — | Le veilleur (qui lit déjà GitHub, Hacker News, Hugging Face, arXiv) passe à l’acte : pour chaque outil ou agent open source utile à un point de cette feuille, il l’essaie sur le banc, écrit ce qu’il apporte, et ouvre un chantier ; l’installation se fait après accord. Demande de Basile du 07/10/2026. | à faire |
 | 57 | 57 | Contenu | Comptes Buffer : réparer le suivi en boucle et brancher les comptes | — | Le suivi Buffer ne boucle plus en erreurs (« trop de demandes », « publication introuvable ») ; chaque compte branché publie depuis la file, et ses statistiques remontent au point 53. Demande de Basile du 07/10/2026. | à faire |
+| 59 | 59 | Direction | Agenda des relances : ce que Basile doit rappeler revient seul le jour J | — | Une page /agenda (en retard, aujourd'hui, demain, semaine, plus tard ; semaine en glisser-déposer), le résumé chiffré et l'alerte dans le cockpit, les relances du jour dans l'e-mail de 7 h 30, le report par boutons, glisser-déposer ou voix, les états fixes après un appel, l'historique de chaque contact. Demande de Basile du 07/10/2026, réponses du 08/10. | FAIT (preuve : Livré le 08/10/2026 (commits d8d9374, 041138b, en service 5bdeea7) : GET /agenda 200 et /api/agenda/jour en production, le « plus tard » de Fillon-Billaud repris pour le 10/10 ; banc 341 tests sur 342 (1 sauté), 0 échec.) |
 
 ## Groupe 2 : avec Basile (clé, compte ou accord)
 

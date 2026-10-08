@@ -1,6 +1,6 @@
 {
   "titre": "Feuille de route du cerveau rAIme",
-  "mise_a_jour": "2026-10-07",
+  "mise_a_jour": "2026-10-08",
   "source": "Décidée avec Basile le 30/09/2026. Cette liste fait foi : chaque session (Claude, routines, Codex) la reprend là où elle en est, jusqu'à ce que tout soit fait.",
   "regles": [
     "Un point n'est « fait » que quand sa condition « fini quand » est prouvée en production (la preuve est écrite).",
@@ -473,7 +473,7 @@
       "etat": "en_cours",
       "fini_quand": "Sur le modèle des vitrines : l’agent repère des entreprises dont une tâche répétitive se voit (prise de rendez-vous, devis, relances, réponses), prépare une démonstration et un brouillon d’e-mail ; Basile valide avant tout envoi.",
       "rang": 45,
-      "avance": "07/10/2026 : agent prospection_auto (l’e-mail des vitrines avec le pré-audit du métier, écrit par le code) ; organismes de formation retirés, à but lucratif seulement ; pré-audit Immobilier publié ; Fureteur réécrit (site prouvé par SIREN ou nom et ville, adresse écrite sur le site, jamais devinée). Reste : pré-audits RH/recrutement et courtiers/assurances, relance à 7 jours vers « À appeler »."
+      "avance": "08/10/2026 : e-mail des vitrines + pré-audit du métier (9 pré-audits en ligne, dont immobilier, recrutement, courtage) ; Fureteur réécrit (site prouvé par SIREN ou nom et ville, adresse lue sur le site, 94 sites prouvés et 87 adresses au 08/10) ; sourcing Sherlock recentré sur les niches à but lucratif ; entreprises sans site gardées (fiches vitrines « à appeler » ou « à compléter »). Reste : un moteur de recherche qui réponde au serveur pour conclure « sans site » (clé Google Places ou Brave, décision de Basile)."
     },
     {
       "n": 46,
@@ -491,7 +491,8 @@
       "titre": "Vitrines : toute la France, triée par région",
       "etat": "a_faire",
       "fini_quand": "La découverte passe des 5 départements de départ (74, GE, 01, 73, 38) à toute la France, région par région, en gardant l’ordre de priorité ; le tiroir VITRINES filtre par région.",
-      "rang": 47
+      "rang": 47,
+      "avance": "08/10/2026 : découverte réparée (plusieurs serveurs Overpass, une requête par ville et par contour de commune, homonymes repris) : 49 commerces à Cluses, 114 à Carouge au premier essai."
     },
     {
       "n": 48,
@@ -594,6 +595,16 @@
       "fini_quand": "Le Directeur (point 41) répartit le travail entre les agents, chacun rend compte au même endroit, et Basile ne reçoit que les décisions qui lui reviennent.",
       "etat": "a_faire",
       "rang": 58
+    },
+    {
+      "n": 59,
+      "rang": 59,
+      "groupe": "seul",
+      "moteur": "Direction",
+      "titre": "Agenda des relances : ce que Basile doit rappeler revient seul le jour J",
+      "fini_quand": "Une page /agenda (en retard, aujourd'hui, demain, semaine, plus tard ; semaine en glisser-déposer), le résumé chiffré et l'alerte dans le cockpit, les relances du jour dans l'e-mail de 7 h 30, le report par boutons, glisser-déposer ou voix, les états fixes après un appel, l'historique de chaque contact. Demande de Basile du 07/10/2026, réponses du 08/10.",
+      "etat": "fait",
+      "preuve": "Livré le 08/10/2026 (commits d8d9374, 041138b, en service 5bdeea7) : GET /agenda 200 et /api/agenda/jour en production, le « plus tard » de Fillon-Billaud repris pour le 10/10 ; banc 341 tests sur 342 (1 sauté), 0 échec."
     }
   ]
 }
