@@ -188,6 +188,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const { db } = await import('./lib.js');
   const brain = db(); await brain.connect();
   const n8n = new pg.Client({ connectionString: process.env.DATABASE_URL_N8N }); await n8n.connect();
-  try { console.log((await diriger({ brain, n8n, ordonner: process.argv.includes('--ordonner') })).texte); }
+  const { RYTHMES } = await import('./rythmes.js');
+  try { console.log((await diriger({ brain, n8n, rythmes: RYTHMES, penser: false, ordonner: process.argv.includes('--ordonner') })).texte); }
   finally { await brain.end(); await n8n.end(); }
 }

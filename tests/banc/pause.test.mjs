@@ -12,7 +12,7 @@ const actives = (texte) => texte.split('\n').filter((l) => !/^\s*(#|\/\/)/.test(
 // 07/10/2026 : la boucle lance désormais prospection_auto (l'e-mail des vitrines avec le pré-audit) à la place du héraut.
 test('aucun cron ne lance la prospection : seule la boucle le fait, et elle ne rédige que des brouillons', () => {
   assert.ok(!fs.existsSync(new URL('../../cron.raime', import.meta.url)));
-  assert.match(lire('agents/boucle.js'), /nom: 'prospection'/);
+  assert.match(lire('agents/rythmes.js'), /nom: 'prospection'/);   // 08/10/2026 : les rythmes sont sortis de la boucle
   const p = actives(lire('agents/prospection_auto.js')).join('\n');
   assert.match(p, /'brouillon'/);
   assert.ok(!/status = 'valide'|'envoye'/.test(p), 'elle ne valide ni n’envoie jamais elle-même');
