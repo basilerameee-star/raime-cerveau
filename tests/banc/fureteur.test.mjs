@@ -117,3 +117,15 @@ test('passer : prouvé, absent, portail ; moteur fermé → inconnu, revu le len
   const { rows: r2 } = await n8n.query(`SELECT count(*)::int AS n FROM prospects WHERE siren = ANY($1::text[]) AND site_statut = 'absent'`, [FICHES]);
   assert.equal(r2[0].n, 4);
 });
+
+// 08/10/2026 (audit) : un moteur muet ou fermé ne prouve jamais l'absence d'un site (règle des vitrines : « une recherche
+// bloquée ne prouve jamais aucun site ») ; cette règle n'était tenue par aucun test.
+test('le verdict : moteur muet ou fermé → inconnu, jamais « absent » ; un portail n’est pas une preuve', () => {
+  assert.equal(f.verdict({ prouve: true }), 'prouve');
+  assert.equal(f.verdict({ prouve: false }), null, 'sans recherche, rien n’est conclu');
+  assert.equal(f.verdict({ recherche: true, muet: true }), 'inconnu');
+  assert.equal(f.verdict({ recherche: true, ferme: true }), 'inconnu');
+  assert.equal(f.verdict({ recherche: true, muet: true, portails: 2 }), 'inconnu');
+  assert.equal(f.verdict({ recherche: true, portails: 1 }), 'portail');
+  assert.equal(f.verdict({ recherche: true }), 'absent');
+});

@@ -129,6 +129,22 @@ test('écrire exige l’en-tête maison ; une relance du jour reste affichée d�
   assert.match(rapport.sections[0].titre, /Tes relances du jour/);
 });
 
+// 08/10/2026 (audit) : la règle de Basile « non traité, ça reste en haut en retard » n'était vérifiée par aucun test.
+test('une relance non traitée d’un jour passe « en retard », reste en tête avant celles du jour, et se compte', async () => {
+  const hier = await (await ecrire('/api/agenda', { cible_type: 'tache', nom: 'Banc retard', echeance: a.aujourdhui(), priorite: 1 })).json();
+  const auj = await (await ecrire('/api/agenda', { cible_type: 'tache', nom: 'Banc du jour', echeance: a.aujourdhui(), priorite: 3 })).json();
+  assert.equal(hier.ok && auj.ok, true);
+  await b.lire(`UPDATE rappels SET echeance = echeance - interval '1 day' WHERE id = $1`, [hier.id]);
+  const j = await (await fetch(base + '/api/agenda/jour')).json();
+  const r = j.alertes.find((x) => x.id === hier.id);
+  assert.ok(r, 'la relance d’hier est toujours affichée');
+  assert.equal(r.groupe, 'en_retard');
+  assert.equal(r.retard, 'en retard depuis 1 jour');
+  assert.ok(j.alertes.findIndex((x) => x.id === hier.id) < j.alertes.findIndex((x) => x.id === auj.id), 'le retard passe avant le jour, même moins prioritaire');
+  assert.ok(j.compteurs.en_retard >= 1);
+  for (const c of [hier, auj]) assert.equal((await (await ecrire(`/api/agenda/${c.id}`, { action: 'fait', resultat: 'fait' })).json()).ok, true);
+});
+
 test('les « plus tard » d’avant sont repris une seule fois ; un « plus tard » revient le jour J même sans e-mail envoyé', async () => {
   await b.lire(`INSERT INTO appels (siren, etat, note, rappel_le) VALUES ('900000102', 'plus_tard', 'rappeler en novembre', current_date + 20)
     ON CONFLICT (siren) DO UPDATE SET etat = 'plus_tard', rappel_le = EXCLUDED.rappel_le`);

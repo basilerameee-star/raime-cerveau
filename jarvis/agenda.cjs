@@ -420,7 +420,10 @@ async function jour({ maintenant = new Date(), signaler = true } = {}) {
         count(*) FILTER (WHERE j > $1::date AND j <= $1::date + 6)::int AS semaine, count(*)::int AS ouvertes
       FROM (SELECT (echeance AT TIME ZONE '${ZONE}')::date AS j FROM rappels WHERE statut = 'a_faire' AND cible_type <> 'libre') x`, [auj]),
     lire(`SELECT ${COLONNES} FROM rappels WHERE statut = 'a_faire' AND cible_type <> 'libre'
-      AND (echeance AT TIME ZONE '${ZONE}')::date <= $1::date ORDER BY priorite DESC, echeance, id LIMIT 10`, [auj]),
+      AND (echeance AT TIME ZONE '${ZONE}')::date <= $1::date
+      -- le retard d'abord (Basile, 08/10 : « non traité, ça reste en haut en retard »), puis la priorité : une relance
+      -- oubliée ne sort jamais des 10 lignes au profit d'une relance du jour
+      ORDER BY (echeance AT TIME ZONE '${ZONE}')::date < $1::date DESC, priorite DESC, echeance, id LIMIT 10`, [auj]),
     signaler ? lire(`UPDATE rappels SET signale_le = now() WHERE statut = 'a_faire' AND cible_type <> 'libre' AND signale_le IS NULL
       AND (echeance AT TIME ZONE '${ZONE}')::date <= $1::date RETURNING id, nom, telephone, motif`, [auj]) : [],
     lire(`SELECT coalesce(sum(montant_eur), 0)::float AS eur FROM revenus

@@ -13,6 +13,8 @@ test('retour à la moyenne : achat sur deux bougies de baisse dans une tendance 
   const baisse = [...hausse, hausse.at(-1) - 2, hausse.at(-1) - 4];        // toujours au-dessus de la moyenne 200
   assert.equal(decision('retour', baisse, false), 'acheter');
   assert.equal(decision('retour', hausse, false), null, 'pas de baisse : rien');
+  // 08/10/2026 (audit) : le seuil compte. Une baisse puis un petit rebond (RSI 2 ≈ 33) n'est pas une baisse forte (< 10)
+  assert.equal(decision('retour', [...hausse, hausse.at(-1) - 1, hausse.at(-1) - 0.5], false), null, 'RSI moyen : pas d’achat');
   const chute = Array.from({ length: 220 }, (_, i) => 300 - i);            // tendance baissière : jamais acheté
   assert.equal(decision('retour', chute, false), null);
   assert.equal(decision('retour', [...baisse, hausse.at(-1) + 5], true), 'vendre', 'au-dessus de la moyenne des 5 : revendu');
