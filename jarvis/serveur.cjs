@@ -208,10 +208,12 @@ async function rapport() {
   const br = (await lireN8n("SELECT count(*)::int AS n FROM outreach WHERE status = 'brouillon'"))[0];
   const qs = await lire("SELECT question FROM demandes WHERE etat = 'ouverte' AND pour_basile ORDER BY bloquant DESC, cree_le DESC LIMIT 3");
   // 08/10/2026 : en premier, les relances du jour et en retard (10 au plus), avec le numéro ou l'adresse et le pourquoi.
-  const trading = await import('../agents/trading.js').then((t) => t.resume(require('./bases.cjs').cerveau)).then((l) => l.filter((x) => x.valeur != null)
-    .map((x) => `Agent ${x.libelle} : ${x.valeur.toFixed(2)} €, ${x.perf >= 0 ? '+' : ''}${x.perf} %, ${x.operations} opération(s), ${x.frais} € de frais`)).catch(() => []);
-  const bourse = await import('../agents/bourse.js').then((b) => b.resume(require('./bases.cjs').cerveau)).then((l) => l.filter((x) => x.mode === 'reel' || x.mode === 'retro')
-    .map((x) => `${x.libelle} (${x.mode === 'reel' ? `depuis le ${x.debut}` : 'rétro-test 12 mois'}) : ${x.valeur.toFixed(2)} €, ${x.perf >= 0 ? '+' : ''}${x.perf} %, pire baisse ${x.pire} %`)).catch(() => []);
+  // 08/10/2026 : lus dans jarvis/simulations.mjs (le Cockpit ne voit pas agents/) ; une lecture en échec le DIT, jamais « pas de données »
+  const enEchec = (e) => [`Lecture en échec : ${String(e && e.message || e).slice(0, 120)}`];
+  const trading = await import(require('url').pathToFileURL(path.join(__dirname, 'simulations.mjs')).href).then((t) => t.resumeTrading(require('./bases.cjs').cerveau)).then((l) => l.filter((x) => x.valeur != null)
+    .map((x) => `Agent ${x.libelle} : ${x.valeur.toFixed(2)} €, ${x.perf >= 0 ? '+' : ''}${x.perf} %, ${x.operations} opération(s), ${x.frais} € de frais`)).catch(enEchec);
+  const bourse = await import(require('url').pathToFileURL(path.join(__dirname, 'simulations.mjs')).href).then((b) => b.resumeBourse(require('./bases.cjs').cerveau)).then((l) => l.filter((x) => x.mode === 'reel' || x.mode === 'retro')
+    .map((x) => `${x.libelle} (${x.mode === 'reel' ? `depuis le ${x.debut}` : 'rétro-test 12 mois'}) : ${x.valeur.toFixed(2)} €, ${x.perf >= 0 ? '+' : ''}${x.perf} %, pire baisse ${x.pire} %`)).catch(enEchec);
   const [dernierBilan] = await lire(`SELECT texte FROM direction WHERE le > now() - interval '30 hours' ORDER BY le DESC LIMIT 1`).catch(() => []);
   const relances = await agenda.relancesDuJour().catch(() => ({ titre: 'Tes relances du jour', lignes: ['Agenda illisible ce matin.'] }));
   return { sections: [
@@ -279,13 +281,13 @@ async function router(req, res) {
   if (m === 'GET' && url === '/api/rapport') return envoyer(res, 200, await rapport());
   // Les sept agents de trading en SIMULATION (agents/trading.js, 08/10/2026) : de la seconde au trimestre.
   if (m === 'GET' && url === '/api/trading') {
-    try { const { resume } = await import('../agents/trading.js'); return envoyer(res, 200, { simulation: true, agents: await resume(require('./bases.cjs').cerveau) }); }
-    catch (e) { return envoyer(res, 200, { simulation: true, agents: [], erreur: 'pas encore de données' }); }
+    try { const { resumeTrading } = await import(require('url').pathToFileURL(path.join(__dirname, 'simulations.mjs')).href); return envoyer(res, 200, { simulation: true, agents: await resumeTrading(require('./bases.cjs').cerveau) }); }
+    catch (e) { return envoyer(res, 200, { simulation: true, agents: [], erreur: `lecture en échec : ${String(e.message || e).slice(0, 160)}` }); }
   }
   // La bourse en SIMULATION (agents/bourse.js, 08/10/2026) : quatre portefeuilles fictifs de 1 000 €, réel et rétro-test.
   if (m === 'GET' && url === '/api/bourse') {
-    try { const { resume } = await import('../agents/bourse.js'); return envoyer(res, 200, { simulation: true, strategies: await resume(require('./bases.cjs').cerveau) }); }
-    catch (e) { return envoyer(res, 200, { simulation: true, strategies: [], erreur: 'pas encore de simulation' }); }
+    try { const { resumeBourse } = await import(require('url').pathToFileURL(path.join(__dirname, 'simulations.mjs')).href); return envoyer(res, 200, { simulation: true, strategies: await resumeBourse(require('./bases.cjs').cerveau) }); }
+    catch (e) { return envoyer(res, 200, { simulation: true, strategies: [], erreur: `lecture en échec : ${String(e.message || e).slice(0, 160)}` }); }
   }
   // Le dernier bilan complet du Directeur (agents, production, alertes, idées, ordre confié à Hermes).
   if (m === 'GET' && url === '/api/direction') {

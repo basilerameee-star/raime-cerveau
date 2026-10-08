@@ -19,6 +19,7 @@
 // Deux lectures : la simulation « réelle » depuis son premier jour, et un rétro-test sur les 12 mois passés (il dit ce
 // que ces règles auraient donné, il ne prédit rien). Tout est recalculé à chaque passage, depuis les cours : reproductible.
 import pg from 'pg';
+import { resumeBourse } from '../jarvis/simulations.mjs';
 
 export const CAPITAL = 1000;
 const UA = { 'User-Agent': 'raime-cerveau/1.0 (+https://raime.fr; contact@raime.fr)', Accept: 'application/json' };
@@ -283,15 +284,8 @@ export async function passer({ brain, fetch: f = globalThis.fetch, aujourdhui = 
 }
 
 // Pour Jarvis et l'e-mail : les quatre stratégies, simulation réelle et rétro-test, en une ligne chacune.
-export async function resume(brain) {
-  const { rows } = await brain.query(`SELECT s.nom, s.libelle, s.regles, to_char(s.debut, 'YYYY-MM-DD') AS debut, v.mode, v.valeur::float AS valeur,
-      to_char(v.jour, 'YYYY-MM-DD') AS jour,
-      (SELECT min(x.valeur / x.haut) FROM (SELECT valeur, max(valeur) OVER (ORDER BY jour) AS haut FROM bourse_valeurs
-        WHERE strategie = s.nom AND mode = v.mode) x)::float - 1 AS pire
-    FROM bourse_strategies s JOIN LATERAL (SELECT DISTINCT ON (mode) mode, valeur, jour FROM bourse_valeurs WHERE strategie = s.nom ORDER BY mode, jour DESC) v ON true
-    ORDER BY s.nom, v.mode`);
-  return rows.map((r) => ({ ...r, perf: Math.round((r.valeur / CAPITAL - 1) * 1000) / 10, pire: Math.round(r.pire * 1000) / 10 }));
-}
+// le résumé est rangé dans jarvis/simulations.mjs (le Cockpit le lit de là)
+export const resume = (brain) => resumeBourse(brain, CAPITAL);
 
 // CLI : node agents/bourse.js   (un passage, écrit en base, affiché)
 if (import.meta.url === `file://${process.argv[1]}`) {

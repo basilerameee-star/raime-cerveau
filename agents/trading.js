@@ -18,19 +18,9 @@ import fs from 'node:fs';
 import pg from 'pg';
 import { moyenne, rsi } from './bourse.js';
 
-export const CAPITAL = 1000;
-export const SYMBOLES = ['BTCEUR', 'ETHEUR'];
+import { CAPITAL, SYMBOLES, ECHELLES, resumeTrading } from '../jarvis/simulations.mjs';
+export { CAPITAL, SYMBOLES, ECHELLES };
 export const FRAIS = 0.001 + 0.0002;
-// échelle → intervalle Binance, règle, nom
-export const ECHELLES = {
-  seconde: { binance: '1s', regle: 'retour', libelle: 'à la seconde' },
-  minute: { binance: '1m', regle: 'retour', libelle: 'à la minute' },
-  heure: { binance: '1h', regle: 'retour', libelle: 'à l’heure' },
-  jour: { binance: '1d', regle: 'retour', libelle: 'à la journée' },
-  semaine: { binance: '1w', regle: 'tendance', n: 20, libelle: 'à la semaine' },
-  mois: { binance: '1M', regle: 'tendance', n: 10, libelle: 'au mois' },
-  trimestre: { binance: null, regle: 'tendance', n: 4, libelle: 'au trimestre' },   // fait des bougies mensuelles
-};
 const GARDER_SECONDES_JOURS = 14;
 
 // ── Les règles (pures, testées au banc) ───────────────────────────────────────────────────────
@@ -185,25 +175,8 @@ async function garder(brain, symbole, echelle, bougies) {
 }
 
 // Pour Jarvis, le Directeur et l'e-mail : chaque agent, sa valeur, son résultat, ses opérations.
-export async function resume(brain) {
-  const { rows } = await brain.query(`SELECT p.agent, min(p.depuis) AS depuis, sum(p.liquidites)::float AS liquidites,
-      json_object_agg(p.symbole, p.quantite) AS quantites,
-      (SELECT count(*)::int FROM trading_operations o WHERE o.agent = p.agent) AS operations,
-      (SELECT coalesce(sum(frais), 0)::float FROM trading_operations o WHERE o.agent = p.agent) AS frais
-    FROM trading_portefeuilles p GROUP BY p.agent`);
-  const prix = {};
-  for (const s of SYMBOLES) {
-    const [r] = (await brain.query(`SELECT c::float AS c FROM trading_bougies WHERE symbole = $1 ORDER BY debut DESC LIMIT 1`, [s])).rows;
-    prix[s] = r ? r.c : null;
-  }
-  return Object.keys(ECHELLES).map((agent) => {
-    const r = rows.find((x) => x.agent === agent);
-    if (!r) return { agent, libelle: ECHELLES[agent].libelle, valeur: null };
-    const valeur = r.liquidites + SYMBOLES.reduce((t, s) => t + Number(r.quantites[s] || 0) * (prix[s] || 0), 0);
-    return { agent, libelle: ECHELLES[agent].libelle, depuis: r.depuis, valeur: Math.round(valeur * 100) / 100,
-      perf: Math.round((valeur / CAPITAL - 1) * 10000) / 100, operations: r.operations, frais: Math.round(r.frais * 100) / 100 };
-  });
-}
+// le résumé est rangé dans jarvis/simulations.mjs (le Cockpit le lit de là)
+export const resume = resumeTrading;
 
 // CLI : node agents/trading.js service   (le service continu ; il s'arrête quand ce fichier change, et le conteneur le relance)
 if (import.meta.url === `file://${process.argv[1]}`) {

@@ -43,3 +43,40 @@ test('les trimestres sont les clôtures de mars, juin, septembre et décembre ; 
   assert.deepEqual([b.echelle, b.symbole, b.c, b.fermee], ['minute', 'BTCEUR', 1.5, true]);
   assert.equal(lireBougie({ data: {} }), null);
 });
+
+// 08/10/2026 (audit) : le Cockpit ne voit que jarvis/ ; le rapport importait ../agents/trading.js, échouait en production
+// et disait « pas encore de données ». Deux gardes : aucun fichier de jarvis/ ne sort de son dossier, et le résumé
+// rangé dans jarvis/ lit vraiment la base.
+test('le Cockpit ne voit que jarvis/ : aucun de ses fichiers n’importe hors de son dossier', async () => {
+  const fs = await import('node:fs');
+  const dossier = new URL('../../jarvis/', import.meta.url);
+  const sorties = [];
+  for (const f of fs.readdirSync(dossier).filter((x) => /\.(c|m)?js$/.test(x))) {
+    const lignes = fs.readFileSync(new URL(f, dossier), 'utf8').split('\n');
+    lignes.forEach((l, i) => {
+      if (/^\s*\/\//.test(l)) return;
+      if (/(require|import)\(\s*['"`]\.\.\/|from\s+['"`]\.\.\/|path\.join\(__dirname,\s*['"`]\.\.['"`]/.test(l)) sorties.push(`${f}:${i + 1}`);
+    });
+  }
+  assert.deepEqual(sorties, []);
+});
+
+test('le résumé du trading (jarvis/simulations.mjs) lit les portefeuilles et le dernier cours', async () => {
+  const { bases } = await import('./outils.mjs');
+  const { preparer } = await import('../../agents/trading.js');
+  const { resumeTrading } = await import('../../jarvis/simulations.mjs');
+  const db = await bases();
+  try {
+    await preparer(db.brain);
+    await db.brain.query(`UPDATE trading_portefeuilles SET liquidites = 0, quantite = 0.01 WHERE agent = 'jour' AND symbole = 'BTCEUR'`);
+    await db.brain.query(`INSERT INTO trading_bougies (symbole, echelle, debut, o, h, l, c, v) VALUES ('BTCEUR', 'jour', '2099-01-01', 60000, 60000, 60000, 60000, 1)
+      ON CONFLICT DO NOTHING`);
+    const jour = (await resumeTrading(db.brain)).find((x) => x.agent === 'jour');
+    assert.equal(jour.valeur, 500 + 600, 'moitié en liquidités (ether), 0,01 bitcoin à 60 000 €');
+    assert.equal(jour.perf, 10);
+  } finally {
+    await db.brain.query(`DELETE FROM trading_bougies WHERE debut = '2099-01-01'`).catch(() => {});
+    await db.brain.query(`DELETE FROM trading_portefeuilles`).catch(() => {});
+    await db.fermer();
+  }
+});
