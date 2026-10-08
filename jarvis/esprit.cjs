@@ -91,6 +91,7 @@ async function etatDuCerveau(message = '') {
   if (actifs[0] && actifs[0].a) t += "\nAgents qui ont réellement travaillé ces 24 h : " + actifs[0].a + ".";
   if (pr[0]) t += `\nProspection : ${pr[0].b} brouillons d'e-mails à valider par Basile ; ${pr[0].e} envoyés ces 24 h.`;
   t += await require('./appels.cjs').phrase(); // les relances téléphoniques à J+7 (30/09/2026)
+  t += await require('./agenda.cjs').phrase(); // l'agenda : relances du jour et en retard (08/10/2026)
   t += await require('./vitrines.cjs').phraseEnvoi(); // l'envoi des vitrines : mode et chiffres (01/10/2026)
   t += require('./feuille.cjs').phrase(); // la feuille de route décidée avec Basile (30/09/2026)
   t += await require('./clips.cjs').phrase(); // le clip farming : routine et état du jour (02/10/2026)

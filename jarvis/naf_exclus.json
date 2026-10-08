@@ -1,0 +1,5 @@
+{
+  "_lisez_moi": "08/10/2026 : les entreprises jamais prospectées ni proposées à l'appel, en un seul endroit. Lu par agents/prospection_auto.js (les brouillons) et par jarvis/appels.cjs (la liste À appeler). Rangé dans jarvis/ parce que le Cockpit ne voit que ce dossier.",
+  "naf": ["78.30Z", "65.12Z", "64.19Z", "85.59A", "85.59B", "94.11Z", "94.12Z"],
+  "nom_non_lucratif": "(^|[^a-z])(assoc|association|agc|cerfrance|syndicat|f[ée]d[ée]ration|chambre|ordre des|union|mutuelle|mutualit[ée]|coop[ée]rative|groupement|geiq|gie)([^a-z]|$)"
+}

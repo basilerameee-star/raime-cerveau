@@ -54,6 +54,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .meta { color: var(--muted); font-size: 13px; overflow-wrap: anywhere }
 .pill { font: 600 12px var(--f-body); padding: 4px 9px; border-radius: 999px; white-space: nowrap }
 .p-brouillon, .p-differe { color: var(--ask); background: var(--ask-bg) } .p-valide { color: var(--go); background: var(--go-bg) }
+.p-appel { color: var(--sent); background: var(--sent-bg) }
+.pills { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end }
 .body { border-top: 1px solid var(--line); padding: 14px; display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr) 220px }
 .mail { border: 1px solid var(--line); border-radius: 10px; overflow: hidden }
 .mail .entete { background: var(--bg); padding: 10px 12px; font-size: 13px; display: grid; gap: 2px }
@@ -126,7 +128,7 @@ function carte(x) {
   const v3 = x.apercu_v3 ? `<a class="voir second" href="${esc(x.apercu_v3)}" target="_blank" rel="noopener">Nouveau héros (à valider) ↗</a>` : "";
   return `<details class="card" data-type="${x.type}" data-id="${x.id}">
   <summary><div><h2>${esc(x.nom || x.a)}</h2><div class="meta">${esc(x.metier || "")}${x.ville ? " · " + esc(x.ville) : ""} · ${esc(x.a || "sans adresse")}</div></div>
-    <span class="pill p-${x.statut}">${STATUT[x.statut] || esc(x.statut)}</span></summary>
+    <span class="pills">${x.appel ? `<span class="pill p-appel" title="Noté dans la liste d’appels">${esc(x.appel.libelle)}</span>` : ""}<span class="pill p-${x.statut}">${STATUT[x.statut] || esc(x.statut)}</span></span></summary>
   <div class="body">
     <div class="mail"><div class="entete"><div><span>À :</span> ${esc(x.a)}</div><div><span>Objet :</span> ${esc(x.sujet)}</div></div>
       <pre>${esc(x.corps)}</pre><div class="pied">${pied}</div></div>

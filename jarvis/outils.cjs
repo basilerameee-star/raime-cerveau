@@ -13,6 +13,31 @@ const jour = (d) => new Date(d).toLocaleDateString('fr-FR', { timeZone: ZONE, we
 async function preparer() {
   await lire(`CREATE TABLE IF NOT EXISTS rappels (id serial PRIMARY KEY, texte text NOT NULL, echeance timestamptz NOT NULL,
     cree_le timestamptz NOT NULL DEFAULT now(), annonce_le timestamptz)`);
+  // 08/10/2026 : la même table porte l'agenda des relances (jarvis/agenda.cjs). Une minuterie dite à voix haute reste
+  // « libre » (annoncée une fois, à l'heure) ; une relance vise une cible (prospect, vitrine, candidature, contact, tâche).
+  await lire(`ALTER TABLE rappels ADD COLUMN IF NOT EXISTS cible_type text NOT NULL DEFAULT 'libre',
+    ADD COLUMN IF NOT EXISTS cible_id text, ADD COLUMN IF NOT EXISTS nom text, ADD COLUMN IF NOT EXISTS telephone text,
+    ADD COLUMN IF NOT EXISTS email text, ADD COLUMN IF NOT EXISTS canal text, ADD COLUMN IF NOT EXISTS motif text,
+    ADD COLUMN IF NOT EXISTS note text, ADD COLUMN IF NOT EXISTS source text NOT NULL DEFAULT 'basile',
+    ADD COLUMN IF NOT EXISTS priorite smallint NOT NULL DEFAULT 2, ADD COLUMN IF NOT EXISTS statut text NOT NULL DEFAULT 'a_faire',
+    ADD COLUMN IF NOT EXISTS signale_le timestamptz, ADD COLUMN IF NOT EXISTS fait_le timestamptz,
+    ADD COLUMN IF NOT EXISTS resultat text, ADD COLUMN IF NOT EXISTS maj_le timestamptz NOT NULL DEFAULT now()`);
+  for (const [nom, regle] of [
+    ['rappels_cible_type_check', "cible_type IN ('libre','prospect','vitrine','candidature','contact','decision','tache')"],
+    ['rappels_canal_check', "canal IS NULL OR canal IN ('telephone','email','autre')"],
+    ['rappels_source_check', "source IN ('basile','voix','appels','reconciliateur','vitrines','candidatures','migration')"],
+    ['rappels_priorite_check', 'priorite BETWEEN 1 AND 3'],
+    ['rappels_statut_check', "statut IN ('a_faire','fait','annule')"]]) {
+    await lire(`DO $$ BEGIN ALTER TABLE rappels ADD CONSTRAINT ${nom} CHECK (${regle}); EXCEPTION WHEN duplicate_object THEN NULL; END $$`);
+  }
+  await lire('CREATE INDEX IF NOT EXISTS rappels_statut_echeance ON rappels (statut, echeance)');
+  // une seule relance ouverte par cible : un double clic ou deux sources ne créent jamais deux lignes
+  await lire(`CREATE UNIQUE INDEX IF NOT EXISTS rappels_cible_ouverte ON rappels (cible_type, cible_id)
+    WHERE statut = 'a_faire' AND cible_id IS NOT NULL`);
+  await lire(`CREATE TABLE IF NOT EXISTS rappels_historique (id serial PRIMARY KEY, rappel_id int NOT NULL,
+    le timestamptz NOT NULL DEFAULT now(), geste text NOT NULL CHECK (geste IN ('cree','fait','reporte','annule','note')),
+    echeance_avant timestamptz, echeance_apres timestamptz, resultat text, note text)`);
+  await lire('CREATE INDEX IF NOT EXISTS rappels_historique_rappel ON rappels_historique (rappel_id, le)');
   await lire(`CREATE TABLE IF NOT EXISTS souvenirs (id serial PRIMARY KEY, texte text NOT NULL, source text NOT NULL DEFAULT 'conversation',
     cree_le timestamptz NOT NULL DEFAULT now(), mots tsvector GENERATED ALWAYS AS (to_tsvector('french', texte)) STORED)`);
   await lire('CREATE INDEX IF NOT EXISTS souvenirs_mots ON souvenirs USING gin(mots)');
@@ -86,11 +111,15 @@ async function noterRappel(r) {
   return ecrire('INSERT INTO rappels (texte, echeance) VALUES ($1, $2) RETURNING id', [r.texte.slice(0, 300), r.echeance]);
 }
 // Les rappels arrivés à échéance, annoncés une seule fois (l'écran de Jarvis les dit à voix haute).
+// 08/10/2026 : seulement les minuteries « libres » ; les relances de l'agenda restent affichées jusqu'à ce que Basile
+// les traite (jarvis/agenda.cjs), elles ne s'annoncent pas puis disparaissent.
 async function rappelsEchus() {
-  return lire(`UPDATE rappels SET annonce_le = now() WHERE annonce_le IS NULL AND echeance <= now() RETURNING id, texte, echeance`);
+  return lire(`UPDATE rappels SET annonce_le = now(), statut = 'fait', fait_le = now(), maj_le = now()
+    WHERE annonce_le IS NULL AND echeance <= now() AND cible_type = 'libre' RETURNING id, texte, echeance`);
 }
 async function rappelsAVenir() {
-  return lire(`SELECT id, texte, echeance FROM rappels WHERE annonce_le IS NULL AND echeance > now() ORDER BY echeance LIMIT 6`);
+  return lire(`SELECT id, texte, echeance FROM rappels WHERE annonce_le IS NULL AND echeance > now() AND cible_type = 'libre'
+    ORDER BY echeance LIMIT 6`);
 }
 
 // ── Mémoire longue ────────────────────────────────────────────────────────────────────────────
@@ -133,14 +162,24 @@ async function memoriser({ repondreSansFrais = require('./parole.cjs').repondreS
 }
 
 // ── Agenda (adresse iCal secrète de Google Agenda : lecture seule) ─────────────────────────────
+// Une heure dite « à Paris » (la date du jour à Paris, puis on retire le décalage de Paris ce jour-là).
+function heureDeParis(an, mois, jourDuMois, h = 0, mi = 0, s = 0) {
+  const naif = Date.UTC(an, mois - 1, jourDuMois, h, mi, s);
+  const d = new Date(naif);
+  const decalage = Date.parse(d.toLocaleString('en-US', { timeZone: ZONE })) - Date.parse(d.toLocaleString('en-US', { timeZone: 'UTC' }));
+  return new Date(naif - decalage);
+}
 function lireIcs(ics) {
   const lignes = String(ics).replace(/\r?\n[ \t]/g, '').split(/\r?\n/);
   const evts = []; let e = null;
+  // 08/10/2026 : une heure sans « Z » (TZID=Europe/Paris, ou heure flottante) est celle de Paris, pas celle du serveur
+  // (réglé en UTC : les rendez-vous tombaient deux heures plus tard dans l'agenda).
   const date = (v) => {
     const m = v.match(/(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})(Z)?)?/);
     if (!m) return null;
-    if (!m[4]) return { d: new Date(`${m[1]}-${m[2]}-${m[3]}T00:00:00`), journee: true };
-    return { d: new Date(`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}${m[7] ? 'Z' : ''}`), journee: false };
+    if (!m[4]) return { d: heureDeParis(+m[1], +m[2], +m[3]), journee: true, jour: `${m[1]}-${m[2]}-${m[3]}` };
+    if (m[7]) return { d: new Date(`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}Z`), journee: false };
+    return { d: heureDeParis(+m[1], +m[2], +m[3], +m[4], +m[5], +m[6]), journee: false };
   };
   for (const l of lignes) {
     if (l === 'BEGIN:VEVENT') e = {};
@@ -148,7 +187,8 @@ function lireIcs(ics) {
     else if (e) {
       const i = l.indexOf(':'); if (i < 0) continue;
       const cle = l.slice(0, i).split(';')[0], v = l.slice(i + 1);
-      if (cle === 'DTSTART') { const x = date(v); if (x) { e.debut = x.d; e.journee = x.journee; } }
+      if (cle === 'DTSTART') { const x = date(v); if (x) { e.debut = x.d; e.journee = x.journee; if (x.jour) e.jour = x.jour; } }
+      else if (cle === 'DTEND') { const x = date(v); if (x) e.fin = x.d; }
       else if (cle === 'SUMMARY') e.titre = v.replace(/\\,/g, ',').replace(/\\n/g, ' ');
       else if (cle === 'LOCATION') e.lieu = v.replace(/\\,/g, ',');
     }
@@ -179,6 +219,10 @@ const INTENTION_AGENDA = /\b(agenda|rendez-vous|mes rdv|planning)\b/i;
 
 async function repondre(message, options = {}) {
   if (INTENTION_HEURE.test(message)) return `Il est ${heure(new Date())}, nous sommes ${jour(new Date())}.`;
+  // 08/10/2026 : « rappelle-moi Ecoger dans 3 semaines », « rappelle Durand le 12 novembre » : une relance de l'agenda,
+  // en jours, semaines, mois ou à une date (une durée en minutes ou une heure reste une minuterie, juste dessous).
+  const relance = await require('./agenda.cjs').repondreVoix(message);
+  if (relance) return relance;
   const rappel = comprendreRappel(message);
   if (rappel) {
     const id = await noterRappel(rappel);
@@ -194,4 +238,4 @@ async function repondre(message, options = {}) {
 }
 
 module.exports = { preparer, repondre, memoriser, meteo, comprendreRappel, noterRappel, rappelsEchus, rappelsAVenir, aRetenir, retenir, souvenirsPour,
-  agenda, lireIcs, phraseAgenda };
+  agenda, lireIcs, phraseAgenda, heureDeParis, ZONE };
