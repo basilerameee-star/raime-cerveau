@@ -1,0 +1,53 @@
+# L'Envoyeur (08/10/2026, audit) : ce que le robot répond dans un formulaire de candidature. Aucun test ne tenait ces deux
+# modules : l'essai à blanc Michael Page a rempli « CDI » dans le salaire et « Oui » à « avez-vous un visa ».
+# Lancé par la CI : python3 -m unittest tests/banc/envoyeur_test.py
+import sys
+import unittest
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "envoyeur"))
+import michaelpage as mp  # noqa: E402
+import regles  # noqa: E402
+
+PROFIL = {"salaire": {"suisse_annuel_brut": "54 600 CHF (13 salaires)", "suisse_mensuel_brut_min": "4 200 CHF"},
+          "contrats": ["CDI", "CDD"], "permis_travail_suisse": "Frontalier UE – permis G à obtenir par l'employeur"}
+
+
+class Salaire(unittest.TestCase):
+    def test_le_libelle_visible_passe_avant_le_nom_technique(self):
+        champ = {"label": "Minimum Expected Salary", "name": "mp_job_type[salary][amount]", "id": "edit-job-type-salary"}
+        visible = " ".join(str(champ.get(k) or "") for k in ("label", "placeholder")).strip()
+        tout = " ".join(str(champ.get(k) or "") for k in ("label", "name", "id", "placeholder"))
+        cle = (mp.cle_profil(visible) if visible else None) or mp.cle_profil(tout)
+        self.assertEqual(cle, "salaire")
+        self.assertEqual(mp.valeur(cle, PROFIL, champ["label"]), "54600")
+        self.assertEqual(mp.cle_profil(tout), "contrat", "le piège existe bien : le nom seul dit « job type »")
+
+    def test_le_code_du_formulaire_suit_cette_regle(self):
+        source = (Path(mp.__file__)).read_text(encoding="utf-8")
+        self.assertIn('(cle_profil(visible) if visible else None) or cle_profil(tout)', source)
+
+    def test_mensuel_ou_annuel_selon_la_question(self):
+        self.assertEqual(mp.valeur("salaire", PROFIL, "Salaire mensuel souhaité"), "4200")
+        self.assertEqual(mp.valeur("salaire", PROFIL, "Prétentions salariales"), "54600")
+
+
+class OuiNon(unittest.TestCase):
+    def test_visa_actuel_non(self):
+        self.assertEqual(regles.repondre("Do you currently have a working visa for Switzerland?"), "Non")
+        self.assertEqual(regles.repondre("Avez-vous actuellement un permis de travail suisse ?"), "Non")
+
+    def test_decisions_deja_prises_par_basile(self):
+        self.assertEqual(regles.repondre("Avez-vous un permis de travail ?"), "Oui")
+        self.assertEqual(regles.repondre("Êtes-vous frontalier ?"), "Oui")
+        self.assertEqual(regles.repondre("Parlez-vous allemand ?"), "Non")
+        self.assertEqual(regles.repondre("Avez-vous de l'expérience dans la vente ?"), "Oui")
+
+    def test_un_fait_inconnu_n_est_jamais_affirme(self):
+        self.assertIsNone(regles.repondre("Avez-vous un diplôme d'ingénieur ?"))
+        self.assertIsNone(regles.repondre("Votre casier judiciaire est-il vierge ?"))
+        self.assertEqual(regles.repondre("Avez-vous 5 ans d'expérience en Suisse ?"), "Non")
+
+
+if __name__ == "__main__":
+    unittest.main()

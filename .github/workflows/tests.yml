@@ -41,3 +41,5 @@ jobs:
       - run: npm test
       # La porte web : la signature de GitHub est vérifiée par du code, donc par un test.
       - run: python3 -m unittest tests/banc/porte_http_test.py
+      # Ce que l'Envoyeur répond dans un formulaire (salaire, visa, Oui/Non) : 08/10/2026
+      - run: python3 -m unittest tests/banc/envoyeur_test.py

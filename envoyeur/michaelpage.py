@@ -232,7 +232,10 @@ def decider(champs, p, f, fait=None):
         fait.add(ident)
         libelle = (c.get("label") or c.get("placeholder") or c.get("name") or c.get("id") or "").strip()
         tout = " ".join(str(c.get(k) or "") for k in ("label", "name", "id", "placeholder"))
-        c["cle"] = cle = cle_profil(tout)
+        # le libellé VISIBLE d'abord : le nom technique « …job_type…salary… » faisait remplir « CDI » dans le salaire
+        # (essai du 08/10/2026) ; le nom et l'identifiant ne servent que si le libellé ne dit rien
+        visible = " ".join(str(c.get(k) or "") for k in ("label", "placeholder")).strip()
+        c["cle"] = cle = (cle_profil(visible) if visible else None) or cle_profil(tout)
         actuel = str(c.get("value") or "").strip()
         question = "?" in libelle
         if c["type"] == "file":
