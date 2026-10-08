@@ -443,6 +443,24 @@ test('héros v3 (07/10/2026) : plein écran, nom en serif, polices hébergées p
   assert.ok(!/class="hero"/.test(v2) && /class="w intro"/.test(v2), 'la maquette en ligne ne change pas avant validation');
 });
 
+test('08/10/2026 (TAD MARKET) : numéro lisible, adresse avec sa ville, titre des prestations accordé', async () => {
+  const { maquettePremium, adresseComplete, METIERS } = await import('../../agents/maquette_premium.js');
+  const v = { nom: 'TAD MARKET', metier: 'boucherie', ville: 'Annecy', adresse: "8 Avenue d'Aix les Bains 74600", telephone: '+33 450644817' };
+  for (const v3 of [false, true]) {
+    const h = maquettePremium(v, { images: 'https://cockpit.raime.fr/demo/img', v3 });
+    assert.ok(!h.includes('+33 450644817'), 'jamais le numéro brut');
+    assert.match(h, />04 50 64 48 17</); assert.match(h, /href="tel:0450644817"/);
+    assert.match(h, /8 Avenue d&#39;Aix les Bains, 74600 Annecy/);
+    assert.match(h, /Un savoir-faire <em>de boucher<\/em>/);
+  }
+  assert.equal(adresseComplete({ adresse: '12 rue Royale, Annecy', ville: 'Annecy' }), '12 rue Royale, Annecy');
+  assert.equal(adresseComplete({ adresse: 'Rue du Rhône 3 1204', ville: 'Genève' }), 'Rue du Rhône 3, 1204 Genève');
+  assert.equal(adresseComplete({ adresse: '', ville: 'Thônes' }), 'Thônes');
+  assert.match(maquettePremium({ ...v, telephone: '+41 22 345 67 89' }, {}), />\+41 22 345 67 89</, 'un numéro suisse reste tel quel');
+  // le mot-clé suit « Un savoir-faire » : masculin singulier, jamais un pluriel ni un féminin
+  for (const [m, f] of Object.entries(METIERS)) assert.ok(!/(ies|ées|es)$/.test(f.cle || ''), `${m} : « Un savoir-faire ${f.cle} »`);
+});
+
 test('les polices des maquettes : servies avec CORS ouvert ; un nom inattendu est refusé', async () => {
   const { createRequire } = await import('node:module');
   const vitrines = createRequire(import.meta.url)('../../jarvis/vitrines.cjs');

@@ -6,9 +6,20 @@
 // capitales ; trois couleurs et l'accent réservé au mot-clé et au bouton ; aucun bord arrondi, aucune ombre, aucun
 // bandeau ; chaque information une seule fois ; des phrases simples. Jamais sans photos d'exemple ni sans les
 // informations trouvées sur le commerce. Rien d'inventé (ni avis, ni prix) ; les horaires seulement s'ils sont connus.
+import { createRequire } from 'node:module';
+const { lisible } = createRequire(import.meta.url)('./telephone.cjs');
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 export const sansAccents = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 export const cleMetier = (m) => sansAccents(m || 'commerce').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+// « 8 Avenue d'Aix les Bains 74600 » + Annecy → « 8 Avenue d'Aix les Bains, 74600 Annecy » ; une adresse qui nomme déjà
+// sa ville reste telle quelle ; sans adresse, la ville seule.
+export function adresseComplete(v) {
+  const a = String(v.adresse || '').trim();
+  if (!a) return v.ville || '';
+  if (!v.ville || sansAccents(a).includes(sansAccents(v.ville))) return a;
+  const m = /^(.*?)[,\s]+(\d{4,5})$/.exec(a);
+  return m ? `${m[1]}, ${m[2]} ${v.ville}` : `${a}, ${v.ville}`;
+}
 
 // Par métier : [ton, fond] — un ton sourd pour les accents (boutons, mots-clés, repère) et un fond à peine teinté ; jamais de couleur vive (Basile, 01/10/2026). le bouton d'action, la phrase d'accueil (vraie pour tout commerce du métier), le mot-clé
 // (en italique, sur la première ligne du titre des prestations), et trois prestations type.
@@ -18,7 +29,7 @@ const FIRME = { action: 'Prendre rendez-vous', p1: 'Chaque domaine se présente 
 export const METIERS = {
   boulangerie: { c: ['#7a5a3a', '#f6f1ea'], action: 'Commander', accroche: 'Pains, viennoiseries et pâtisseries, faits pour le quartier.', cle: 'du jour',
     rubriques: [['Pains', 'Le pain de tous les jours et les spécialités de la maison.'], ['Viennoiseries', 'Croissants et pains au chocolat, chaque matin.'], ['Commandes', 'Gâteaux et grandes quantités, sur commande.']] },
-  boucherie: { c: ['#7a3b34', '#f6efed'], action: 'Commander', accroche: 'Viandes choisies, découpées à la demande.', cle: 'choisies',
+  boucherie: { c: ['#7a3b34', '#f6efed'], action: 'Commander', accroche: 'Viandes choisies, découpées à la demande.', cle: 'de boucher',
     rubriques: [['Viandes', 'Bœuf, veau, agneau et volaille.'], ['Traiteur', 'Charcuterie et plats préparés.'], ['Commandes', 'Pièces préparées pour vos repas et vos fêtes.']] },
   fleuriste: { c: ['#56664a', '#f1f3ed'], action: 'Commander un bouquet', accroche: 'Bouquets et compositions, pour chaque occasion.', cle: 'de saison',
     rubriques: [['Bouquets', 'Compositions de saison, à emporter ou à livrer.'], ['Événements', 'Mariages, anniversaires et cérémonies.'], ['Plantes', 'Plantes vertes et fleuries.']] },
@@ -117,10 +128,13 @@ export function carte(lat, lon, z = 16, base = '/demo/tuile') {
 
 // v : la fiche du commerce ; o.images : adresse des photos d'exemple (« https://cockpit.raime.fr/demo/img »).
 export function maquettePremium(v, o = {}) {
+  // 08/10/2026 (TAD MARKET) : le numéro s'affiche comme sur une carte de visite, « 04 50 64 48 17 », jamais « +33 450644817 »
+  // (un numéro étranger reste tel quel) ; l'adresse porte toujours sa ville.
+  v = { ...v, telephone: v.telephone ? (lisible(v.telephone) || String(v.telephone).trim()) : v.telephone };
   const f = fiche(v.metier), [ton, fond] = f.c;
   const tel = v.telephone ? String(v.telephone).replace(/[^\d+]/g, '') : '';
   const metier = v.metier ? v.metier.charAt(0).toUpperCase() + v.metier.slice(1) : 'Commerce';
-  const lieu = v.adresse || v.ville;
+  const lieu = adresseComplete(v);
   const itineraire = v.carte || `https://www.google.com/maps/search/${encodeURIComponent(`${v.nom} ${lieu}`)}`;
   const base = o.images ? `${o.images}/${cleMetier(v.metier)}` : null;
   const photo = (i) => (base ? ` style="background-image:url('${base}/${i}.jpg')"` : '');
