@@ -45,12 +45,13 @@
     {
       "n": 14,
       "rang": 3,
-      "groupe": "basile",
+      "groupe": "seul",
       "moteur": "Moteur 1 : sites à 500 €",
-      "titre": "Google Places branché",
-      "il_faut": "La clé GOOGLE_PLACES_API_KEY au coffre (projet Google Cloud, Places API (New), budget 1 € d'alerte).",
-      "fini_quand": "Un passage de l'agent trouve des commerces par Google, avec téléphone, sous 900 recherches par mois.",
-      "etat": "attend_basile"
+      "titre": "Découverte des commerces sans Google, à 0 €",
+      "il_faut": "Rien de Basile : il refuse de mettre une carte chez Google pour Places (08/10/2026). OpenStreetMap (Overpass, par commune) et le registre des entreprises ; la clé reste possible au coffre, jamais demandée.",
+      "fini_quand": "Un passage de l'agent trouve des commerces avec téléphone, sans aucune dépense.",
+      "etat": "fait",
+      "preuve": "Overpass par contour de commune (08/10/2026) : 49 commerces à Cluses, 114 à Carouge ; registre des entreprises pour les cabinets sans site (agents/sans_site.js)."
     },
     {
       "n": 13,
