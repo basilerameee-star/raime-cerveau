@@ -425,7 +425,8 @@
       "moteur": "Fiabilité",
       "titre": "Un seul flux de réflexion",
       "fini_quand": "Architecte, réflexif, penseur et prospective regroupés ; un seul flux d'idées jugées par le goût.",
-      "etat": "a_faire"
+      "etat": "fait",
+      "preuve": "Livré le 08/10/2026 (agents/directeur.js, commits du 08/10, en service 06f1ed0) : architecte, superviseur, réflexif, prospective et penseur retirés de la boucle ; le Directeur passe une fois par jour (5 h-7 h), lit l'état réel des agents et la production en base, appelle le penseur et fait juger ses idées par le goût, écrit un seul bilan (table direction) lu par l'e-mail de 7 h 30, /api/etat, /api/direction et Jarvis. Premier bilan en production le 08/10 : 7 candidatures, 26 commerces, 89 adresses, 27 appels en 24 h. Banc : 357 tests, 0 échec."
     },
     {
       "n": 5,
@@ -593,8 +594,9 @@
       "titre": "Une seule entité : le système agentique rAIme, avec sa direction",
       "il_faut": "Demande de Basile du 07/10/2026 : tous les agents (prospection, candidatures, vitrines, revenus, bourse, trading, clipping, Buffer, Instagram, YouTube, dropshipping, veille GitHub) forment une seule entité qui tourne seule ; chaque agent peut créer ses sous-agents pour réussir. Outils à télécharger permis (open source vérifié).",
       "fini_quand": "Le Directeur (point 41) répartit le travail entre les agents, chacun rend compte au même endroit, et Basile ne reçoit que les décisions qui lui reviennent.",
-      "etat": "a_faire",
-      "rang": 58
+      "etat": "attend_basile",
+      "rang": 58,
+      "avance": "08/10/2026 : le Directeur existe (point 41) : un seul bilan, les alertes, et un premier sous-agent (diagnostic confié à Hermes, lecture seule, un par jour). Reste : chaque nouvel agent (revenus, bourse, trading, clipping, dropshipping, veille GitHub) rend compte au Directeur à sa création."
     },
     {
       "n": 59,

@@ -77,6 +77,9 @@ export function alertes(agents, prod, motifs = {}) {
   for (const a of agents) {
     if (a.etat === 'echec' && a.echecs >= 2) out.push({ gravite: 2, qui: 'maison', cle: `echec:${a.nom}`, agent: a.nom,
       texte: `${a.nom} : ${a.echecs} échecs d'affilée${motifs[a.nom] ? ` (${motifs[a.nom]})` : ''}.` });
+    // un échec isolé se dit aussi (jamais « aucune panne » quand un agent n'est pas à jour) ; le passage suivant tranchera
+    else if (a.etat === 'echec') out.push({ gravite: 1, qui: 'maison', cle: `echec1:${a.nom}`, agent: a.nom,
+      texte: `${a.nom} : échec au dernier passage${motifs[a.nom] ? ` (${motifs[a.nom]})` : ''} ; le prochain dira s'il était passager.` });
     else if (a.etat === 'en_retard') out.push({ gravite: 1, qui: 'maison', cle: `retard:${a.nom}`, agent: a.nom,
       texte: `${a.nom} : en retard, dernier passage le ${a.dernier ? a.dernier.slice(0, 16).replace('T', ' ') : '?'} (UTC).` });
   }
