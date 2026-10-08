@@ -119,7 +119,15 @@ def programmer(b, ids):
 
 def suivre(b):
     """La publication est partie ? On note son lien (à déclarer à Whop) et on retire le clip du relais."""
-    p = buffer("query($i: PostInput!) { post(input: $i) { status externalLink error { message } } }", {"i": {"id": b["post_id"]}})["post"]
+    try:
+        p = buffer("query($i: PostInput!) { post(input: $i) { status externalLink error { message } } }", {"i": {"id": b["post_id"]}})["post"]
+    except RuntimeError as e:
+        # 08/10/2026 : 11 publications effacées chez Buffer (« Post not found ») étaient réinterrogées à chaque passage,
+        # toutes les 2 minutes : environ 300 appels par heure, d'où les refus « trop de demandes ». Introuvable = perdue.
+        if "NOT_FOUND" not in str(e) and "not found" not in str(e).lower():
+            raise
+        sql("UPDATE clips_buffer SET etat = 'perdu', message = 'publication introuvable chez Buffer (effacée)', maj = now() WHERE id = :p0;", b["id"])
+        return
     statut = str(p.get("status", "")).lower()
     if statut == "sent" and p.get("externalLink"):
         sql("""INSERT INTO clips_publies (campagne, clip, plateforme, lien) VALUES (:'p0', :'p1', :'p2', :'p3')
@@ -155,14 +163,15 @@ def main():
         fcntl.flock(verrou, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except OSError:
         return
-    if os.path.exists(RALENTI) and time.time() - os.path.getmtime(RALENTI) < 1800:
-        return
+    if os.path.exists(RALENTI) and time.time() - os.path.getmtime(RALENTI) < 7200:
+        return                                             # 08/10/2026 : 2 h de silence après un refus (30 min ne suffisaient pas)
     sql("""CREATE TABLE IF NOT EXISTS clips_buffer (id serial PRIMARY KEY, campagne text NOT NULL, clip text NOT NULL,
            plateforme text NOT NULL, quand timestamptz NOT NULL, etat text NOT NULL DEFAULT 'a_faire', post_id text, lien text,
            message text, cree_le timestamptz NOT NULL DEFAULT now(), maj timestamptz NOT NULL DEFAULT now(),
            UNIQUE (campagne, clip, plateforme));
            ALTER TABLE clips_buffer ADD COLUMN IF NOT EXISTS url text;""")
-    a_faire = lignes("a_faire")
+    # les plateformes en pause (ex. compte TikTok banni le 04/10) ne coûtent aucun appel à Buffer
+    a_faire = [b for b in lignes("a_faire") if not os.path.exists("/opt/raime/clippeur/pause-" + b["plateforme"])]
     if a_faire:
         try:
             ids, pleines = chaines(), set()
@@ -190,6 +199,7 @@ def main():
             break
         except Exception as e:
             print("suivi", b["id"], str(e)[:200], flush=True)
+            sql("UPDATE clips_buffer SET maj = now() WHERE id = :p0;", b["id"])   # une erreur attend aussi 40 min avant la question suivante
     nouveaux = [x for x in lignes("publie") if (x["campagne"], x["clip"], x["plateforme"]) not in avant]
     if nouveaux:
         prevenir("%d lien(s) à déclarer à Whop" % len(nouveaux),

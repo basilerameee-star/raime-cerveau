@@ -163,17 +163,59 @@
           + (x.ville ? ' · ' + x.ville : '') + (x.segment ? ' · ' + x.segment : '')));
         var act = el('div', 'actions');
         if (x.telephone) { var tel = el('a', '', '☎ ' + x.telephone); tel.href = 'tel:' + String(x.telephone).replace(/[^0-9+]/g, ''); act.appendChild(tel); }
-        [['appele', '✓ appelé'], ['plus_tard', '↻ plus tard'], ['pas_interesse', '✕ pas intéressé']].forEach(function (e) {
+        // 08/10/2026 : « plus tard » ouvre le choix de la date (demain… un an, ou un jour précis) et une note ; la relance
+        // entre dans l'agenda et revient le jour J. « Mal classé » sort la fiche de la prospection (pas un refus).
+        var noter = function (corps, bouton) {
+          if (bouton) bouton.disabled = true;
+          fetch('/api/appels/' + x.siren, { method: 'POST', headers: ecrire, body: JSON.stringify(corps) })
+            .then(function (r) { return r.json(); })
+            .then(function (j) { if (j && j.ok === false) { if (bouton) bouton.disabled = false; avis(j.erreur || 'Refusé'); } else d2.remove(); })
+            .catch(function () { if (bouton) bouton.disabled = false; avis('Le cockpit ne répond pas.'); });
+        };
+        var choix = el('div', 'choix-date'); choix.hidden = true;
+        [['Demain', { dans_jours: 1 }], ['3 jours', { dans_jours: 3 }], ['1 semaine', { dans_jours: 7 }], ['2 semaines', { dans_jours: 14 }],
+          ['1 mois', { dans_mois: 1 }], ['3 mois', { dans_mois: 3 }], ['6 mois', { dans_mois: 6 }], ['1 an', { dans_mois: 12 }]].forEach(function (c) {
+          var b = el('button', 'lien', c[0]); b.type = 'button';
+          b.onclick = function () { var o = { etat: 'plus_tard', note: note.value.trim() || null }; Object.keys(c[1]).forEach(function (k) { o[k] = c[1][k]; }); noter(o, b); };
+          choix.appendChild(b);
+        });
+        var date = document.createElement('input'); date.type = 'date'; date.setAttribute('aria-label', 'Rappeler le');
+        date.onchange = function () { if (date.value) noter({ etat: 'plus_tard', rappel_le: date.value, note: note.value.trim() || null }, null); };
+        var note = document.createElement('input'); note.type = 'text'; note.placeholder = 'Note (facultatif)'; note.maxLength = 300;
+        choix.appendChild(date); choix.appendChild(note);
+        [['appele', '✓ appelé'], ['plus_tard', '↻ plus tard…'], ['pas_interesse', '✕ pas intéressé'], ['mal_classe', '⊘ mal classé']].forEach(function (e) {
           var b = el('button', 'lien', e[1]); b.type = 'button';
-          b.onclick = function () { fetch('/api/appels/' + x.siren, { method: 'POST', headers: ecrire, body: JSON.stringify({ etat: e[0] }) }).then(function () { d2.remove(); }); };
+          b.onclick = e[0] === 'plus_tard' ? function () { choix.hidden = !choix.hidden; } : function () { noter({ etat: e[0] }, b); };
+          if (e[0] === 'mal_classe') b.title = 'Pas pour nous : la fiche sort de la prospection (le motif est noté au journal)';
           act.appendChild(b);
         });
         d2.appendChild(act);
+        d2.appendChild(choix);
         boxa.appendChild(d2);
       });
     } else boxa.innerHTML = '<p class="vide">Personne à relancer pour l’instant.</p>';
     // Une pastille sur les pièces Growth et Sales de la carte (ontologie-app.js) tant qu'il reste des appels.
     pastilles();
+    // L'agenda (08/10/2026) : le résumé chiffré et l'alerte du jour en tête ; une relance échue est signalée UNE fois
+    // (notification et voix), puis reste affichée jusqu'à ce que Basile la traite dans /agenda.
+    var ag = d.agenda || { compteurs: {}, alertes: [], a_signaler: [] }, kc = ag.compteurs || {};
+    var jourN = kc.du_jour || 0, retardN = kc.en_retard || 0;
+    $('resume-jour').hidden = false;
+    $('r-jour').textContent = jourN; $('r-retard').textContent = retardN;
+    $('r-argent').textContent = (kc.argent_mois || 0).toLocaleString('fr-FR') + ' €';
+    $('resume-jour').classList.toggle('alerte', jourN + retardN > 0);
+    var a0 = (ag.alertes || [])[0];
+    $('r-alerte').textContent = a0 ? (a0.retard ? '⚠ ' : '☎ ') + a0.nom + (a0.motif ? ' — ' + a0.motif : '') + (a0.retard ? ' · ' + a0.retard : '')
+      + (ag.alertes.length > 1 ? ' · et ' + (ag.alertes.length - 1) + ' autre' + (ag.alertes.length > 2 ? 's' : '') : '') : 'Aucune relance aujourd’hui.';
+    $('n-agenda').textContent = jourN + retardN ? '· ' + (jourN + retardN) : '';
+    $('nav-agenda').classList.toggle('retard', retardN > 0);
+    var sig = ag.a_signaler || [];
+    if (sig.length) {
+      var dit = sig.length === 1 ? 'Relance du jour : ' + sig[0].nom + (sig[0].telephone ? ' · ' + sig[0].telephone : '') : sig.length + ' relances aujourd’hui : elles sont dans l’agenda.';
+      avis('📅 ' + dit);
+      try { if (notifications()) new Notification('Jarvis · agenda', { body: dit }); } catch (e) {}
+      if (!parleEnCours) parler(dit);
+    }
     // rappels : ceux qui arrivent à échéance sont dits à voix haute et affichés
     var rp = d.rappels || { echus: [], a_venir: [] };
     $('bloc-rappels').hidden = !rp.a_venir.length;

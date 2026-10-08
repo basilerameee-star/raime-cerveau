@@ -21,17 +21,30 @@ async function etat() {
   return { vitrines: v, automatisation: c ? { mode: c.mode, plafond_jour: c.daily_cap, de: `${c.from_name} <${c.from_email}>`, ...(n || {}) } : { mode: 'absent' } };
 }
 
+// 08/10/2026 : un brouillon d'une entreprise que Basile a DÉJÀ appelée le dit (« déjà appelé le 07/10 (joint) ») : cinq
+// cabinets en attente de validation avaient été appelés la veille, sans que la page le montre.
+const ETAT_APPEL = { appele: 'joint', pas_interesse: 'pas intéressé', plus_tard: 'à rappeler' };
+async function dejaAppeles(cles) {
+  if (!cles.length) return new Map();
+  const lignes = await lire(`SELECT siren, etat, to_char(rappel_le, 'DD/MM') AS rappel, to_char(maj_le AT TIME ZONE 'Europe/Paris', 'DD/MM') AS le
+    FROM appels WHERE siren = ANY($1::text[])`, [cles]).catch(() => []);
+  return new Map(lignes.map((a) => [a.siren, { etat: a.etat, le: a.le, rappel_le: a.rappel || null,
+    libelle: `déjà appelé le ${a.le} (${ETAT_APPEL[a.etat] || a.etat}${a.etat === 'plus_tard' && a.rappel ? ` le ${a.rappel}` : ''})` }]));
+}
+
 async function file() {
   const sites = await lire(`SELECT id, nom, metier, ville, email, sujet, corps, slug, statut, motif, note FROM vitrines
     WHERE statut IN ('brouillon', 'valide') AND corps IS NOT NULL ORDER BY statut, maj_le DESC LIMIT 200`).catch(() => []);
-  const autos = await lireN8n(`SELECT id, prospect_name, segment, to_email, subject, body, status FROM outreach
+  const autos = await lireN8n(`SELECT id, siren, prospect_name, segment, to_email, subject, body, status FROM outreach
     WHERE status IN ('brouillon', 'differe', 'valide') ORDER BY array_position(ARRAY['brouillon','differe','valide'], status), created_at DESC LIMIT 300`).catch(() => []);
+  const appeles = await dejaAppeles([...autos.map((a) => a.siren).filter(Boolean), ...sites.map((s) => `v${s.id}`)]);
   return {
     sites: sites.map((s) => ({ id: s.id, type: 'site', statut: s.statut, nom: s.nom, metier: s.metier, ville: s.ville, a: s.email,
       sujet: s.sujet, corps: s.corps, voir: s.slug ? `${ADRESSE}/demo/${s.slug}` : null, voir_label: 'Voir la maquette',
-      apercu_v3: s.slug ? `${ADRESSE}/demo/v3/${s.slug}` : null, note: s.note || '' })),
+      apercu_v3: s.slug ? `${ADRESSE}/demo/v3/${s.slug}` : null, note: s.note || '', appel: appeles.get(`v${s.id}`) || null })),
     automatisation: autos.map((a) => ({ id: a.id, type: 'automatisation', statut: a.status, nom: a.prospect_name, metier: a.segment,
-      a: a.to_email, sujet: a.subject, corps: a.body, voir: preaudit(a.segment), voir_label: 'Voir le pré-audit' })),
+      a: a.to_email, sujet: a.subject, corps: a.body, voir: preaudit(a.segment), voir_label: 'Voir le pré-audit',
+      appel: (a.siren && appeles.get(a.siren)) || null })),
     // 08/10/2026 : les entreprises de Sherlock par verdict du Fureteur (site prouvé, sans site, portail, à revoir) et par secteur
     sans_site: await require('./sans_site.cjs').bilan(lireN8n),
   };

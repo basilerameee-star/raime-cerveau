@@ -250,17 +250,20 @@ test('appels de relance : un e-mail sans réponse depuis 7 jours met le numéro 
     const noter = (corps, entetes = { 'X-Jarvis': '1' }) => fetch(base + '/api/appels/900000001', { method: 'POST',
       headers: { 'Content-Type': 'application/json', ...entetes }, body: JSON.stringify(corps) });
     assert.equal((await noter({ etat: 'appele' }, {})).status, 403, 'écrire exige l’en-tête maison');
-    assert.deepEqual(await (await noter({ etat: 'n_importe' })).json(), { ok: false, erreur: 'état attendu : appele, pas_interesse, plus_tard' });
+    assert.deepEqual(await (await noter({ etat: 'n_importe' })).json(), { ok: false, erreur: 'état attendu : appele, pas_interesse, plus_tard, mal_classe' });
     assert.deepEqual(await (await noter({ etat: 'plus_tard', note: 'rappeler lundi', dans_jours: 4 })).json(), { ok: true, dans_jours: 4 });
     assert.ok(!(await (await fetch(base + '/api/appels')).json()).liste.some((x) => x.siren === '900000001'), 'plus tard : sorti pour quatre jours');
-    await b.lire("UPDATE appels SET rappel_le = current_date WHERE siren = '900000001'");
+    // 08/10/2026 : « plus tard » est une relance de l'agenda ; le jour venu (son échéance), il revient
+    await b.lire("UPDATE rappels SET echeance = now() WHERE cible_type = 'prospect' AND cible_id = '900000001' AND statut = 'a_faire'");
     const revenu = await (await fetch(base + '/api/appels')).json();
     assert.ok(revenu.liste.some((x) => x.siren === '900000001'), 'le jour venu, il revient');
     // 07/10/2026 : les catégories (comptées avant le filtre) et le report à une date choisie
     assert.ok(revenu.categories.commerce >= 1);
     assert.ok((await (await fetch(base + '/api/appels?categories=commerce')).json()).liste.every((x) => x.categorie === 'commerce'));
     assert.equal((await (await fetch(base + '/api/appels?categories=Aucune')).json()).liste.length, 0);
-    const demain = new Date(Date.now() + 86400e3).toISOString().slice(0, 10);
+    // « demain » à Paris (08/10/2026 : calculé en UTC, le test échouait chaque matin avant 14 h)
+    const ag = require('../../jarvis/agenda.cjs');
+    const demain = ag.plusJours(ag.aujourdhui(), 1);
     assert.deepEqual(await (await noter({ etat: 'plus_tard', rappel_le: demain })).json(), { ok: true, dans_jours: 1 });
     assert.equal((await (await noter({ etat: 'plus_tard', rappel_le: '2020-01-01' })).json()).ok, false, 'jamais dans le passé');
     assert.equal((await (await noter({ etat: 'plus_tard', rappel_le: 'lundi' })).json()).ok, false);
@@ -271,6 +274,8 @@ test('appels de relance : un e-mail sans réponse depuis 7 jours met le numéro 
   } finally {
     await b.lireN8n("DELETE FROM outreach WHERE siren LIKE '90000000_'");
     await b.lireN8n("DELETE FROM prospects WHERE siren LIKE '90000000_'");
+    await b.lire("DELETE FROM rappels_historique WHERE rappel_id IN (SELECT id FROM rappels WHERE cible_id LIKE '90000000_')").catch(() => {});
+    await b.lire("DELETE FROM rappels WHERE cible_id LIKE '90000000_'").catch(() => {});
     await b.lire('DROP TABLE IF EXISTS appels');
   }
 });

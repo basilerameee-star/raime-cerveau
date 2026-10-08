@@ -20,6 +20,7 @@ const vitrines = require('./vitrines.cjs');
 const tiktok = require('./tiktok.cjs');
 const candidatures = require('./candidatures.cjs');
 const prospection = require('./prospection.cjs');
+const agenda = require('./agenda.cjs');
 const reseau = require('./reseau.cjs');
 const { repondreSansFrais } = require('./parole.cjs');
 
@@ -144,7 +145,7 @@ const NOMS = { bibliothecaire: 'Bibliothèque', veilleur: 'Veille', portes: "Por
   penseur: 'Penseur', publiciste: 'Publicité', reconciliateur: 'Réponses', curieux: 'Curieux', econome: 'Économe',
   prospective: 'Prospective', applicateur: 'Mise en service', executant: 'Hermes', heraut: 'Héraut', eclaireur: 'Éclaireur des modèles', radar: 'Radar', vitrines: 'Vitrines' };
 async function etat() {
-  const [ordres, journal, pensee, questions, agents, biblio, veille, prospection, revenus, mains, encaisse, courriels, echus, rappels, relances, envoiVitrines] = await Promise.all([
+  const [ordres, journal, pensee, questions, agents, biblio, veille, prospection, revenus, mains, encaisse, courriels, echus, rappels, relances, envoiVitrines, jourAgenda] = await Promise.all([
     lire(`SELECT id, texte, etat, pour, round(extract(epoch FROM now() - cree_le) / 60)::int AS minutes, left(coalesce(reponse, ''), 600) AS reponse
       FROM commandes WHERE etat IN ('a_faire','en_cours') OR traite_le > now() - interval '72 hours' ORDER BY cree_le DESC LIMIT 12`),
     lire("SELECT acteur, left(changement, 200) AS changement, created_at FROM journal WHERE created_at > now() - interval '48 hours' ORDER BY created_at DESC LIMIT 12"),
@@ -162,6 +163,7 @@ async function etat() {
     outils.rappelsEchus(), outils.rappelsAVenir(),
     appels.aFaire(40).catch(() => ({ total: 0, liste: [] })),   // la liste « À appeler » du panneau de gauche (03/10/2026)
     vitrines.envoi().catch(() => ({ mode: 'absent' })),
+    agenda.jour().catch(() => null),   // l'agenda (08/10/2026) : le résumé chiffré et les alertes du jour, base du cerveau seulement
   ]);
   const coffre = lireCoffre();
   return {
@@ -178,6 +180,9 @@ async function etat() {
     rappels: { echus, a_venir: rappels },
     // Les appels de relance à J+7 : pour l'interface (la 3D comprise), le total et les cinq plus anciens.
     appels: { a_faire: relances.total, prochains: relances.liste },
+    // L'agenda : rappels du jour, en retard, argent du mois (table revenus), les alertes en tête (10 au plus), et celles
+    // à signaler UNE fois (notification) ; une relance échue reste dans alertes tant que Basile ne l'a pas traitée.
+    agenda: jourAgenda || { compteurs: { du_jour: 0, en_retard: 0, semaine: 0, ouvertes: 0, argent_mois: 0, decisions: 0 }, alertes: [], a_signaler: [] },
     // L'envoi des vitrines : le mode (pause, test, live) et combien sont partis.
     vitrines_envoi: envoiVitrines,
     // La feuille de route (jarvis/feuille_de_route.json) : l'avancement, les prochains points, ce qu'il faut de Basile.
@@ -198,7 +203,10 @@ async function rapport() {
   const rev = await esprit.revenusDuMois();
   const br = (await lireN8n("SELECT count(*)::int AS n FROM outreach WHERE status = 'brouillon'"))[0];
   const qs = await lire("SELECT question FROM demandes WHERE etat = 'ouverte' AND pour_basile ORDER BY bloquant DESC, cree_le DESC LIMIT 3");
+  // 08/10/2026 : en premier, les relances du jour et en retard (10 au plus), avec le numéro ou l'adresse et le pourquoi.
+  const relances = await agenda.relancesDuJour().catch(() => ({ titre: 'Tes relances du jour', lignes: ['Agenda illisible ce matin.'] }));
   return { sections: [
+    { titre: relances.titre, lignes: relances.lignes },
     { titre: 'Le cerveau cette nuit : sa pensée', lignes: pensee.length ? pensee.map((p) => `${p.titre} — ${court(p.proposition, 220)}`) : ['Pas de pensée cette nuit.'] },
     { titre: 'Tes ordres faits (24 h)', lignes: faites.length ? faites.map((c) => `n°${c.id} — ${court(c.texte, 90)} → ${court(c.reponse, 200)}`) : ['Aucun.'] },
     { titre: 'Améliorations mises en service seul (24 h)', lignes: mep.length ? mep.map((j) => court(j.changement, 160)) : ['Aucune.'] },
@@ -225,6 +233,8 @@ async function router(req, res) {
   // La recherche d'emploi de Basile : le Bureau des candidatures et l'Envoyeur de son PC (jarvis/candidatures.cjs).
   if (await candidatures.router(req, res, { url, m, envoyer, json, autorise, fichierInterface })) return;
   if (await prospection.router(req, res, { url, m, envoyer, json, autorise, fichierInterface })) return;
+  // L'agenda des relances (jarvis/agenda.cjs, 08/10/2026) : /agenda et /api/agenda…
+  if (await agenda.router(req, res, { url, m, envoyer, json, autorise, fichierInterface })) return;
   // Le clip farming de KinGKlip : demandes de découpe, clips prêts, liens publiés (jarvis/clips.cjs).
   if (await require('./clips.cjs').router(req, res, { url, m, envoyer, json, fichierInterface })) return;
   // 07/10/2026 : le tableau de bord EST la 3D (demande de Basile) ; l'ancienne page reste à /jarvis/classique,
@@ -470,6 +480,7 @@ if (require.main === module) {
   Promise.all([preparer(), courrier.preparer(), outils.preparer()]).finally(() => {
     serveur.listen(PORT, () => console.log(`[jarvis] en service sur :${PORT}, version ${VERSION}`));
     candidatures.demarrer();
+    agenda.demarrer();   // les tables, la reprise des « plus tard », puis les réponses reçues toutes les 5 minutes
     if (process.env.RELAIS !== '0') { relais.demarrer(); courrier.demarrer(); require('./prestataire.cjs').demarrer(); setInterval(() => { outils.memoriser().catch(() => {}); }, 3600e3); }
     // Le classement des modèles gratuits mesurés par l'éclaireur (agents/eclaireur.js), relu toutes les heures.
     const adopter = async () => {

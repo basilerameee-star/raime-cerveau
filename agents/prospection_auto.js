@@ -8,6 +8,7 @@
 //
 // Il ne fait que des BROUILLONS (outreach, statut « brouillon ») : Basile les voit et les valide sur /prospection ; l'envoi
 // reste au workflow n8n « Expéditeur » (réglage pause / essai / réel). Remplace la rédaction de Héraut dans la boucle.
+import fs from 'node:fs';
 import pg from 'pg';
 import { db } from './lib.js';
 import { AGENDA } from './vitrines.js';
@@ -34,10 +35,13 @@ export const METIERS = {
     taches: ['le chiffrage et les métrés', 'les réponses aux appels d’offres', 'les comptes rendus de chantier'] },
 };
 // Codes d'activité jamais prospectés (07/10/2026) : groupements d'employeurs, assureurs et mutuelles, banques mutualistes.
-export const NAF_EXCLUS = ['78.30Z', '65.12Z', '64.19Z', '85.59A', '85.59B', '94.11Z', '94.12Z'];
-// À but lucratif seulement (Basile, 07/10) : ni associations (AGC, Cerfrance…), ni ordres, chambres ou syndicats.
-// Expression PostgreSQL (~*), reprise par les entreprises sans site (agents/sans_site.js, 08/10/2026).
-export const NON_LUCRATIF = '(^|[^a-z])(assoc|association|agc|cerfrance|syndicat|f[ée]d[ée]ration|chambre|ordre des|union|mutuelle|mutualit[ée]|coop[ée]rative|groupement|geiq|gie)([^a-z]|$)';
+// 08/10/2026 : la liste et le motif des noms « à but non lucratif » vivent dans jarvis/naf_exclus.json, lu aussi par la liste
+// À appeler du Cockpit (un téléphone d'association ne doit plus y apparaître sous une fausse catégorie).
+const REGLES = JSON.parse(fs.readFileSync(new URL('../jarvis/naf_exclus.json', import.meta.url), 'utf8'));
+export const NAF_EXCLUS = REGLES.naf;
+export const NOM_NON_LUCRATIF = REGLES.nom_non_lucratif;
+// le même motif, sous le nom qu'emploie agents/sans_site.js (expression PostgreSQL, ~*)
+export const NON_LUCRATIF = NOM_NON_LUCRATIF;
 const lien = (m) => `https://raime.fr/dossiers/rAIme-pre-audit-${m.preaudit}.pdf`;
 
 // Les noms du registre arrivent en capitales, avec la forme juridique : « SCP DUPONT ET ASSOCIES » → « Dupont et associés ».
@@ -142,12 +146,12 @@ export async function preparer({ n8n, brain, combien = 14 } = {}) {
       AND p.site_preuve IS NOT NULL AND p.furete_note LIKE 'adresse sur le site%'
       AND (p.sector = ANY($1::text[]) OR p.name ~* 'notaire|notarial')
       -- à but lucratif seulement (Basile, 07/10) : ni associations (AGC, Cerfrance…), ni ordres, chambres ou syndicats
-      AND p.name !~* '${NON_LUCRATIF}'
+      AND p.name !~* $4
       AND coalesce(p.naf, '') <> ALL($3::text[])
       AND NOT EXISTS (SELECT 1 FROM outreach o WHERE o.siren = p.siren AND o.status NOT IN ('non_recu', 'annule'))
       AND NOT EXISTS (SELECT 1 FROM suppression s WHERE lower(s.email) = lower(p.contact_email))
       AND NOT EXISTS (SELECT 1 FROM outreach o2 WHERE lower(o2.to_email) = lower(p.contact_email) AND o2.status NOT IN ('non_recu', 'annule'))
-    ORDER BY p.score DESC NULLS LAST, p.found_at DESC NULLS LAST LIMIT $2`, [Object.keys(METIERS), combien * 10, NAF_EXCLUS]);
+    ORDER BY p.score DESC NULLS LAST, p.found_at DESC NULLS LAST LIMIT $2`, [Object.keys(METIERS), combien * 10, NAF_EXCLUS, NOM_NON_LUCRATIF]);
   let faits = 0;
   const vues = new Set();
   for (const p of rows) {

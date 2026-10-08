@@ -70,7 +70,8 @@ const RYTHMES = [
   { nom: 'publiciste',   module: './publiciste.js',  fn: 'preparerSemaine', toutes: 7 * 24 * H, besoinN8n: false },
   // Les vitrines (30/09/2026) : les commerçants sans site ou au site ancien, une maquette, un brouillon d'e-mail,
   // et la liste d'appels. Du code, aucun modèle ; RIEN n'est envoyé ici.
-  { nom: 'vitrines',     module: './vitrines.js',    fn: 'passer',      toutes: 2 * H, besoinN8n: false, args: { combien: 8 } },
+  // 08/10/2026 : 15 fiches par passage (au lieu de 8) : une ville entière est découverte à chaque passage.
+  { nom: 'vitrines',     module: './vitrines.js',    fn: 'passer',      toutes: 2 * H, besoinN8n: false, args: { combien: 15 } },
   // L'envoi des vitrines validées : la file du workflow n8n « Vitrines · Envoi », son issue, les réponses et les « stop ».
   { nom: 'vitrines_envoi', module: './vitrines.js', fn: 'synchroniser', toutes: 1 * H, besoinN8n: true },
   // Le répertoire des API publiques (public-apis, MIT) : relu chaque semaine, reversé seulement si le

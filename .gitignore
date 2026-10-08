@@ -29,3 +29,6 @@ essais/
 # aperçus locaux des maquettes (jamais livrés)
 .apercu/
 .claude/launch.json
+
+# 08/10/2026 : les copies de travail isolées des chantiers (worktrees), jamais versées
+.claude/worktrees/
