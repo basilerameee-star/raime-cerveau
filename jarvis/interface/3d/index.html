@@ -18,7 +18,7 @@
 <div id="scene">
   <header class="topbar">
     <a class="marque" href="/jarvis3d" aria-label="rAIme — Jarvis 3D"><span class="workspace-symbol">✳</span><b>rAIme<span>.</span></b><span class="workspace-name">JARVIS / 3D</span></a>
-    <nav class="primary-nav" aria-label="Navigation principale"><button id="map-home" class="selected">Organisation</button><button data-tiroir="t-suivi">Données</button><button data-tiroir="t-activite">Activité <span id="n-appels"></span></button></nav>
+    <nav class="primary-nav" aria-label="Navigation principale"><button id="map-home" class="selected">Organisation</button><button data-tiroir="t-suivi">Données</button><button data-tiroir="t-activite">Activité <span id="n-appels"></span></button><a id="nav-agenda" href="/agenda" title="L'agenda des relances">Agenda <span id="n-agenda"></span></a></nav>
     <div class="system-controls"><button id="open-search" aria-label="Rechercher un agent"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/></svg></button><details id="workspace-menu"><summary aria-label="Outils et état du système">···</summary><div class="workspace-menu">
       <span class="eyebrow">ESPACE DE SUPERVISION</span>
       <button data-tiroir="t-conversation">Conversation</button>
@@ -37,6 +37,13 @@
       <div class="system-state"><span class="puce" id="p-parole" title="Comment Jarvis parle"><i></i><span>PAROLE · À VÉRIFIER</span></span><span class="puce" id="p-mains" title="Hermes, les mains"><i></i><span>MAINS · À VÉRIFIER</span></span><span class="puce" id="p-heure">--:--</span></div>
     </div></details></div>
   </header>
+  <!-- 08/10/2026 : à l'ouverture, le résumé chiffré et l'alerte du jour (réponses de Basile) ; le détail est dans /agenda. -->
+  <a id="resume-jour" class="resume-jour" href="/agenda" hidden aria-live="polite">
+    <span class="rj-chiffre"><b id="r-jour">0</b> rappels du jour</span>
+    <span class="rj-chiffre rj-retard"><b id="r-retard">0</b> en retard</span>
+    <span class="rj-chiffre"><b id="r-argent">0 €</b> ce mois</span>
+    <span class="rj-alerte" id="r-alerte">Aucune relance aujourd’hui.</span>
+  </a>
   <main id="centre">
     <div id="map-zone"><canvas id="company-map" tabindex="0" aria-label="Organisation en trois dimensions. Glisser pour tourner, Maj et glisser pour déplacer, molette pour avancer. La recherche et le répertoire permettent de sélectionner chaque élément." aria-describedby="map-description"></canvas><div id="spatial-labels" aria-label="Branches de l’organisation"></div></div>
     <p id="map-description" class="sr-only" aria-live="polite">Plan de l’entreprise : sélectionne une pièce ou un agent pour explorer ses connexions.</p>
