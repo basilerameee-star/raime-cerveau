@@ -12,6 +12,9 @@ export const cleMetier = (m) => sansAccents(m || 'commerce').replace(/[^a-z0-9]+
 
 // Par métier : [ton, fond] — un ton sourd pour les accents (boutons, mots-clés, repère) et un fond à peine teinté ; jamais de couleur vive (Basile, 01/10/2026). le bouton d'action, la phrase d'accueil (vraie pour tout commerce du métier), le mot-clé
 // (en italique, sur la première ligne du titre des prestations), et trois prestations type.
+// Les cabinets et agences (08/10/2026) : un rendez-vous plutôt qu'une commande, et des textes sans « produits » ni « boutique ».
+const FIRME = { action: 'Prendre rendez-vous', p1: 'Chaque domaine se présente avec vos mots et vos photos.',
+  p2: 'Les bureaux, l’équipe, les projets : vos propres photos prennent ces places.' };
 export const METIERS = {
   boulangerie: { c: ['#7a5a3a', '#f6f1ea'], action: 'Commander', accroche: 'Pains, viennoiseries et pâtisseries, faits pour le quartier.', cle: 'du jour',
     rubriques: [['Pains', 'Le pain de tous les jours et les spécialités de la maison.'], ['Viennoiseries', 'Croissants et pains au chocolat, chaque matin.'], ['Commandes', 'Gâteaux et grandes quantités, sur commande.']] },
@@ -53,8 +56,31 @@ export const METIERS = {
     rubriques: [['Intérieur', 'Peinture et papiers peints.'], ['Extérieur', 'Façades et boiseries.'], ['Rénovation', 'Préparation et remise à neuf.']] },
   paysagiste: { c: ['#3f5a35', '#eff3ec'], action: 'Demander un devis', accroche: 'Création et entretien de jardins.', cle: 'vivant',
     rubriques: [['Création', 'Jardins et terrasses.'], ['Entretien', 'Taille, tonte et saisons.'], ['Plantations', 'Haies, massifs et arbres.']] },
+  // 08/10/2026 : les cabinets et agences sans site (agents/sans_site.js). Des tons sobres ; une accroche et trois rubriques
+  // vraies pour TOUT cabinet du métier (ce que la profession fait, rien de propre à l'un d'eux) ; ni chiffre, ni prix, ni avis.
+  notaire: { ...FIRME, c: ['#2f3b4c', '#f0f2f5'], accroche: 'Immobilier, famille, succession : les actes et le conseil.', cle: 'notarial',
+    rubriques: [['Immobilier', 'Ventes, achats et prêts : les actes et leurs formalités.'], ['Famille', 'Mariage, PACS, donations et successions.'], ['Conseil', 'Un rendez-vous pour préparer chaque décision.']] },
+  avocat: { ...FIRME, c: ['#3b3346', '#f2f0f4'], accroche: 'Le conseil et la défense de vos intérêts.', cle: 'juridique',
+    rubriques: [['Conseil', 'Analyser une situation et choisir la voie à suivre.'], ['Rédaction', 'Contrats, courriers et actes, rédigés et relus.'], ['Défense', 'Représenter et défendre vos intérêts.']] },
+  'expert-comptable': { ...FIRME, c: ['#2e4a43', '#eef3f1'], accroche: 'La comptabilité, la fiscalité et le conseil de votre entreprise.', cle: 'comptable',
+    rubriques: [['Comptabilité', 'Tenue, révision et comptes annuels.'], ['Fiscal et social', 'Déclarations, paies et obligations.'], ['Conseil', 'Création, gestion et décisions de l’entreprise.']] },
+  'agence immobilière': { ...FIRME, c: ['#4a4036', '#f4f1ed'], accroche: 'Votre projet immobilier, accompagné.', cle: 'immobilier',
+    rubriques: [['Projets', 'Acheter, vendre, louer ou confier un bien.'], ['Biens', 'Les biens et les services de l’agence, en photos.'], ['Accompagnement', 'Un interlocuteur à chaque étape.']] },
+  'courtier en assurance': { ...FIRME, c: ['#2d4a5e', '#eef2f5'], accroche: 'Les offres de plusieurs assureurs, comparées pour vous.', cle: 'en assurance',
+    rubriques: [['Comparer', 'Les offres de plusieurs compagnies, mises côte à côte.'], ['Souscrire', 'Le contrat retenu et ses formalités.'], ['Suivre', 'Les échéances, les sinistres et les mises à jour.']] },
+  'cabinet de recrutement': { ...FIRME, c: ['#3e4651', '#f0f2f4'], accroche: 'Le recrutement de vos collaborateurs, du besoin à l’embauche.', cle: 'en recrutement',
+    rubriques: [['Entreprises', 'Définir le poste et le profil recherché.'], ['Recherche', 'Chercher, rencontrer et présenter les candidats.'], ['Candidats', 'Les postes à pourvoir et la candidature.']] },
+  'cabinet de conseil': { ...FIRME, c: ['#33404d', '#f0f2f4'], accroche: 'Un regard extérieur pour vos décisions.', cle: 'en conseil',
+    rubriques: [['Diagnostic', 'Comprendre la situation de départ.'], ['Accompagnement', 'Construire et suivre le plan d’action.'], ['Expertises', 'Les domaines d’intervention du cabinet.']] },
+  architecte: { ...FIRME, c: ['#3d3d3a', '#f2f2f0'], accroche: 'Concevoir et construire votre projet.', cle: 'architectural',
+    rubriques: [['Conception', 'Esquisses, plans et demande de permis.'], ['Chantier', 'Consultation des entreprises et suivi des travaux.'], ['Projets', 'Les réalisations de l’agence, en images.']] },
+  'commissaire de justice': { ...FIRME, c: ['#34383f', '#f1f2f3'], accroche: 'Constats, significations et recouvrement.', cle: 'de terrain',
+    rubriques: [['Constats', 'Constater un fait, avec valeur de preuve.'], ['Significations', 'Remettre officiellement un acte.'], ['Recouvrement', 'Recouvrer une créance, à l’amiable ou en justice.']] },
+  'cabinet juridique': { ...FIRME, c: ['#3a3f4a', '#f1f2f4'], accroche: 'Le conseil juridique de votre projet.', cle: 'juridique',
+    rubriques: [['Conseil', 'Analyser une situation et choisir la voie à suivre.'], ['Rédaction', 'Contrats et actes, rédigés et relus.'], ['Accompagnement', 'Un suivi à chaque étape du dossier.']] },
 };
-const DEFAUT = { c: ['#2b2f3a', '#f1f2f4'], action: 'Nous contacter', accroche: 'Votre commerce, en ligne.', cle: 'reconnu',
+// Le défaut ne parle plus de « commerce » (08/10/2026) : il sert aussi aux entreprises.
+const DEFAUT = { c: ['#2b2f3a', '#f1f2f4'], action: 'Nous contacter', accroche: 'Votre activité, en ligne.', cle: 'reconnu',
   rubriques: [['Prestations', 'Ce que nous proposons.'], ['Réalisations', 'Notre travail en images.'], ['Contact', 'Une question, un projet.']] };
 export const fiche = (metier) => METIERS[metier] || DEFAUT;
 
@@ -159,10 +185,10 @@ ${v3 ? heroV3({ v, f, metier, lieu, horaires, photo, appel, itineraire, tel }) :
 ${appel ? `<div class="actions">${appel}</div>` : ''}</div>
 <div class="grande"${photo(1)}></div>`}
 <section id="prestations"><div class="w"><div class="tete"><div><div class="et">01 · Prestations</div><h2>Un savoir-faire <em>${esc(f.cle)}</em></h2></div>
-<p>Chaque prestation se présente avec vos produits, vos tarifs si vous le souhaitez, et vos photos.</p></div>
+<p>${esc(f.p1 || 'Chaque prestation se présente avec vos produits, vos tarifs si vous le souhaitez, et vos photos.')}</p></div>
 <div class="trio">${f.rubriques.map((r, i) => `<div><div class="img"${photo(i + 2)}></div><div class="txt"><h3>${esc(r[0])}</h3><p>${esc(r[1])}</p></div></div>`).join('')}</div></div></section>
 <section id="images"><div class="w"><div class="tete"><div><div class="et">02 · En images</div><h2>Votre travail, <em>en grand</em></h2></div>
-<p>La boutique, l’équipe, les réalisations : vos propres photos prennent ces places.</p></div>
+<p>${esc(f.p2 || 'La boutique, l’équipe, les réalisations : vos propres photos prennent ces places.')}</p></div>
 <div class="galerie">${[5, 6, 7, 8, 9].map((i) => `<div${photo(i)}></div>`).join('')}</div><p class="legende">Photos d’exemple, libres de droits.</p></div></section>
 <section id="venir"><div class="w"><div class="tete"><div><div class="et">03 · Nous trouver</div><h2>À <em>${esc(v.ville)}</em></h2></div></div>
 <div class="venir"><div class="plan">${plan ? `${plan}<span class="osm">© OpenStreetMap</span>` : ''}<div class="repere"></div></div>

@@ -32,6 +32,8 @@ async function file() {
       apercu_v3: s.slug ? `${ADRESSE}/demo/v3/${s.slug}` : null, note: s.note || '' })),
     automatisation: autos.map((a) => ({ id: a.id, type: 'automatisation', statut: a.status, nom: a.prospect_name, metier: a.segment,
       a: a.to_email, sujet: a.subject, corps: a.body, voir: preaudit(a.segment), voir_label: 'Voir le pré-audit' })),
+    // 08/10/2026 : les entreprises de Sherlock par verdict du Fureteur (site prouvé, sans site, portail, à revoir) et par secteur
+    sans_site: await require('./sans_site.cjs').bilan(lireN8n),
   };
 }
 

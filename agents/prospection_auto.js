@@ -35,6 +35,9 @@ export const METIERS = {
 };
 // Codes d'activité jamais prospectés (07/10/2026) : groupements d'employeurs, assureurs et mutuelles, banques mutualistes.
 export const NAF_EXCLUS = ['78.30Z', '65.12Z', '64.19Z', '85.59A', '85.59B', '94.11Z', '94.12Z'];
+// À but lucratif seulement (Basile, 07/10) : ni associations (AGC, Cerfrance…), ni ordres, chambres ou syndicats.
+// Expression PostgreSQL (~*), reprise par les entreprises sans site (agents/sans_site.js, 08/10/2026).
+export const NON_LUCRATIF = '(^|[^a-z])(assoc|association|agc|cerfrance|syndicat|f[ée]d[ée]ration|chambre|ordre des|union|mutuelle|mutualit[ée]|coop[ée]rative|groupement|geiq|gie)([^a-z]|$)';
 const lien = (m) => `https://raime.fr/dossiers/rAIme-pre-audit-${m.preaudit}.pdf`;
 
 // Les noms du registre arrivent en capitales, avec la forme juridique : « SCP DUPONT ET ASSOCIES » → « Dupont et associés ».
@@ -139,7 +142,7 @@ export async function preparer({ n8n, brain, combien = 14 } = {}) {
       AND p.site_preuve IS NOT NULL AND p.furete_note LIKE 'adresse sur le site%'
       AND (p.sector = ANY($1::text[]) OR p.name ~* 'notaire|notarial')
       -- à but lucratif seulement (Basile, 07/10) : ni associations (AGC, Cerfrance…), ni ordres, chambres ou syndicats
-      AND p.name !~* '(^|[^a-z])(assoc|association|agc|cerfrance|syndicat|f[ée]d[ée]ration|chambre|ordre des|union|mutuelle|mutualit[ée]|coop[ée]rative|groupement|geiq|gie)([^a-z]|$)'
+      AND p.name !~* '${NON_LUCRATIF}'
       AND coalesce(p.naf, '') <> ALL($3::text[])
       AND NOT EXISTS (SELECT 1 FROM outreach o WHERE o.siren = p.siren AND o.status NOT IN ('non_recu', 'annule'))
       AND NOT EXISTS (SELECT 1 FROM suppression s WHERE lower(s.email) = lower(p.contact_email))

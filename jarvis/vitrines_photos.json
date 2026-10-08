@@ -20,5 +20,15 @@
   "photographe": { "entete": "photography studio", "rubriques": ["portrait photography", "wedding photography", "professional photo shoot"], "galerie": "photographer camera" },
   "peintre-en-batiment": { "entete": "house painter interior", "rubriques": ["painting wall roller", "house facade painting", "renovation interior"], "galerie": "painting walls" },
   "paysagiste": { "entete": "beautiful garden landscape", "rubriques": ["garden design terrace", "lawn mowing garden", "planting flowers garden"], "galerie": "garden" },
-  "commerce": { "entete": "small shop interior", "rubriques": ["shop products", "craftsman work", "customer service shop"], "galerie": "small business shop" }
+  "commerce": { "entete": "small shop interior", "rubriques": ["shop products", "craftsman work", "customer service shop"], "galerie": "small business shop" },
+  "notaire": { "entete": "notary office desk documents", "rubriques": ["house keys contract", "family generations", "business meeting desk"], "galerie": "office documents signing" },
+  "avocat": { "entete": "law office books", "rubriques": ["lawyer meeting client", "contract signing pen", "courthouse justice"], "galerie": "law justice" },
+  "expert-comptable": { "entete": "accountant office desk", "rubriques": ["accounting calculator documents", "tax forms paperwork", "business meeting office"], "galerie": "office work laptop" },
+  "agence-immobiliere": { "entete": "real estate house exterior", "rubriques": ["house keys new home", "modern apartment interior", "real estate agent meeting"], "galerie": "house architecture" },
+  "courtier-en-assurance": { "entete": "insurance office meeting", "rubriques": ["comparing documents desk", "contract signing", "family home car"], "galerie": "office business" },
+  "cabinet-de-recrutement": { "entete": "job interview office", "rubriques": ["business meeting handshake", "recruitment interview", "resume job application"], "galerie": "office teamwork" },
+  "cabinet-de-conseil": { "entete": "business consulting meeting", "rubriques": ["whiteboard strategy", "team workshop", "business charts"], "galerie": "business meeting office" },
+  "architecte": { "entete": "architect office drawings", "rubriques": ["architectural plans blueprint", "construction site", "modern architecture house"], "galerie": "modern architecture" },
+  "commissaire-de-justice": { "entete": "office documents law", "rubriques": ["camera photography evidence", "letter envelope documents", "calculator finance documents"], "galerie": "office documents" },
+  "cabinet-juridique": { "entete": "law books office", "rubriques": ["business meeting desk", "contract pen signing", "office desk documents"], "galerie": "law office" }
 }

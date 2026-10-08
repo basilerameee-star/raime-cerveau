@@ -31,6 +31,9 @@ const RYTHMES = [
   // 07/10/2026 : le Fureteur réécrit (remplace le workflow n8n) — il trouve l'adresse sur le site PROUVÉ de l'entreprise.
   { nom: 'fureteur',     module: './fureteur.js',    fn: 'passer',      toutes: 1 * H, besoinN8n: true, args: { combien: 25, recherches: 8 } },
   { nom: 'prospection', module: './prospection_auto.js', fn: null,     toutes: 24 * H, besoinN8n: true,  cmd: 'prospection' },
+  // 08/10/2026 : les entreprises que le Fureteur déclare sans site ne sont plus perdues — une fiche VITRINES chacune, à
+  // appeler (numéro vérifié) ou à compléter (Basile lit le numéro dans l'annuaire de la profession). Rien n'est envoyé.
+  { nom: 'sans_site',    module: './sans_site.js',   fn: 'depuisSherlock', toutes: 2 * H, besoinN8n: true },
   // Le reflexif passe chaque jour : il mesure les agents, designe le maillon faible et propose
   // une version de prompt INACTIVE, jamais activee par lui-meme. Mesure du 2026-09-23 : 0,0028 $.
   { nom: 'reflexif',     module: './reflexif.js',    fn: 'reflechir',   toutes: 24 * H, besoinN8n: true },

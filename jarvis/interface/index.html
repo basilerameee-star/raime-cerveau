@@ -277,7 +277,7 @@ nav#onglets button:hover{color:var(--cyan2);border-color:var(--trait2)}
 </aside>
 <aside class="tiroir" id="t-vitrines" aria-label="Vitrines">
   <header><div class="marque"><b style="letter-spacing:.2em">VITRINES</b><span>sites à 500 € · rien ne part sans toi</span></div><button class="fermer" aria-label="Fermer">×</button></header>
-  <div class="corps"><div class="envoi-vitrines" id="envoi-vitrines"></div><div id="vitrines-reponses"></div><div id="vitrines"></div></div>
+  <div class="corps"><div class="envoi-vitrines" id="envoi-vitrines"></div><div id="vitrines-reponses"></div><div id="vitrines"></div><div id="vitrines-completer"></div></div>
 </aside>
 <aside class="tiroir" id="t-prospection" aria-label="Prospection">
   <header><div class="marque"><b style="letter-spacing:.2em">PROSPECTION</b><span>rien ne part sans toi</span></div><button class="fermer" aria-label="Fermer">×</button></header>
@@ -584,6 +584,7 @@ nav#onglets button:hover{color:var(--cyan2);border-color:var(--trait2)}
         + (e.refuses ? ' · ' + e.refuses + ' refusé(s)' : '')));
     });
     reponsesVitrines();
+    aCompleter();
     fetch('/api/vitrines?statut=brouillon').then(function (r) { return r.json(); }).then(function (d) {
       var b = $('vitrines'); b.textContent = '';
       if ((d.vitrines || []).length) b.appendChild(el('h3', '', 'Brouillons à valider'));
@@ -627,6 +628,37 @@ nav#onglets button:hover{color:var(--cyan2);border-color:var(--trait2)}
         var oui = el('button', 'bouton', '✓ Client'), non = el('button', 'bouton', '✗ Pas intéressé');
         oui.onclick = function () { agirVitrine(x.id, 'client'); }; non.onclick = function () { agirVitrine(x.id, 'pas_interesse'); };
         a.appendChild(oui); a.appendChild(non); c.appendChild(a); b.appendChild(c);
+      });
+    });
+  }
+  // Les entreprises sans site et sans numéro (agents/sans_site.js, 08/10/2026) : tu lis le numéro dans l'annuaire de la
+  // profession (liens ouverts dans un onglet), tu le saisis, la fiche passe dans les appels. Aucun annuaire n'est lu par un programme.
+  function aCompleter() {
+    fetch('/api/vitrines?statut=a_completer').then(function (r) { return r.json(); }).then(function (d) {
+      var b = $('vitrines-completer'); if (!b) return; b.textContent = '';
+      if (!(d.vitrines || []).length) return;
+      b.appendChild(el('h3', '', 'Sans site : numéro à trouver (' + ((d.compteurs && d.compteurs.a_completer) || d.vitrines.length) + ')'));
+      d.vitrines.forEach(function (x) {
+        var c = el('div', 'brouillon');
+        c.appendChild(el('h3', '', x.nom || 'Entreprise'));
+        c.appendChild(el('div', 'meta', [x.metier, x.adresse || x.ville, x.source].filter(Boolean).join(' · ')));
+        if (x.motif) c.appendChild(el('p', 'meta', x.motif));
+        var a = el('div', 'actions'); a.style.flexWrap = 'wrap';
+        var lien = function (texte, href) { var l = el('a', 'bouton', texte); l.href = href; l.target = '_blank'; l.rel = 'noopener'; l.style.cssText = 'display:inline-flex;align-items:center;text-decoration:none'; return l; };
+        (x.annuaires || []).forEach(function (l) { a.appendChild(lien(l.nom, l.url)); });
+        if (x.maquette) a.appendChild(lien('Maquette', x.maquette));
+        c.appendChild(a);
+        var f = el('form'), champ = el('input'), ok = el('button', 'bouton', 'Enregistrer le numéro'), non = el('button', 'bouton', '✗ Écarter'), msg = el('small', 'meta', '');
+        f.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin-top:8px';
+        champ.name = 'numero'; champ.required = true; champ.inputMode = 'tel'; champ.autocomplete = 'off'; champ.placeholder = 'Numéro lu dans l’annuaire';
+        champ.style.cssText = 'flex:1 1 160px;min-width:0;height:34px;padding:0 10px;background:rgba(2,6,11,.6);border:1px solid var(--trait);border-radius:8px';
+        non.type = 'button'; non.onclick = function () { agirVitrine(x.id, 'ecarter'); };
+        f.onsubmit = function (e) {
+          e.preventDefault();
+          fetch('/api/vitrines/' + x.id, { method: 'POST', headers: ecrire, body: JSON.stringify({ action: 'telephone', numero: champ.value }) })
+            .then(function (r) { return r.json(); }).then(function (r) { if (r.ok) { vitrines(); charger(); } else msg.textContent = r.erreur || 'Numéro refusé.'; });
+        };
+        f.appendChild(champ); f.appendChild(ok); f.appendChild(non); c.appendChild(f); c.appendChild(msg); b.appendChild(c);
       });
     });
   }
