@@ -52,6 +52,8 @@ export const STRATEGIES = {
   long_terme: { libelle: 'Long terme diversifié', regles: '40 % Monde, 15 % S&P 500, 15 % Europe, 10 % Suisse, 10 % émergents, 7 % bitcoin, 3 % ether ; rééquilibré le 1er jour de bourse du mois si une ligne s’écarte de plus de 5 points.' },
   tendance: { libelle: 'Tendance (moyenne 200 jours)', regles: 'Chaque lundi, à parts égales, les ETF et cryptos au-dessus de leur moyenne des 200 jours ; le reste en liquidités.' },
   momentum: { libelle: 'Momentum grandes actions', regles: 'Le 1er jour de bourse du mois, les 5 grandes actions (US, Europe, Suisse) les plus en hausse sur 6 mois, à parts égales, si la hausse est positive ; sinon des liquidités.' },
+  // 08/10/2026 (point 56) : le trading, simulé sur le même moteur, avec la même règle (aucun ordre réel)
+  court_terme: { libelle: 'Court terme (trading)', regles: 'Chaque jour : achète à parts égales les actifs (S&P 500, Monde, bitcoin, ether) dont le RSI à 2 jours est sous 10 et qui restent au-dessus de leur moyenne des 200 jours ; revend dès que le cours repasse au-dessus de sa moyenne des 5 jours.' },
   indice: { libelle: 'Indice de référence (Monde)', regles: '100 % iShares Core MSCI World acheté le premier jour, jamais touché.' },
 };
 const CIBLES_LONG = { 'EUNL.DE': 0.40, 'SXR8.DE': 0.15, 'EXSA.DE': 0.15, 'CSSMI.SW': 0.10, 'IS3N.DE': 0.10, BTC: 0.07, ETH: 0.03 };
@@ -67,6 +69,19 @@ export function moyenne(serie, i, n) {          // moyenne des n derniers cours 
   for (let k = i - n + 1; k <= i; k++) { if (serie[k] == null) return null; s += serie[k]; }
   return s / n;
 }
+// Le RSI sur n jours (0 à 100) : la part des hausses dans les variations des n derniers jours ; sous 10, une baisse rare.
+export function rsi(serie, i, n = 2) {
+  if (i < n) return null;
+  let gains = 0, pertes = 0;
+  for (let k = i - n + 1; k <= i; k++) {
+    if (serie[k] == null || serie[k - 1] == null) return null;
+    const d = serie[k] - serie[k - 1];
+    if (d > 0) gains += d; else pertes -= d;
+  }
+  if (!pertes) return 100;
+  return 100 - 100 / (1 + gains / pertes);
+}
+const COURT_TERME = ['SXR8.DE', 'EUNL.DE', 'BTC', 'ETH'];
 export function hausse(serie, i, n) {           // la hausse sur n jours, en fraction (0,12 = +12 %)
   if (i < n || serie[i] == null || serie[i - n] == null || serie[i - n] <= 0) return null;
   return serie[i] / serie[i - n] - 1;
@@ -86,6 +101,16 @@ export function cibles(strategie, { jours, prix, i, poidsActuels, premier }) {
     if (!lundi) return null;
     const choisis = [...ETF, ...CRYPTOS].filter((s) => { const m = moyenne(prix[s], i, 200); return m != null && prix[s][i] > m; });
     return Object.fromEntries(choisis.map((s) => [s, 1 / choisis.length]));
+  }
+  if (strategie === 'court_terme') {
+    // garde ce qui n'a pas encore rebondi au-dessus de sa moyenne des 5 jours ; entre sur une forte baisse dans une tendance haussière
+    const garde = COURT_TERME.filter((s) => (poidsActuels[s] || 0) > 0 && prix[s][i] != null && !(prix[s][i] > (moyenne(prix[s], i, 5) ?? Infinity)));
+    const entre = COURT_TERME.filter((s) => !garde.includes(s) && !((poidsActuels[s] || 0) > 0)).filter((s) => {
+      const r = rsi(prix[s], i, 2), m200 = moyenne(prix[s], i, 200);
+      return r != null && r < 10 && m200 != null && prix[s][i] > m200;
+    });
+    const tous = [...garde, ...entre];
+    return Object.fromEntries(tous.map((s) => [s, 1 / tous.length]));
   }
   if (strategie === 'momentum') {
     if (!debutMois) return null;

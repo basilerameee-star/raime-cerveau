@@ -576,8 +576,9 @@
       "titre": "Agent trading (ajouté après l’agent bourse, même règle)",
       "il_faut": "Même règle que le point 55 : simulation d’abord, aucun ordre réel passé par Claude ; le compte, l’argent et l’activation restent à Basile.",
       "fini_quand": "Une stratégie simulée sur données réelles, avec frais et pertes comptés, mesurée plusieurs semaines ; décision de Basile ensuite.",
-      "etat": "attend_basile",
-      "rang": 56
+      "etat": "en_cours",
+      "rang": 56,
+      "avance": "08/10/2026 : stratégie « court terme » simulée dans agents/bourse.js (RSI 2 jours sous 10 dans une tendance haussière, sortie au-dessus de la moyenne des 5 jours ; S&P 500, Monde, bitcoin, ether ; frais comptés), 1 000 € fictifs, tenue chaque soir. Reste : des semaines de mesure."
     },
     {
       "n": 57,
