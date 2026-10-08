@@ -578,7 +578,7 @@
       "fini_quand": "Une stratégie simulée sur données réelles, avec frais et pertes comptés, mesurée plusieurs semaines ; décision de Basile ensuite.",
       "etat": "en_cours",
       "rang": 56,
-      "avance": "08/10/2026 : stratégie « court terme » simulée dans agents/bourse.js (RSI 2 jours sous 10 dans une tendance haussière, sortie au-dessus de la moyenne des 5 jours ; S&P 500, Monde, bitcoin, ether ; frais comptés), 1 000 € fictifs, tenue chaque soir. Reste : des semaines de mesure."
+      "avance": "08/10/2026 (message vocal de Basile) : sept agents de trading simulés, un par échelle (seconde, minute, heure, jour, semaine, mois, trimestre), bitcoin et ether en direct par le flux public de Binance, 1 000 € fictifs chacun, frais comptés, toute la donnée gardée (agents/trading.js, service continu raime-trading) ; plus la stratégie « court terme » de agents/bourse.js. L'entraînement d'abord ; le passage au réel = compte, argent et activation de Basile, jamais un ordre passé par Claude."
     },
     {
       "n": 57,

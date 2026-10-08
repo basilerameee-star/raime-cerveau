@@ -208,6 +208,8 @@ async function rapport() {
   const br = (await lireN8n("SELECT count(*)::int AS n FROM outreach WHERE status = 'brouillon'"))[0];
   const qs = await lire("SELECT question FROM demandes WHERE etat = 'ouverte' AND pour_basile ORDER BY bloquant DESC, cree_le DESC LIMIT 3");
   // 08/10/2026 : en premier, les relances du jour et en retard (10 au plus), avec le numéro ou l'adresse et le pourquoi.
+  const trading = await import('../agents/trading.js').then((t) => t.resume(require('./bases.cjs').cerveau)).then((l) => l.filter((x) => x.valeur != null)
+    .map((x) => `Agent ${x.libelle} : ${x.valeur.toFixed(2)} €, ${x.perf >= 0 ? '+' : ''}${x.perf} %, ${x.operations} opération(s), ${x.frais} € de frais`)).catch(() => []);
   const bourse = await import('../agents/bourse.js').then((b) => b.resume(require('./bases.cjs').cerveau)).then((l) => l.filter((x) => x.mode === 'reel' || x.mode === 'retro')
     .map((x) => `${x.libelle} (${x.mode === 'reel' ? `depuis le ${x.debut}` : 'rétro-test 12 mois'}) : ${x.valeur.toFixed(2)} €, ${x.perf >= 0 ? '+' : ''}${x.perf} %, pire baisse ${x.pire} %`)).catch(() => []);
   const [dernierBilan] = await lire(`SELECT texte FROM direction WHERE le > now() - interval '30 hours' ORDER BY le DESC LIMIT 1`).catch(() => []);
@@ -217,6 +219,7 @@ async function rapport() {
     // 08/10/2026 : le bilan du Directeur (agents/directeur.js) ; il remplace les bilans séparés des anciens agents de réflexion
     { titre: 'La direction : le bilan du jour', lignes: dernierBilan ? dernierBilan.texte.split(String.fromCharCode(10)) : ['Pas encore de bilan : le Directeur passe entre 5 h et 7 h.'] },
     // la bourse en simulation (08/10/2026) : une ligne par stratégie, jamais un conseil de placement
+    { titre: 'Trading (entraînement simulé, 1 000 € fictifs par agent)', lignes: trading.length ? trading : ['Pas encore de données de trading.'] },
     { titre: 'Bourse (simulation, 1 000 € fictifs par stratégie)', lignes: bourse.length ? bourse : ['Pas encore de simulation : elle passe chaque soir après 22 h.'] },
     { titre: 'Le cerveau cette nuit : sa pensée', lignes: pensee.length ? pensee.map((p) => `${p.titre} — ${court(p.proposition, 220)}`) : ['Pas de pensée cette nuit.'] },
     { titre: 'Tes ordres faits (24 h)', lignes: faites.length ? faites.map((c) => `n°${c.id} — ${court(c.texte, 90)} → ${court(c.reponse, 200)}`) : ['Aucun.'] },
@@ -272,6 +275,11 @@ async function router(req, res) {
   }
   if (m === 'GET' && url === '/api/etat') return envoyer(res, 200, await etat());
   if (m === 'GET' && url === '/api/rapport') return envoyer(res, 200, await rapport());
+  // Les sept agents de trading en SIMULATION (agents/trading.js, 08/10/2026) : de la seconde au trimestre.
+  if (m === 'GET' && url === '/api/trading') {
+    try { const { resume } = await import('../agents/trading.js'); return envoyer(res, 200, { simulation: true, agents: await resume(require('./bases.cjs').cerveau) }); }
+    catch (e) { return envoyer(res, 200, { simulation: true, agents: [], erreur: 'pas encore de données' }); }
+  }
   // La bourse en SIMULATION (agents/bourse.js, 08/10/2026) : quatre portefeuilles fictifs de 1 000 €, réel et rétro-test.
   if (m === 'GET' && url === '/api/bourse') {
     try { const { resume } = await import('../agents/bourse.js'); return envoyer(res, 200, { simulation: true, strategies: await resume(require('./bases.cjs').cerveau) }); }
