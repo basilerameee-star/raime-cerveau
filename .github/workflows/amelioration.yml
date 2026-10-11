@@ -1,0 +1,107 @@
+name: Amélioration autonome
+on:
+  pull_request:
+    paths:
+      - 'agents/amelioration.js'
+      - 'agents/ameliorables/**'
+      - 'tools/amelioration/**'
+      - '.github/workflows/amelioration.yml'
+      - 'tests/banc/amelioration.test.mjs'
+  schedule:
+    - cron: '23 6 * * *'
+  workflow_dispatch:
+  issues:
+    types: [opened]
+concurrency:
+  group: amelioration-autonome
+  cancel-in-progress: false
+permissions:
+  contents: read
+jobs:
+  qualification:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Qualifier le conteneur et le réseau isolés
+        run: bash tools/amelioration/sandbox.sh
+  sandbox:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      issues: read
+    outputs:
+      selection: ${{ steps.choix.outputs.selection }}
+      base_sha: ${{ steps.choix.outputs.base_sha }}
+      issue: ${{ steps.choix.outputs.issue }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Choisir une proposition mesurable
+        id: choix
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node tools/amelioration/controle.mjs preparer
+      - name: Banc isolé avant et après
+        if: steps.choix.outputs.selection == 'oui'
+        run: bash tools/amelioration/sandbox.sh
+      - uses: actions/upload-artifact@v4
+        if: steps.choix.outputs.selection == 'oui'
+        with:
+          name: proposition-verifiee
+          path: proposition.json
+          retention-days: 7
+  livrer:
+    needs: sandbox
+    if: needs.sandbox.outputs.selection == 'oui'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      actions: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.sandbox.outputs.base_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@v4
+        with:
+          name: proposition-verifiee
+      - name: Avancer main et demander la livraison
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node tools/amelioration/controle.mjs publier
+  refus:
+    needs: [sandbox, livrer]
+    if: always() && github.ref == 'refs/heads/main' && needs.sandbox.outputs.issue != '' && needs.sandbox.result == 'failure'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Garder le motif et fermer l'essai
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMERO: ${{ needs.sandbox.outputs.issue }}
+        run: node tools/amelioration/controle.mjs refuser

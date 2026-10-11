@@ -14,6 +14,7 @@
 // La meilleure piste passe en QUARANTAINE (table pistes) : essayée, mesurée, et adoptée
 // seulement si elle gagne. Rien ne s'installe ici.
 import { verifier } from './installeur.js';
+import { score } from './amelioration.js';
 
 const H = { 'User-Agent': 'rAIme-rechercheur/1.0 (+https://raime.fr)', Accept: 'application/json' };
 const JOUR = 86_400_000;
@@ -115,7 +116,7 @@ export function noter(piste, probleme, maintenant = Date.now()) {
   // Coût : tout est gratuit ici ; une piste qui mentionne un abonnement ou une clé payante perd.
   n.cout = /\b(pricing|paid|subscription|abonnement|payant|enterprise plan)\b/i.test(`${piste.titre} ${piste.resume}`) ? 0.3 : 1;
 
-  const total = Object.entries(POIDS).reduce((s, [k, p]) => s + p * n[k], 0) / Object.values(POIDS).reduce((a, b) => a + b, 0);
+  const total = score(n);
   return { ...piste, notes: n, note: Math.round(100 * total), refus: danger || (n.securite === 0 ? 'insécure' : null) };
 }
 
@@ -172,3 +173,4 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   if (r.muettes.length) console.log(`  sources muettes : ${r.muettes.join(' | ')}`);
   await brain.end();
 }
+

@@ -14,6 +14,7 @@
 // Les faits sont du code (SQL), jamais inventés ; aucun envoi, aucune dépense. Basile ne reçoit que ce qui lui revient.
 import pg from 'pg';
 import * as gout from './gout.js';
+import { ordreAmelioration } from './amelioration.js';
 
 const H = 3600e3;
 const ZONE = 'Europe/Paris';
@@ -85,6 +86,8 @@ export function alertes(agents, prod, motifs = {}) {
       texte: `${a.nom} : échec au dernier passage${motifs[a.nom] ? ` (${motifs[a.nom]})` : ''} ; le prochain dira s'il était passager.` });
     else if (a.etat === 'en_retard') out.push({ gravite: 1, qui: 'maison', cle: `retard:${a.nom}`, agent: a.nom,
       texte: `${a.nom} : en retard, dernier passage le ${a.dernier ? a.dernier.slice(0, 16).replace('T', ' ') : '?'} (UTC).` });
+    else if (a.etat === 'jamais') out.push({ gravite: 1, qui: 'maison', cle: `jamais:${a.nom}`, agent: a.nom,
+      texte: `${a.nom} : aucun passage enregistré ; démarrage à vérifier.` });
   }
   const c = prod.candidatures;
   if (c && c.validees_vieilles > 0) out.push({ gravite: 2, qui: 'maison', cle: 'candidatures:file', agent: 'envoyeur',
@@ -110,16 +113,18 @@ export function ordreDiagnostic(alerte, module) {
 }
 async function repartir({ brain, alertes: liste, rythmes }) {
   const panne = liste.find((a) => a.cle.startsWith('echec:'));
-  if (!panne) return null;
+  const amelioration = panne ? null : ordreAmelioration();
+  if (!panne && !amelioration) return null;
+  const agent = panne?.agent || 'rechercheur';
   const deja = await un(brain, `SELECT id FROM commandes WHERE source = 'directeur' AND (cree_le > now() - interval '24 hours'
-    OR (texte LIKE $1 AND cree_le > now() - interval '72 hours'))`, [`%l'agent « ${panne.agent} »%`]);
+    OR (texte LIKE $1 AND cree_le > now() - interval '72 hours'))`, [`%${panne ? `l'agent « ${agent} »` : 'Amélioration interne demandée'}%`]);
   if (deja) return { ordre: null, motif: 'un diagnostic est déjà demandé' };
-  const module = (rythmes.find((r) => r.nom === panne.agent) || {}).module;
-  const texte = ordreDiagnostic(panne, module && module.replace(/^\.\//, 'agents/'));
+  const module = (rythmes.find((r) => r.nom === agent) || {}).module;
+  const texte = amelioration || ordreDiagnostic(panne, module && module.replace(/^\.\//, 'agents/'));
   const j = gout.regles(texte);
   if (j && j.verdict !== 'AUTO') return { ordre: null, motif: `retenu par le goût : ${j.motif}` };
   const { rows: [r] } = await brain.query(`INSERT INTO commandes (texte, source, pour) VALUES ($1, 'directeur', 'harness') RETURNING id`, [texte]);
-  return { ordre: r.id, agent: panne.agent };
+  return { ordre: r.id, agent, type: amelioration ? 'amelioration' : 'diagnostic' };
 }
 
 // Les diagnostics rendus par Hermes depuis le dernier bilan : ils reviennent ici, une ligne chacun.
@@ -158,7 +163,7 @@ export function rediger(b) {
   if (p.veille != null || p.trading != null) lignes.push(`Recherche : ${n(p.veille)} trouvaille(s) neuve(s) pour les agents ; trading simulé : ${n(p.trading)} opération(s) en 24 h.`);
   const ok = b.agents.filter((a) => a.etat === 'a_jour').length;
   lignes.push(`Agents : ${ok} à jour sur ${b.agents.length}${maison.length ? ` ; ${maison.map((a) => a.texte).join(' ')}` : ' ; aucune panne.'}`);
-  if (b.ordre && b.ordre.ordre) lignes.push(`Diagnostic confié à Hermes (ordre n°${b.ordre.ordre}) : ${b.ordre.agent}.`);
+  if (b.ordre && b.ordre.ordre) lignes.push(`${b.ordre.type === 'amelioration' ? 'Amélioration' : 'Diagnostic'} confié à Hermes (ordre n°${b.ordre.ordre}) : ${b.ordre.agent}.`);
   for (const r of b.retours || []) lignes.push(`Retour d'Hermes (ordre n°${r.id}, ${r.etat}) : ${r.reponse || '—'}`);
   for (const i of b.idees || []) lignes.push(`Idée (${i.verdict === 'BASILE' ? 'ton accord' : i.verdict === 'AUTO' ? 'retenue' : 'à revoir'}) : ${i.titre} — ${i.proposition}`);
   return lignes.join('\n');
@@ -199,3 +204,4 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   try { console.log((await diriger({ brain, n8n, rythmes: RYTHMES, penser: false, ordonner: process.argv.includes('--ordonner') })).texte); }
   finally { await brain.end(); await n8n.end(); }
 }
+

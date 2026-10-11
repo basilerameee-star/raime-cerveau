@@ -37,6 +37,14 @@ test('les alertes : panne répétée pour la maison, réponses et offres « à t
   assert.ok(!/undefined|NaN/.test(t));
 });
 
+test('un agent jamais démarré déclenche une alerte, sans prétendre que tout fonctionne', () => {
+  const agents = [etatAgent({ nom: 'muet', toutes: H }, [], MAINTENANT)];
+  const liste = alertes(agents, {});
+  assert.equal(liste[0].cle, 'jamais:muet');
+  assert.match(rediger({ agents, production: {}, alertes: liste }), /aucun passage enregistré/);
+  assert.doesNotMatch(rediger({ agents, production: {}, alertes: liste }), /aucune panne/);
+});
+
 test('l’ordre de diagnostic confié à Hermes : lecture seule, et le goût le laisse passer', async () => {
   const gout = await import('../../agents/gout.js');
   const o = ordreDiagnostic({ agent: 'vitrines', texte: 'vitrines : 2 échecs d’affilée (overpass : 504).' }, 'agents/vitrines.js');
@@ -77,3 +85,4 @@ test('un passage : le bilan est gardé, un seul diagnostic par jour part à Herm
     const b = require('../../jarvis/bases.cjs'); await b.cerveau.end(); await b.n8n.end();
   }
 });
+

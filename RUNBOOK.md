@@ -8,7 +8,30 @@
 2. `npm test` en local (voir « Lancer le banc ») : tout doit passer.
 3. Une pull request qui commence par la section **« ## Pour Basile »** (cinq lignes au plus : ce qui change en ligne,
    ce qu'il pourra vendre, comment revenir en arrière) — la CI « Résumé pour Basile » la vérifie.
-4. CI verte **et** « ok » de Basile → fusion sur `main`. Jamais une pull request rouge.
+4. CI verte avant toute fusion sur `main`. Pour les changements ordinaires, accord de Basile ; pour la surface
+   autonome décrite ci-dessous, l'autorisation permanente de Basile du 11/10/2026 remplace cet accord à chaque passage.
+   Jamais une pull request rouge, jamais un élargissement automatique des droits.
+
+## Boucle autonome autorisée (11/10/2026)
+
+Le Directeur constate un besoin mesuré, Hermes prépare une proposition via MCP `amelioration_proposer`.
+Chaque jour, « Amélioration autonome » compare le classement avant/après, exécute le banc complet deux fois dans
+un conteneur sans Internet, secrets ou accès à la production, puis avance `main` et demande explicitement « Livraison ».
+Il n'y a pas d'accord humain entre le banc réussi et cette livraison. La porte conserve son retour arrière automatique.
+
+Cette première surface est **uniquement** `agents/ameliorables/classement.expr` : du code arithmétique interprété,
+sur les six notes de recherche. Le programme peut choisir ses calculs ; il ne peut pas exécuter JavaScript, installer
+une dépendance, lire un secret, modifier une autorisation ou changer les tests. Constitution, garde-fous, budget,
+envois, paiements, infrastructure et workflows restent hors de cette surface. Les autres pannes gardent leur
+diagnostic et leur chantier d'ingénierie : elles ne sont pas couvertes par cette première livraison autonome.
+
+Un gain strict sur des cas figés, aucune régression sur les cas déjà réussis, maintien de chaque critère, empreinte
+de la formule inchangée, issue inchangée et `main` inchangé sont exigés. Un seul essai traité par 24 heures.
+L'historique garde une PR et le journal d'Actions. Les protections GitHub ne sont jamais contournées ; si elles
+interdisent l'écriture de l'action sur `main` ou la création de PR, l'action échoue sans promotion.
+
+Arrêt : désactiver « Amélioration autonome » dans Actions. Retour : Revert de sa PR, ou le geste d'urgence ci-dessous.
+Les tests prouvent le résultat sur le banc, pas un gain commercial ni l'absence de tout bug futur.
 
 ## Déployer
 
@@ -67,3 +90,4 @@ Caddy (2), DNS `*.raime.fr` (3), premier envoi (4), jeton des chantiers (5), mot
 (`rk_test_…`, écriture sur produits, prix, liens de paiement) dans le secret GitHub et le `.env` : `STRIPE_CLE_TEST`.
 
 ## Mise en service autonome (25/09/2026)
+

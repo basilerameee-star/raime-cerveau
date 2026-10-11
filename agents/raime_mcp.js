@@ -106,6 +106,16 @@ export const OUTILS = {
       return r.ouvert ? `Chantier n° ${r.numero} ouvert : ${r.url}` : `Chantier non ouvert : ${r.motif}`;
     },
   },
+  amelioration_proposer: {
+    description: 'Propose une formule de classement mesurée : JSON strict version,titre,besoin,mesure,empreinte,formule. Sandbox et livraison automatiques pour cette surface seule.',
+    inputSchema: { type: 'object', properties: { proposition: { type: 'string', minLength: 20 } }, required: ['proposition'] },
+    action: (a) => ({ type: 'ouvrir_chantier', cible: 'issue', contenu: a.proposition }),
+    async faire({ brain, a }) {
+      const { proposer } = await import('./amelioration.js');
+      const r = await proposer(JSON.parse(a.proposition), { brain });
+      return r.ouvert ? `Amélioration n° ${r.numero} proposée : ${r.url}` : `Amélioration non ouverte : ${r.motif}`;
+    },
+  },
 };
 
 // ── Le traitement d'un message JSON-RPC ────────────────────────────────────
@@ -217,3 +227,4 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   creerServeur({ brain, n8n, jeton: process.env.RAIME_MCP_JETON }).listen(port, hote,
     () => console.log(`[raime-mcp] à l'écoute sur ${hote}:${port}/mcp — ${Object.keys(OUTILS).length} outils`));
 }
+
