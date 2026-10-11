@@ -56,7 +56,7 @@ test('la poignée de main MCP : initialize, puis notification sans réponse', as
 test('tools/list rend le catalogue fermé, avec ses schémas', async () => {
   const r = await poster({ jsonrpc: '2.0', id: 2, method: 'tools/list' });
   assert.deepEqual(r.corps.result.tools.map((t) => t.name).sort(),
-    ['amelioration_proposer', 'api_publique_chercher', 'bibliotheque_chercher', 'cap_lire', 'chantier_ouvrir', 'etat_maison', 'feuille_de_route_lire', 'journal_lire', 'questions_pour_basile']);
+    ['amelioration_proposer', 'api_publique_chercher', 'bibliotheque_chercher', 'cap_lire', 'chantier_ouvrir', 'etat_maison', 'feuille_de_route_lire', 'journal_lire', 'outil_executer', 'outil_proposer', 'outil_suivre', 'outils_lister', 'questions_pour_basile', 'solution_chercher']);
   assert.ok(r.corps.result.tools.every((t) => t.inputSchema.type === 'object'));
 });
 

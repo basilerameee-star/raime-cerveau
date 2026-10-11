@@ -91,3 +91,45 @@ Caddy (2), DNS `*.raime.fr` (3), premier envoi (4), jeton des chantiers (5), mot
 
 ## Mise en service autonome (25/09/2026)
 
+### Autorisation permanente du 11/10/2026
+
+La décision explicite de Basile remplace l'accord humain à chaque passage pour le classement
+`agents/ameliorables/classement.expr` et le registre `extensions/outils/registre.json` : gain mesuré,
+sandbox réussie, promotion sans force push, livraison par la porte et retour automatique si la santé échoue.
+Le candidat ne peut modifier ni contrôleur, ni tests, ni secrets, ni droits, ni Constitution.
+
+Une ligne de panne de la boucle ou d'Hermes déclenche le trigger Postgres `reflexivite_panne`, conserve
+l'événement dans `reflexions` et réveille le travail par NOTIFY. Le rattrapage toutes les cinq minutes
+couvre un redémarrage ou un signal perdu. La recherche consulte bibliothèque, GitHub et SearXNG ;
+le Directeur conserve son rôle de priorisation sans dupliquer une réparation en cours.
+Deux travaux nouveaux par 24 heures, bail de dix minutes, trois tentatives et délais bornés.
+
+Hermes peut utiliser `solution_chercher`, `outil_proposer`, `outil_suivre`, `outils_lister`, `outil_executer`.
+Une issue `outil` déclenche le workflow `Outils autonomes`. Une file périodique rattrape les webhooks perdus.
+La proposition décrit un dépôt PUBLIC sous licence admise, un SHA immuable, une entrée CLI JSON,
+trois à dix cas distincts et un besoin observable. La licence, les liens/sous-modules, le volume,
+les dépendances verrouillées et les hooks sont contrôlés. Node exige un package-lock moderne et les
+tests TAP ; Python accepte les outils sans dépendance qui ont des tests unittest. Les candidats hors
+de ce contrat sont refusés avec preuve ; Hermes cherche une autre solution, sans installer au hasard.
+
+L'installation des dépendances npm ignore les hooks et ne reçoit aucun secret. L'exécution et les tests
+du candidat ont TOUJOURS le réseau coupé, une source montée en lecture seule, utilisateur non privilégié,
+capabilities retirées, quotas CPU/mémoire/processus, délai et arrêt explicite du conteneur. Le code extérieur
+ne s'importe pas dans les agents du cerveau. Le registre contient la provenance et la preuve ; chaque
+usage retélécharge le commit et revérifie l'empreinte et les cas avant de rendre une sortie JSON.
+
+Une adoption GitHub reste distincte de la livraison serveur : la reprise d'Hermes attend le registre local.
+`EN_ATTENTE_OUTIL:<issue>` permet une reprise automatique. Un compte rendu ne clôt pas une panne :
+un passage réel réussi après réparation est exigé. L'expérience et les sources sont mémorisées ; les poids
+d'un modèle ne sont pas entraînés par cette boucle. Une modification arbitraire du cœur privilégié ne fait
+pas partie des deux surfaces autonomes : elle reste un diff et un chantier, avec cette limite explicite.
+
+Les jetons existants restent dans leur service : `GITHUB_CHANTIER_TOKEN` ne gère que la file d'issues ;
+Actions dispose de droits de publication seulement dans le job de promotion, qui ne lance aucun candidat.
+Le MCP garde son jeton interne. Aucun nouveau secret à copier dans une conversation.
+
+Vérifier dans Actions les workflows `Banc d'essai`, `Amélioration autonome`, `Outils autonomes` et
+`Livraison`. Vérifier le SHA reçu par la porte ; une demande de livraison n'est pas un déploiement reçu.
+Pour revenir : Revert du registre ou de la formule, puis livraison normale ; le registre ancien désactive
+les outils ajoutés, même si une ancienne issue existe.
+

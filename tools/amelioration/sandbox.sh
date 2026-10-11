@@ -17,6 +17,9 @@ trap nettoyer EXIT
 # git archive exclut les identifiants de checkout et les fichiers de travail du runner.
 git archive HEAD | tar -x -C "$source_banc"
 if [ -f proposition.json ]; then cp proposition.json "$source_banc/proposition.json"; fi
+for donnee in demande-outil.json preuve-outil.json; do
+  if [ -f "$donnee" ]; then cp "$donnee" "$source_banc/$donnee"; fi
+done
 docker build -f tools/amelioration/Dockerfile -t raime-banc-pur "$source_banc"
 docker network create --internal "$reseau" >/dev/null
 docker run -d --name "$base_banc" --network "$reseau" --memory 512m --cpus 1 --pids-limit 256 \
@@ -28,7 +31,7 @@ for tour in $(seq 1 30); do
 done
 timeout --kill-after=10s 600s docker run --rm --name "$reseau-test" --network "$reseau" \
   --read-only --cap-drop ALL --security-opt no-new-privileges --memory 1536m --cpus 2 --pids-limit 256 \
-  --tmpfs /tmp:rw,nosuid,nodev,size=256m --tmpfs /work:rw,nosuid,nodev,size=512m,mode=1777 \
+  --tmpfs /tmp:rw,exec,nosuid,nodev,size=256m --tmpfs /work:rw,exec,nosuid,nodev,size=512m,mode=1777 \
   --mount "type=bind,source=$source_banc,target=/source,readonly" \
   -e PGHOST="$base_banc" -e PGUSER=raime -e PGPASSWORD=banc \
   raime-banc-pur sh -ec '
@@ -38,6 +41,11 @@ timeout --kill-after=10s 600s docker run --rm --name "$reseau-test" --network "$
     python3 -m unittest tests/banc/porte_http_test.py tests/banc/envoyeur_test.py
     if [ -f proposition.json ]; then
       node tools/amelioration/controle.mjs essayer
+      npm test
+      python3 -m unittest tests/banc/porte_http_test.py tests/banc/envoyeur_test.py
+    fi
+    if [ -f demande-outil.json ]; then
+      node tools/outils/controle.mjs essayer
       npm test
       python3 -m unittest tests/banc/porte_http_test.py tests/banc/envoyeur_test.py
     fi

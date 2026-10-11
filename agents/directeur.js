@@ -109,10 +109,14 @@ export function alertes(agents, prod, motifs = {}) {
 export function ordreDiagnostic(alerte, module) {
   return `Diagnostic demandé par le Directeur (${jourParis()}) : l'agent « ${alerte.agent} » ${alerte.texte.replace(/^[^:]+ : /, '')} `
     + `Lis son code (${module || `agents/${alerte.agent}.js`}) et les lignes du journal à son nom, explique la cause en cinq lignes au plus `
-    + `et propose le correctif (le fichier, la fonction, le changement). Ne modifie aucun fichier ; aucune action extérieure.`;
+    + `et vérifie le correctif dans ton atelier. Si un outil manque : solution_chercher, outil_proposer, outil_suivre puis outil_executer. `
+    + `Les outils passent par la sandbox sans secrets avant adoption automatique ; aucune écriture au cœur privilégié ni aux garde-fous. `
+    + `Un diff du cœur s'ouvre par chantier_ouvrir ; aucun envoi à des personnes, aucune dépense. Une réponse ne prouve pas un déploiement.`;
 }
 async function repartir({ brain, alertes: liste, rythmes }) {
   const panne = liste.find((a) => a.cle.startsWith('echec:'));
+  if (panne && await un(brain, `SELECT id FROM reflexions WHERE agent=$1 AND etat IN ('attente','en_cours','confiee','verification') LIMIT 1`, [panne.agent]))
+    return { ordre:null, motif:'panne déjà prise en charge par la chaîne réflexive' };
   const amelioration = panne ? null : ordreAmelioration();
   if (!panne && !amelioration) return null;
   const agent = panne?.agent || 'rechercheur';

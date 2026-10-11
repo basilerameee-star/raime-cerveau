@@ -1,0 +1,106 @@
+name: Outils autonomes
+on:
+  issues:
+    types: [opened]
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+  pull_request:
+    paths: ['agents/outils_autonomes.js', 'agents/reflexivite.js', 'tools/outils/**', 'extensions/outils/**', '.github/workflows/outils.yml']
+permissions:
+  contents: read
+concurrency:
+  group: outils-autonomes
+  cancel-in-progress: false
+jobs:
+  qualification:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Vérifier l'exécution sans réseau ni secrets
+        run: python3 tools/outils/qualification.py
+  sandbox:
+    if: github.ref == 'refs/heads/main' && (github.event_name != 'issues' || contains(github.event.issue.labels.*.name, 'outil'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      issues: read
+    outputs:
+      selection: ${{ steps.choix.outputs.selection }}
+      issue: ${{ steps.choix.outputs.issue }}
+      base_sha: ${{ steps.choix.outputs.base_sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Télécharger une source publique immuable
+        id: choix
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMERO: ${{ github.event.issue.number }}
+        run: node tools/outils/controle.mjs preparer
+      - name: Installer sans hook et essayer sans réseau
+        if: steps.choix.outputs.selection == 'oui'
+        run: python3 tools/outils/sandbox.py
+      - name: Le cerveau demeure compatible avec le registre
+        if: steps.choix.outputs.selection == 'oui'
+        run: bash tools/amelioration/sandbox.sh
+      - uses: actions/upload-artifact@v4
+        if: steps.choix.outputs.selection == 'oui'
+        with:
+          name: outil-verifie
+          path: |
+            demande-outil.json
+            preuve-outil.json
+          retention-days: 7
+  adopter:
+    needs: sandbox
+    if: needs.sandbox.outputs.selection == 'oui'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      actions: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.sandbox.outputs.base_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@v4
+        with:
+          name: outil-verifie
+      - name: Promouvoir la référence ou rendre la sortie
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node tools/outils/controle.mjs publier
+  refus:
+    needs: [sandbox, adopter]
+    if: always() && needs.sandbox.result == 'failure' && needs.sandbox.outputs.issue != ''
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMERO: ${{ needs.sandbox.outputs.issue }}
+        run: node tools/outils/controle.mjs refuser

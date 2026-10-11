@@ -45,10 +45,12 @@ test('un agent jamais démarré déclenche une alerte, sans prétendre que tout 
   assert.doesNotMatch(rediger({ agents, production: {}, alertes: liste }), /aucune panne/);
 });
 
-test('l’ordre de diagnostic confié à Hermes : lecture seule, et le goût le laisse passer', async () => {
+test('l’ordre de réparation confié à Hermes : atelier et sandbox, et le goût le laisse passer', async () => {
   const gout = await import('../../agents/gout.js');
   const o = ordreDiagnostic({ agent: 'vitrines', texte: 'vitrines : 2 échecs d’affilée (overpass : 504).' }, 'agents/vitrines.js');
-  assert.match(o, /Ne modifie aucun fichier ; aucune action extérieure\./);
+  assert.match(o, /vérifie le correctif dans ton atelier/);
+  assert.match(o, /outil_proposer.*outil_executer/);
+  assert.match(o, /aucune écriture au cœur privilégié ni aux garde-fous/);
   assert.equal(gout.regles(o), null, 'aucune règle ne le retient (ni argent, ni envoi)');
 });
 

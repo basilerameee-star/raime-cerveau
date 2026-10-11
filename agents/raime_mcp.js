@@ -23,6 +23,39 @@ const TAILLE_MAX = 64_000;
 
 // ── Le catalogue fermé ─────────────────────────────────────────────────────
 export const OUTILS = {
+  solution_chercher: {
+    description: 'Recherche un besoin sur Internet, GitHub et la bibliothèque ; pistes sourcées et limites, aucun code installé.',
+    inputSchema: { type:'object',properties:{besoin:{type:'string',minLength:10}},required:['besoin'] },
+    action: a => ({type:'lire',cible:'recherche',contenu:a.besoin}),
+    async faire({brain,a}) {
+      const {expurger} = await import('./reflexivite.js');
+      const {rechercherSolution} = await import('./rechercheur.js');
+      return JSON.stringify(await rechercherSolution({brain,probleme:expurger(a.besoin),sources:['bibliotheque','github','moteur']}));
+    },
+  },
+  outils_lister: {
+    description:'Outils réellement présents dans le registre déployé : dépôt, commit, besoin et cas vérifiés. Tous sont exécutés à distance dans la sandbox.',
+    inputSchema:{type:'object',properties:{}},action:()=>({type:'lire',cible:'registre_outils'}),
+    async faire() { const {registre}=await import('./outils_autonomes.js'); return JSON.stringify(registre()); },
+  },
+  outil_proposer: {
+    description:'Demande une acquisition autonome. JSON version:1,id,repo,commit (40 hex),langage (node/python),entree CLI,arguments facultatifs,besoin,cas:[{entree,attendu}] (3 distincts au moins). CLI : stdin JSON → stdout JSON. Aucun secret.',
+    inputSchema:{type:'object',properties:{proposition:{type:'string',minLength:20}},required:['proposition']},
+    action:a=>({type:'ouvrir_chantier',cible:'issue_outil',contenu:a.proposition}),
+    async faire({a}) { const {proposerOutil}=await import('./outils_autonomes.js'); return JSON.stringify(await proposerOutil(JSON.parse(a.proposition))); },
+  },
+  outil_executer: {
+    description:'Exécute un outil déjà déployé : id et entree JSON en texte, sans secret. Rend le numéro de la requête asynchrone à suivre avec outil_suivre ; aucun réseau dans le conteneur.',
+    inputSchema:{type:'object',properties:{id:{type:'string'},entree:{type:'string'}},required:['id','entree']},
+    action:a=>({type:'ouvrir_chantier',cible:'execution_outil',contenu:a.entree}),
+    async faire({a}) { const {executerOutil}=await import('./outils_autonomes.js'); return JSON.stringify(await executerOutil({id:a.id,entree:JSON.parse(a.entree)})); },
+  },
+  outil_suivre: {
+    description:'Relit le résultat authentifié par GitHub Actions : attente, refus, adoption ou sortie JSON. Une adoption n’annonce pas un déploiement serveur.',
+    inputSchema:{type:'object',properties:{numero:{type:'integer',minimum:1}},required:['numero']},
+    action:()=>({type:'lire',cible:'file_outils'}),
+    async faire({a}) { const {suivreOutil}=await import('./outils_autonomes.js'); return JSON.stringify(await suivreOutil(a.numero)); },
+  },
   bibliotheque_chercher: {
     description: 'Cherche dans la bibliothèque de rAIme (notes de la maison, offre, veille, savoir général), en français. Rend les passages et leur source.',
     inputSchema: { type: 'object', properties: { question: { type: 'string', minLength: 3 }, domaine: { type: 'string' } }, required: ['question'] },

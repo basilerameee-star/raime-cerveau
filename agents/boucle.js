@@ -6,6 +6,7 @@ import pg from 'pg';
 import * as experience from './experience.js';
 import * as econome from './econome.js';
 import * as eclaireur from './eclaireur.js';
+import * as reflexivite from './reflexivite.js';
 import { RYTHMES } from './rythmes.js';
 import { createRequire } from 'node:module';
 const parole = createRequire(import.meta.url)('../jarvis/parole.cjs');
@@ -50,14 +51,20 @@ async function noterPassage(brain, agent, statut, ms) {
 async function executer(tache, brain, n8n) {
   const t0 = Date.now();
   // La mémoire d'expérience : la situation avant, l'action, la situation après (JEPA.md).
-  const avant = await experience.photographier(brain);
-  const noterExperience = async (succes, resultat) => experience.noter(brain, {
-    agent: tache.nom, action: tache.fn || tache.cmd || tache.nom, arguments: tache.args || {},
-    avant, apres: await experience.photographier(brain), succes, resultat, duree_ms: Date.now() - t0 });
+  const avant = await experience.photographier(brain).catch(() => ({}));
+  const noterExperience = async (succes, resultat) => {
+    try { await experience.noter(brain, {
+      agent: tache.nom, action: tache.fn || tache.cmd || tache.nom, arguments: tache.args || {},
+      avant, apres: await experience.photographier(brain), succes, resultat, duree_ms: Date.now() - t0 }); }
+    catch (e) { console.error(`[experience] ${e.message}`); }
+  };
   try {
     if (tache.cmd === 'prospection') {
-      const { execSync } = await import('node:child_process');
-      execSync('node agents/prospection_auto.js 14', { stdio: 'inherit', cwd: '/app' });
+      const { execFile } = await import('node:child_process');
+      const { promisify } = await import('node:util');
+      const r = await promisify(execFile)('node', ['agents/prospection_auto.js','14'],
+        {cwd:'/app',timeout:15*60_000,killSignal:'SIGKILL',maxBuffer:1024*1024});
+      if (r.stdout) process.stdout.write(r.stdout); if (r.stderr) process.stderr.write(r.stderr);
     } else {
       const mod = await import(tache.module);
       await mod[tache.fn]({ brain, n8n, rythmes: RYTHMES, ...(tache.args || {}) });   // les rythmes : pour le Directeur
@@ -82,6 +89,24 @@ async function main() {
 
   await preparer(brain);
   await experience.preparer(brain);
+  await reflexivite.preparer(brain);
+  // Connexion dédiée : NOTIFY réveille immédiatement sans concurrencer les requêtes
+  // des agents sur brain. Le rattrapage toutes les cinq minutes couvre les signaux perdus.
+  const reaction = db(); await reaction.connect();
+  let reactionOccupee = false;
+  const reagir = async () => {
+    if (reactionOccupee) return;
+    reactionOccupee = true;
+    try {
+      const { suivreOutil } = await import('./outils_autonomes.js');
+      await reflexivite.suivre({ brain: reaction, lireOutil: suivreOutil });
+      await reflexivite.traiter({ brain: reaction });
+    } catch(e) { console.error(`[reflexivite] ${e.message}`); }
+    finally { reactionOccupee = false; }
+  };
+  reaction.on('notification', () => { void reagir(); });
+  reaction.on('error', e => { console.error(`[reflexivite] connexion perdue : ${e.message}`); process.exit(1); });
+  await reaction.query('LISTEN raime_reflexivite');
   for (const t of RYTHMES) dernier[t.nom] = await derniereExecution(brain, t.nom);
   console.log(`[boucle] démarrée — ${RYTHMES.length} agents sous rythme`);
   for (const t of RYTHMES) {
@@ -92,6 +117,7 @@ async function main() {
   // Boucle infinie : on vérifie toutes les 5 minutes qui doit tourner. L'économe fixe d'abord
   // le régime de dépense : les agents payants ralentissent ou attendent si le mois dérape.
   for (;;) {
+    await reagir();
     let r = { mode: 'normal', facteur: 1, pauses: [] };
     try { r = await econome.evaluer({ brain }); } catch (e) { console.error(`[econome] lecture impossible : ${e.message}`); }
     // Sans frais (modèles gratuits), le budget ne ralentit ni n'arrête plus aucun agent.
@@ -114,3 +140,4 @@ async function main() {
 }
 
 main().catch(e => { console.error('[boucle] arrêt fatal :', e); process.exit(1); });
+
