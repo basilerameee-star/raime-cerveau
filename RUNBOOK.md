@@ -8,7 +8,30 @@
 2. `npm test` en local (voir « Lancer le banc ») : tout doit passer.
 3. Une pull request qui commence par la section **« ## Pour Basile »** (cinq lignes au plus : ce qui change en ligne,
    ce qu'il pourra vendre, comment revenir en arrière) — la CI « Résumé pour Basile » la vérifie.
-4. CI verte **et** « ok » de Basile → fusion sur `main`. Jamais une pull request rouge.
+4. CI verte avant toute fusion sur `main`. Pour les changements ordinaires, accord de Basile ; pour la surface
+   autonome décrite ci-dessous, l'autorisation permanente de Basile du 11/10/2026 remplace cet accord à chaque passage.
+   Jamais une pull request rouge, jamais un élargissement automatique des droits.
+
+## Boucle autonome autorisée (11/10/2026)
+
+Le Directeur constate un besoin mesuré, Hermes prépare une proposition via MCP `amelioration_proposer`.
+Chaque jour, « Amélioration autonome » compare le classement avant/après, exécute le banc complet deux fois dans
+un conteneur sans Internet, secrets ou accès à la production, puis avance `main` et demande explicitement « Livraison ».
+Il n'y a pas d'accord humain entre le banc réussi et cette livraison. La porte conserve son retour arrière automatique.
+
+Cette première surface est **uniquement** `agents/ameliorables/classement.expr` : du code arithmétique interprété,
+sur les six notes de recherche. Le programme peut choisir ses calculs ; il ne peut pas exécuter JavaScript, installer
+une dépendance, lire un secret, modifier une autorisation ou changer les tests. Constitution, garde-fous, budget,
+envois, paiements, infrastructure et workflows restent hors de cette surface. Les autres pannes gardent leur
+diagnostic et leur chantier d'ingénierie : elles ne sont pas couvertes par cette première livraison autonome.
+
+Un gain strict sur des cas figés, aucune régression sur les cas déjà réussis, maintien de chaque critère, empreinte
+de la formule inchangée, issue inchangée et `main` inchangé sont exigés. Un seul essai traité par 24 heures.
+L'historique garde une PR et le journal d'Actions. Les protections GitHub ne sont jamais contournées ; si elles
+interdisent l'écriture de l'action sur `main` ou la création de PR, l'action échoue sans promotion.
+
+Arrêt : désactiver « Amélioration autonome » dans Actions. Retour : Revert de sa PR, ou le geste d'urgence ci-dessous.
+Les tests prouvent le résultat sur le banc, pas un gain commercial ni l'absence de tout bug futur.
 
 ## Déployer
 
@@ -67,3 +90,46 @@ Caddy (2), DNS `*.raime.fr` (3), premier envoi (4), jeton des chantiers (5), mot
 (`rk_test_…`, écriture sur produits, prix, liens de paiement) dans le secret GitHub et le `.env` : `STRIPE_CLE_TEST`.
 
 ## Mise en service autonome (25/09/2026)
+
+### Autorisation permanente du 11/10/2026
+
+La décision explicite de Basile remplace l'accord humain à chaque passage pour le classement
+`agents/ameliorables/classement.expr` et le registre `extensions/outils/registre.json` : gain mesuré,
+sandbox réussie, promotion sans force push, livraison par la porte et retour automatique si la santé échoue.
+Le candidat ne peut modifier ni contrôleur, ni tests, ni secrets, ni droits, ni Constitution.
+
+Une ligne de panne de la boucle ou d'Hermes déclenche le trigger Postgres `reflexivite_panne`, conserve
+l'événement dans `reflexions` et réveille le travail par NOTIFY. Le rattrapage toutes les cinq minutes
+couvre un redémarrage ou un signal perdu. La recherche consulte bibliothèque, GitHub et SearXNG ;
+le Directeur conserve son rôle de priorisation sans dupliquer une réparation en cours.
+Deux travaux nouveaux par 24 heures, bail de dix minutes, trois tentatives et délais bornés.
+
+Hermes peut utiliser `solution_chercher`, `outil_proposer`, `outil_suivre`, `outils_lister`, `outil_executer`.
+Une issue `outil` déclenche le workflow `Outils autonomes`. Une file périodique rattrape les webhooks perdus.
+La proposition décrit un dépôt PUBLIC sous licence admise, un SHA immuable, une entrée CLI JSON,
+trois à dix cas distincts et un besoin observable. La licence, les liens/sous-modules, le volume,
+les dépendances verrouillées et les hooks sont contrôlés. Node exige un package-lock moderne et les
+tests TAP ; Python accepte les outils sans dépendance qui ont des tests unittest. Les candidats hors
+de ce contrat sont refusés avec preuve ; Hermes cherche une autre solution, sans installer au hasard.
+
+L'installation des dépendances npm ignore les hooks et ne reçoit aucun secret. L'exécution et les tests
+du candidat ont TOUJOURS le réseau coupé, une source montée en lecture seule, utilisateur non privilégié,
+capabilities retirées, quotas CPU/mémoire/processus, délai et arrêt explicite du conteneur. Le code extérieur
+ne s'importe pas dans les agents du cerveau. Le registre contient la provenance et la preuve ; chaque
+usage retélécharge le commit et revérifie l'empreinte et les cas avant de rendre une sortie JSON.
+
+Une adoption GitHub reste distincte de la livraison serveur : la reprise d'Hermes attend le registre local.
+`EN_ATTENTE_OUTIL:<issue>` permet une reprise automatique. Un compte rendu ne clôt pas une panne :
+un passage réel réussi après réparation est exigé. L'expérience et les sources sont mémorisées ; les poids
+d'un modèle ne sont pas entraînés par cette boucle. Une modification arbitraire du cœur privilégié ne fait
+pas partie des deux surfaces autonomes : elle reste un diff et un chantier, avec cette limite explicite.
+
+Les jetons existants restent dans leur service : `GITHUB_CHANTIER_TOKEN` ne gère que la file d'issues ;
+Actions dispose de droits de publication seulement dans le job de promotion, qui ne lance aucun candidat.
+Le MCP garde son jeton interne. Aucun nouveau secret à copier dans une conversation.
+
+Vérifier dans Actions les workflows `Banc d'essai`, `Amélioration autonome`, `Outils autonomes` et
+`Livraison`. Vérifier le SHA reçu par la porte ; une demande de livraison n'est pas un déploiement reçu.
+Pour revenir : Revert du registre ou de la formule, puis livraison normale ; le registre ancien désactive
+les outils ajoutés, même si une ancienne issue existe.
+

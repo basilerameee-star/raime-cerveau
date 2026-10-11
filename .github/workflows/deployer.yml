@@ -12,6 +12,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      sha:
+        description: 'Version main attendue (livraison autonome)'
+        required: false
+        type: string
 
 concurrency:
   group: livraison
@@ -36,14 +41,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Vérifier la version demandée
+        env:
+          SHA_ATTENDU: ${{ inputs.sha }}
+        run: |
+          if [ -n "$SHA_ATTENDU" ] && [ "$SHA_ATTENDU" != "$GITHUB_SHA" ]; then
+            echo '::error::main a changé depuis la sandbox ; cette livraison ne part pas.'
+            exit 1
+          fi
+
       - name: La porte est-elle prête ?
         id: porte
         run: |
           if curl -fsS --max-time 15 "$PORTE_URL/sante" | grep -q 'porte prête'; then
             echo "prete=oui" >> "$GITHUB_OUTPUT"
           else
-            echo "::warning::La porte du serveur ne répond pas ($PORTE_URL/sante). Rien n'est envoyé."
+            echo "::error::La porte du serveur ne répond pas ($PORTE_URL/sante). Rien n'est envoyé."
             echo "prete=non" >> "$GITHUB_OUTPUT"
+            exit 1
           fi
 
       - name: Envoyer la version par la porte
@@ -94,3 +109,4 @@ jobs:
           git add carnet/CARNET.md
           git commit -m "Carnet : retour automatique après l'échec de ${GITHUB_SHA:0:12}"
           git pull --rebase origin main && git push origin HEAD:main
+

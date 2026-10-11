@@ -28,6 +28,7 @@ async function github(chemin, { methode = 'GET', corps } = {}) {
     headers: { Authorization: `Bearer ${jeton}`, Accept: 'application/vnd.github+json',
       'User-Agent': 'rAIme-architecte/1.0', ...(corps ? { 'Content-Type': 'application/json' } : {}) },
     body: corps ? JSON.stringify(corps) : undefined,
+    signal: AbortSignal.timeout(20_000),
   });
   const d = await r.json();
   if (!r.ok) throw new Error(`GitHub ${r.status} : ${d?.message || ''}`.trim());
@@ -70,3 +71,4 @@ export async function ouvrirChantier(demande, { brain = null, blocApis = null } 
   const i = await github('issues', { methode: 'POST', corps: { title: p.titre, body: p.corps, labels: [ETIQUETTE] } });
   return { ouvert: true, numero: i.number, url: i.html_url };
 }
+

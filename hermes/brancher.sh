@@ -14,7 +14,10 @@ printf 'TRAVAIL_HOTE=%s\nHERMES_UID=%s\nHERMES_GID=%s\n' "$TRAVAIL" "$PROPRIO" "
 
 # La cle entre le relais et Hermes : creee une fois, jamais affichee.
 if ! grep -q '^API_SERVER_KEY=' /opt/raime/hermes.env; then
-  echo "API_SERVER_KEY=$(openssl rand -hex 32)" >> /opt/raime/hermes.env
+  CLE=$(openssl rand -hex 32) || { echo "ECHEC : generation de la cle du relais impossible"; exit 1; }
+  [[ "$CLE" =~ ^[0-9a-f]{64}$ ]] || { echo "ECHEC : cle du relais mal formee"; exit 1; }
+  printf 'API_SERVER_KEY=%s\n' "$CLE" >> /opt/raime/hermes.env
+  unset CLE
 fi
 grep -m1 '^API_SERVER_KEY=' /opt/raime/hermes.env > /opt/raime/executant.env
 # Hermes lit aussi son propre fichier (/opt/data/.env), qui passe AVANT son environnement : une autre clé

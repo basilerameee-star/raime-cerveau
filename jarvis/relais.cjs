@@ -1,5 +1,5 @@
 // LES MAINS — le relais Jarvis → Hermes. Un ordre à la fois, sur les modèles gratuits d'Hermes (Gemini, puis le local), résistant aux
-// redémarrages : un ordre en cours se conclut par son fichier de résultat, ou par ce qu'il a produit.
+// redémarrages : seul un compte rendu valide conclut une réussite. Des fichiers seuls ne prouvent rien.
 // Un ordre qui échoue reste visible avec sa raison ; Basile le relance d'un geste dans le Cockpit.
 'use strict';
 
@@ -58,6 +58,19 @@ function consigne(c, apis = '') {
     + `\n\n${require('./cap.cjs').fixe()}${apis ? `\n\n${apis}` : ''}\n\nDemande de Basile : ${c.texte}`;
 }
 
+// Un dossier non vide peut contenir un brouillon interrompu. Ne pas le rejouer automatiquement :
+// il a pu déjà produire des effets. Garder ses fichiers et rendre l'interruption visible.
+function resultatReprise(dossier) {
+  const fichier = path.join(dossier, '.resultat.json');
+  if (!fs.existsSync(fichier)) return { code: 1, trace: 'Interruption : compte rendu absent ; fichiers conservés, résultat non vérifié.' };
+  try {
+    const r = JSON.parse(fs.readFileSync(fichier, 'utf8'));
+    if (!r || !Number.isInteger(r.code) || (r.code === 0 && (typeof r.sortie !== 'string' || !r.sortie.trim())))
+      throw new Error('format invalide');
+    return r;
+  } catch { return { code: 1, trace: 'Interruption : compte rendu illisible ou invalide ; résultat non vérifié.' }; }
+}
+
 async function relayer({ fetch = globalThis.fetch } = {}) {
   if (occupe) return;
   occupe = true;
@@ -67,10 +80,9 @@ async function relayer({ fetch = globalThis.fetch } = {}) {
     if (!sante) return;
     for (const e of await lire(`SELECT id FROM commandes WHERE etat = 'en_cours' AND pour = 'harness'`)) {
       const dossier = path.join(LIVRABLES, `demande-${e.id}`), fichier = path.join(dossier, '.resultat.json');
-      if (fs.existsSync(fichier)) { await conclure(e.id, JSON.parse(fs.readFileSync(fichier, 'utf8'))); continue; }
+      if (fs.existsSync(fichier)) { await conclure(e.id, resultatReprise(dossier)); continue; }
       if (sante.etat === 'libre') {
-        const plein = fs.existsSync(dossier) && fs.readdirSync(dossier).length > 0;
-        await conclure(e.id, plein ? { code: 0, sortie: `Travail terminé ; son compte rendu s'est perdu pendant un redémarrage. Les résultats sont ici : ${ADRESSE}/livrables/demande-${e.id}/` } : null);
+        await conclure(e.id, resultatReprise(dossier));
       }
     }
     if (sante.etat !== 'libre' || (await lire(`SELECT 1 FROM commandes WHERE etat = 'en_cours' AND pour = 'harness'`)).length) return;
@@ -112,4 +124,5 @@ function demarrer() {
   setInterval(() => { apprendre().catch(() => {}); }, 10 * 60_000);
 }
 
-module.exports = { demarrer, relayer, relancer, conclure, consigne, LIVRABLES, ADRESSE };
+module.exports = { demarrer, relayer, relancer, conclure, consigne, resultatReprise, LIVRABLES, ADRESSE };
+
