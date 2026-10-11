@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {valider,hash,executerOutil,proposerOutil,suivreOutil} from '../../agents/outils_autonomes.js';
+import {valider,hash,donnees,executerOutil,proposerOutil,suivreOutil} from '../../agents/outils_autonomes.js';
 import {selectionner,adopter,telecharger} from '../../tools/outils/controle.mjs';
 import {expurger,ordre} from '../../agents/reflexivite.js';
 const p={version:1,id:'json-parser',repo:'exemple/outil',commit:'a'.repeat(40),langage:'python',entree:'bin/cli.py',besoin:'Analyser trois entrées JSON distinctes',cas:[1,2,3].map(n=>({entree:{valeur:n},attendu:n+1}))};
@@ -11,6 +11,12 @@ const r={version:1,outils:{}};
 const issue={number:7,state:'open',body:'```raime-outil-v1\n'+JSON.stringify(p)+'\n```'};
 const plan={...selectionner([issue],null,r),registre_sha:hash(r),source:{licence:'mit',source_sha:'b'.repeat(64)}};
 const preuve={version:1,passes:3,total:3,tests_amont:5,image:'sha256:'+'c'.repeat(64)};
+test('un JSON utile de plus de 1200 caractères est admis, un secret tardif reste refusé',()=>{
+  const texte='information '.repeat(200);
+  assert.equal(donnees({texte}).texte,texte);
+  assert.throws(()=>donnees({texte:texte+' ghp_'+'A'.repeat(30)}),/secret/);
+  assert.throws(()=>donnees({texte:'a'.repeat(8000)}),/trop grandes/);
+});
 test('un outil exige un commit, trois cas distincts et aucun secret ni chemin sortant',()=>{
   assert.equal(valider(p),p);
   for(const changement of [{commit:'main'},{entree:'../secret.py'},{entree:'/secret.py'},{cas:[p.cas[0],p.cas[0],p.cas[0]]},{langage:'sh'},{besoin:'ghp_'+'A'.repeat(30)},{droits:'root'}])

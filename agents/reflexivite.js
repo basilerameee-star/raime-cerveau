@@ -2,11 +2,11 @@
 import crypto from 'node:crypto';
 import { rechercherSolution } from './rechercheur.js';
 
-export function expurger(texte) {
+export function expurger(texte, limite = 1200) {
   return String(texte || '').replace(/(?:gh[pousr]_|github_pat_|sk-|whsec_)[A-Za-z0-9_-]{10,}/g, '[secret retiré]')
     .replace(/([a-z][a-z0-9+.-]*:\/\/)[^\s/@]+:[^\s/@]+@/gi, '$1[identifiants retirés]@')
     .replace(/(?:authorization|password|mot de passe|token|api[_ -]?key)\s*[:=]\s*[^\s,;]+/gi, '[secret retiré]')
-    .replace(/-----BEGIN [\s\S]*?PRIVATE KEY-----[\s\S]*?-----END [\s\S]*?PRIVATE KEY-----/g, '[clé retirée]').slice(0, 1200);
+    .replace(/-----BEGIN [\s\S]*?PRIVATE KEY-----[\s\S]*?-----END [\s\S]*?PRIVATE KEY-----/g, '[clé retirée]').slice(0, limite);
 }
 
 export async function preparer(brain) {
@@ -15,22 +15,25 @@ export async function preparer(brain) {
     occurrences int NOT NULL DEFAULT 1, etat text NOT NULL DEFAULT 'attente', tentatives int NOT NULL DEFAULT 0,
     bail uuid, bail_fin timestamptz, prochaine timestamptz NOT NULL DEFAULT now(), commande int,
     pistes jsonb, resultat text, cree_le timestamptz NOT NULL DEFAULT now(), maj_le timestamptz NOT NULL DEFAULT now())`);
+  await brain.query(`ALTER TABLE reflexions ADD COLUMN IF NOT EXISTS commande_origine int`);
   await brain.query(`CREATE OR REPLACE FUNCTION reflexivite_panne() RETURNS trigger LANGUAGE plpgsql AS $$
-    DECLARE nom text; id_ref bigint;
+    DECLARE nom text; id_ref bigint; origine int;
     BEGIN
       IF NEW.acteur = 'boucle' AND NEW.changement LIKE 'Échec de l''agent %' THEN
         nom := substring(NEW.changement from length('Échec de l''agent ')+1);
         IF nom = 'reflexivite' THEN RETURN NEW; END IF;
       ELSIF NEW.acteur = 'executant' AND NEW.changement LIKE '%bloqué%' THEN
+        origine := substring(NEW.changement from 'n°([0-9]+)')::int;
         -- Une tentative de réparation échouée ne réengendre pas une autre panne.
         IF EXISTS(SELECT 1 FROM commandes WHERE source = 'reflexivite'
           AND id::text = substring(NEW.changement from 'n°([0-9]+)')) THEN RETURN NEW; END IF;
         nom := 'hermes';
       ELSE RETURN NEW; END IF;
-      INSERT INTO reflexions(empreinte, agent, probleme)
+      INSERT INTO reflexions(empreinte, agent, probleme, commande_origine)
         VALUES(md5(nom || ':' || regexp_replace(coalesce(NEW.motif,''), '[0-9]+', '#', 'g')), nom,
-          left(coalesce(NEW.motif, NEW.changement), 1200))
+          left(coalesce(NEW.motif, NEW.changement), 1200), origine)
       ON CONFLICT (empreinte) DO UPDATE SET occurrences = reflexions.occurrences + 1, maj_le = now(),
+        commande_origine = coalesce(EXCLUDED.commande_origine, reflexions.commande_origine),
         etat = CASE WHEN reflexions.etat IN ('resolue','bloquee') AND reflexions.prochaine < now() THEN 'attente' ELSE reflexions.etat END,
         tentatives = CASE WHEN reflexions.etat IN ('resolue','bloquee') AND reflexions.prochaine < now() THEN 0 ELSE reflexions.tentatives END
       RETURNING id INTO id_ref;
@@ -89,7 +92,10 @@ export async function suivre({ brain, lireOutil } = {}) {
   // Un passage réel réussi après le diagnostic est la preuve de résolution, pas le texte d'Hermes.
   await brain.query(`UPDATE reflexions r SET etat='resolue', resultat='Passage réel réussi après réparation',
     prochaine=now()+interval '24 hours', maj_le=now() WHERE r.etat='verification'
-    AND EXISTS(SELECT 1 FROM boucle_passages p WHERE p.agent=r.agent AND p.statut='ok' AND p.fin_le>r.maj_le)`);
+    AND ((r.agent <> 'hermes' AND EXISTS(SELECT 1 FROM boucle_passages p
+      WHERE p.agent=r.agent AND p.statut='ok' AND p.fin_le>r.maj_le))
+      OR (r.agent = 'hermes' AND EXISTS(SELECT 1 FROM commandes c
+        WHERE c.id=r.commande_origine AND c.etat='faite' AND c.traite_le>r.maj_le)))`);
   const { rows } = await brain.query(`SELECT r.*,c.etat AS commande_etat,c.reponse FROM reflexions r JOIN commandes c ON c.id=r.commande
     WHERE r.etat='confiee' AND c.etat IN ('faite','refusee','a_faire') AND c.traite_le IS NOT NULL LIMIT 3`);
   for (const r of rows) {
