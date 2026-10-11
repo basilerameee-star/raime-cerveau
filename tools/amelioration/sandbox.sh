@@ -3,6 +3,10 @@
 set -euo pipefail
 racine="$(pwd)"
 source_banc="$(mktemp -d)"
+stockage_banc="$(mktemp -d)"
+# Les essais de livraison recopient plusieurs versions du dépôt. Leur disque
+# jetable reste séparé de la source et des secrets, sans consommer le tmpfs RAM.
+chmod 1777 "$stockage_banc"
 # Le répertoire ne contient que l'archive publique au banc ; le conteneur tourne
 # comme node (1000), pas comme l'utilisateur du runner qui possède mktemp (0700).
 chmod 0755 "$source_banc"
@@ -12,6 +16,7 @@ nettoyer() {
   docker rm -f "$base_banc" "$reseau-test" >/dev/null 2>&1 || true
   docker network rm "$reseau" >/dev/null 2>&1 || true
   rm -rf "$source_banc"
+  rm -rf "$stockage_banc"
 }
 trap nettoyer EXIT
 # git archive exclut les identifiants de checkout et les fichiers de travail du runner.
@@ -31,7 +36,8 @@ for tour in $(seq 1 30); do
 done
 timeout --kill-after=10s 600s docker run --rm --name "$reseau-test" --network "$reseau" \
   --read-only --cap-drop ALL --security-opt no-new-privileges --memory 1536m --cpus 2 --pids-limit 256 \
-  --tmpfs /tmp:rw,exec,nosuid,nodev,size=256m --tmpfs /work:rw,exec,nosuid,nodev,size=512m,mode=1777 \
+  --mount "type=bind,source=$stockage_banc,target=/tmp" \
+  --tmpfs /work:rw,exec,nosuid,nodev,size=512m,mode=1777 \
   --mount "type=bind,source=$source_banc,target=/source,readonly" \
   -e PGHOST="$base_banc" -e PGUSER=raime -e PGPASSWORD=banc \
   raime-banc-pur sh -ec '

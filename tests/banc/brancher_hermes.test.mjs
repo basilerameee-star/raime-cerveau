@@ -78,6 +78,15 @@ test('revenir : le relais retiré, la règle de redémarrage d’origine rendue,
   assert.ok(!j.some((l) => /^rm raime-hermes|^rm raime-harness/.test(l)), 'Hermes et l’ancien exécutant sont gardés');
 });
 
+test('une génération de clé échouée arrête la bascule avant de toucher aux services', () => {
+  scenario();
+  fs.writeFileSync(path.join(BIN, 'openssl'), '#!/bin/sh\nexit 1\n', { mode: 0o755 });
+  const r = lancer('brancher.sh');
+  assert.notEqual(r.status, 0, 'une clé absente ne doit jamais annoncer une installation réussie');
+  assert.doesNotMatch(fs.readFileSync(path.join(RACINE, 'hermes.env'), 'utf8'), /^API_SERVER_KEY=/m);
+  assert.ok(!journal().some((l) => /^stop|^update|^compose/.test(l)));
+});
+
 test('brancher refuse net si le Cockpit n’a pas de dossier /travail (rien n’est arrêté)', () => {
   scenario({ cockpitSansTravail: true });
   const r = lancer('brancher.sh');
