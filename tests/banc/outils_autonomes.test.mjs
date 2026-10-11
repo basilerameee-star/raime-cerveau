@@ -15,6 +15,7 @@ test('un JSON utile de plus de 1200 caractères est admis, un secret tardif rest
   const texte='information '.repeat(200);
   assert.equal(donnees({texte}).texte,texte);
   assert.throws(()=>donnees({texte:texte+' ghp_'+'A'.repeat(30)}),/secret/);
+  assert.throws(()=>donnees({configuration:{password:'valeur confidentielle'}}),/secret/);
   assert.throws(()=>donnees({texte:'a'.repeat(8000)}),/trop grandes/);
 });
 test('un outil exige un commit, trois cas distincts et aucun secret ni chemin sortant',()=>{

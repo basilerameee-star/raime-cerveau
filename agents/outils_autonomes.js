@@ -14,6 +14,15 @@ function cles(x, attendues) {
 export function donnees(x) {
   const texte = JSON.stringify(x);
   exiger(typeof texte === 'string' && texte.length <= 8000, 'données JSON trop grandes');
+  const inspecter = valeur => {
+    if (!valeur || typeof valeur !== 'object') return;
+    for (const [cle, contenu] of Object.entries(valeur)) {
+      exiger(!/^(authorization|password|mot de passe|token|api[_ -]?key|private[_ -]?key|secret)$/i.test(cle),
+        'champ contenant un secret refusé');
+      inspecter(contenu);
+    }
+  };
+  inspecter(x);
   // expurger borne normalement un diagnostic à 1200 caractères. La limite
   // JSON est distincte : vérifier tous les caractères, sans tronquer la donnée.
   exiger(expurger(texte, 8000) === texte, 'données contenant un secret refusées');
