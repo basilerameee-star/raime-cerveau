@@ -7,6 +7,10 @@ stockage_banc="$(mktemp -d)"
 # Les essais de livraison recopient plusieurs versions du dépôt. Leur disque
 # jetable reste séparé de la source et des secrets, sans consommer le tmpfs RAM.
 chmod 1777 "$stockage_banc"
+banc_uid="$(id -u)"; banc_gid="$(id -g)"
+# Le runner doit pouvoir retirer les dossiers 0700 créés par les essais.
+# Sur une machine root, conserver l'identité non privilégiée de l'image.
+if [ "$banc_uid" = 0 ]; then banc_uid=1000; banc_gid=1000; fi
 # Le répertoire ne contient que l'archive publique au banc ; le conteneur tourne
 # comme node (1000), pas comme l'utilisateur du runner qui possède mktemp (0700).
 chmod 0755 "$source_banc"
@@ -35,6 +39,7 @@ for tour in $(seq 1 30); do
   sleep 1
 done
 timeout --kill-after=10s 600s docker run --rm --name "$reseau-test" --network "$reseau" \
+  --user "$banc_uid:$banc_gid" \
   --read-only --cap-drop ALL --security-opt no-new-privileges --memory 1536m --cpus 2 --pids-limit 256 \
   --mount "type=bind,source=$stockage_banc,target=/tmp" \
   --tmpfs /work:rw,exec,nosuid,nodev,size=512m,mode=1777 \
