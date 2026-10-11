@@ -55,12 +55,12 @@ export async function publier({ api = github, plan = charger(), head = execFileS
   const blob = await api('git/blobs', 'POST', { content: p.proposition.formule.trim() + '\n', encoding: 'utf-8' });
   const arbre = await api('git/trees', 'POST', { base_tree: base.tree.sha,
     tree: [{ path: CHEMIN, mode: '100644', type: 'blob', sha: blob.sha }] });
-  const commit = await api('git/commits', 'POST', { message: `[amelioration-auto] Classement ${preuve.avant}/${preuve.total} → ${preuve.apres}/${preuve.total}\n\nCloses #${p.issue}`,
+  const commit = await api('git/commits', 'POST', { message: `[amelioration-auto] Classement ${preuve.avant}/${preuve.total} → ${preuve.apres}/${preuve.total}\n\nSuivi : #${p.issue}`,
     tree: arbre.sha, parents: [p.base_sha] });
   const branche = `auto/amelioration-${p.issue}-${p.base_sha.slice(0,12)}`;
   await api('git/refs', 'POST', { ref: `refs/heads/${branche}`, sha: commit.sha });
   const pr = await api('pulls', 'POST', { head: branche, base: 'main', title: `Amélioration automatique : classement ${preuve.apres}/${preuve.total}`,
-    body: `## Pour Basile\nClassement des pistes amélioré : ${preuve.avant}/${preuve.total} → ${preuve.apres}/${preuve.total} cas figés.\nBanc complet isolé passé, aucun nouveau droit.\nRetour : Revert de cette proposition ; retour serveur automatique si la santé échoue.\n\n## Vérification\nhttps://github.com/${depot}/actions/runs/${process.env.GITHUB_RUN_ID}\n\nFerme #${p.issue}. Surface unique : ${CHEMIN}.` });
+    body: `## Pour Basile\nEn ligne : classement des pistes ${preuve.avant}/${preuve.total} → ${preuve.apres}/${preuve.total} cas figés.\nAucun service nouveau à vendre ; recherche interne plus pertinente.\nRevenir en arrière : Revert de cette proposition ; retour serveur automatique si la santé échoue.\n\n## Vérification\nhttps://github.com/${depot}/actions/runs/${process.env.GITHUB_RUN_ID}\n\nSuivi #${p.issue}. Surface unique : ${CHEMIN}.` });
   // Aucun force push. Un autre commit intervenu fait échouer cette avance ; les protections GitHub restent applicables.
   if ((await api('git/ref/heads/main')).object.sha !== p.base_sha) throw new Error('main a avancé : arrêt');
   await api('git/refs/heads/main', 'PATCH', { sha: commit.sha, force: false });

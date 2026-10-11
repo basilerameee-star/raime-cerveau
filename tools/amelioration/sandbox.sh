@@ -3,6 +3,9 @@
 set -euo pipefail
 racine="$(pwd)"
 source_banc="$(mktemp -d)"
+# Le répertoire ne contient que l'archive publique au banc ; le conteneur tourne
+# comme node (1000), pas comme l'utilisateur du runner qui possède mktemp (0700).
+chmod 0755 "$source_banc"
 reseau="raime-banc-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}"
 base_banc="$reseau-pg"
 nettoyer() {
