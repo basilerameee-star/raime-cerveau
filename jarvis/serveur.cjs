@@ -170,7 +170,7 @@ async function etat() {
   const coffre = lireCoffre();
   return {
     version: VERSION,
-    ordres: ordres.map((o) => ({ ...o, bloque: o.etat === 'a_faire' && o.pour === 'claude',
+    ordres: ordres.map((o) => ({ ...o, a_verifier: o.pour === 'verification', attente_outil: o.pour === 'outil', bloque: o.etat === 'a_faire' && o.pour === 'claude',
       lien: fs.existsSync(path.join(relais.LIVRABLES, `demande-${o.id}`)) ? `/livrables/demande-${o.id}/` : null })),
     journal: journal.map((j) => ({ qui: NOMS[j.acteur] || j.acteur, quoi: j.changement,
       heure: new Date(j.created_at).toLocaleTimeString('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit' }) })),
@@ -271,7 +271,10 @@ async function router(req, res) {
     const d = await json(req);
     const message = String(d.message || '').slice(0, 4000).trim();
     if (!message) return envoyer(res, 200, { voie: 'vide', reply: '' });
-    const r = await esprit.dire(message, { oral: url === '/api/chat' ? false : d.oral !== false });
+    let verification;
+    try { verification = require('./verification.cjs').validerContrat(d.verification); }
+    catch { return envoyer(res, 400, { erreur: 'critères de vérification invalides' }); }
+    const r = await esprit.dire(message, { oral: url === '/api/chat' ? false : d.oral !== false, verification });
     return envoyer(res, 200, r);
   }
   if (m === 'GET' && url === '/api/conversation') {
@@ -311,6 +314,11 @@ async function router(req, res) {
   }
 
   let r;
+  if (m === 'POST' && (r = url.match(/^\/api\/ordres\/(\d+)\/verifier$/))) {
+    const d = await json(req);
+    try { return envoyer(res, 200, await relais.verifierOrdre(+r[1], d.verification)); }
+    catch { return envoyer(res, 400, { erreur: 'critères de vérification invalides' }); }
+  }
   if (m === 'POST' && (r = url.match(/^\/api\/ordres\/(\d+)\/relancer$/))) {
     if (!autorise(req)) return envoyer(res, 403, { ok: false });
     return envoyer(res, 200, { ok: await relais.relancer(+r[1]) });
@@ -527,3 +535,4 @@ if (require.main === module) {
 }
 
 module.exports = { serveur, etat, rapport, version, fichier3d };
+

@@ -198,6 +198,8 @@ async function relancerOrdres(message) {
     if (!r) { lignes.push(`l'ordre ${id} n'existe pas`); continue; }
     if (r.etat === 'faite') { lignes.push(`l'ordre ${id} est déjà fait`); continue; }
     if (r.etat === 'en_cours') { lignes.push(`l'ordre ${id} est en cours`); continue; }
+    if (r.pour === 'verification') { lignes.push(`le résultat de l'ordre ${id} est conservé et attend un contrôle indépendant ; il n'est pas rejoué`); continue; }
+    if (r.pour === 'outil') { lignes.push(`l'ordre ${id} attend le résultat de son outil`); continue; }
     if (r.etat === 'a_faire' && r.pour === 'harness') { lignes.push(`l'ordre ${id} attend déjà son tour`); continue; }
     lignes.push(await require('./relais.cjs').relancer(id) ? `l'ordre ${id} est relancé` : `l'ordre ${id} n'a pas pu être relancé`);
   }
@@ -211,8 +213,8 @@ const PERIME = /recharg|crédits? (de modèles )?(épuisé|insuffisant)|budget (
 
 async function noter(role, content) { await lireN8n("INSERT INTO cortex_chat (role, content) VALUES ($1, $2)", [role, content]); }
 
-async function noterCommande(message, reformulation) {
-  const r = await lire("INSERT INTO commandes (texte, pour) VALUES ($1, 'harness') RETURNING id", [message]);
+async function noterCommande(message, reformulation, verification = null) {
+  const r = await lire("INSERT INTO commandes (texte, pour, verification) VALUES ($1, 'harness', $2) RETURNING id", [message, verification && JSON.stringify(verification)]);
   const id = r[0] ? r[0].id : null;
   const reply = id
     ? `C'est enregistré, ordre numéro ${id}${reformulation ? ' : ' + reformulation.replace(/\s+$/, '').replace(/([^.!?…])$/, '$1.') : '.'} Il est dans la file d'Hermes. Tu verras son état ici, avec le lien du résultat dès qu'il est prêt.`
@@ -230,7 +232,7 @@ async function phraseBudget() {
 }
 
 // Ce que Basile dit (à l'oral ou par écrit) : rend { voie, reply, commande? }.
-async function dire(message, { oral = true } = {}) {
+async function dire(message, { oral = true, verification = null } = {}) {
   await noter('user', message);
   // Heure, météo, minuteries, rappels, « retiens que… », agenda : répondus par du code, sans modèle.
   const utile = await outils.repondre(message);
@@ -257,7 +259,7 @@ async function dire(message, { oral = true } = {}) {
   }
   if (RELANCE.test(message) && /\d/.test(message) && /(ordres?|demandes?|n°|numéros?)\b|\d+\s*(?:et|,)\s*\d+/i.test(message)) return relancerOrdres(message);
   if (NUMEROS_SEULS.test(message)) return relancerOrdres(message); // « 23 et 24 » seul : leur état, rien de neuf
-  if (INTENTION_ACTION.test(message)) return noterCommande(message, '');
+  if (INTENTION_ACTION.test(message)) return noterCommande(message, '', verification);
   const question = QUESTION.test(message.trim())
     || /(fais(-| )(moi )?le point|point de situation|où (on en est|en est|en sommes)|quoi de neuf|résume|raconte|dis-moi|explique)/i.test(message);
 
@@ -280,7 +282,7 @@ async function dire(message, { oral = true } = {}) {
   let reply = parole.texte || "Je n'arrive pas à formuler de réponse à l'instant, même avec le modèle local. Réessaie dans une minute.";
   if (/^\s*\[\[COMMANDE\]\]/.test(reply)) {
     const reste = reply.replace(/^\s*\[\[COMMANDE\]\]\s*/, '');
-    if (!question && !breve(message) && reste.length < 260 && !/\n/.test(reste.trim())) return noterCommande(message, reste);
+    if (!question && !breve(message) && reste.length < 260 && !/\n/.test(reste.trim())) return noterCommande(message, reste, verification);
     reply = reste;
   }
   await noter('assistant', reply);
@@ -288,3 +290,4 @@ async function dire(message, { oral = true } = {}) {
 }
 
 module.exports = { dire, etatDuCerveau, revenusDuMois, OBJECTIF_EUR, PLATEFORMES, INTENTION_ACTION, INTENTION_BUDGET, PERIME, SYSTEME };
+

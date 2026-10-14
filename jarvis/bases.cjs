@@ -24,6 +24,7 @@ async function preparer() {
     source text NOT NULL DEFAULT 'jarvis', pour text NOT NULL DEFAULT 'claude',
     etat text NOT NULL DEFAULT 'a_faire' CHECK (etat IN ('a_faire','en_cours','faite','refusee')), reponse text, traite_le timestamptz)`);
   await lire('CREATE INDEX IF NOT EXISTS commandes_etat ON commandes(etat, cree_le)');
+  await lire('ALTER TABLE commandes ADD COLUMN IF NOT EXISTS verification jsonb');
   await lire(`CREATE TABLE IF NOT EXISTS revenus (id serial PRIMARY KEY, le timestamptz NOT NULL DEFAULT now(),
     montant_eur numeric(10,2) NOT NULL CHECK (montant_eur > 0), source text NOT NULL, note text)`);
   await lire('ALTER TABLE revenus ADD COLUMN IF NOT EXISTS plateforme text');
@@ -47,3 +48,4 @@ function rangerCoffre(nom, valeur) {
 }
 
 module.exports = { cerveau, n8n, lire, lireN8n, preparer, lireCoffre, rangerCoffre };
+

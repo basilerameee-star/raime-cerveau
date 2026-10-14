@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
-import { creerServeur } from '../../hermes/executant.js';
+import { creerServeur, VERSION } from '../../hermes/executant.js';
 
 async function scenario(t, fetchHermes) {
   const serveur = creerServeur({ sansCle: true, fetch: fetchHermes });
@@ -21,7 +21,7 @@ test('santé : « libre » exige une vérification authentifiée, sans appel de 
   });
   const r = await fetch(url + '/sante');
   assert.equal(r.status, 200);
-  assert.deepEqual(await r.json(), { etat: 'libre', moteur: 'hermes' });
+  assert.deepEqual(await r.json(), { etat: 'libre', moteur: 'hermes', version: VERSION });
   assert.equal(appels.length, 1);
   assert.match(appels[0].url, /\/v1\/models$/);
   assert.ok(appels[0].options.headers.Authorization.startsWith('Bearer '));
@@ -58,3 +58,4 @@ test('santé : panne réseau puis rétablissement, sans redémarrer le relais', 
   assert.equal(r.status, 200);
   assert.equal((await r.json()).etat, 'libre');
 });
+
