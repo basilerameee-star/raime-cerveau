@@ -11,6 +11,18 @@ before(async()=>{
   await b.brain.query(`CREATE TABLE IF NOT EXISTS boucle_passages(agent text,statut text,fin_le timestamptz DEFAULT now())`);
   await preparer(b.brain);await b.brain.query('TRUNCATE reflexions');
 });
+
+test('une interruption au troisième bail devient un blocage explicite et ne disparaît pas', async()=>{
+  await b.brain.query(`INSERT INTO reflexions(empreinte,agent,probleme,etat,tentatives,bail,bail_fin)
+    VALUES('banc-troisieme-bail','banc_crash','Recherche interrompue','en_cours',3,
+    '00000000-0000-4000-8000-000000000001',now()-interval '1 minute')`);
+  await traiter({brain:b.brain,rechercher:async()=>{throw new Error('ne doit pas être rejoué');}});
+  const {rows:[r]}=await b.brain.query(`SELECT * FROM reflexions WHERE empreinte='banc-troisieme-bail'`);
+  assert.equal(r.etat,'bloquee');
+  assert.equal(r.bail,null);
+  assert.equal(r.bail_fin,null);
+  assert.match(r.resultat,/interruption/i);
+});
 after(async()=>{await b.brain.query(`DROP TRIGGER IF EXISTS reflexivite_panne ON journal`);await b.brain.query(`DELETE FROM commandes WHERE source='reflexivite'`);await b.fermer();});
 test('une vraie ligne d’échec déclenche une panne durable, les répétitions se regroupent',async()=>{
   for(let i=0;i<2;i++)await b.brain.query(`INSERT INTO journal(acteur,changement,motif) VALUES('boucle','Échec de l''agent banc_panne','connexion : 504')`);
@@ -96,3 +108,4 @@ test('une panne d’Hermes exige la réussite du même ordre, pas d’un autre t
     assert.equal((await b.brain.query(`SELECT etat FROM reflexions WHERE id=$1`,[c.evenement])).rows[0].etat,'resolue');
   } finally {await b.brain.query(`DELETE FROM commandes WHERE id IN ($1,$2)`,[original,autre]);}
 });
+
