@@ -272,7 +272,7 @@ async function router(req, res) {
     const message = String(d.message || '').slice(0, 4000).trim();
     if (!message) return envoyer(res, 200, { voie: 'vide', reply: '' });
     let verification;
-    try { verification = require('../hermes/verification.cjs').validerContrat(d.verification); }
+    try { verification = require('./verification.cjs').validerContrat(d.verification); }
     catch { return envoyer(res, 400, { erreur: 'critères de vérification invalides' }); }
     const r = await esprit.dire(message, { oral: url === '/api/chat' ? false : d.oral !== false, verification });
     return envoyer(res, 200, r);

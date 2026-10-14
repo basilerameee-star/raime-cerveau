@@ -16,7 +16,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
-const { validerContrat, verifierResultat } = createRequire(import.meta.url)('./verification.cjs');
+const { validerContrat, verifierResultat } = createRequire(import.meta.url)('../jarvis/verification.cjs');
 
 const HERMES = process.env.HERMES_URL || 'http://raime-hermes:8642';
 const CLE = process.env.API_SERVER_KEY || '';

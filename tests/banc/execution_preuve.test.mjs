@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { executer } from '../../hermes/executant.js';
 import { createRequire } from 'node:module';
-const { verifierDossier } = createRequire(import.meta.url)('../../hermes/verification.cjs');
+const { verifierDossier } = createRequire(import.meta.url)('../../jarvis/verification.cjs');
 
 const reponse = texte => new Response(JSON.stringify({ choices: [{ message: { content: texte } }], usage: { total_tokens: 20 } }));
 

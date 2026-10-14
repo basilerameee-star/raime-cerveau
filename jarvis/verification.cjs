@@ -1,4 +1,5 @@
 'use strict';
+// Vérificateur dans le dossier monté du Cockpit, aussi lu par l'exécutant.
 // Critères fournis AVANT le travail par l'appelant, jamais tirés du compte rendu.
 // Lecture seulement : aucun script candidat, réseau ou commande du modèle.
 const fs = require('node:fs');

@@ -7,7 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const { lire } = require('./bases.cjs');
 const { blocApis } = require('./apis_utiles.cjs');
-const { validerContrat, verifierResultat, verifierDossier } = require('../hermes/verification.cjs');
+const { validerContrat, verifierResultat, verifierDossier } = require('./verification.cjs');
 
 const EXECUTANT = process.env.EXECUTANT_URL || 'http://harness:8201';
 const LIVRABLES = process.env.LIVRABLES_DIR || '/travail';
