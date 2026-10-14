@@ -44,6 +44,8 @@
     <span class="rj-chiffre"><b id="r-argent">0 €</b> ce mois</span>
     <span class="rj-alerte" id="r-alerte">Aucune relance aujourd’hui.</span>
   </a>
+  <!-- 08/10/2026 : le Veilleur des ordres. Un ordre à faire ou en cours depuis plus de 24 h s'affiche ici en rouge ; le détail est en tête du tiroir Activité. -->
+  <button type="button" id="ordres-retard" class="ordres-retard" data-tiroir="t-activite" hidden aria-live="polite"></button>
   <main id="centre">
     <div id="map-zone"><canvas id="company-map" tabindex="0" aria-label="Organisation en trois dimensions. Glisser pour tourner, Maj et glisser pour déplacer, molette pour avancer. La recherche et le répertoire permettent de sélectionner chaque élément." aria-describedby="map-description"></canvas><div id="spatial-labels" aria-label="Branches de l’organisation"></div></div>
     <p id="map-description" class="sr-only" aria-live="polite">Plan de l’entreprise : sélectionne une pièce ou un agent pour explorer ses connexions.</p>
@@ -96,6 +98,10 @@
 </div>
 
 <aside class="tiroir" id="t-activite" aria-label="Activité"><header><h2>Activité <small>appels, rappels, revenus</small></h2><button class="fermer" aria-label="Fermer">×</button></header><div class="corps">
+    <div class="panneau rouge" id="bloc-ordres-retard" hidden>
+      <h2>Ordres en retard <small>à faire ou en cours depuis plus de 24 h</small></h2>
+      <ul class="fil" id="liste-ordres-retard"></ul>
+    </div>
     <div class="panneau" id="bloc-appels">
       <h2>À appeler <small id="a-n"></small></h2>
       <div id="appels"><p class="vide">Personne à relancer pour l'instant.</p></div>

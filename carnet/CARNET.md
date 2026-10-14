@@ -452,3 +452,14 @@ Merci pour le travail de cette nuit : le banc a déjà trouvé un vrai défaut e
 - Évaluation : 
 - Correction : aucune version cassée ne reste en ligne ; la cause est à traiter dans une nouvelle pull request.
 - Leçon : à tirer par la session suivante.
+
+## 2026-10-14 — les deux veilleurs : publications des clips et ordres oubliés
+- Constat du 08/10 : Basile croyait les clips Sartain publiés. L'ordre n°40 du 03/10 n'avait jamais été exécuté, et 16 clips TikTok avaient disparu sans alerte. Aucun agent ne vérifiait ni les publications ni les ordres en attente.
+- Vérificateur des publications (`clippeur/verificateur.py`, cron 5 h 40 à Paris, `/opt/raime/clippeur`) :
+  - chaque lien de `clips_publies`, YouTube et Instagram d'abord, TikTok ensuite (oEmbed ; balises og: pour Instagram) ;
+  - un témoin public par plateforme, lu avant et après : plateforme illisible = rien de conclu, aucun faux « disparu » ;
+  - état, date du contrôle, compte et réponse dans `clips_publies` (`migrations/025_verification_clips.sql`) ;
+  - un clip qui disparaît : une ligne au Gardien, que la Sentinelle envoie une fois par Resend (`n8n/sentinelle_clips.sql`) ;
+  - `--hors-campagne sartain` : les publications d'un compte qui ne sont pas de la campagne (avant de la relancer sur des comptes qui ne montrent qu'elle).
+- Veilleur des ordres (`jarvis/ordres_retard.cjs`, agent de boucle `agents/veilleur_ordres.js`) : un ordre à faire ou en cours depuis plus de 24 h est en rouge dans l'e-mail de 7 h 30 (`n8n/heraut_format_email.js`, posé par `n8n/poser_veilleurs.py`) et en tête du cockpit ; une table illisible se dit « lecture en échec ».
+- Leçon : la lecture du Cockpit (`bases.cjs`) rend une liste vide quand la base échoue ; un veilleur ne doit pas s'en servir, sinon une panne devient « rien à signaler ».

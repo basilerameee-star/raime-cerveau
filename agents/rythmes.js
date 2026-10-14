@@ -56,6 +56,9 @@ export const RYTHMES = [
   // Les yeux dehors : forums, depots de code, nouveaux modeles, travaux de recherche.
   // Quatre API publiques, tri par du code, rangement dans la bibliotheque. Cout : zero.
   { nom: 'veilleur',     module: './veilleur.js',    fn: 'veiller',     toutes: 24 * H, besoinN8n: false },
+  // 08/10/2026 : le Veilleur des ORDRES (à ne pas confondre avec la veille ci-dessus). Un ordre de Basile à faire ou en cours
+  // depuis plus de 24 h est écrit une fois au journal ; la liste rouge du cockpit et de l'e-mail de 7 h 30 se lit en direct.
+  { nom: 'veilleur_ordres', module: './veilleur_ordres.js', fn: 'veiller', toutes: 1 * H, besoinN8n: false },
   // 08/10/2026 : retiré, remplacé par le Directeur (agents/directeur.js, un seul flux de réflexion). 
   // { nom: 'prospective',  module: './prospective.js', fn: 'projeter',    toutes: 7 * 24 * H, besoinN8n: false },
   // Les portes d'entrée (CCI, organismes de formation) : 40 sites lus par jour, robots.txt

@@ -16,10 +16,11 @@ CLIPS = "/opt/raime/harness/travail/clips"
 COFFRE = "/opt/raime/coffre/secrets.env"
 
 
-def sql(requete, *params):
-    """psql dans le conteneur Postgres ; les paramètres passent par des variables psql (jamais collés dans la requête)."""
+def sql(requete, *params, base=BASE):
+    """psql dans le conteneur Postgres ; les paramètres passent par des variables psql (jamais collés dans la requête).
+    base : raime_brain par défaut ; « n8n » pour le journal du Gardien (verificateur.py, 08/10/2026)."""
     cmd = ["docker", "exec", "-i", "raime-postgres-1", "sh", "-c",
-           'psql -U "$POSTGRES_USER" -d %s -tAq -v ON_ERROR_STOP=1 %s' % (BASE, " ".join("-v p%d=%s" % (i, "'" + str(p).replace("'", "") + "'") for i, p in enumerate(params)))]
+           'psql -U "$POSTGRES_USER" -d %s -tAq -v ON_ERROR_STOP=1 %s' % (base, " ".join("-v p%d=%s" % (i, "'" + str(p).replace("'", "") + "'") for i, p in enumerate(params)))]
     r = subprocess.run(cmd, input=requete, capture_output=True, text=True)
     if r.returncode:
         raise RuntimeError(r.stderr[-400:])

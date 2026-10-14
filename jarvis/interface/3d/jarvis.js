@@ -216,6 +216,15 @@
       try { if (notifications()) new Notification('Jarvis · agenda', { body: dit }); } catch (e) {}
       if (!parleEnCours) parler(dit);
     }
+    // Le Veilleur des ordres (08/10/2026) : un ordre à faire ou en cours depuis plus de 24 h, en rouge sous le résumé du jour
+    // et en tête du tiroir Activité. Une lecture en échec se dit telle quelle (jamais « aucun ordre en retard »).
+    var orr = d.ordres_en_retard || { total: null, liste: [], erreur: 'le cockpit ne donne pas encore cette liste' }, bo = $('ordres-retard');
+    bo.hidden = !(orr.erreur || orr.total);
+    bo.textContent = orr.erreur ? '⚠ Ordres en retard : ' + orr.erreur
+      : '⚠ ' + orr.total + (orr.total > 1 ? ' ordres en retard' : ' ordre en retard') + ' (plus de 24 h) : '
+        + orr.liste.map(function (o) { return 'n°' + o.id; }).join(', ');
+    $('bloc-ordres-retard').hidden = bo.hidden;
+    liste($('liste-ordres-retard'), orr.erreur ? [[null, null, orr.erreur]] : orr.liste.map(function (o) { return [null, null, o.ligne]; }), '');
     // rappels : ceux qui arrivent à échéance sont dits à voix haute et affichés
     var rp = d.rappels || { echus: [], a_venir: [] };
     $('bloc-rappels').hidden = !rp.a_venir.length;

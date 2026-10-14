@@ -22,6 +22,9 @@ const candidatures = require('./candidatures.cjs');
 const prospection = require('./prospection.cjs');
 const agenda = require('./agenda.cjs');
 const reseau = require('./reseau.cjs');
+const ordresRetard = require('./ordres_retard.cjs');
+// lire() rend [] quand la base échoue ; le Veilleur des ordres, lui, doit savoir qu'il n'a pas pu lire.
+const lireOuEchouer = (sql, params) => require('./bases.cjs').cerveau.query(sql, params || []).then((r) => r.rows);
 const { repondreSansFrais } = require('./parole.cjs');
 
 const ICI = __dirname;
@@ -143,9 +146,10 @@ function livrables(req, res) {
 const NOMS = { bibliothecaire: 'Bibliothèque', veilleur: 'Veille', portes: "Portes d'entrée", sas: 'Sas des modèles',
   architecte: 'Architecte', superviseur: 'Surveillance', porte: 'Livraison', essayeur: 'Essayeur', gardien: 'Gardien', reflexif: 'Réflexif',
   penseur: 'Penseur', publiciste: 'Publicité', reconciliateur: 'Réponses', curieux: 'Curieux', econome: 'Économe',
-  prospective: 'Prospective', applicateur: 'Mise en service', executant: 'Hermes', heraut: 'Héraut', eclaireur: 'Éclaireur des modèles', radar: 'Radar', vitrines: 'Vitrines' };
+  prospective: 'Prospective', applicateur: 'Mise en service', executant: 'Hermes', heraut: 'Héraut', eclaireur: 'Éclaireur des modèles', radar: 'Radar', vitrines: 'Vitrines',
+  veilleur_ordres: 'Veilleur des ordres', verificateur_clips: 'Vérificateur des clips' };
 async function etat() {
-  const [ordres, journal, pensee, questions, agents, biblio, veille, prospection, revenus, mains, encaisse, courriels, echus, rappels, relances, envoiVitrines, jourAgenda, direction] = await Promise.all([
+  const [ordres, journal, pensee, questions, agents, biblio, veille, prospection, revenus, mains, encaisse, courriels, echus, rappels, relances, envoiVitrines, jourAgenda, direction, retard] = await Promise.all([
     lire(`SELECT id, texte, etat, pour, round(extract(epoch FROM now() - cree_le) / 60)::int AS minutes, left(coalesce(reponse, ''), 600) AS reponse
       FROM commandes WHERE etat IN ('a_faire','en_cours') OR traite_le > now() - interval '72 hours' ORDER BY cree_le DESC LIMIT 12`),
     lire("SELECT acteur, left(changement, 200) AS changement, created_at FROM journal WHERE created_at > now() - interval '48 hours' ORDER BY created_at DESC LIMIT 12"),
@@ -166,6 +170,8 @@ async function etat() {
     agenda.jour().catch(() => null),   // l'agenda (08/10/2026) : le résumé chiffré et les alertes du jour, base du cerveau seulement
     // le dernier bilan du Directeur (agents/directeur.js, 08/10/2026) : une ligne, la plus récente
     lire(`SELECT le, texte, jsonb_array_length(bilan->'alertes') AS alertes FROM direction ORDER BY le DESC LIMIT 1`).then((r) => r[0] || null).catch(() => null),
+    // le Veilleur des ordres (08/10/2026) : une lecture en échec reste un échec, jamais « aucun ordre en retard »
+    ordresRetard.enRetard(lireOuEchouer).catch((e) => ({ erreur: String(e && e.message || e).slice(0, 120) })),
   ]);
   const coffre = lireCoffre();
   return {
@@ -185,6 +191,9 @@ async function etat() {
     // L'agenda : rappels du jour, en retard, argent du mois (table revenus), les alertes en tête (10 au plus), et celles
     // à signaler UNE fois (notification) ; une relance échue reste dans alertes tant que Basile ne l'a pas traitée.
     // Le Directeur : le bilan du jour (faits comptés en base, alertes, idées jugées), un seul flux de réflexion.
+    // Les ordres à faire ou en cours depuis plus de 24 h, en rouge en tête du cockpit (jarvis/ordres_retard.cjs).
+    ordres_en_retard: Array.isArray(retard) ? { total: retard.length, liste: ordresRetard.pourCockpit(retard) }
+      : { total: null, liste: [], erreur: `lecture en échec : ${retard.erreur}` },
     direction: direction ? { le: direction.le, alertes: Number(direction.alertes) || 0, texte: direction.texte } : null,
     agenda: jourAgenda || { compteurs: { du_jour: 0, en_retard: 0, semaine: 0, ouvertes: 0, argent_mois: 0, decisions: 0 }, alertes: [], a_signaler: [] },
     // L'envoi des vitrines : le mode (pause, test, live) et combien sont partis.
@@ -216,8 +225,12 @@ async function rapport() {
     .map((x) => `${x.libelle} (${x.mode === 'reel' ? `depuis le ${x.debut}` : 'rétro-test 12 mois'}) : ${x.valeur.toFixed(2)} €, ${x.perf >= 0 ? '+' : ''}${x.perf} %, pire baisse ${x.pire} %`)).catch(enEchec);
   const [dernierBilan] = await lire(`SELECT texte FROM direction WHERE le > now() - interval '30 hours' ORDER BY le DESC LIMIT 1`).catch(() => []);
   const relances = await agenda.relancesDuJour().catch(() => ({ titre: 'Tes relances du jour', lignes: ['Agenda illisible ce matin.'] }));
+  // 08/10/2026 : le Veilleur des ordres ; la partie est rouge, juste après les relances (l'argent d'abord, choix de Basile)
+  const retard = await ordresRetard.enRetard(lireOuEchouer).then(ordresRetard.section)
+    .catch((e) => ({ titre: 'Ordres en retard : lecture en échec', rouge: true, lignes: [`La table des ordres n’a pas pu être lue ce matin (${String(e && e.message || e).slice(0, 120)}) : ouvre le cockpit.`] }));
   return { sections: [
     { titre: relances.titre, lignes: relances.lignes },
+    ...(retard ? [retard] : []),
     // 08/10/2026 : le bilan du Directeur (agents/directeur.js) ; il remplace les bilans séparés des anciens agents de réflexion
     { titre: 'La direction : le bilan du jour', lignes: dernierBilan ? dernierBilan.texte.split(String.fromCharCode(10)) : ['Pas encore de bilan : le Directeur passe entre 5 h et 7 h.'] },
     // la bourse en simulation (08/10/2026) : une ligne par stratégie, jamais un conseil de placement
