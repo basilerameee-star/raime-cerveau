@@ -25,3 +25,9 @@ Le repli local exige un refus HTTP d'accès (401/402/403/429) avant démarrage, 
 Après interruption du troisième bail de réparation, la file passe explicitement à `bloquee`, avec sa cause et un délai, plutôt que de rester éternellement `en_cours`. Une nouvelle panne après le délai peut la remettre en attente conformément au contrat existant.
 
 Retour arrière : Revert de la PR puis livraison normale. La colonne JSONB `commandes.verification`, ajoutée de manière idempotente au démarrage, peut rester en place lors du retour arrière.
+
+## Charger le code reçu
+
+La vérification de la porte appelle déjà `run.sh`. Ce lanceur vérifie désormais l'empreinte du code chargé par `raime-executant` : copier les fichiers ne vaut pas rechargement. Un volume de travail partagé est mis en maintenance avant la bascule ; un exécutant occupé dispose de quinze minutes pour finir. S'il reste occupé ou si sa santé est inconnue, la livraison s'arrête sans interrompre sa tâche. Une maintenance déjà posée par l'opérateur reste en place.
+
+Après redémarrage, `/sante` doit renvoyer la nouvelle empreinte et l'état libre. À défaut, le script demande le rechargement du code du relais précédent, puis la porte rétablit le dépôt. Cette étape utilise les accès Docker existants du lanceur, sans nouveau secret ni changement de permissions. Une empreinte vérifiée prouve le code chargé ; les critères de chaque tâche restent distincts.

@@ -15,8 +15,11 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { createRequire } from 'node:module';
 const { validerContrat, verifierResultat } = createRequire(import.meta.url)('../jarvis/verification.cjs');
+export const VERSION = crypto.createHash('sha256').update(fs.readFileSync(new URL(import.meta.url)))
+  .update(fs.readFileSync(new URL('../jarvis/verification.cjs', import.meta.url))).digest('hex');
 
 const HERMES = process.env.HERMES_URL || 'http://raime-hermes:8642';
 const CLE = process.env.API_SERVER_KEY || '';
@@ -130,7 +133,7 @@ export function creerServeur(options = {}) {
   return http.createServer(async (req, res) => {
     const repondre = (code, corps) => { res.writeHead(code, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(corps)); };
     if (req.method === 'GET' && req.url === '/sante') {
-      const etat = await sante(options);
+      const etat = { ...await sante(options), version: VERSION };
       return repondre(etat.etat === 'indisponible' ? 503 : 200, etat);
     }
     if (req.method !== 'POST' || req.url !== '/tache') return repondre(404, { erreur: 'inconnu' });

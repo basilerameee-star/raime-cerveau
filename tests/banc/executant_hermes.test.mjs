@@ -9,7 +9,7 @@ import http from 'node:http';
 
 process.env.API_SERVER_KEY = 'cle-fictive-du-banc';
 process.env.TRAVAIL_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'banc-travail-'));
-const { creerServeur, PREAMBULE } = await import('../../hermes/executant.js');
+const { creerServeur, PREAMBULE, VERSION } = await import('../../hermes/executant.js');
 
 // Faux Hermes : répond, sauf pour une tâche qui contient « panne ».
 const recus = [];
@@ -54,7 +54,7 @@ after(() => serveur.close());
 
 test('/sante répond « libre », comme l’ancien exécutant', async () => {
   const r = await appeler('GET', '/sante');
-  assert.deepEqual(r.corps, { etat: 'libre', moteur: 'hermes' });
+  assert.deepEqual(r.corps, { etat: 'libre', moteur: 'hermes', version: VERSION });
 });
 
 test('une tâche part à Hermes, avec sa clé et la règle d’apprentissage, et revient au format du Cockpit', async () => {
