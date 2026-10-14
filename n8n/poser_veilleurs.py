@@ -31,7 +31,9 @@ def lire(nom):
 
 
 CODE = lire("heraut_format_email.js").rstrip("\n")
-CLAUSE = " ".join(l.strip() for l in lire("sentinelle_clips.sql").splitlines() if l.strip() and not l.strip().startswith("--"))
+# L'espace de tête compte : sans lui, la requête devenait « GROUP BY w.nameUNION ALL » (posé ainsi le 14/10/2026, réparé
+# avant le passage suivant de la Sentinelle ; tests/banc/verificateur_clips_test.py le tient).
+CLAUSE = " " + " ".join(l.strip() for l in lire("sentinelle_clips.sql").splitlines() if l.strip() and not l.strip().startswith("--"))
 
 
 def heraut(nodes):
@@ -55,29 +57,33 @@ def sentinelle(nodes):
     return True
 
 
-change = False
-for wf, faire in (("heraut00000001", heraut), ("sentinelleMon01", sentinelle)):
-    version = psql('select "activeVersionId" from workflow_entity where id=\'%s\'' % wf).strip()
-    assert version, wf + " : aucune version en service"
-    for table, cle, val in (("workflow_entity", "id", wf), ("workflow_history", '"versionId"', version)):
-        brut = psql("select nodes from %s where %s='%s'" % (table, cle, val)).strip()
-        nodes = json.loads(brut)
-        if not faire(nodes):
-            print("%s / %s : déjà à jour" % (wf, table))
-            continue
-        if ESSAI:
-            print("%s / %s : serait mis à jour" % (wf, table))
-            continue
-        sauvegarde = "/opt/raime/backups/%s-%s.avant-%s.json" % (wf, table, JOUR)
-        if not os.path.exists(sauvegarde):                 # la première sauvegarde du jour est la bonne
-            with open(sauvegarde, "w", encoding="utf-8") as f:
-                f.write(brut)
-        texte = json.dumps(nodes, ensure_ascii=False)
-        assert "$wf$" not in texte
-        psql(None, "UPDATE %s SET nodes = $wf$%s$wf$::json WHERE %s = '%s';" % (table, texte, cle, val))
-        print("%s / %s : mis à jour (sauvegarde : %s)" % (wf, table, sauvegarde))
-        change = True
+def poser():
+    change = False
+    for wf, faire in (("heraut00000001", heraut), ("sentinelleMon01", sentinelle)):
+        version = psql('select "activeVersionId" from workflow_entity where id=\'%s\'' % wf).strip()
+        assert version, wf + " : aucune version en service"
+        for table, cle, val in (("workflow_entity", "id", wf), ("workflow_history", '"versionId"', version)):
+            brut = psql("select nodes from %s where %s='%s'" % (table, cle, val)).strip()
+            nodes = json.loads(brut)
+            if not faire(nodes):
+                print("%s / %s : déjà à jour" % (wf, table))
+                continue
+            if ESSAI:
+                print("%s / %s : serait mis à jour" % (wf, table))
+                continue
+            sauvegarde = "/opt/raime/backups/%s-%s.avant-%s.json" % (wf, table, JOUR)
+            if not os.path.exists(sauvegarde):                 # la première sauvegarde du jour est la bonne
+                with open(sauvegarde, "w", encoding="utf-8") as f:
+                    f.write(brut)
+            texte = json.dumps(nodes, ensure_ascii=False)
+            assert "$wf$" not in texte
+            psql(None, "UPDATE %s SET nodes = $wf$%s$wf$::json WHERE %s = '%s';" % (table, texte, cle, val))
+            print("%s / %s : mis à jour (sauvegarde : %s)" % (wf, table, sauvegarde))
+            change = True
+    if change:
+        subprocess.run(["docker", "restart", "raime-n8n-1"], check=True, capture_output=True)
+        print("n8n relancé")
 
-if change:
-    subprocess.run(["docker", "restart", "raime-n8n-1"], check=True, capture_output=True)
-    print("n8n relancé")
+
+if __name__ == "__main__":
+    poser()

@@ -203,5 +203,48 @@ class PassageReel(unittest.TestCase):
         self.assertEqual(psql("n8n", "SELECT count(*) FROM gardien_log WHERE rule = 'Clips non vérifiés';"), "1")
 
 
+def charger_poseur():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("poser_veilleurs", DEPOT / "n8n" / "poser_veilleurs.py")
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)                 # rien ne part vers n8n à l'import : poser() n'est appelé qu'en direct
+    return m
+
+
+class PoserLesNoeuds(unittest.TestCase):
+    """n8n/poser_veilleurs.py : le 14/10/2026, la clause s'est collée au GROUP BY (« w.nameUNION ALL ») et la requête de la
+    Sentinelle ne passait plus. La requête recomposée doit rester valide, et la pose ne s'applique qu'une fois."""
+    REQUETE = "SELECT probleme FROM ( SELECT 'avant' AS probleme FROM (VALUES (1)) v(n) GROUP BY v.n ) x"
+
+    def test_la_clause_garde_son_espace_et_ne_se_pose_qu_une_fois(self):
+        m = charger_poseur()
+        noeuds = [{"name": "Diagnostic", "parameters": {"query": self.REQUETE}}]
+        self.assertTrue(m.sentinelle(noeuds))
+        q = noeuds[0]["parameters"]["query"]
+        self.assertIn("GROUP BY v.n UNION ALL SELECT g.rule", q)
+        self.assertTrue(q.endswith(" ) x"))
+        self.assertFalse(m.sentinelle(noeuds), "déjà posée : rien ne change")
+
+    @unittest.skipUnless(bases_presentes(), "psql et les bases du banc (npm test les prépare)")
+    def test_la_requete_recomposee_s_execute(self):
+        m = charger_poseur()
+        noeuds = [{"name": "Diagnostic", "parameters": {"query": self.REQUETE}}]
+        m.sentinelle(noeuds)
+        sortie = psql("n8n", """CREATE TEMP TABLE gardien_log (id serial, severity text, rule text, detail text, created_at timestamptz DEFAULT now());
+            CREATE TEMP TABLE execution_entity ("workflowId" text, status text, "startedAt" timestamptz);
+            INSERT INTO gardien_log (severity, rule, detail) VALUES ('dur', 'Clips disparus', '1 clip n’est plus en ligne');
+            """ + noeuds[0]["parameters"]["query"] + ";")
+        self.assertEqual(sorted(sortie.splitlines()), ["Clips disparus : 1 clip n’est plus en ligne", "avant"])
+
+    def test_le_code_du_heraut_ne_remplace_que_la_version_attendue(self):
+        m = charger_poseur()
+        vieux = [{"name": "Format email", "parameters": {"jsCode": "// L'e-mail de 7 h 30 (refait le 08/10/2026) : …"}}]
+        self.assertTrue(m.heraut(vieux))
+        self.assertEqual(vieux[0]["parameters"]["jsCode"], m.CODE)
+        self.assertFalse(m.heraut(vieux))
+        with self.assertRaises(AssertionError):
+            m.heraut([{"name": "Format email", "parameters": {"jsCode": "// une autre version, changée à la main"}}])
+
+
 if __name__ == "__main__":
     unittest.main()
