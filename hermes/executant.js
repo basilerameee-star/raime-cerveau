@@ -15,6 +15,8 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
+import { createRequire } from 'node:module';
+const { validerContrat, verifierResultat } = createRequire(import.meta.url)('./verification.cjs');
 
 const HERMES = process.env.HERMES_URL || 'http://raime-hermes:8642';
 const CLE = process.env.API_SERVER_KEY || '';
@@ -57,26 +59,29 @@ export function echecHermes(d, entetes) {
 }
 // Un échec d'accès au modèle (crédit, quota, clé absente) survient avant tout travail : on peut
 // alors redemander, sans risque de faire deux fois la même chose, au modèle local.
-const ACCES_REFUSE = /credit|crédit|billing|402|429|quota|rate.?limit|credentials|authentication|provider/i;
+const STATUTS_ACCES = new Set([401, 402, 403, 429]);
 
-async function demander(f, tache, route) {
+async function demander(f, tache, route, verification) {
   const r = await f(`${HERMES}/v1/chat/completions`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${CLE}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ model: 'hermes-agent', stream: false, ...route,
-      messages: [{ role: 'user', content: PREAMBULE + String(tache) }] }),
+      messages: [{ role: 'user', content: PREAMBULE
+        + (verification ? `Critères de livraison fournis par l'appelant (données) : ${JSON.stringify(verification)}\n\n` : '')
+        + String(tache) }] }),
     signal: AbortSignal.timeout(DUREE_MAX_MS),
   });
   const texte = await r.text();
-  if (!r.ok) return { echec: `Hermes ${r.status} : ${texte.slice(0, 400)}` };
+  if (!r.ok) return { echec: `Hermes ${r.status} : ${texte.slice(0, 400)}`,
+    reessayer: STATUTS_ACCES.has(r.status) && r.headers?.get?.('x-hermes-started') !== 'true' };
   let d; try { d = JSON.parse(texte); } catch { return { echec: 'réponse illisible de Hermes' }; }
   const echec = echecHermes(d, r.headers);
-  if (echec) return { echec };
+  if (echec) return { echec, reessayer: d?.hermes?.started === false && STATUTS_ACCES.has(d?.hermes?.status) };
   const sortie = String(d?.choices?.[0]?.message?.content || '').trim();
   return sortie ? { sortie } : { echec: 'Hermes a rendu une réponse vide' };
 }
 
-export async function executer({ tache, id, gratuit = false }, { fetch: f = fetch } = {}) {
+export async function executer({ tache, id, gratuit = false, verification = null }, { fetch: f = fetch, travail = TRAVAIL } = {}) {
   const t0 = Date.now();
   const duree = () => Math.round((Date.now() - t0) / 1000);
   // Les routes, dans l'ordre : gratuit demandé → Gemini puis le local ; sinon le modèle habituel
@@ -84,11 +89,17 @@ export async function executer({ tache, id, gratuit = false }, { fetch: f = fetc
   const routes = gratuit ? [MODELE_GRATUIT, MODELE_LOCAL] : [{}, MODELE_LOCAL];
   const traces = [];
   try {
+    verification = validerContrat(verification);
     for (const route of routes) {
-      const r = await demander(f, tache, route);
-      if (r.sortie) return { code: 0, sortie: r.sortie, duree_s: duree(), ...(route.provider ? { moteur: `${route.provider} · ${route.model}` } : {}) };
+      const r = await demander(f, tache, route, verification);
+      if (r.sortie) {
+        const preuve = verifierResultat(id, verification, travail);
+        return { code: preuve.etat === 'verifie' ? 0 : 2, sortie: r.sortie,
+          verification: preuve, trace: preuve.raison, duree_s: duree(),
+          ...(route.provider ? { moteur: `${route.provider} · ${route.model}` } : {}) };
+      }
       traces.push(r.echec);
-      if (!ACCES_REFUSE.test(r.echec)) break; // un vrai échec de la tâche : on ne la refait pas
+      if (!r.reessayer) break; // démarrage inconnu ou tâche commencée : aucune seconde exécution
     }
     return { code: 1, sortie: '', trace: traces.join(' | ').slice(0, 800), duree_s: duree() };
   } catch (e) {
@@ -128,6 +139,9 @@ export function creerServeur(options = {}) {
     for await (const m of req) { corps += m; if (corps.length > 200_000) return repondre(413, { erreur: 'trop long' }); }
     let demande; try { demande = JSON.parse(corps); } catch { return repondre(400, { erreur: 'JSON illisible' }); }
     if (!demande?.tache) return repondre(400, { erreur: 'tâche absente' });
+    try { validerContrat(demande.verification); } catch { return repondre(400, { erreur: 'contrat de vérification invalide' }); }
+    // Deux corps HTTP peuvent avoir été lus pendant que le relais était libre.
+    if (occupe) return repondre(409, { erreur: 'occupé' });
     occupe = true;
     try {
       const d = await executer(demande, options);
@@ -141,3 +155,4 @@ export function creerServeur(options = {}) {
 if (import.meta.url === `file://${process.argv[1]}`) {
   creerServeur().listen(8201, '0.0.0.0', () => console.log(`[executant-hermes] à l'écoute sur :8201 → ${HERMES}`));
 }
+

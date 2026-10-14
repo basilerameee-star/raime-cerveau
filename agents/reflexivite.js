@@ -58,6 +58,12 @@ export function ordre(evenement, recherche) {
 }
 
 export async function traiter({ brain, rechercher = rechercherSolution } = {}) {
+  // Un crash ne passe pas dans catch. À la dernière tentative, rendre le blocage
+  // visible au lieu d'exclure éternellement une ligne encore marquée en_cours.
+  await brain.query(`UPDATE reflexions SET etat='bloquee', bail=NULL, bail_fin=NULL,
+    resultat='Interruption de la dernière tentative ; reprise à examiner',
+    prochaine=now()+interval '24 hours', maj_le=now()
+    WHERE etat='en_cours' AND bail_fin < now() AND tentatives >= 3`);
   // Un bail atomique : un crash libère le travail après dix minutes ; trois recherches au plus.
   const bail = crypto.randomUUID();
   const { rows: [e] } = await brain.query(`UPDATE reflexions SET etat='en_cours', bail=$1, bail_fin=now()+interval '10 minutes',
@@ -97,7 +103,8 @@ export async function suivre({ brain, lireOutil } = {}) {
       OR (r.agent = 'hermes' AND EXISTS(SELECT 1 FROM commandes c
         WHERE c.id=r.commande_origine AND c.etat='faite' AND c.traite_le>r.maj_le)))`);
   const { rows } = await brain.query(`SELECT r.*,c.etat AS commande_etat,c.reponse FROM reflexions r JOIN commandes c ON c.id=r.commande
-    WHERE r.etat='confiee' AND c.etat IN ('faite','refusee','a_faire') AND c.traite_le IS NOT NULL LIMIT 3`);
+    WHERE r.etat='confiee' AND c.etat IN ('faite','refusee','a_faire') AND c.traite_le IS NOT NULL
+    AND c.pour IS DISTINCT FROM 'verification' LIMIT 3`);
   for (const r of rows) {
     const numero = Number(r.reponse?.match(/EN_ATTENTE_OUTIL:(\d+)/)?.[1]);
     if (numero && lireOutil) {
@@ -128,3 +135,4 @@ export async function suivre({ brain, lireOutil } = {}) {
       [r.commande_etat === 'faite' && !numero ? 'verification' : 'bloquee', expurger(r.reponse),r.id,r.commande]);
   }
 }
+

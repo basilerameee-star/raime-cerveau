@@ -14,6 +14,7 @@ const { creerServeur, PREAMBULE } = await import('../../hermes/executant.js');
 // Faux Hermes : répond, sauf pour une tâche qui contient « panne ».
 const recus = [];
 let lent = null;
+let demandeActive = null;
 prevoir(/raime-hermes:8642\/v1\/models$/, {});
 prevoir(/raime-hermes:8642\/v1\/chat\/completions$/, (u, o) => {
   const d = JSON.parse(o.body);
@@ -22,14 +23,26 @@ prevoir(/raime-hermes:8642\/v1\/chat\/completions$/, (u, o) => {
   if (/panne/.test(c)) return { choices: [{ message: { content: '' } }] };
   // Les échecs tels que le vrai Hermes les rend (relevés le 26/09/2026).
   if (/deguise/.test(c)) return { choices: [{ message: { content: "⚠️ Provider authentication failed: No usable credentials found for provider 'gemini'." }, finish_reason: 'stop' }], usage: { total_tokens: 0 } };
-  if (d.provider === 'local') return { choices: [{ message: { content: 'Fait par le modèle local.' }, finish_reason: 'stop' }], usage: { total_tokens: 40 } };
-  if (/credit-epuise/.test(c)) return { choices: [{ message: { content: 'Billing or credits exhausted' }, finish_reason: 'error' }], hermes: { failed: true, error: 'HTTP 402: Insufficient credits' } };
+  if (d.provider === 'local') { livrer(); return { choices: [{ message: { content: 'Fait par le modèle local.' }, finish_reason: 'stop' }], usage: { total_tokens: 40 } }; }
+  if (/credit-epuise/.test(c)) return { choices: [{ message: { content: 'Billing or credits exhausted' }, finish_reason: 'error' }], hermes: { failed: true, error: 'HTTP 402: Insufficient credits', started: false, status: 402 } };
   if (/bug-tache/.test(c)) return { choices: [{ message: { content: 'Le script a planté' }, finish_reason: 'error' }], hermes: { failed: true, error: 'tool execution crashed' } };
+  livrer();
   return { choices: [{ message: { content: 'Fait : le site est dans demande-7/app/index.html.' } }] };
 });
 
+function livrer() {
+  if (!/^\d+$/.test(String(demandeActive?.id))) return;
+  const dossier = path.join(process.env.TRAVAIL_DIR, `demande-${demandeActive.id}`, 'app');
+  fs.mkdirSync(dossier, { recursive: true });
+  fs.writeFileSync(path.join(dossier, 'index.html'), '<h1>site du banc</h1>');
+}
+
 let serveur, port;
 const appeler = (methode, chemin, corps) => new Promise((ok, ko) => {
+  if (corps?.tache && /^\d+$/.test(String(corps.id))) {
+    corps.verification = { version: 1, fichiers: [{ chemin: 'app/index.html', contient: 'site du banc' }] };
+    demandeActive = corps;
+  }
   const req = http.request({ host: '127.0.0.1', port, path: chemin, method: methode, headers: { 'Content-Type': 'application/json' } }, (res) => {
     let t = ''; res.on('data', (c) => { t += c; }); res.on('end', () => ok({ statut: res.statusCode, corps: JSON.parse(t) }));
   });
@@ -118,3 +131,4 @@ test('un vrai échec de la tâche n’est pas refait (pas de double exécution)'
   assert.equal(recus.length, 1);
   assert.match(r.corps.trace, /tool execution crashed/);
 });
+

@@ -7,6 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const { lire } = require('./bases.cjs');
 const { blocApis } = require('./apis_utiles.cjs');
+const { validerContrat, verifierResultat, verifierDossier } = require('../hermes/verification.cjs');
 
 const EXECUTANT = process.env.EXECUTANT_URL || 'http://harness:8201';
 const LIVRABLES = process.env.LIVRABLES_DIR || '/travail';
@@ -25,13 +26,37 @@ async function conclure(id, d) {
       reponse = coalesce(reponse, '') || ' [relance]' WHERE id = $1 AND etat = 'en_cours'`, [id]);
     return;
   }
-  const ok = d.code === 0 && !!d.sortie;
-  const r = await lire(`UPDATE commandes SET etat = CASE WHEN $3::boolean THEN 'faite' WHEN ${ROUTINE} THEN 'refusee' ELSE 'a_faire' END,
-    pour = CASE WHEN $3::boolean OR ${ROUTINE} THEN 'harness' ELSE 'claude' END, reponse = $2, traite_le = now()
+  const [commande] = await lire('SELECT verification FROM commandes WHERE id = $1', [id]);
+  const preuve = verifierResultat(id, commande?.verification, LIVRABLES);
+  const ok = d.code === 0 && !!d.sortie && preuve.etat === 'verifie';
+  const attenteOutil = !ok && /^EN_ATTENTE_OUTIL:\d+$/.test(String(d.sortie || '').trim());
+  const aVerifier = !attenteOutil && (d.code === 2 || (d.code === 0 && !ok));
+  const reponse = ok || attenteOutil ? String(d.sortie).slice(-4000) : aVerifier
+    ? `À vérifier : ${preuve.raison || d.trace || 'Résultat non vérifié'}. ${String(d.sortie || '').slice(-3500)}`
+    : `Hermes n'a pas abouti (code ${d.code}). ${String(d.trace || d.erreur || '').slice(-400)}`;
+  const r = await lire(`UPDATE commandes SET etat = CASE WHEN $3::boolean THEN 'faite'
+      WHEN $4::boolean OR $5::boolean THEN 'a_faire' WHEN ${ROUTINE} THEN 'refusee' ELSE 'a_faire' END,
+    pour = CASE WHEN $3::boolean THEN 'harness' WHEN $4::boolean THEN 'verification'
+      WHEN $5::boolean THEN 'outil' WHEN ${ROUTINE} THEN 'harness' ELSE 'claude' END, reponse = $2, traite_le = now()
     WHERE id = $1 AND etat = 'en_cours' RETURNING id`,
-    [id, ok ? String(d.sortie).slice(-4000) : `Hermes n'a pas abouti (code ${d.code}). ${String(d.trace || d.erreur || '').slice(-400)}`, ok]);
+    [id, reponse, ok, aVerifier, attenteOutil]);
   if (r.length) await lire(`INSERT INTO journal(acteur, changement, motif) VALUES('executant', $1, $2)`,
-    [`Ordre n°${id} ${ok ? `fait${d.duree_s ? ` en ${d.duree_s} s` : ''}` : 'bloqué'}`, String(ok ? d.sortie : d.trace || '').slice(-400)]);
+    [`Ordre n°${id} ${ok ? `fait${d.duree_s ? ` en ${d.duree_s} s` : ''}` : attenteOutil ? 'en attente d’outil' : aVerifier ? 'à vérifier' : 'bloqué'}`, reponse.slice(-400)]);
+}
+
+// Ajouter des critères et vérifier les fichiers conservés ne relance jamais Hermes.
+async function verifierOrdre(id, contrat) {
+  contrat = validerContrat(contrat);
+  if (!contrat) throw new Error('critères de vérification exigés');
+  const [c] = await lire("SELECT id FROM commandes WHERE id=$1 AND etat='a_faire' AND pour='verification'", [id]);
+  if (!c) return { ok: false, motif: 'ordre hors de la file de vérification' };
+  const preuve = verifierResultat(id, contrat, LIVRABLES);
+  const rows = await lire(`UPDATE commandes SET verification=$2, etat=CASE WHEN $3::boolean THEN 'faite' ELSE 'a_faire' END,
+    pour=CASE WHEN $3::boolean THEN 'harness' ELSE 'verification' END, traite_le=now()
+    WHERE id=$1 AND etat='a_faire' AND pour='verification' RETURNING id`, [id, JSON.stringify(contrat), preuve.etat === 'verifie']);
+  if (rows.length) await lire("INSERT INTO journal(acteur,changement,motif) VALUES('verification',$1,$2)",
+    [`Ordre n°${id} ${preuve.etat === 'verifie' ? 'vérifié' : 'à vérifier'}`, JSON.stringify(preuve).slice(0, 1200)]);
+  return { ok: rows.length > 0 && preuve.etat === 'verifie', verification: preuve };
 }
 
 // Relancer un ordre bloqué (bouton du Cockpit).
@@ -60,13 +85,18 @@ function consigne(c, apis = '') {
 
 // Un dossier non vide peut contenir un brouillon interrompu. Ne pas le rejouer automatiquement :
 // il a pu déjà produire des effets. Garder ses fichiers et rendre l'interruption visible.
-function resultatReprise(dossier) {
+function resultatReprise(dossier, contrat = null) {
   const fichier = path.join(dossier, '.resultat.json');
   if (!fs.existsSync(fichier)) return { code: 1, trace: 'Interruption : compte rendu absent ; fichiers conservés, résultat non vérifié.' };
   try {
     const r = JSON.parse(fs.readFileSync(fichier, 'utf8'));
     if (!r || !Number.isInteger(r.code) || (r.code === 0 && (typeof r.sortie !== 'string' || !r.sortie.trim())))
       throw new Error('format invalide');
+    if (r.code === 0) {
+      const preuve = verifierDossier(dossier, contrat);
+      if (preuve.etat !== 'verifie') return { ...r, code: 2, verification: preuve, trace: preuve.raison };
+      return { ...r, verification: preuve };
+    }
     return r;
   } catch { return { code: 1, trace: 'Interruption : compte rendu illisible ou invalide ; résultat non vérifié.' }; }
 }
@@ -78,11 +108,11 @@ async function relayer({ fetch = globalThis.fetch } = {}) {
     if (fs.existsSync(path.join(LIVRABLES, '.maintenance'))) return;
     const sante = await fetch(EXECUTANT + '/sante', { signal: AbortSignal.timeout(5000) }).then((r) => r.json()).catch(() => null);
     if (!sante) return;
-    for (const e of await lire(`SELECT id FROM commandes WHERE etat = 'en_cours' AND pour = 'harness'`)) {
+    for (const e of await lire(`SELECT id, verification FROM commandes WHERE etat = 'en_cours' AND pour = 'harness'`)) {
       const dossier = path.join(LIVRABLES, `demande-${e.id}`), fichier = path.join(dossier, '.resultat.json');
-      if (fs.existsSync(fichier)) { await conclure(e.id, resultatReprise(dossier)); continue; }
+      if (fs.existsSync(fichier)) { await conclure(e.id, resultatReprise(dossier, e.verification)); continue; }
       if (sante.etat === 'libre') {
-        await conclure(e.id, resultatReprise(dossier));
+        await conclure(e.id, resultatReprise(dossier, e.verification));
       }
     }
     if (sante.etat !== 'libre' || (await lire(`SELECT 1 FROM commandes WHERE etat = 'en_cours' AND pour = 'harness'`)).length) return;
@@ -91,12 +121,13 @@ async function relayer({ fetch = globalThis.fetch } = {}) {
       WHERE etat = 'a_faire' AND pour = 'claude' AND reponse ~* '(crédit|credit|402|budget|quota|billing|openrouter)'
       AND traite_le < timestamptz '2026-09-27 00:00+02' AND reponse NOT LIKE '%[redonnée sans frais]%'`);
     const c = (await lire(`UPDATE commandes SET etat = 'en_cours' WHERE id = (SELECT id FROM commandes
-      WHERE etat = 'a_faire' AND pour = 'harness' ORDER BY cree_le LIMIT 1) RETURNING id, texte`))[0];
+      WHERE etat = 'a_faire' AND pour = 'harness' ORDER BY cree_le LIMIT 1 FOR UPDATE SKIP LOCKED)
+      AND etat = 'a_faire' AND pour = 'harness' RETURNING id, texte, verification`))[0];
     if (!c) return;
     try {
       const r = await fetch(EXECUTANT + '/tache', { method: 'POST', headers: { 'Content-Type': 'application/json' },
         // Les API publiques qui rendent déjà le service demandé, jointes d'office (jarvis/apis_utiles.cjs, 30/09/2026).
-        body: JSON.stringify({ tache: consigne(c, await blocApis(c.texte, { lire })), id: c.id }), signal: AbortSignal.timeout(46 * 60_000) });
+        body: JSON.stringify({ tache: consigne(c, await blocApis(c.texte, { lire })), id: c.id, verification: c.verification }), signal: AbortSignal.timeout(46 * 60_000) });
       if (r.status === 409) { await conclure(c.id, null); return; } // occupé : on attend, on n'abandonne pas
       await conclure(c.id, await r.json());
     } catch (e) { /* fil coupé : l'ordre reste en cours et se conclura au tour suivant */ }
@@ -124,5 +155,6 @@ function demarrer() {
   setInterval(() => { apprendre().catch(() => {}); }, 10 * 60_000);
 }
 
-module.exports = { demarrer, relayer, relancer, conclure, consigne, resultatReprise, LIVRABLES, ADRESSE };
+module.exports = { demarrer, relayer, relancer, conclure, consigne, resultatReprise, verifierOrdre, LIVRABLES, ADRESSE };
+
 
