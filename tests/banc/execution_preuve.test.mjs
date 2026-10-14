@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { executer } from '../../hermes/executant.js';
+import http from 'node:http';
+import { executer, creerServeur } from '../../hermes/executant.js';
 import { createRequire } from 'node:module';
 const { verifierDossier } = createRequire(import.meta.url)('../../jarvis/verification.cjs');
 
@@ -95,4 +96,46 @@ test('un refus HTTP avant démarrage autorise le repli local sans prétendre vé
   } });
   assert.equal(appels, 2);
   assert.equal(r.code, 2, 'absence de critère : résultat à vérifier même après le repli');
+});
+
+test('la maintenance refuse les nouveaux départs sans appeler Hermes', async () => {
+  const travail = fs.mkdtempSync(path.join(os.tmpdir(), 'preuve-maintenance-'));
+  let appels = 0;
+  const serveur = creerServeur({ sansCle: true, travail, fetch: async () => { appels++; return reponse('Fait'); } });
+  await new Promise(resolve => serveur.listen(0, '127.0.0.1', resolve));
+  try {
+    fs.writeFileSync(path.join(travail, '.maintenance'), 'livraison');
+    const r = await fetch(`http://127.0.0.1:${serveur.address().port}/tache`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: 708, tache: 'Travail' }),
+    });
+    assert.equal(r.status, 409);
+    assert.equal(appels, 0);
+  } finally {
+    await new Promise(resolve => serveur.close(resolve));
+    fs.rmSync(travail, { recursive: true, force: true });
+  }
+});
+
+test('une maintenance commencée pendant la lecture HTTP empêche aussi le départ', async () => {
+  const travail = fs.mkdtempSync(path.join(os.tmpdir(), 'preuve-maintenance-corps-'));
+  let appels = 0;
+  const serveur = creerServeur({ sansCle: true, travail, fetch: async () => { appels++; return reponse('Fait'); } });
+  await new Promise(resolve => serveur.listen(0, '127.0.0.1', resolve));
+  try {
+    const arrivee = new Promise(resolve => serveur.once('request', resolve));
+    let requete;
+    const statut = new Promise((resolve, reject) => {
+      requete = http.request({ host: '127.0.0.1', port: serveur.address().port, path: '/tache', method: 'POST',
+        headers: { 'Content-Type': 'application/json' } }, r => { r.resume(); resolve(r.statusCode); });
+      requete.on('error', reject); requete.flushHeaders();
+    });
+    await arrivee;
+    fs.writeFileSync(path.join(travail, '.maintenance'), 'livraison');
+    requete.end(JSON.stringify({ id: 709, tache: 'Travail' }));
+    assert.equal(await statut, 409);
+    assert.equal(appels, 0);
+  } finally {
+    await new Promise(resolve => serveur.close(resolve));
+    fs.rmSync(travail, { recursive: true, force: true });
+  }
 });

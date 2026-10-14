@@ -40,7 +40,7 @@ esac
   const compte = path.join(base, 'restarts');
   const r = spawnSync('bash', [new URL('../../hermes/recharger.sh', import.meta.url).pathname], {
     env: { ...process.env, RAIME_RECHARGE_RACINE: racine, RAIME_RECHARGE_PORTE: porte,
-      RAIME_RECHARGE_DOCKER: docker, RAIME_RECHARGE_DELAI: '0', RAIME_RECHARGE_SANTE: '0',
+      RAIME_RECHARGE_DOCKER: docker, RAIME_RECHARGE_DELAI: '0', RAIME_RECHARGE_SANTE: '0', RAIME_RECHARGE_DRAIN: '0',
       BANC_TRAVAIL: travail, BANC_MODE: mode, BANC_ATTENDU: attendu, BANC_COMPTE: compte },
     encoding: 'utf8', timeout: 10000,
   });

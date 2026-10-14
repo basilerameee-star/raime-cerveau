@@ -7,7 +7,8 @@ porte="${RAIME_RECHARGE_PORTE:-/opt/raime/porte}"
 DOCKER="${RAIME_RECHARGE_DOCKER:-docker}"
 DELAI="${RAIME_RECHARGE_DELAI:-900}"
 DELAI_SANTE="${RAIME_RECHARGE_SANTE:-60}"
-[[ "$DELAI" =~ ^[0-9]+$ && "$DELAI_SANTE" =~ ^[0-9]+$ ]] || exit 1
+DRAIN="${RAIME_RECHARGE_DRAIN:-15}"
+[[ "$DELAI" =~ ^[0-9]+$ && "$DELAI_SANTE" =~ ^[0-9]+$ && "$DRAIN" =~ ^[0-9]+$ ]] || exit 1
 attendue=$(cat "$racine/hermes/executant.js" "$racine/jarvis/verification.cjs" | sha256sum | cut -d' ' -f1)
 
 etat() {
@@ -49,6 +50,10 @@ nettoyer() {
 }
 trap nettoyer EXIT
 if [ ! -e "$marque" ]; then touch "$marque"; posee=1; fi
+# Première transition depuis le relais ancien : laisser Jarvis terminer son
+# rechargement (deux observations à cinq secondes puis arrêt du processus ancien).
+# Les versions suivantes refusent aussi /tache pendant cette maintenance.
+sleep "$DRAIN"
 fin=$((SECONDS + DELAI))
 while :; do
   ligne=$(etat) || { echo 'Santé inconnue : aucun redémarrage.' >&2; exit 1; }

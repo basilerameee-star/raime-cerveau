@@ -137,6 +137,8 @@ export function creerServeur(options = {}) {
       return repondre(etat.etat === 'indisponible' ? 503 : 200, etat);
     }
     if (req.method !== 'POST' || req.url !== '/tache') return repondre(404, { erreur: 'inconnu' });
+    const maintenance = () => fs.existsSync(path.join(options.travail || TRAVAIL, '.maintenance'));
+    if (maintenance()) return repondre(409, { erreur: 'maintenance : nouveaux départs suspendus' });
     if (occupe) return repondre(409, { erreur: 'occupé' });
     let corps = '';
     for await (const m of req) { corps += m; if (corps.length > 200_000) return repondre(413, { erreur: 'trop long' }); }
@@ -144,7 +146,7 @@ export function creerServeur(options = {}) {
     if (!demande?.tache) return repondre(400, { erreur: 'tâche absente' });
     try { validerContrat(demande.verification); } catch { return repondre(400, { erreur: 'contrat de vérification invalide' }); }
     // Deux corps HTTP peuvent avoir été lus pendant que le relais était libre.
-    if (occupe) return repondre(409, { erreur: 'occupé' });
+    if (occupe || maintenance()) return repondre(409, { erreur: 'occupé ou en maintenance' });
     occupe = true;
     try {
       const d = await executer(demande, options);
