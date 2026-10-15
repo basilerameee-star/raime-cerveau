@@ -112,9 +112,9 @@ class Pilote(unittest.TestCase):
         reserve = {"instagram": {"pret": 12, "attendu": 8}, "youtube": {"pret": 12, "attendu": 8}}
         # 20 clips attendus = 5 jours : pas sous le seuil de 5 jours, rien ne part (ordre du 15/10/2026)
         self.assertEqual(pilote.choisir([note(c) for c in "abc"], self.SOURCES, reserve, []), [])
-        # 19 clips = 4,75 jours : on remonte jusqu'à 7 jours (19 + 8 = 6,75 jours, puis 35)
+        # 19 clips = 4,75 jours : on remonte vers 14 jours, 3 sources au plus par passage
         reserve = {"instagram": {"pret": 12, "attendu": 7}, "youtube": {"pret": 12, "attendu": 8}}
-        self.assertEqual(len(pilote.choisir([note(c) for c in "abc"], self.SOURCES, reserve, [])), 2)
+        self.assertEqual(len(pilote.choisir([note(c) for c in "abc"], self.SOURCES, reserve, [])), 3)
 
     def test_jamais_exclue_dediee_candidature_sans_source_ou_deja_lancee(self):
         reserve = {"instagram": {"pret": 0, "attendu": 0}}

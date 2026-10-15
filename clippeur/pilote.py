@@ -7,7 +7,7 @@ Ordre du 14/10/2026 : au moins 3 publications par jour, tous les jours, sur les 
 
   1. lit le marché Content Rewards (contentrewards.py, API publique) et note chaque campagne (grille en code) ;
   2. mesure la réserve de chaque chaîne active : les clips prêts et pas encore partis, plus ceux en découpe (estimés) ;
-  3. sous LANCER_SOUS (5) jours, remonte jusqu'à RESERVE_CIBLE (7) jours : lance seul les meilleures campagnes qui ont une source connue (lien dans la description,
+  3. sous LANCER_SOUS (5) jours, remonte jusqu'à RESERVE_CIBLE (14) jours : lance seul les meilleures campagnes qui ont une source connue (lien dans la description,
      ou sources.json) : demande de découpe, plateformes payées, profil (mentions, hashtags) ; donne à Basile le lien exact
      pour « Rejoindre » ;
   4. sous ALERTE (2) jours de clips prêts, alerte Basile UNE fois, jusqu'à ce que la réserve remonte.
@@ -35,7 +35,7 @@ import contentrewards as cr                                 # noqa: E402
 ICI = os.path.dirname(os.path.abspath(__file__))
 CADENCE = 4                                                 # créneaux Buffer par jour et par chaîne
 GARANTIE = 3                                                # publications par jour promises, au minimum
-RESERVE_CIBLE = 7                                           # jours d'avance visés
+RESERVE_CIBLE = 14                                          # jours d'avance visés : 2 semaines par chaîne (Basile, 15/10 au soir)
 LANCER_SOUS = 5                                             # sous 5 jours d'avance, d'autres campagnes partent (ordre du 15/10)
 ALERTE = 2                                                  # sous 2 jours de clips prêts : UNE alerte à Basile (ordre du 15/10)
 ATTENDU = 8                                                 # clips comptés par source en cours de découpe
@@ -78,7 +78,7 @@ def choisir(notes, sources, reserve, deja):
     if not reserve:
         return []
     attendu = min(r["pret"] + r["attendu"] for r in reserve.values())
-    if jours(attendu) >= LANCER_SOUS:                       # assez d'avance : rien ne part ; sous 5 jours, on remonte à 7
+    if jours(attendu) >= LANCER_SOUS:                       # assez d'avance : rien ne part ; sous 5 jours, on remonte à 14
         return []
     lancer, urls = [], {d.get("url") for d in deja}
     lancees = {d.get("cr_id") for d in deja}
