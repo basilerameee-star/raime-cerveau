@@ -41,7 +41,8 @@ def telecharger(url, dossier):
     if "drive.google.com" in url:
         cible = dossier / "drive"
         cible.mkdir(exist_ok=True)
-        lancer(["gdown", "--fuzzy", "--folder" if "/folders/" in url else "--no-cookies", url, "-O", str(cible) + "/"])
+        # gdown 6 lit seul les liens de partage (« --fuzzy » n'existe plus : échec de la découpe IShowSpeed, 15/10/2026)
+        lancer(["gdown", "--folder" if "/folders/" in url else "--no-cookies", url, "-O", str(cible) + "/"])
         videos = sorted([f for f in cible.rglob("*") if f.suffix.lower() in (".mp4", ".mov", ".mkv", ".webm", ".m4v")],
                         key=lambda f: f.stat().st_size, reverse=True)
         if not videos:

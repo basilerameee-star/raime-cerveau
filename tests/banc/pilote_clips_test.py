@@ -163,6 +163,25 @@ class Relais(unittest.TestCase):
         self.assertEqual(self.buffer.prochains(lignes, "A", 1)[0]["campagne"], "B")
         self.assertEqual([b["campagne"] for b in self.buffer.prochains(lignes[:2], "A", 2)], ["A", "A"])
 
+    def test_creneaux_aux_memes_heures_de_paris(self):
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        paris = ZoneInfo("Europe/Paris")
+        t = datetime(2026, 10, 15, 16, 0, tzinfo=paris).timestamp()
+        heures = [datetime.fromtimestamp(x, paris).strftime("%d %H:%M") for x in self.buffer.creneaux_apres(t, 5)]
+        self.assertEqual(heures, ["15 19:00", "15 23:00", "16 02:00", "16 15:00", "16 19:00"])
+        hiver = datetime(2026, 10, 25, 14, 0, tzinfo=paris).timestamp()         # le jour du passage à l'heure d'hiver
+        self.assertEqual(datetime.fromtimestamp(self.buffer.creneaux_apres(hiver, 1)[0], paris).strftime("%H:%M"), "15:00")
+
+    def test_un_clip_par_creneau_sur_les_deux_chaines(self):
+        lignes = [{"id": i, "campagne": c, "clip": k, "plateforme": p} for i, (c, k, p) in enumerate(
+            [("A", "1", "instagram"), ("A", "1", "youtube"), ("A", "2", "instagram"), ("A", "2", "youtube"),
+             ("B", "1", "instagram"), ("B", "1", "youtube"), ("C", "1", "tiktok")], 1)]
+        plan = self.buffer.repartir(lignes, ["instagram", "youtube"], None, [100, 200, 300])
+        self.assertEqual([(s, sorted(b["plateforme"] for b in bs), bs[0]["campagne"]) for s, bs in plan],
+                         [(100, ["instagram", "youtube"], "A"), (200, ["instagram", "youtube"], "B"),
+                          (300, ["instagram", "youtube"], "A")])
+
     def test_lecture_groupee_seulement_apres_l_heure(self):
         t = 1_800_000_000
         avant = [{"prevu_s": t + 600, "maj_s": t - 60}]

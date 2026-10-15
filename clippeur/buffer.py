@@ -3,10 +3,10 @@
 
 Les clips entrent dans clips_buffer, une ligne par plateforme payée (clippeur/file.py). Ce script, lancé par cron toutes
 les 2 minutes sur le serveur :
-  1. garde dans Buffer, pour chaque chaîne active, FILE_BUFFER publications d'avance (les 4 créneaux par jour réglés par
-     Basile dans Buffer ; l'offre gratuite en accepte 10 au plus) ; la réserve, elle, attend dans clips_buffer ;
-  2. choisit le clip suivant en alternant les campagnes (jamais deux fois de suite la même source sur une chaîne quand une
-     autre attend) et en vidant d'abord la plus grosse réserve ;
+  1. garde dans Buffer FILE_BUFFER créneaux d'avance, aux heures CRENEAUX, les mêmes pour toutes les chaînes actives
+     (l'API ne règle pas les créneaux de Buffer : chaque publication porte son heure) ; la réserve attend dans clips_buffer ;
+  2. donne à chaque créneau un clip, publié sur toutes les chaînes qui l'attendent, en alternant les campagnes (jamais deux
+     fois de suite la même source quand une autre attend) et en vidant d'abord la plus grosse réserve ;
   3. donne à Buffer le lien signé du clip (7 jours, /pubclip/ du cockpit ; Buffer vérifie le fichier par une requête HEAD,
      que les liens signés R2 refusent) ;
   4. lit en UN appel toutes les publications parties ou en erreur, seulement après l'heure prévue d'une publication, et
@@ -23,6 +23,8 @@ import json
 import os
 import urllib.error
 import urllib.request
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from file import sql, CLIPS, COFFRE, prevenir
 
@@ -34,7 +36,11 @@ CHAINES = os.path.join(ICI, "buffer-chaines.json")         # les chaînes branch
 LECTURE = os.path.join(ICI, "buffer-lecture")              # l'heure de la dernière lecture groupée
 ORGANISATION = "6abfab2f5ee6a202b90cb90b"
 PLATEFORMES = ("youtube", "instagram", "tiktok")
-FILE_BUFFER = 6                                            # publications programmées d'avance par chaîne (1,5 jour)
+FILE_BUFFER = 6                                            # créneaux programmés d'avance (1,5 jour ; l'offre gratuite en garde 10)
+# LES MÊMES HEURES SUR INSTAGRAM ET YOUTUBE (accord de Basile du 15/10/2026) : le même clip part au même moment sur les
+# deux, une seule déclaration par créneau. Heures de Paris = 20 h, 9 h, 13 h et 17 h à New York (public anglophone).
+CRENEAUX = ("02:00", "15:00", "19:00", "23:00")
+FUSEAU = ZoneInfo("Europe/Paris")
 GARDE_QUOTA = 60                                           # appels laissés de côté sur les 30 jours (essais, autres agents)
 PLAFOND_15MIN = 80                                         # sur 100 permis par Buffer
 SUIVI_MIN = 10                                             # minutes entre deux lectures groupées
@@ -181,11 +187,38 @@ def lien_public(campagne, clip, duree=7 * 86400):
     return "https://cockpit.raime.fr/pubclip/%d/%s/%s/%s" % (exp, sig, campagne, clip)
 
 
+def creneaux_apres(t, n):
+    """Les n prochains créneaux (secondes UTC) strictement après t, aux heures CRENEAUX de Paris (heure d'été comprise)."""
+    out, jour = [], datetime.fromtimestamp(t, FUSEAU).date()
+    while len(out) < n:
+        for h in CRENEAUX:
+            s = datetime(jour.year, jour.month, jour.day, int(h[:2]), int(h[3:]), tzinfo=FUSEAU).timestamp()
+            if s > t and len(out) < n:
+                out.append(s)
+        jour += timedelta(days=1)
+    return out
+
+
+def repartir(lignes, actives, dernier, creneaux):
+    """[(créneau, [lignes du clip, une par chaîne])] : un clip par créneau, le même sur toutes les chaînes actives qui
+    l'attendent ; le clip suit l'alternance de prochains() (fonction pure)."""
+    clips, par = [], {}
+    for b in sorted(lignes, key=lambda b: b["id"]):
+        if b["plateforme"] not in actives:
+            continue
+        cle = (b["campagne"], b["clip"])
+        if cle not in par:
+            par[cle] = []
+            clips.append({"id": b["id"], "campagne": b["campagne"], "clip": b["clip"]})
+        par[cle].append(b)
+    return [(s, par[(c["campagne"], c["clip"])]) for s, c in zip(creneaux, prochains(clips, dernier, len(creneaux)))]
+
+
 class FileBufferPleine(Exception):
     """La file Buffer de la chaîne est pleine (offre gratuite) : on réessaiera plus tard, sans échec."""
 
 
-def programmer(b, ids):
+def programmer(b, ids, quand):
     camp, clip, pl = b["campagne"], b["clip"], b["plateforme"]
     if pl not in ids:
         raise RuntimeError("Chaîne %s absente de Buffer : la brancher dans Buffer." % pl)
@@ -195,8 +228,8 @@ def programmer(b, ids):
                                     "notifySubscribers": True, "categoryId": "24"}},
             "tiktok": {"tiktok": {"title": titre[:90]}},
             "instagram": {"instagram": {"type": "reel", "shouldShareToFeed": True}}}[pl]
-    entree = {"channelId": ids[pl], "text": (leg.get(pl) or texte)[:2200], "mode": "addToQueue",          # les créneaux réglés par Basile dans Buffer (4 par jour et par chaîne)
-              "schedulingType": "automatic", "needsApproval": False, "assets": [{"video": {"url": url}}], "metadata": meta}
+    entree = {"channelId": ids[pl], "text": (leg.get(pl) or texte)[:2200], "mode": "customScheduled",      # l'heure du créneau, la même sur chaque chaîne
+              "dueAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(quand)), "schedulingType": "automatic", "needsApproval": False, "assets": [{"video": {"url": url}}], "metadata": meta}
     d = buffer("""mutation($e: CreatePostInput!) { createPost(input: $e) {
         ... on PostActionSuccess { post { id dueAt } } ... on MutationError { message } } }""", {"e": entree})["createPost"]
     if not d.get("post"):
@@ -278,24 +311,25 @@ def main():
         ids = chaines()
     except TropDeDemandes:
         return
-    # 1. la file de Buffer, tenue à FILE_BUFFER publications d'avance par chaîne
-    for pl in actives:
-        deja = int(sql("SELECT count(*) FROM clips_buffer WHERE plateforme = :'p0' AND etat = 'programme';", pl) or 0)
-        if deja >= FILE_BUFFER:
-            continue
-        lignes = rangs("""SELECT coalesce(json_agg(b ORDER BY id), '[]') FROM (SELECT * FROM clips_buffer WHERE plateforme = :'p0'
-                          AND etat = 'a_faire' AND quand <= now()) b;""", pl)
-        dernier = sql("""SELECT campagne FROM clips_buffer WHERE plateforme = :'p0' AND etat IN ('programme', 'publie')
-                         ORDER BY coalesce(prevu, maj) DESC LIMIT 1;""", pl) or None
-        for b in prochains(lignes, dernier, FILE_BUFFER - deja):
-            try:
-                programmer(b, ids)
-            except FileBufferPleine:
-                break                                      # la suite attend que Buffer publie et libère de la place
-            except TropDeDemandes:
-                return
-            except Exception as e:
-                sql("UPDATE clips_buffer SET etat = 'echec', message = :'p0', maj = now() WHERE id = :p1;", str(e)[:300], b["id"])
+    # 1. FILE_BUFFER créneaux d'avance, les mêmes pour toutes les chaînes actives
+    futurs = rangs("""SELECT coalesce(json_agg(DISTINCT extract(epoch FROM prevu)), '[]') FROM clips_buffer
+                      WHERE etat = 'programme' AND prevu > now();""")
+    manque = FILE_BUFFER - len(futurs)
+    if manque > 0:
+        lignes = rangs("SELECT coalesce(json_agg(b), '[]') FROM (SELECT * FROM clips_buffer WHERE etat = 'a_faire' AND quand <= now()) b;")
+        dernier = sql("""SELECT campagne FROM clips_buffer WHERE etat IN ('programme', 'publie')
+                         ORDER BY coalesce(prevu, maj) DESC LIMIT 1;""") or None
+        depart = max([time.time() + 900] + [float(x) for x in futurs])
+        for quand, clip in repartir(lignes, actives, dernier, creneaux_apres(depart, manque)):
+            for b in clip:
+                try:
+                    programmer(b, ids, quand)
+                except FileBufferPleine:
+                    break                                  # la suite attend que Buffer publie et libère de la place
+                except TropDeDemandes:
+                    return
+                except Exception as e:
+                    sql("UPDATE clips_buffer SET etat = 'echec', message = :'p0', maj = now() WHERE id = :p1;", str(e)[:300], b["id"])
     # 2. au-delà de 7 jours, une publication jamais partie est perdue (effacée chez Buffer) : on cesse de l'attendre
     sql("""UPDATE clips_buffer SET etat = 'perdu', message = coalesce(message, 'jamais publiée par Buffer en 7 jours'), maj = now()
            WHERE etat = 'programme' AND coalesce(prevu, cree_le) < now() - interval '7 days';""")
