@@ -50,6 +50,76 @@ export const SITES = {
     savoir: { et: 'Le fournil', phrase: ['La farine', ', l’eau, le sel, le temps : le reste est un savoir-faire.'] },
     fin: ['À demain', ' matin.'],
   },
+  'coiffeur': {
+    ton: '#2a2320', et: 'Coiffure', titre: ['Votre coupe', ',', 'faite pour vous.'],
+    heros: { gauche: '22%', cadre: '50% 50%', cadreM: '50% 50%', centre: '55% 50%', filtre: 'none' },
+    spe: { et: 'Le salon', h2: ['Couper', ', coiffer, conseiller.'], items: [
+      ['La coupe', 'Une coupe pensée pour votre visage, vos cheveux et votre façon de vivre. On en parle avant, et l’on prend le temps de la faire juste.'],
+      ['Le coiffage', 'Brushing et mise en forme : vous repartez coiffé, prêt pour la journée ou pour la soirée, avec les gestes pour garder le résultat chez vous.'],
+      ['Le conseil', 'Le bon geste, le bon produit, la bonne fréquence : votre coiffeur vous dit ce qui convient à vos cheveux. Un appel suffit pour prendre rendez-vous.']] },
+    savoir: { et: 'Le métier', phrase: ['Le geste juste', ' : écouter, couper, ajuster.'] },
+    fin: ['Prenez', ' rendez-vous.'],
+  },
+  'garage automobile': {
+    ton: '#22262b', et: 'Garage', titre: ['Votre voiture', ',', 'entre de bonnes mains.'],
+    heros: { gauche: '22%', cadre: '50% 50%', cadreM: '50% 50%', centre: '55% 50%', filtre: 'none' },
+    spe: { et: 'L’atelier', h2: ['Entretenir', ', réparer, rassurer.'], items: [
+      ['L’entretien', 'Vidange, filtres, niveaux et contrôles : l’entretien régulier qui garde votre voiture fiable et vous évite les mauvaises surprises.'],
+      ['Les réparations', 'Freins, pneus, embrayage, échappement : le problème est cherché, expliqué, puis réparé. Vous savez ce qui est fait, et pourquoi.'],
+      ['Le diagnostic', 'Un voyant allumé, un bruit inhabituel : votre garagiste cherche la cause avant de changer quoi que ce soit. Un appel suffit pour prendre rendez-vous.']] },
+    savoir: { et: 'Le métier', phrase: ['Écouter le moteur', ', trouver la panne, la réparer.'] },
+    fin: ['Passez', ' au garage.'],
+  },
+  'pizzeria': {
+    ton: '#2b1f1a', et: 'Pizzeria', titre: ['La pizza', ',', 'comme on l’aime.'],
+    heros: { gauche: '22%', cadre: '50% 50%', cadreM: '50% 50%', centre: '55% 50%', filtre: 'none' },
+    spe: { et: 'La carte', h2: ['La pâte', ', la sauce, le four.'], items: [
+      ['Les pizzas', 'Des classiques aux recettes de la maison : une pâte étalée, garnie puis cuite au four, servie bien chaude.'],
+      ['À emporter', 'Commandez par téléphone, passez la chercher : votre pizza vous attend, prête au bon moment.'],
+      ['Pour tout le monde', 'Une soirée devant un match, un anniversaire, un repas improvisé : il y en a pour tous les goûts et pour toute la tablée.']] },
+    savoir: { et: 'Le four', phrase: ['La bonne pâte', ' : du temps, du feu et du savoir-faire.'] },
+    fin: ['À très', ' vite.'],
+  },
+  'fleuriste': {
+    ton: '#24291f', et: 'Fleuriste', titre: ['Des fleurs', ',', 'pour chaque moment.'],
+    heros: { gauche: '22%', cadre: '50% 50%', cadreM: '50% 50%', centre: '55% 50%', filtre: 'none' },
+    spe: { et: 'L’atelier', h2: ['Choisir', ', composer, offrir.'], items: [
+      ['Les bouquets', 'Des bouquets composés selon la saison, vos couleurs et votre budget. Pour dire merci, je t’aime, ou simplement faire plaisir.'],
+      ['Les plantes', 'Plantes vertes et fleuries pour la maison ou le bureau, avec les conseils pour les garder belles longtemps.'],
+      ['Les grands moments', 'Mariage, naissance, anniversaire ou deuil : des compositions pensées pour l’occasion. Un appel suffit pour commander à l’avance.']] },
+    savoir: { et: 'Le métier', phrase: ['Chaque bouquet', ' raconte quelque chose.'] },
+    fin: ['Offrez', ' des fleurs.'],
+  },
+  'fromagerie': {
+    ton: '#2d261a', et: 'Fromagerie', titre: ['Le bon fromage', ',', 'à son point.'],
+    heros: { gauche: '22%', cadre: '50% 50%', cadreM: '50% 50%', centre: '55% 50%', filtre: 'none' },
+    spe: { et: 'La cave', h2: ['Choisir', ', goûter, partager.'], items: [
+      ['Les fromages', 'Pâtes dures, pâtes molles, chèvres et bleus : une sélection à goûter, coupée à la demande, à la part ou au poids.'],
+      ['Le conseil', 'Pour un apéritif, un dessert ou un vin donné : votre fromager vous aide à choisir, et vous dit comment les servir.'],
+      ['Les plateaux', 'Une fête, un repas de famille, une soirée entre amis : dites combien vous serez, le plateau se prépare pour vous. Un appel suffit pour commander à l’avance.']] },
+    savoir: { et: 'Le métier', phrase: ['Le temps', ' fait le goût, le fromager fait le reste.'] },
+    fin: ['Venez', ' goûter.'],
+  },
+  'institut de beauté': {
+    ton: '#2e2326', et: 'Institut de beauté', titre: ['Un moment', ',', 'rien que pour vous.'],
+    heros: { gauche: '22%', cadre: '50% 50%', cadreM: '50% 50%', centre: '55% 50%', filtre: 'none' },
+    spe: { et: 'Les soins', h2: ['Prendre soin', ' de soi.'], items: [
+      ['Le visage', 'Des soins du visage adaptés à votre peau : nettoyer, apaiser, éclairer. Un moment de calme qui se voit et qui se sent.'],
+      ['Le corps', 'Épilations, gommages ou modelages : des soins du corps pour se sentir bien, du bout des pieds aux épaules.'],
+      ['Les mains', 'Manucure et beauté des pieds : des ongles soignés, une couleur au choix. Un appel suffit pour prendre rendez-vous.']] },
+    savoir: { et: 'L’institut', phrase: ['Le calme', ', le soin, et le temps de souffler.'] },
+    fin: ['Offrez-vous', ' une pause.'],
+  },
+  'caviste': {
+    ton: '#2a1c22', et: 'Caviste', titre: ['La bonne bouteille', ',', 'pour chaque table.'],
+    heros: { gauche: '22%', cadre: '50% 50%', cadreM: '50% 50%', centre: '55% 50%', filtre: 'none' },
+    spe: { et: 'La cave', h2: ['Goûter', ', choisir, conseiller.'], items: [
+      ['Les vins', 'Rouges, blancs, rosés et bulles, de petits domaines comme de grandes appellations, choisis bouteille par bouteille.'],
+      ['Le conseil', 'Un plat, un budget, une occasion : votre caviste vous propose la bouteille qui va avec, et vous dit pourquoi.'],
+      ['Pour offrir', 'Un anniversaire, un remerciement, une fête : la bouteille à offrir, avec le conseil pour la servir.']] },
+    savoir: { et: 'Le métier', phrase: ['Derrière chaque bouteille', ', une histoire à raconter.'] },
+    fin: ['Passez', ' à la cave.'],
+  },
 };
 
 // Une phrase dont les mots apparaissent un à un (le mot-clé en italique, en tête).
@@ -61,11 +131,14 @@ const mots = ([cle, suite]) => {
 
 // v : la fiche du commerce (nom, métier, ville, adresse, téléphone, horaires, lat, lon, carte) ;
 // o.site : l'adresse du Cockpit ; o.photos : celle des photos (par défaut <site>/demo/photos) ; o.demo : le bandeau de l'offre.
+// Le dossier des photos d'un métier : « institut de beauté » → institut-de-beaute (jarvis/interface/photos/<dossier>/).
+export const dossierPhotos = (m) => String(m || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
 export function maquetteSite(v, o = {}) {
   const s = SITES[v.metier];
   if (!s) return null;   // un métier sans gabarit complet garde sa maquette actuelle
   const site = String(o.site || 'https://cockpit.raime.fr').replace(/\/$/, '');
-  const photos = `${o.photos || `${site}/demo/photos`}/${v.metier}`;
+  const photos = `${o.photos || `${site}/demo/photos`}/${dossierPhotos(v.metier)}`;
   // la galerie charge tout de suite : ses images entrent par le côté, là où le chargement différé ne les verrait pas
   const img = (n, cls = '') => `<img${cls ? ` class="${cls}"` : ''} src="${esc(`${photos}/${n}.webp`)}" alt="" loading="${n === 'heros' || n === 'savoir' || n[0] === 'g' ? 'eager' : 'lazy'}" decoding="async">`;
   const telLisible = v.telephone ? (lisible(v.telephone) || String(v.telephone).trim()) : '';
