@@ -286,9 +286,11 @@ const MESURES = {
   sauvegardes(L, A) {
     const b = A.hote('backup'), o = A.hote('offsite'), r = A.hote('restauration');
     if (!b && !o) return null;
-    const sans = (t) => propre(String(t || '').replace(/\b\d{4}-\d{2}-\d{2}T[\d:]+Z\b/g, '').replace(/\s+:/g, ' :'), 130);
-    return { texte: [b && `Sauvegarde ${quand(b.modifie, A.auj)} : ${sans(b.fin)}`, o && `copie hors du serveur : ${sans(o.fin).slice(0, 90)}`,
-      r && `restauration testée ${quand(r.modifie, A.auj)}`].filter(Boolean).join(' ; ') + '.' };
+    // « backup <date> : n8n 3.8M, raime_brain 42M » → « n8n 3.8M, cerveau 42M » ; la copie R2 et la restauration : OK, sinon leur ligne
+    const apres = (t) => propre(String(t || '').replace(/\d{4}-\d{2}-\d{2}T[\d:.]+Z/g, '').replace(/^[^:]*:\s*/, '').replace(/raime_brain/g, 'cerveau'), 110);
+    const ok = (t) => (/\bOK\b|PASS/.test(t || '') && !/\b(échec|echec|erreur|error|failed)\b/i.test(t || '') ? 'OK' : apres(t));
+    return { texte: [b && `Sauvegarde ${quand(b.modifie, A.auj)} (${apres(b.fin)})`, o && `copie hors du serveur ${quand(o.modifie, A.auj)} : ${ok(o.fin)}`,
+      r && `restauration testée ${quand(r.modifie, A.auj)} : ${ok(r.fin)}`].filter(Boolean).join(' ; ') + '.' };
   },
   livraison(L, A) {
     const p = A.porte; if (!p) return null;

@@ -638,13 +638,7 @@
    "secteur": "candidatures",
    "nom": "Veille des candidatures",
    "rythme": "toutes les 30 min",
-   "src": {
-    "hote": [
-     "veille_candidatures"
-    ],
-    "toutes_h": 0.5,
-    "retard_h": 2
-   },
+   "etat": "ok",
    "mesure": "veille_cand",
    "maintenant": "T’écrit quand une candidature validée ne part pas, quand une offre revient « à toi » ou quand la collecte s’arrête.",
    "bloque": "Rien ne la bloque.",
@@ -2568,6 +2562,7 @@
    "date": "2026-10-08"
   },
   "sujets": {
+   "aa23bd01410b": "Cockpit v6 en direct : la maquette validée sur /v6, branchée sur les vraies données et de vrais boutons",
    "fda8d3ad9d18": "Sources des clips : le PC télécharge en 1080p (carré natif du format « bandes »), envoi 2 à 3 fois plus léger",
    "0d227c0e9d51": "Clips KinGKlip : le pilote choisit seul les campagnes et tient 3 publications par jour sur Instagram et YouTube",
    "b43529de97ef": "Sentinelle : la clause des clips garde son espace devant UNION ALL ; un test exécute la requête recomposée",

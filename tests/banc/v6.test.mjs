@@ -195,7 +195,7 @@ test('v6 : le relevé du serveur fait vivre sauvegardes et livraisons ; trop vie
   assert.equal(agentDe(D, 'inutiles').etat, 'arret', 'Metabase allumé pour rien');
   await b.cerveau.query(`UPDATE releve_hote SET le = now() - interval '2 hours'`);
   D = await lireV6();
-  for (const id of ['sauvegardes', 'livraison', 'veille_cand']) {
+  for (const id of ['sauvegardes', 'livraison', 'chercheur_camp']) {
     assert.equal(agentDe(D, id).etat, 'inconnu', `${id} : un relevé de 2 h ne prouve rien`);
     assert.match(agentDe(D, id).derniere_panne.texte, /relevé du serveur date de/);
   }

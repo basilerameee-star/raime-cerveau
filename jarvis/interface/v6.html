@@ -3,6 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
+<link rel="icon" href="data:,">
 <title>Cockpit rAIme</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -130,8 +131,8 @@ button.chiffre:hover { border-color: var(--encre); }
 .ligne-a { width: 100%; display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 4px 12px; align-items: baseline; padding: 11px 20px; border: 0; border-top: 1px solid var(--bord); background: none; text-align: left; }
 .ligne-a:hover { background: var(--surface-2); }
 .ligne-a .point { align-self: center; }
-.ligne-a b { font-weight: 700; font-size: 13.5px; overflow-wrap: anywhere; }
-.ligne-a .quand { font-size: 12px; font-weight: 700; color: var(--doux); white-space: nowrap; }
+.ligne-a b { font-weight: 700; font-size: 13.5px; overflow-wrap: break-word; }
+.ligne-a .quand { font-size: 12px; font-weight: 700; color: var(--doux); text-align: right; max-width: 150px; }
 .ligne-a .quand.rouge { color: var(--panne); }
 .ligne-a small { grid-column: 2 / -1; color: var(--doux); font-size: 12.5px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .ligne-a em { font-style: normal; color: var(--pale); font-weight: 600; font-size: 11.5px; }
@@ -234,7 +235,7 @@ button.chiffre:hover { border-color: var(--encre); }
 @media (max-width: 1080px) { .deux[style] { grid-template-columns: minmax(0, 1fr) !important; } }
 @media (max-width: 600px) { .carte-tete { flex-wrap: wrap; } }
 .coche input { width: 16px; height: 16px; accent-color: var(--noir); }
-.coche b { font-weight: 700; font-size: 13.5px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.coche b { font-weight: 700; font-size: 13.5px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: break-word; }
 .coche small { color: var(--doux); font-size: 12px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .lettre { background: var(--surface-2); border-radius: 16px; padding: 18px 20px; white-space: pre-wrap; font-size: 13.5px; line-height: 1.65; }
 .source { font-size: 12px; color: var(--doux); line-height: 1.5; }
