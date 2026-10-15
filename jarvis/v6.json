@@ -303,7 +303,7 @@
     "retard_h": 26
    },
    "mesure": "envoi_vit",
-   "maintenant": "Envoie à 9 h les maquettes que tu as validées, avec l’e-mail de leur métier.",
+   "maintenant": "Envoie à 9 h, les jours ouvrés, les maquettes prêtes avec l’e-mail de leur métier ; depuis le 14/10, un brouillon complet est validé seul (hors Suisse et désinscrits).",
    "bloque": "Une maquette validée sans numéro de téléphone ne part pas (voir « Bloquées » dans Site web).",
    "ensuite": "Relancer seul, par e-mail, un envoi resté 7 jours sans réponse (à construire)."
   },
@@ -380,9 +380,9 @@
     "toutes_h": 1
    },
    "mesure": "fureteur",
-   "maintenant": "Prouve le site de chaque entreprise et y lit son adresse e-mail.",
-   "bloque": "Le moteur de recherche ne répond plus depuis le serveur : il lit des fiches mais ne prouve presque plus aucun site (constat du 14/10).",
-   "ensuite": "Trouver une autre façon de chercher les sites depuis le serveur."
+   "maintenant": "Prouve le site de chaque entreprise et y lit son adresse e-mail ; depuis le 15/10, il cherche les sites par Tavily (30 recherches par jour au plus).",
+   "bloque": "Jusqu’au 15/10, le moteur de recherche du serveur était fermé : presque aucun site prouvé.",
+   "ensuite": "Mesurer ce que Tavily lui fait trouver."
   },
   {
    "outils": [
@@ -409,8 +409,8 @@
     "retard_h": 30
    },
    "mesure": "redacteur",
-   "maintenant": "Écrit chaque jour les e-mails de prospection, avec le pré-audit du métier ; rien ne part sans ta validation.",
-   "bloque": "Ta validation.",
+   "maintenant": "Écrit chaque jour les e-mails de prospection, avec le pré-audit du métier ; depuis le 14/10, ils partent seuls (ton accord).",
+   "bloque": "Peu d’adresses nouvelles : le Fureteur en trouve peu.",
    "ensuite": "Rien de prévu."
   },
   {
@@ -436,9 +436,9 @@
     "retard_h": 26
    },
    "mesure": "expediteur",
-   "maintenant": "Envoie chaque matin les e-mails que tu as validés.",
-   "bloque": "Il envoie tout d’un coup : Resend en refuse une partie, et ces refus sont comptés comme envoyés (24 sur 54, du 12 au 14/10, relevé du 14/10).",
-   "ensuite": "Une pause entre deux envois, et chaque refus gardé pour un nouvel essai (prévu)."
+   "maintenant": "Envoie seul, chaque matin à 8 h les jours ouvrés, les e-mails écrits par le code et ceux que tu valides : un toutes les 0,7 s, chacun marqué selon la réponse de Resend (réparé le 15/10).",
+   "bloque": "Rien ne le bloque.",
+   "ensuite": "Son plafond monte de 2 par jour ouvré, et redescend si des e-mails reviennent."
   },
   {
    "outils": [
@@ -1243,10 +1243,9 @@
     "retard_h": 7
    },
    "mesure": "sentinelle",
-   "constat": "alerte",
-   "maintenant": "Surveille les flux, les envois et le budget, et t’écrit en cas d’alerte.",
-   "bloque": "Deux règles se trompent : elle annonce à chaque passage « Fureteur ne tourne plus » alors qu’il passe, et sa règle sur les e-mails envoyés ne voit plus rien (constat du 14/10).",
-   "ensuite": "Corriger ces deux règles."
+   "maintenant": "Surveille les flux, les envois et le budget ; depuis le 15/10, elle ne t’écrit que ce qui demande un geste, une seule fois, et le reste va dans l’e-mail de 7 h 30.",
+   "bloque": "Rien ne la bloque.",
+   "ensuite": "Rien de prévu."
   },
   {
    "outils": [
@@ -2562,6 +2561,11 @@
    "date": "2026-10-08"
   },
   "sujets": {
+   "1df16f26b650": "Fureteur : la recherche web par Tavily (clé gratuite de Basile), 30 recherches par jour au plus",
+   "d4c4b6f99868": "Clips : les mêmes heures sur Instagram et YouTube (le même clip au même créneau), gdown 6 sans --fuzzy, connexion Content Rewards",
+   "188bf9fc43c2": "Le cockpit v6 remplace l'ancien sur le même lien : / et /jarvis servent la v6",
+   "fd72b4486ceb": "Envoi seul des pré-audits et des vitrines ; Expéditeur réparé ; Sentinelle réduite à l'actionnable",
+   "7d18fcd6a7c7": "Cockpit v6 : relu en vrai à 1300, 1536 et 390 px, trois corrections",
    "aa23bd01410b": "Cockpit v6 en direct : la maquette validée sur /v6, branchée sur les vraies données et de vrais boutons",
    "fda8d3ad9d18": "Sources des clips : le PC télécharge en 1080p (carré natif du format « bandes »), envoi 2 à 3 fois plus léger",
    "0d227c0e9d51": "Clips KinGKlip : le pilote choisit seul les campagnes et tient 3 publications par jour sur Instagram et YouTube",
