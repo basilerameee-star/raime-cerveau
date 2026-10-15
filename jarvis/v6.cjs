@@ -424,6 +424,10 @@ async function assembler({ maintenant = new Date(), executant = EXECUTANT, fetch
     B('journal', `SELECT changement, motif, created_at FROM journal WHERE acteur = 'fureteur' AND created_at > now() - interval '24 hours'`),
   ]);
   const { ECHELLES } = await simulations.catch(() => ({ ECHELLES: {} }));
+  // Les e-mails envoyés depuis Jarvis après un appel (15/10/2026) : la preuve de l'envoi, à l'heure de Paris.
+  const apresAppel = await N('envois après l’appel', `SELECT id, vitrine_id, to_email, sujet, statut, erreur, resend_id IS NOT NULL AS suivi,
+      to_char(coalesce(envoye_le, cree_le) AT TIME ZONE 'Europe/Paris', 'DD/MM à HH24 "h" MI') AS quand
+    FROM vitrines_apres_appel ORDER BY id DESC LIMIT 40`).catch(() => []);
 
   // ── Les prospects (base n8n) : ceux qu'on a écrits, appelés ou rappelés, et ceux à appeler sans jamais avoir été écrits ──
   const sirens = [...new Set([...(outreach || []).map((o) => o.siren), ...(appelsR || []).map((a) => a.siren).filter((s) => /^\d{9}$/.test(s)),
@@ -788,6 +792,7 @@ async function assembler({ maintenant = new Date(), executant = EXECUTANT, fetch
     relancesRetard: relSite.retard,
     relancesIa: relIa.jours,
     relancesIaRetard: relIa.retard,
+    apresAppel: (apresAppel || []).map((e) => ({ seg: Number(e.vitrine_id) ? 'site' : 'ia', a: e.to_email, sujet: e.sujet, statut: e.statut, erreur: e.erreur, suivi: e.suivi, quand: e.quand })),
     offres: offresD,
     modelesIA,
     modelesSource: 'agent_runs, 30 jours, lu en direct ; les trois dernières lignes sont relevées à la main, avec leur date',

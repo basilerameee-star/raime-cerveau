@@ -794,6 +794,14 @@ function ouvrirModele(k) {
     <div class="bloc"><span class="etiq">Sources vérifiées le 08/10</span>${m.sources.map(([c, s, u]) => `<div class="source"><b style="color:var(--encre)">${esc(c)}</b><br>${esc(s)} · <a href="${esc(u)}" target="_blank" rel="noopener">la source</a></div>`).join('')}</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="btn" type="button" data-nouvelle="Modèle d’e-mail · ${k === 'site' ? 'site web' : 'intégration IA'}">Demander une retouche</button><span class="raison">Modèle relevé le 08/10.</span></div>`);
 }
+// Les e-mails partis depuis Jarvis après un appel : l'heure, l'adresse, et ce qu'a répondu le service d'envoi.
+function carteEnvoyes(seg) {
+  const l = (D.apresAppel || []).filter((e) => e.seg === seg);
+  const etat = (e) => e.statut === 'envoye' ? 'Parti' : e.statut === 'erreur' ? 'Refusé' : 'En cours';
+  return `<div class="carte"><div class="carte-tete"><h2>Envoyés après l’appel</h2><span class="puce plus">${l.length}</span></div>
+    <p class="note" style="padding:0 20px 8px">« Parti » : le service d’envoi l’a accepté et lui a donné un numéro de suivi. Une copie arrive aussi dans la boîte de réception de contact@raime.fr.</p>
+    <ul class="mini-liste">${l.slice(0, 12).map((e) => `<li style="align-items:flex-start"><span style="min-width:0"><b style="font-weight:600">${esc(e.a)}</b><br><small class="note">${esc(e.quand)} · ${esc(e.sujet)}</small>${e.erreur ? `<br><small style="color:var(--panne)">${esc(e.erreur)}</small>` : ''}</span><span class="${e.statut === 'envoye' ? '' : 'raison'}">${etat(e)}</span></li>`).join('') || '<li><span>Aucun pour l’instant</span><span></span></li>'}</ul></div>`;
+}
 function siteweb() {
   const rel = Object.entries(D.relances), bloq = C.filter((c) => c.seg === 'site' && c.etape === 'completer');
   return `${bandeauJour('site')}<div class="deux"><div style="display:flex;flex-direction:column;gap:18px;min-width:0">${sectionsAppels('site')}</div>
@@ -802,7 +810,7 @@ function siteweb() {
         <ul class="mini-liste">${D.relancesRetard ? `<li><span>En retard, déjà dans ta liste</span><span class="num">${D.relancesRetard}</span></li>` : ''}${rel.map(([j, n]) => `<li><span>${dateFr(j, { weekday: 'long', day: 'numeric' })}</span><span class="num">${n}</span></li>`).join('') || (D.relancesRetard ? '' : '<li><span>Aucune à venir</span><span></span></li>')}</ul></div>
       <div class="carte"><div class="carte-tete"><h2>Bloquées</h2><span class="puce panne plus">${bloq.length}</span></div><p class="note" style="padding:0 20px 10px">Sans numéro de téléphone : validées sans pouvoir partir, ou numéro à lire dans un annuaire.</p>
         <div class="coches">${bloq.map((c) => `<button class="coche" type="button" data-fiche="${c.cle}" style="border-left:0;border-right:0;border-bottom:0;background:none;text-align:left;grid-template-columns:minmax(0,1fr) auto"><span style="min-width:0"><b>${esc(c.nom)}</b><small>${esc(c.metier)} · ${esc(c.ville)}</small></span><span class="note">Compléter</span></button>`).join('') || '<div class="vide">Aucune.</div>'}</div></div>
-      ${carteCategories()}</aside></div>`;
+      ${carteEnvoyes('site')}${carteCategories()}</aside></div>`;
 }
 const choisis = new Set();
 function integration() {
@@ -817,7 +825,7 @@ function integration() {
       </div>
     <aside class="cote"><div class="carte"><div class="carte-tete"><h2>Relances automatiques</h2></div><p class="note" style="padding:0 20px 8px">Un pré-audit sans réponse au bout de 7 jours remonte seul dans ta liste, ce jour-là.</p>
       <ul class="mini-liste">${D.relancesIaRetard ? `<li><span>En retard, déjà dans ta liste</span><span class="num">${D.relancesIaRetard}</span></li>` : ''}${Object.entries(D.relancesIa || {}).map(([j, n]) => `<li><span>${dateFr(j, { weekday: 'long', day: 'numeric' })}</span><span class="num">${n}</span></li>`).join('') || (D.relancesIaRetard ? '' : '<li><span>Aucune à venir</span><span></span></li>')}</ul></div>
-      ${carteModele('ia')}</aside></div>`;
+      ${carteEnvoyes('ia')}${carteModele('ia')}</aside></div>`;
 }
 // Agenda : seulement les rappels avec une note
 let curseur = AUJ;
