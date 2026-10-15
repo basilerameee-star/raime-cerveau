@@ -812,6 +812,11 @@ function cibleDe(cle) {
   if (!m) return null;
   return m[1] ? { cible_type: 'vitrine', cible_id: m[2], siren: 'v' + m[2] } : { cible_type: 'prospect', cible_id: m[4], siren: m[4] };
 }
+// Après l'e-mail envoyé depuis Jarvis : la fiche quitte la liste du jour et revient dans 7 jours, pour la relance.
+async function relancerDans7(cle) {
+  const jour = new Date(Date.now() + 7 * 864e5).toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' });
+  return noterAppel(cle, { resultat: 'rappeler', echeance: jour }).catch(() => null);
+}
 async function noterAppel(cle, d = {}) {
   const c = cibleDe(cle);
   if (!c) return { ok: false, erreur: 'contact inconnu' };
@@ -876,11 +881,13 @@ async function router(req, res, { url, m, envoyer, json, autorise }) {
   if (m === 'POST' && (r = url.match(/^\/api\/v6\/maquette\/(\d{1,9})$/))) {
     if (!autorise(req)) { envoyer(res, 403, { ok: false }); return true; }
     const x = await require('./vitrines.cjs').apresAppel(r[1], await json(req, 12000)).catch((e) => ({ ok: false, message: 'Erreur du cockpit : ' + e.message }));
+    if (x.ok && x.statut === 'envoye') await relancerDans7('v' + r[1]);
     envoyer(res, 200, x.ok ? x : { ...x, erreur: x.message }); return true;
   }
   if (m === 'POST' && (r = url.match(/^\/api\/v6\/preaudit\/(\d{9})$/))) {
     if (!autorise(req)) { envoyer(res, 403, { ok: false }); return true; }
     const x = await require('./vitrines.cjs').auditApresAppel(r[1], await json(req, 12000)).catch((e) => ({ ok: false, message: 'Erreur du cockpit : ' + e.message }));
+    if (x.ok && x.statut === 'envoye') await relancerDans7('p' + r[1]);
     envoyer(res, 200, x.ok ? x : { ...x, erreur: x.message }); return true;
   }
   if (m === 'POST' && url === '/api/v6/demande') {

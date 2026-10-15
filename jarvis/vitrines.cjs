@@ -186,6 +186,9 @@ async function envoyerTout({ vitrineId, a, sujet, corps }, { fetch, webhook }) {
   await lireN8n(TABLE_APRES);
   const [stop] = await lireN8n('SELECT 1 AS x FROM suppression WHERE lower(email) = lower($1) LIMIT 1', [a]);
   if (stop) return { ok: false, message: 'Cette adresse s’est désinscrite : rien n’est envoyé.' };
+  const [deja] = await lireN8n(`SELECT to_char(envoye_le AT TIME ZONE 'Europe/Paris', 'HH24 "h" MI') AS h FROM vitrines_apres_appel
+    WHERE lower(to_email) = lower($1) AND sujet = $2 AND statut = 'envoye' AND envoye_le > now() - interval '30 minutes' LIMIT 1`, [a, sujet]);
+  if (deja) return { ok: false, statut: 'deja', message: `Déjà parti à ${a} à ${deja.h} : rien n’est renvoyé.` };
   const [l] = await lireN8n('INSERT INTO vitrines_apres_appel (vitrine_id, to_email, sujet, corps) VALUES ($1, $2, $3, $4) RETURNING id', [vitrineId, a, sujet, corps]);
   try {
     await fetch(webhook, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: l.id }), signal: AbortSignal.timeout(45000) });

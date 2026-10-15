@@ -1029,7 +1029,7 @@ async function envoiMaquette(c) {
     $('#e-etat').textContent = 'Envoi…';
     try {
       const r = await poster(route, { etape: 'envoyer', a: $('#e-a').value, sujet: $('#e-sujet').value, corps: $('#e-corps').value }, b);
-      $('#e-etat').textContent = r.message; toast(c.nom + ' : ' + r.message); b.disabled = true; b.textContent = 'Envoyé';
+      $('#e-etat').textContent = r.message; toast(c.nom + ' : ' + r.message); b.disabled = true; b.textContent = 'Envoyé'; setTimeout(async () => { fermerTiroir(); await charger(false); }, 1800);
     } catch (e) { $('#e-etat').textContent = e.message; }
   };
 }
