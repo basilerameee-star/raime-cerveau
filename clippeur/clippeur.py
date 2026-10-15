@@ -33,6 +33,42 @@ def lancer(cmd):
     return r.stdout
 
 
+VIDEOS = (".mp4", ".mov", ".mkv", ".webm", ".m4v")
+QUOTA_DRIVE = "QUOTA_DRIVE"            # file.py remet la demande en attente et retente plus tard
+
+
+def telecharger_drive(url, cible, gd=None, videos_max=8):
+    """Le lien Drive de la marque, sans le PC (15/10/2026). Dossier : la liste d'abord, puis les vidéos SEULES (Maxim Hair
+    Restoration : 193 fichiers, dont 180 photos ; gdown --folder tombait sur le quota des photos). Fichier : gdown suit la
+    page « analyse antivirus » des gros fichiers. « Quota dépassé » (fichier très demandé, IShowSpeed × Expedia, 807 Mo) :
+    rien à forcer, on sort avec QUOTA_DRIVE pour retenter plus tard."""
+    import gdown
+    gd = gd or gdown
+    try:
+        if "/folders/" in url:
+            fichiers = gd.download_folder(url=url, output=str(cible), skip_download=True, quiet=True) or []
+            erreur = None
+            for f in [f for f in fichiers if pathlib.Path(f.path).suffix.lower() in VIDEOS][:videos_max]:
+                pathlib.Path(f.local_path).parent.mkdir(parents=True, exist_ok=True)
+                try:
+                    gd.download(id=f.id, output=f.local_path, quiet=True, resume=True)
+                except Exception as e:             # une vidéo refusée n'arrête pas les autres
+                    erreur = e
+            if erreur and not any(f.suffix.lower() in VIDEOS for f in cible.rglob("*")):
+                raise erreur
+        else:
+            m = re.search(r"/d/([\w-]{20,})|[?&]id=([\w-]{20,})", url)
+            gd.download(id=next(g for g in m.groups() if g) if m else None, url=None if m else url,
+                        output=str(cible) + "/", quiet=True, resume=True)
+    except Exception as e:
+        texte = str(e)
+        if any(v in texte for v in ("Too many users", "Quota exceeded", "can't access", "cant access", "Cannot retrieve the public link")):
+            if not any(f.suffix.lower() in VIDEOS for f in cible.rglob("*")):
+                sys.exit("%s : %s" % (QUOTA_DRIVE, texte[-300:].replace("\n", " ")))
+        else:
+            raise
+
+
 def telecharger(url, dossier):
     # une source déjà téléchargée (depuis le PC de Basile : YouTube bloque les adresses de serveur) : on la prend telle quelle
     if pathlib.Path(url).is_file():
@@ -41,10 +77,8 @@ def telecharger(url, dossier):
     if "drive.google.com" in url:
         cible = dossier / "drive"
         cible.mkdir(exist_ok=True)
-        # gdown 6 lit seul les liens de partage (« --fuzzy » n'existe plus : échec de la découpe IShowSpeed, 15/10/2026)
-        lancer(["gdown", "--folder" if "/folders/" in url else "--no-cookies", url, "-O", str(cible) + "/"])
-        videos = sorted([f for f in cible.rglob("*") if f.suffix.lower() in (".mp4", ".mov", ".mkv", ".webm", ".m4v")],
-                        key=lambda f: f.stat().st_size, reverse=True)
+        telecharger_drive(url, cible)
+        videos = sorted([f for f in cible.rglob("*") if f.suffix.lower() in VIDEOS], key=lambda f: f.stat().st_size, reverse=True)
         if not videos:
             sys.exit("Aucune vidéo dans le lien Drive du brief")
         return videos[0]

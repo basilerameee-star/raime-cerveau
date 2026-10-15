@@ -208,7 +208,10 @@ const MESURES = {
     const dernier = c.map((x) => x.publie_le).filter(Boolean).map(iso).sort().pop() || null;
     const enAttente = (L.buffer || []).filter((x) => x.etat === 'a_faire').reduce((s, x) => s + x.n, 0);
     const vieux = !dernier || A.maintenant - new Date(dernier) > 3 * 24 * H;
-    return { texte: `${pluriel(c.length, 'clip publié', 'clips publiés')} en tout${dernier ? `, le dernier ${quand(dernier, A.auj)}` : ''} ; ${nombre(enAttente)} en file.`, dernier,
+    // 15/10/2026 : l'avance de chaque chaîne en jours (clips prêts ÷ 4 créneaux par jour), comme le pilote la compte
+    const avance = ['instagram', 'youtube'].map((pl) => [pl, (L.buffer || []).filter((x) => x.plateforme === pl && ['a_faire', 'programme'].includes(x.etat)).reduce((s, x) => s + x.n, 0) / 4])
+      .map(([pl, j]) => `${pl === 'instagram' ? 'Instagram' : 'YouTube'} ${String(Math.round(j * 10) / 10).replace('.', ',')} j`).join(', ');
+    return { texte: `${pluriel(c.length, 'clip publié', 'clips publiés')} en tout${dernier ? `, le dernier ${quand(dernier, A.auj)}` : ''} ; ${nombre(enAttente)} en file ; avance : ${avance}.`, dernier,
       ...(vieux && !enAttente ? { etat: 'arret', depuis: dernier } : {}) };
   },
   verif_pub(L, A) {
@@ -401,7 +404,7 @@ async function assembler({ maintenant = new Date(), executant = EXECUTANT, fetch
     B('clips', 'SELECT etat, count(*)::int AS n, max(maj) AS dernier FROM clips_demandes GROUP BY etat'),
     un(B('clips', `SELECT max(le)::text AS derniere, count(*) FILTER (WHERE le > current_date - 7)::int AS n7,
       count(*) FILTER (WHERE lancee AND le > current_date - 7)::int AS lancees7 FROM campagnes_proposees`)),
-    B('clips', 'SELECT etat, count(*)::int AS n, max(maj) AS dernier FROM clips_buffer GROUP BY etat'),
+    B('clips', 'SELECT etat, plateforme, count(*)::int AS n, max(maj) AS dernier FROM clips_buffer GROUP BY etat, plateforme'),
     un(B('direction', `SELECT le, jsonb_array_length(coalesce(bilan->'alertes', '[]'::jsonb))::int AS alertes, split_part(texte, E'\\n', 1) AS premiere
       FROM direction ORDER BY le DESC LIMIT 1`)),
     un(B('courriels', `SELECT count(*) FILTER (WHERE classe_le > now() - interval '24 hours')::int AS classes24, max(classe_le) AS dernier FROM courriels`)),

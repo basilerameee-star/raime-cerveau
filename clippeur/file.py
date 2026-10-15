@@ -125,6 +125,16 @@ def hauteur_minimale(format_):
     return 1080 if (format_ or "bandes") == "bandes" else 1440
 
 
+def trop_vieux(d, jours=3, maintenant=None):
+    """La demande a plus de `jours` jours (cree_le) : on cesse de retenter un fichier Drive bloqué par son quota."""
+    import datetime
+    try:
+        cree = datetime.datetime.fromisoformat(str(d.get("cree_le"))[:19])
+    except ValueError:
+        return False
+    return ((maintenant or datetime.datetime.now()) - cree).days >= jours
+
+
 def main():
     verrou = open(VERROU, "w")
     try:
@@ -132,7 +142,8 @@ def main():
     except OSError:
         return                                            # une découpe est déjà en cours
     ligne = sql("""UPDATE clips_demandes SET etat = 'en_cours', maj = now() WHERE id = (SELECT id FROM clips_demandes
-                   WHERE etat = 'a_faire' ORDER BY (coalesce(message, '') LIKE 'En attente%'), id LIMIT 1) RETURNING row_to_json(clips_demandes);""")
+                   WHERE etat = 'a_faire' AND NOT (coalesce(message, '') LIKE 'En attente (quota Drive)%' AND maj > now() - interval '3 hours')
+                   ORDER BY (coalesce(message, '') LIKE 'En attente%'), id LIMIT 1) RETURNING row_to_json(clips_demandes);""")
     if not ligne:
         return
     d = json.loads(next(l for l in ligne.splitlines() if l.startswith("{")))      # la ligne JSON, sans le compte rendu de psql
@@ -213,6 +224,10 @@ def main():
                 for pl in plateformes_a_publier(d):
                     sql("""INSERT INTO clips_buffer (campagne, clip, plateforme, quand) VALUES (:'p0', :'p1', :'p2', now())
                            ON CONFLICT (campagne, clip, plateforme) DO NOTHING;""", d["campagne"], c["clip"], pl)
+    elif "QUOTA_DRIVE" in (r.stderr + r.stdout) and not trop_vieux(d):
+        # fichier Drive très demandé (« quota dépassé ») : rien à forcer, on retente dans 3 heures, 3 jours au plus (15/10/2026)
+        sql("UPDATE clips_demandes SET etat = 'a_faire', message = :'p0', maj = now() WHERE id = :p1;",
+            "En attente (quota Drive) : Google limite les téléchargements de ce fichier, nouvel essai dans 3 heures", d["id"])
     else:
         sql("UPDATE clips_demandes SET etat = 'echec', message = :'p0', maj = now() WHERE id = :p1;",
             (r.stderr or r.stdout)[-300:].replace("\n", " "), d["id"])

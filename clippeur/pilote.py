@@ -7,10 +7,10 @@ Ordre du 14/10/2026 : au moins 3 publications par jour, tous les jours, sur les 
 
   1. lit le marché Content Rewards (contentrewards.py, API publique) et note chaque campagne (grille en code) ;
   2. mesure la réserve de chaque chaîne active : les clips prêts et pas encore partis, plus ceux en découpe (estimés) ;
-  3. sous RESERVE_CIBLE jours, lance seul les meilleures campagnes qui ont une source connue (lien dans la description,
+  3. sous LANCER_SOUS (5) jours, remonte jusqu'à RESERVE_CIBLE (7) jours : lance seul les meilleures campagnes qui ont une source connue (lien dans la description,
      ou sources.json) : demande de découpe, plateformes payées, profil (mentions, hashtags) ; donne à Basile le lien exact
      pour « Rejoindre » ;
-  4. sous ALERTE jours de clips prêts, alerte Basile, une fois par jour au plus.
+  4. sous ALERTE (2) jours de clips prêts, alerte Basile UNE fois, jusqu'à ce que la réserve remonte.
 
 LE CALCUL (15/10/2026)
 - Buffer publie à 4 créneaux par jour et par chaîne (réglés par Basile). Chaque campagne retenue paie Instagram ET
@@ -36,7 +36,8 @@ ICI = os.path.dirname(os.path.abspath(__file__))
 CADENCE = 4                                                 # créneaux Buffer par jour et par chaîne
 GARANTIE = 3                                                # publications par jour promises, au minimum
 RESERVE_CIBLE = 7                                           # jours d'avance visés
-ALERTE = 3                                                  # jours de clips prêts sous lesquels Basile est prévenu
+LANCER_SOUS = 5                                             # sous 5 jours d'avance, d'autres campagnes partent (ordre du 15/10)
+ALERTE = 2                                                  # sous 2 jours de clips prêts : UNE alerte à Basile (ordre du 15/10)
 ATTENDU = 8                                                 # clips comptés par source en cours de découpe
 NOTE_MINI = 40
 LANCEMENTS_MAX = 3                                          # sources lancées au plus par passage
@@ -77,6 +78,8 @@ def choisir(notes, sources, reserve, deja):
     if not reserve:
         return []
     attendu = min(r["pret"] + r["attendu"] for r in reserve.values())
+    if jours(attendu) >= LANCER_SOUS:                       # assez d'avance : rien ne part ; sous 5 jours, on remonte à 7
+        return []
     lancer, urls = [], {d.get("url") for d in deja}
     lancees = {d.get("cr_id") for d in deja}
     for e in notes:
@@ -92,12 +95,13 @@ def choisir(notes, sources, reserve, deja):
     return lancer
 
 
-def a_alerter(reserve, deja_ce_jour):
-    """(alerte ?, jours) : sous ALERTE jours de clips PRÊTS sur une chaîne active, une fois par jour au plus."""
+def a_alerter(reserve, deja_signale):
+    """(alerte ?, jours) : sous ALERTE jours de clips PRÊTS sur une chaîne active, UNE seule fois tant que la réserve n'est
+    pas remontée (deja_signale : la marque pilote-reserve-basse, effacée dès que la réserve repasse au-dessus)."""
     if not reserve:
         return False, 0
     j = min(jours(r["pret"]) for r in reserve.values())
-    return j < ALERTE and not deja_ce_jour, j
+    return j < ALERTE and not deja_signale, j
 
 
 # ---- base et effets (serveur) ----
@@ -124,6 +128,16 @@ def mesurer(sql, actives):
                               AND (plateformes IS NULL OR plateformes LIKE '%%' || :'p0' || '%%');""", pl) or 0)
         out[pl] = {"pret": pret, "attendu": en_cours * ATTENDU}
     return out
+
+
+def ecrire_reserve(sql, reserve):
+    """L'avance de chaque chaîne, en jours, pour le rapport du matin et le cockpit (table clips_reserve, 15/10/2026)."""
+    sql("""CREATE TABLE IF NOT EXISTS clips_reserve (plateforme text PRIMARY KEY, pret int NOT NULL, attendu int NOT NULL,
+           jours numeric NOT NULL, maj timestamptz NOT NULL DEFAULT now());""")
+    for pl, r in reserve.items():
+        sql("""INSERT INTO clips_reserve (plateforme, pret, attendu, jours) VALUES (:'p0', :p1, :p2, :p3)
+               ON CONFLICT (plateforme) DO UPDATE SET pret = EXCLUDED.pret, attendu = EXCLUDED.attendu, jours = EXCLUDED.jours,
+               maj = now();""", pl, r["pret"], r["attendu"], round(jours(r["pret"]), 1))
 
 
 def pourquoi(e):
@@ -235,7 +249,11 @@ def main():
         deja_ce_jour = open(marque, encoding="utf-8").read().strip() == time.strftime("%Y-%m-%d")
     except OSError:
         deja_ce_jour = False
-    alerte, j = a_alerter(reserve, deja_ce_jour)
+    basse = os.path.join(ICI, "pilote-reserve-basse")
+    alerte, j = a_alerter(reserve, os.path.exists(basse))
+    if reserve and j >= ALERTE and os.path.exists(basse):
+        os.remove(basse)                                    # la réserve est remontée : la prochaine baisse sera signalée
+    ecrire_reserve(sql, reserve)
     etat = " · ".join("%s : %d prêts, %d en découpe (%.1f jours)" % (pl, x["pret"], x["attendu"], jours(x["pret"]))
                       for pl, x in reserve.items())
     sans_source = [e for e in notes if not e["exclusion"] and not e["candidature"] and not e["dedies"]
@@ -251,9 +269,12 @@ def main():
             texte += "\nBonnes campagnes sans source connue (lien de vidéo à ajouter dans clippeur/sources.json) :\n" + "\n".join(
                 "- %s : %s (%s)" % (e["nom"], e["lien"], pourquoi(e)) for e in sans_source)
         prevenir(("%d campagne(s) lancée(s)" % len(blocs)) if blocs else ("réserve basse : %.1f jours" % j if alerte else "marché illisible"), texte)
-        if alerte or panne:
+        if panne:
             with open(marque, "w", encoding="utf-8") as f:
                 f.write(time.strftime("%Y-%m-%d"))
+        if alerte:
+            with open(basse, "w", encoding="utf-8") as f:
+                f.write(time.strftime("%Y-%m-%d %H:%M"))
     print(time.strftime("%Y-%m-%d %H:%M"), len(campagnes), "campagnes,", len([e for e in notes if not e["exclusion"]]), "dans la grille,",
           len(a_lancer), "lancée(s) ;", etat, ("; panne : " + panne) if panne else "", flush=True)
 

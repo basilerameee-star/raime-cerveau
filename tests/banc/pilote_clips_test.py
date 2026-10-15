@@ -110,8 +110,11 @@ class Pilote(unittest.TestCase):
 
     def test_la_decoupe_en_cours_compte(self):
         reserve = {"instagram": {"pret": 12, "attendu": 8}, "youtube": {"pret": 12, "attendu": 8}}
-        # 20 clips attendus = 5 jours : une source de plus (8) suffit à passer 7 jours
-        self.assertEqual(len(pilote.choisir([note(c) for c in "abc"], self.SOURCES, reserve, [])), 1)
+        # 20 clips attendus = 5 jours : pas sous le seuil de 5 jours, rien ne part (ordre du 15/10/2026)
+        self.assertEqual(pilote.choisir([note(c) for c in "abc"], self.SOURCES, reserve, []), [])
+        # 19 clips = 4,75 jours : on remonte jusqu'à 7 jours (19 + 8 = 6,75 jours, puis 35)
+        reserve = {"instagram": {"pret": 12, "attendu": 7}, "youtube": {"pret": 12, "attendu": 8}}
+        self.assertEqual(len(pilote.choisir([note(c) for c in "abc"], self.SOURCES, reserve, [])), 2)
 
     def test_jamais_exclue_dediee_candidature_sans_source_ou_deja_lancee(self):
         reserve = {"instagram": {"pret": 0, "attendu": 0}}
@@ -126,9 +129,10 @@ class Pilote(unittest.TestCase):
         e = note("x", sources=["https://youtu.be/v", "https://drive.google.com/file/d/1"])
         self.assertEqual(pilote.source_de(e, {})["url"], "https://drive.google.com/file/d/1")
 
-    def test_alerte_sous_trois_jours_une_fois_par_jour(self):
-        basse = {"instagram": {"pret": 11, "attendu": 16}, "youtube": {"pret": 40, "attendu": 0}}
-        self.assertEqual(pilote.a_alerter(basse, False), (True, 2.75))
+    def test_alerte_sous_deux_jours_une_seule_fois(self):
+        basse = {"instagram": {"pret": 7, "attendu": 16}, "youtube": {"pret": 40, "attendu": 0}}
+        self.assertEqual(pilote.a_alerter(basse, False), (True, 1.75))
+        self.assertFalse(pilote.a_alerter({"instagram": {"pret": 11, "attendu": 0}}, False)[0])   # 2,75 jours : pas d'alerte
         self.assertFalse(pilote.a_alerter(basse, True)[0])
         self.assertFalse(pilote.a_alerter({"instagram": {"pret": 12, "attendu": 0}}, False)[0])
 
@@ -150,6 +154,7 @@ class Relais(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         import buffer
+        sys.modules.setdefault("fcntl", type(sys)("fcntl"))   # Windows : file.py ne s'en sert qu'à la découpe
         import file
         cls.buffer, cls.file = buffer, file
 
@@ -225,6 +230,70 @@ class SourcesVerifiees(unittest.TestCase):
             self.assertTrue(x["url"].startswith("https://"), cid)
             self.assertIn("2026", x["verifie"], cid)
 
+
+
+class Drive(unittest.TestCase):
+    """Le lien Drive de la marque, sans le PC (15/10/2026) : gdown simulé, fichiers réels écrits sur disque."""
+
+    def setUp(self):
+        import tempfile
+        self.dossier = Path(tempfile.mkdtemp())
+        sys.modules.setdefault("gdown", type(sys)("gdown"))
+        import clippeur as cl
+        self.cl = cl
+
+    def faux(self, refuse=(), quota=False):
+        from collections import namedtuple
+        F = namedtuple("F", "id path local_path")
+        cible, vus = self.dossier, []
+
+        class G:
+            @staticmethod
+            def download_folder(url, output, skip_download, quiet):
+                return [F("p1", "A/PRE OP/1.JPG", str(cible / "A/PRE OP/1.JPG")),
+                        F("v1", "A/VIDEO/Video 1.MOV", str(cible / "A/VIDEO/Video 1.MOV")),
+                        F("v2", "B/VIDEO/Vid.mp4", str(cible / "B/VIDEO/Vid.mp4"))]
+
+            @staticmethod
+            def download(id=None, url=None, output=None, quiet=True, resume=True):
+                vus.append(id)
+                if quota:
+                    raise RuntimeError("Too many users have viewed or downloaded this file recently. Quota exceeded")
+                if id in refuse:
+                    raise RuntimeError("Failed to retrieve file url")
+                Path(output if not output.endswith("/") else output + id + ".mp4").write_bytes(b"x" * (10 if id == "v1" else 5))
+        return G, vus
+
+    def test_dossier_les_videos_seules(self):
+        g, vus = self.faux()
+        self.cl.telecharger_drive("https://drive.google.com/drive/folders/abc", self.dossier, gd=g)
+        self.assertEqual(vus, ["v1", "v2"])                       # aucune photo demandée
+        self.assertTrue((self.dossier / "A/VIDEO/Video 1.MOV").is_file())
+
+    def test_dossier_une_video_refusee_n_arrete_pas_les_autres(self):
+        g, _ = self.faux(refuse=("v1",))
+        self.cl.telecharger_drive("https://drive.google.com/drive/folders/abc", self.dossier, gd=g)
+        self.assertTrue((self.dossier / "B/VIDEO/Vid.mp4").is_file())
+
+    def test_fichier_quota_sort_avec_quota_drive(self):
+        g, vus = self.faux(quota=True)
+        with self.assertRaises(SystemExit) as e:
+            self.cl.telecharger_drive("https://drive.google.com/file/d/1pcUMz8ZpbIcku3ylk6dhOi6xjWAT3juc/view?usp=sharing", self.dossier, gd=g)
+        self.assertIn("QUOTA_DRIVE", str(e.exception))
+        self.assertEqual(vus, ["1pcUMz8ZpbIcku3ylk6dhOi6xjWAT3juc"])
+
+    def test_autre_panne_remonte(self):
+        g, _ = self.faux(refuse=("1pcUMz8ZpbIcku3ylk6dhOi6xjWAT3juc",))
+        with self.assertRaises(RuntimeError):
+            self.cl.telecharger_drive("https://drive.google.com/file/d/1pcUMz8ZpbIcku3ylk6dhOi6xjWAT3juc/view", self.dossier, gd=g)
+
+    def test_quota_retente_trois_jours_au_plus(self):
+        import datetime
+        sys.modules.setdefault("fcntl", type(sys)("fcntl"))   # Windows : file.py ne s'en sert qu'à la découpe
+        import file
+        now = datetime.datetime(2026, 10, 18, 8, 0)
+        self.assertFalse(file.trop_vieux({"cree_le": "2026-10-15T09:26:00+00:00"}, maintenant=now))
+        self.assertTrue(file.trop_vieux({"cree_le": "2026-10-15T07:26:00+00:00"}, maintenant=now))
 
 if __name__ == "__main__":
     unittest.main()

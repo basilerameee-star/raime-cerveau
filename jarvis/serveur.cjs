@@ -231,6 +231,10 @@ async function rapport() {
   const [dernierBilan] = await lire(`SELECT texte FROM direction WHERE le > now() - interval '30 hours' ORDER BY le DESC LIMIT 1`).catch(() => []);
   const relances = await agenda.relancesDuJour().catch(() => ({ titre: 'Tes relances du jour', lignes: ['Agenda illisible ce matin.'] }));
   // 08/10/2026 : le Veilleur des ordres ; la partie est rouge, juste après les relances (l'argent d'abord, choix de Basile)
+  // 15/10/2026 : l'avance des clips KinGKlip en jours, par chaîne (clippeur/pilote.py écrit clips_reserve 3 fois par jour)
+  const avance = await lire(`SELECT plateforme, jours, pret, attendu, maj FROM clips_reserve ORDER BY plateforme`).catch(() => null);
+  const pub24 = await lire(`SELECT plateforme, count(*)::int AS n, count(*) FILTER (WHERE coalesce(declare_whop, false))::int AS d
+    FROM clips_publies WHERE publie_le > now() - interval '24 hours' GROUP BY plateforme ORDER BY plateforme`).catch(() => []);
   const retard = await ordresRetard.enRetard(lireOuEchouer).then(ordresRetard.section)
     .catch((e) => ({ titre: 'Ordres en retard : lecture en échec', rouge: true, lignes: [`La table des ordres n’a pas pu être lue ce matin (${String(e && e.message || e).slice(0, 120)}) : ouvre le cockpit.`] }));
   return { sections: [
@@ -240,6 +244,9 @@ async function rapport() {
     { titre: 'La direction : le bilan du jour', lignes: dernierBilan ? dernierBilan.texte.split(String.fromCharCode(10)) : ['Pas encore de bilan : le Directeur passe entre 5 h et 7 h.'] },
     // 14/10/2026 : les envois partent seuls ; le matin, leurs chiffres et le Fureteur (jarvis/envois.cjs), sans alerte
     envois,
+    { titre: 'Clips KinGKlip : l’avance', rouge: !!(avance && avance.some((a) => Number(a.jours) < 2)), lignes: avance === null ? ['Lecture en échec : la table clips_reserve est absente ou illisible.']
+      : [...avance.map((a) => `${a.plateforme === 'instagram' ? 'Instagram' : a.plateforme === 'youtube' ? 'YouTube' : a.plateforme} : ${String(a.jours).replace('.', ',')} jours d’avance (${a.pret} clips prêts${a.attendu ? `, ~${a.attendu} en découpe` : ''})`),
+        ...(pub24.length ? pub24.map((p) => `${p.plateforme} : ${p.n} publié(s) en 24 h, ${p.d} déclaré(s) à Content Rewards`) : ['Aucune publication en 24 h.'])] },
     // la bourse en simulation (08/10/2026) : une ligne par stratégie, jamais un conseil de placement
     { titre: 'Trading (entraînement simulé, 1 000 € fictifs par agent)', lignes: trading.length ? trading : ['Pas encore de données de trading.'] },
     { titre: 'Bourse (simulation, 1 000 € fictifs par stratégie)', lignes: bourse.length ? bourse : ['Pas encore de simulation : elle passe chaque soir après 22 h.'] },
