@@ -125,6 +125,12 @@ class Pilote(unittest.TestCase):
         choisis = pilote.choisir(notes, sources, reserve, [{"cr_id": "d", "url": "https://youtu.be/d"}])
         self.assertEqual([e["cr_id"] for e, _ in choisis], [])
 
+    def test_drive_avant_youtube(self):
+        reserve = {"instagram": {"pret": 0, "attendu": 0}}
+        sources = {"a": {"url": "https://youtu.be/a"}, "b": {"url": "https://youtu.be/b"}, "c": {"url": "https://drive.google.com/file/d/c"}}
+        choisis = [e["cr_id"] for e, _ in pilote.choisir([note("a"), note("b"), note("c")], sources, reserve, [])]
+        self.assertEqual(choisis, ["c", "a", "b"])
+
     def test_source_du_fichier_puis_drive_avant_youtube(self):
         self.assertEqual(pilote.source_de(note("a"), self.SOURCES)["url"], "https://youtu.be/a")
         e = note("x", sources=["https://youtu.be/v", "https://drive.google.com/file/d/1"])

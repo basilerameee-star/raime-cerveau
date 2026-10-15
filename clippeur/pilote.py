@@ -149,7 +149,12 @@ def choisir(notes, sources, reserve, deja):
         return []
     lancer, urls = [], {d.get("url") for d in deja}
     lancees = {d.get("cr_id") for d in deja}
-    for e in notes:
+    # Basile, 15/10/2026 22 h 50 : les sources que le serveur télécharge seul (Drive, lien direct) passent avant YouTube,
+    # qui exige le PC ; à source égale, l'ordre de la grille
+    def youtube(e):
+        s = source_de(e, sources)
+        return bool(s) and any(h in s["url"] for h in ("youtube.com", "youtu.be"))
+    for e in sorted(notes, key=youtube):
         if len(lancer) >= LANCEMENTS_MAX or jours(attendu) >= RESERVE_CIBLE:
             break
         s = source_de(e, sources)
