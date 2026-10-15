@@ -100,8 +100,29 @@ Brief :
 """ + texte[:12000], cle_gemini())
     p.update({"_source": "Brief collé sur /clips (demande n°%s), extrait par Gemini." % d["id"], "brief_brut": texte[:12000],
               "sous_titres": True, "cadrage": "visage", "publication_auto": True})
-    p["min"] = max(int(p.get("min") or 12), 12)      # la durée suit le moment (décision du 02/10/2026); p["max"] = max(int(p.get("max") or 35), p["min"] + 8)
+    p["min"] = max(int(p.get("min") or 12), 12)      # la durée suit le moment (décision du 02/10/2026)
+    p["max"] = max(int(p.get("max") or 35), p["min"] + 8)
     return p
+
+
+NOS_PLATEFORMES = ("youtube", "instagram")              # KinGKlip (15/10/2026) ; TikTok en pause depuis le 04/10
+
+
+def plateformes_a_publier(demande, en_pause=lambda pl: os.path.exists("/opt/raime/clippeur/pause-" + pl)):
+    """Les plateformes où le clip part : celles que la campagne paie (colonne plateformes, posée par le pilote), moins
+    celles en pause. Avant le 15/10, chaque clip partait sur YouTube, TikTok et Instagram, payé ou non."""
+    try:
+        payees = json.loads(demande.get("plateformes") or "null") or list(NOS_PLATEFORMES)
+    except ValueError:
+        payees = list(NOS_PLATEFORMES)
+    return [pl for pl in payees if pl in ("youtube", "instagram", "tiktok") and not en_pause(pl)]
+
+
+def hauteur_minimale(format_):
+    """La hauteur de source au-dessous de laquelle l'image serait grossie. Format « bandes » (le défaut validé par Basile) :
+    le carré net fait 1080 × 1080, pris dans la hauteur de la source, donc 1080p suffit sans agrandir. Plein écran
+    (recadrage 9:16) : 1440p, la règle du 02/10/2026."""
+    return 1080 if (format_ or "bandes") == "bandes" else 1440
 
 
 def main():
@@ -151,19 +172,20 @@ def main():
     dossier = os.path.join(CLIPS, d["campagne"])
     os.makedirs(dossier, exist_ok=True)
     shutil.copyfile(profil, os.path.join(dossier, "brief.json"))
-    # qualité : jamais de source en dessous de 1440p (règle de Basile, 02/10/2026) ; l'image n'est jamais grossie
+    # qualité : l'image n'est jamais grossie (règle de Basile, 02/10/2026) ; 1080p suffit au format « bandes » (15/10/2026)
+    mini = hauteur_minimale(json.load(open(profil, encoding="utf-8")).get("format", "bandes"))
     if source.startswith("/sortie/"):
         h = subprocess.run(["docker", "run", "--rm", "-v", "%s:/sortie" % CLIPS, "--entrypoint", "ffprobe", "raime-clippeur", "-v", "0",
                             "-select_streams", "v:0", "-show_entries", "stream=height", "-of", "csv=p=0", source],
                            capture_output=True, text=True).stdout.strip()
-        if h.isdigit() and int(h) < 1440:
+        if h.isdigit() and int(h) < mini:
             sql("UPDATE clips_demandes SET etat = 'echec', message = :'p0', maj = now() WHERE id = :p1;",
-                "Source en %sp : 1440p minimum exigé" % h, d["id"])
-            prevenir("source trop faible : " + d["campagne"], "La vidéo source est en %sp. La règle est 1440p minimum : trouve une version de meilleure qualité (lien du brief, Drive de la marque) et relance." % h)
+                "Source en %sp : %dp minimum exigé" % (h, mini), d["id"])
+            prevenir("source trop faible : " + d["campagne"], "La vidéo source est en %sp. Il faut %dp au moins pour ne jamais grossir l'image : trouve une version de meilleure qualité (lien du brief, Drive de la marque) et relance." % (h, mini))
             return
     env = dict(os.environ, GEMINI_API_KEY=cle_gemini())
     cmd = ["docker", "run", "--rm", "-e", "GEMINI_API_KEY", "-v", "%s:/sortie" % CLIPS, "-v", "clippeur-modeles:/root/.cache",
-           "-v", "/opt/raime/clippeur/campagnes:/campagnes:ro",
+           "-v", "/opt/raime/clippeur/campagnes:/campagnes:ro", "-v", "/opt/raime/clippeur/clippeur.py:/app/clippeur.py:ro",
            "raime-clippeur", source, "--campagne", d["campagne"], "--nombre", str(d["nombre"])]
     # le profil de la campagne (tags, hashtags, mots interdits, consignes du brief), s'il existe
     if os.path.isfile("/opt/raime/clippeur/campagnes/%s.json" % d["campagne"]):
@@ -188,7 +210,7 @@ def main():
             for c in clips:
                 if any(c["debut"] < f and c["fin"] > d0 for d0, f in deja):
                     continue
-                for pl in ("youtube", "tiktok", "instagram"):
+                for pl in plateformes_a_publier(d):
                     sql("""INSERT INTO clips_buffer (campagne, clip, plateforme, quand) VALUES (:'p0', :'p1', :'p2', now())
                            ON CONFLICT (campagne, clip, plateforme) DO NOTHING;""", d["campagne"], c["clip"], pl)
     else:

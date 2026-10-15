@@ -1,0 +1,74 @@
+{
+  "_lisezmoi": "Sources vérifiées des campagnes Content Rewards (pilote.py). La fiche publique ne montre pas les fichiers de référence (réservés à qui a rejoint) : chaque entrée donne la vidéo source trouvée et contrôlée (chaîne officielle, épisode, durée), les mentions et hashtags du brief quand ils sont connus. Clé = id de la campagne (contentrewards.com/c/campaigns/<id>). Le PC de Basile télécharge les vidéos YouTube (le serveur est bloqué) ; un lien Drive part directement du serveur.",
+  "campagnes": {
+    "3b59058d-81d1-489b-bf54-97375caa10ad": {
+      "nom": "HardScope Love And Justice Ep 3 x ClipFarm",
+      "url": "https://www.youtube.com/watch?v=lcc81gtNkfs",
+      "nombre": 12,
+      "tags": {
+        "youtube": "@HardScopeTV",
+        "instagram": "@hardscope"
+      },
+      "hashtags": [],
+      "consignes": "Use Episode 3 footage only. Drop straight into the wildest second of a scene, hook in the first 2 seconds, keep the setup short. Write short, conversational captions like a fan. Never mention FaZe or politics. Never post the same moment twice.",
+      "verifie": "15/10/2026 : chaîne officielle HardScope (UCurwvHFuaUiNvDNZwOcC2cA), « Zach Justice Exposes The Weirdest Relationship Of All Time », 24 min, la plus récente des trois émissions Love & Justice ; campagne lancée le 14/10"
+    },
+    "58795e60-259f-4f9d-932c-87cf1aac7c8d": {
+      "nom": "HardScope UnPacked Episode 2 x ClipFarm",
+      "url": "https://www.youtube.com/watch?v=h7XBn5JnZ3s",
+      "nombre": 12,
+      "tags": {
+        "youtube": "@HardScopeTV",
+        "instagram": "@hardscope"
+      },
+      "hashtags": [
+        "#unpacked"
+      ],
+      "consignes": "Use Episode 2 footage only. Drop straight into the wildest second of a scene, hook in the first 2 seconds, keep the setup short. Write short, conversational captions like a fan. Never mention FaZe or politics. Never post the same moment twice.",
+      "verifie": "15/10/2026 : chaîne officielle HardScope, « YourRAGE Spends $15,000 Opening Rare Trading Cards », 21 min (l'épisode 1, Steve Aoki, était DSmfWU_0Gf0) ; brief de l'épisode 1 : mention @hardscope (@HardScopeTV sur YouTube) et #unpacked"
+    },
+    "e80b84f7-6085-4761-8d5e-be01ca506454": {
+      "nom": "N3ON X MPJ Podcast clips (Curious Mike)",
+      "url": "https://www.youtube.com/watch?v=GfVYVEPSLIM",
+      "nombre": 22,
+      "attendu": 16,
+      "tags": {
+        "youtube": "",
+        "instagram": ""
+      },
+      "hashtags": [
+        "#n3on",
+        "#curiousmike"
+      ],
+      "consignes": "Clips from the Curious Mike podcast episode with N3on only. Show his true side: personal revelations, fame, fears, honest moments.",
+      "verifie": "15/10/2026 : chaîne Michael Porter Jr., « N3on Gets Real About Fame, Faking His Death & His Fear of Falling Off », 1 h 37"
+    },
+    "d10f3f96-b533-493e-860f-99a4a05edc90": {
+      "nom": "HardScope Love And Justice Ep 2 x ClipFarm",
+      "url": "https://www.youtube.com/watch?v=nUI-4U2-wP8",
+      "nombre": 12,
+      "tags": {
+        "youtube": "@HardScopeTV",
+        "instagram": "@hardscope"
+      },
+      "hashtags": [],
+      "consignes": "Use Episode 2 footage only. Drop straight into the wildest second of a scene, hook in the first 2 seconds, keep the setup short. Write short, conversational captions like a fan. Never mention FaZe or politics. Never post the same moment twice.",
+      "verifie": "15/10/2026 : chaîne officielle HardScope, « Zach Justice Judges The Worst Cheater Of All Time », 21 min, la deuxième émission Love & Justice (la première : T2ItNP27oEk) ; campagne lancée le 08/10"
+    },
+    "03bda4fd-3474-4b1e-a914-88aaf3ac8372": {
+      "nom": "$8,000 IShowSpeed x Expedia Clipping Campaign",
+      "url": "https://drive.google.com/file/d/1pcUMz8ZpbIcku3ylk6dhOi6xjWAT3juc/view?usp=sharing",
+      "nombre": 12,
+      "tags": {
+        "youtube": "",
+        "instagram": ""
+      },
+      "hashtags": [
+        "#IShowSpeed",
+        "#Expedia"
+      ],
+      "consignes": "Content must come only from IShowSpeed's Expedia Unpack stream of 10.14.26. IShowSpeed must be the primary focus. Keep the yellow suitcase in frame. Best moments: his reactions to the destination reveals and to what comes out of the yellow suitcase. The title must name the destination accurately. Never portray IShowSpeed or Expedia negatively. No logo other than Expedia.",
+      "verifie": "15/10/2026 : lien Drive de la description et règles de reachclipping.com/Expedia-Speed (10 000 vues minimum par clip, public anglophone à 50 % au moins, comptes de niche streamers ou voyage, #IShowSpeed #Expedia obligatoires, soumission sous 30 minutes)"
+    }
+  }
+}

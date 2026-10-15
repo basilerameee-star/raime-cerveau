@@ -1,13 +1,19 @@
 # -*- coding: utf-8 -*-
-"""Le relais Buffer (02/10/2026) : programme sur les comptes KinGKlip les clips que Basile a validés sur /clips.
+"""Le relais Buffer (02/10/2026, refait le 15/10/2026) : programme sur les comptes KinGKlip les clips prêts.
 
-Basile clique « Programmer » sur un clip : le cockpit inscrit une ligne par plateforme dans clips_buffer, avec son
-créneau (heure du soir à New York). Ce script, lancé par cron toutes les 2 minutes sur le serveur :
-  1. donne à Buffer le lien signé du clip (7 jours, /pubclip/ du cockpit, hors mot de passe : accord de Basile du 02/10/2026) ;
-     les liens signés R2 ne conviennent pas (Buffer vérifie le fichier par une requête HEAD, que R2 refuse) ;
-  2. crée la publication programmée dans Buffer (clé BUFFER_API_KEY du coffre, jamais affichée) ;
-  3. une fois la publication partie, note son lien dans clips_publies (à déclarer à Whop).
-Sans Claude, sans frais. Chaque ligne vient d'un clic de Basile : le clic vaut accord, clip par clip.
+Les clips entrent dans clips_buffer, une ligne par plateforme payée (clippeur/file.py). Ce script, lancé par cron toutes
+les 2 minutes sur le serveur :
+  1. garde dans Buffer, pour chaque chaîne active, FILE_BUFFER publications d'avance (les 4 créneaux par jour réglés par
+     Basile dans Buffer ; l'offre gratuite en accepte 10 au plus) ; la réserve, elle, attend dans clips_buffer ;
+  2. choisit le clip suivant en alternant les campagnes (jamais deux fois de suite la même source sur une chaîne quand une
+     autre attend) et en vidant d'abord la plus grosse réserve ;
+  3. donne à Buffer le lien signé du clip (7 jours, /pubclip/ du cockpit ; Buffer vérifie le fichier par une requête HEAD,
+     que les liens signés R2 refusent) ;
+  4. lit en UN appel toutes les publications parties ou en erreur, seulement après l'heure prévue d'une publication, et
+     note les liens dans clips_publies (à déclarer à Whop).
+Quota réel de Buffer (en-têtes x-ratelimit, 15/10/2026) : 3 000 appels sur 30 jours glissants, 100 par 15 minutes. Avant
+le 15/10, chaque publication programmée était relue toutes les 40 minutes (une centaine d'appels par publication).
+Sans Claude, sans frais. Délégation de Basile du 08/10/2026 : publication en autonomie sur Instagram et YouTube.
 """
 import fcntl
 import hashlib
@@ -20,9 +26,18 @@ import urllib.request
 
 from file import sql, CLIPS, COFFRE, prevenir
 
+ICI = "/opt/raime/clippeur"
 VERROU = "/tmp/clippeur-buffer.lock"
-RALENTI = "/tmp/clippeur-buffer-429"                       # posé quand Buffer répond « trop de demandes » : l’heure de reprise
-SERVICES = {"youtube": "youtube", "tiktok": "tiktok", "instagram": "instagram"}
+RALENTI = "/tmp/clippeur-buffer-429"                       # posé quand Buffer répond « trop de demandes » : l'heure de reprise
+COMPTE = os.path.join(ICI, "buffer-compte.json")           # le reste du quota (en-tête de Buffer) et les appels des 15 dernières minutes
+CHAINES = os.path.join(ICI, "buffer-chaines.json")         # les chaînes branchées : lues une fois, gardées
+LECTURE = os.path.join(ICI, "buffer-lecture")              # l'heure de la dernière lecture groupée
+ORGANISATION = "6abfab2f5ee6a202b90cb90b"
+PLATEFORMES = ("youtube", "instagram", "tiktok")
+FILE_BUFFER = 6                                            # publications programmées d'avance par chaîne (1,5 jour)
+GARDE_QUOTA = 60                                           # appels laissés de côté sur les 30 jours (essais, autres agents)
+PLAFOND_15MIN = 80                                         # sur 100 permis par Buffer
+SUIVI_MIN = 10                                             # minutes entre deux lectures groupées
 
 
 def cle():
@@ -32,19 +47,25 @@ def cle():
     return ""
 
 
-# 08/10/2026 : l'API de Buffer permet 250 appels par jour (fenêtre glissante de 24 h, en-tête « ratelimit »). Le relais
-# s'en tient à 200 par jour (compteur par date, fichier COMPTE) et, refusé, attend exactement le délai que Buffer donne
-# (« Retry-After », écrit dans RALENTI) au lieu d'un silence fixe.
-COMPTE = "/tmp/clippeur-buffer-compte"
-PLAFOND_JOUR = 200
+class TropDeDemandes(Exception):
+    """Buffer limite le nombre d'appels : on s'arrête tout de suite au lieu d'insister (06/10/2026 : 24 000 refus en 2 jours)."""
 
 
-def appels_du_jour():
+def compte():
     try:
-        jour, n = open(COMPTE, encoding="utf-8").read().split()
-        return int(n) if jour == time.strftime("%Y-%m-%d") else 0
+        return json.load(open(COMPTE, encoding="utf-8"))
     except (OSError, ValueError):
-        return 0
+        return {"reste": None, "appels": []}
+
+
+def appel_permis(c, maintenant=None):
+    """(permis, raison) : le reste du quota de Buffer et le plafond des 15 dernières minutes."""
+    maintenant = maintenant or time.time()
+    if c.get("reste") is not None and c["reste"] <= GARDE_QUOTA and maintenant < (c.get("reprise") or 0):
+        return False, "quota Buffer presque épuisé (%s appels restants)" % c["reste"]
+    if len([t for t in c.get("appels", []) if t > maintenant - 900]) >= PLAFOND_15MIN:
+        return False, "plafond de %d appels en 15 minutes" % PLAFOND_15MIN
+    return True, ""
 
 
 def attente_restante():
@@ -59,16 +80,20 @@ def attente_restante():
 
 
 def buffer(requete, variables=None):
-    if appels_du_jour() >= PLAFOND_JOUR:
-        raise TropDeDemandes("Buffer : plafond du jour du relais atteint (%d appels)" % PLAFOND_JOUR)
+    c = compte()
+    permis, raison = appel_permis(c)
+    if not permis:
+        raise TropDeDemandes("Buffer : " + raison)
     k = cle()
     req = urllib.request.Request("https://api.buffer.com", data=json.dumps({"query": requete, "variables": variables or {}}).encode(),
                                  headers={"Content-Type": "application/json", "Authorization": "Bearer " + k})
-    with open(COMPTE, "w", encoding="utf-8") as f:
-        f.write("%s %d" % (time.strftime("%Y-%m-%d"), appels_du_jour() + 1))
+    c["appels"] = [t for t in c.get("appels", []) if t > time.time() - 900] + [time.time()]
     try:
-        d = json.loads(urllib.request.urlopen(req, timeout=60).read().decode())
+        r = urllib.request.urlopen(req, timeout=60)
+        entetes = r.headers
+        d = json.loads(r.read().decode())
     except urllib.error.HTTPError as e:
+        entetes = e.headers
         if e.code == 429:
             try:
                 attendre = max(600, min(86400, int(e.headers.get("Retry-After") or 7200)))
@@ -78,28 +103,58 @@ def buffer(requete, variables=None):
                 f.write(str(time.time() + attendre))
             raise TropDeDemandes("Buffer : trop de demandes (reprise dans %d min)" % (attendre // 60))
         raise
+    finally:
+        try:
+            if entetes.get("x-ratelimit-remaining") is not None:
+                c["reste"], c["reprise"] = int(entetes["x-ratelimit-remaining"]), int(entetes.get("x-ratelimit-reset") or 0)
+        except (NameError, ValueError, AttributeError):
+            pass
+        with open(COMPTE, "w", encoding="utf-8") as f:
+            json.dump(c, f)
     if d.get("errors"):
         raise RuntimeError(json.dumps(d["errors"])[:300].replace(k, "***"))
     return d["data"]
 
 
-class TropDeDemandes(Exception):
-    """Buffer limite le nombre d'appels : on s'arrête tout de suite au lieu d'insister (06/10/2026 : 24 000 refus en 2 jours)."""
-
-
 def chaines():
-    """Les chaînes branchées dans Buffer, par service (youtube, tiktok, instagram)."""
-    orgs = buffer("{ account { organizations { id } } }")["account"]["organizations"]
+    """Les chaînes branchées dans Buffer, par service ; un seul appel, puis le fichier CHAINES."""
+    try:
+        return json.load(open(CHAINES, encoding="utf-8"))
+    except (OSError, ValueError):
+        pass
     out = {}
-    for o in orgs:
-        for c in buffer("query($i: ChannelsInput!) { channels(input: $i) { id service } }", {"i": {"organizationId": o["id"]}})["channels"]:
-            out.setdefault(str(c["service"]).lower(), c["id"])
+    for c in buffer("query($i: ChannelsInput!) { channels(input: $i) { id service } }", {"i": {"organizationId": ORGANISATION}})["channels"]:
+        out.setdefault(str(c["service"]).lower(), c["id"])
+    with open(CHAINES, "w", encoding="utf-8") as f:
+        json.dump(out, f)
     return out
 
 
-def lignes(etat):
-    r = sql("SELECT coalesce(json_agg(b), '[]') FROM (SELECT * FROM clips_buffer WHERE etat = :'p0' AND (etat <> 'a_faire' OR quand <= now()) ORDER BY quand LIMIT 20) b;", etat)
+def en_pause(pl):
+    return os.path.exists(os.path.join(ICI, "pause-" + pl))
+
+
+def rangs(requete, *params):
+    r = sql(requete, *params)
     return json.loads(r[r.index("["):] if "[" in r else "[]")      # json_agg s'étale sur plusieurs lignes
+
+
+def prochains(lignes, dernier=None, n=1):
+    """Les n clips à programmer sur une chaîne, pris dans ses lignes « a_faire » (ordre de création) : jamais la même
+    campagne deux fois de suite quand une autre attend ; la campagne qui a le plus de clips en attente passe d'abord."""
+    par = {}
+    for b in lignes:
+        par.setdefault(b["campagne"], []).append(b)
+    choisis = []
+    for _ in range(n):
+        restes = [c for c in par if par[c]]
+        if not restes:
+            break
+        autres = [c for c in restes if c != dernier] or restes
+        camp = max(autres, key=lambda c: (len(par[c]), -par[c][0]["id"]))
+        choisis.append(par[camp].pop(0))
+        dernier = camp
+    return choisis
 
 
 def legendes(campagne, clip):
@@ -136,33 +191,25 @@ def programmer(b, ids):
         raise RuntimeError("Chaîne %s absente de Buffer : la brancher dans Buffer." % pl)
     url = b.get("url") or lien_public(camp, clip)
     leg, titre, texte = legendes(camp, clip)
-    meta = {"youtube": {"youtube": {"title": (titre or "N3on R3born")[:100], "privacy": "public", "madeForKids": False,
+    meta = {"youtube": {"youtube": {"title": (titre or "KinGKlip")[:100], "privacy": "public", "madeForKids": False,
                                     "notifySubscribers": True, "categoryId": "24"}},
             "tiktok": {"tiktok": {"title": titre[:90]}},
             "instagram": {"instagram": {"type": "reel", "shouldShareToFeed": True}}}[pl]
     entree = {"channelId": ids[pl], "text": (leg.get(pl) or texte)[:2200], "mode": "addToQueue",          # les créneaux réglés par Basile dans Buffer (4 par jour et par chaîne)
               "schedulingType": "automatic", "needsApproval": False, "assets": [{"video": {"url": url}}], "metadata": meta}
     d = buffer("""mutation($e: CreatePostInput!) { createPost(input: $e) {
-        ... on PostActionSuccess { post { id } } ... on MutationError { message } } }""", {"e": entree})["createPost"]
+        ... on PostActionSuccess { post { id dueAt } } ... on MutationError { message } } }""", {"e": entree})["createPost"]
     if not d.get("post"):
         msg = d.get("message") or "Buffer a refusé la publication"
         if "limit" in msg.lower():
             raise FileBufferPleine(msg)
         raise RuntimeError(msg)
-    sql("UPDATE clips_buffer SET etat = 'programme', post_id = :'p0', message = NULL, maj = now() WHERE id = :p1;", d["post"]["id"], b["id"])
+    sql("UPDATE clips_buffer SET etat = 'programme', post_id = :'p0', prevu = nullif(:'p1', '')::timestamptz, message = NULL, maj = now() WHERE id = :p2;",
+        d["post"]["id"], d["post"].get("dueAt") or "", b["id"])
 
 
-def suivre(b):
-    """La publication est partie ? On note son lien (à déclarer à Whop) et on retire le clip du relais."""
-    try:
-        p = buffer("query($i: PostInput!) { post(input: $i) { status externalLink error { message } } }", {"i": {"id": b["post_id"]}})["post"]
-    except RuntimeError as e:
-        # 08/10/2026 : 11 publications effacées chez Buffer (« Post not found ») étaient réinterrogées à chaque passage,
-        # toutes les 2 minutes : environ 300 appels par heure, d'où les refus « trop de demandes ». Introuvable = perdue.
-        if "NOT_FOUND" not in str(e) and "not found" not in str(e).lower():
-            raise
-        sql("UPDATE clips_buffer SET etat = 'perdu', message = 'publication introuvable chez Buffer (effacée)', maj = now() WHERE id = :p0;", b["id"])
-        return
+def noter_partie(b, p):
+    """Une publication lue chez Buffer : partie (lien noté, à déclarer), en erreur, ou pas encore."""
     statut = str(p.get("status", "")).lower()
     if statut == "sent" and p.get("externalLink"):
         sql("""INSERT INTO clips_publies (campagne, clip, plateforme, lien) VALUES (:'p0', :'p1', :'p2', :'p3')
@@ -178,18 +225,37 @@ def suivre(b):
                 buffer("mutation($i: DeletePostInput!) { deletePost(input: $i) { __typename } }", {"i": {"id": b["post_id"]}})
             except Exception:
                 pass
-            sql("UPDATE clips_buffer SET etat = 'a_faire', post_id = NULL, message = :'p0', quand = now() + interval '20 hours', maj = now() WHERE id = :p1;", msg, b["id"])
+            sql("UPDATE clips_buffer SET etat = 'a_faire', post_id = NULL, prevu = NULL, message = :'p0', quand = now() + interval '20 hours', maj = now() WHERE id = :p1;", msg, b["id"])
         else:
             sql("UPDATE clips_buffer SET etat = 'echec', message = :'p0', maj = now() WHERE id = :p1;", msg, b["id"])
-    else:
-        sql("UPDATE clips_buffer SET maj = now() WHERE id = :p0;", b["id"])   # pas encore partie : prochaine question dans 40 min
 
 
-def a_suivre():
-    """Les publications programmées, chacune interrogée au plus une fois toutes les 40 minutes."""
-    r = sql("""SELECT coalesce(json_agg(b), '[]') FROM (SELECT * FROM clips_buffer WHERE etat = 'programme'
-               AND maj < now() - interval '40 minutes' ORDER BY maj LIMIT 10) b;""")
-    return json.loads(r[r.index("["):] if "[" in r else "[]")
+def lecture_due(programmees, derniere, maintenant):
+    """Lire Buffer seulement quand une publication programmée vient de passer son heure (puis, si elle n'est toujours pas
+    partie, toutes les 2 heures ; sans heure connue, toutes les 3 heures), et jamais plus d'une fois en SUIVI_MIN minutes."""
+    if maintenant - derniere < SUIVI_MIN * 60:
+        return False
+
+    def due(b):
+        prevu, maj = b.get("prevu_s") or 0, b.get("maj_s") or 0
+        if prevu:
+            return prevu < maintenant - 120 and (maj < prevu + 120 or maj < maintenant - 7200)
+        return maj < maintenant - 3 * 3600
+    return any(due(b) for b in programmees)
+
+
+def suivre_tout(programmees, ids):
+    """UNE lecture pour toutes les chaînes : les publications parties ou en erreur depuis la plus ancienne programmée."""
+    depuis = min([b["prevu_s"] for b in programmees if b.get("prevu_s")] + [b["maj_s"] for b in programmees]) - 86400
+    d = buffer("""query($i: PostsInput!) { posts(first: 100, input: $i) { edges { node { id status externalLink error { message } } } } }""",
+               {"i": {"organizationId": ORGANISATION, "filter": {"channelIds": sorted(set(ids.values())), "status": ["sent", "error"],
+                                                                  "dueAt": {"start": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(depuis))}}}})
+    lus = {e["node"]["id"]: e["node"] for e in d["posts"]["edges"]}
+    for b in programmees:
+        if b.get("post_id") in lus:
+            noter_partie(b, lus[b["post_id"]])
+        else:
+            sql("UPDATE clips_buffer SET maj = now() WHERE id = :p0;", b["id"])
 
 
 def main():
@@ -198,50 +264,73 @@ def main():
         fcntl.flock(verrou, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except OSError:
         return
-    if attente_restante() > 0 or appels_du_jour() >= PLAFOND_JOUR:
-        return                                             # 08/10/2026 : le délai donné par Buffer, et 200 appels par jour au plus
+    if attente_restante() > 0 or not appel_permis(compte())[0]:
+        return                                             # le délai donné par Buffer, le quota des 30 jours, les 15 minutes
     sql("""CREATE TABLE IF NOT EXISTS clips_buffer (id serial PRIMARY KEY, campagne text NOT NULL, clip text NOT NULL,
            plateforme text NOT NULL, quand timestamptz NOT NULL, etat text NOT NULL DEFAULT 'a_faire', post_id text, lien text,
            message text, cree_le timestamptz NOT NULL DEFAULT now(), maj timestamptz NOT NULL DEFAULT now(),
            UNIQUE (campagne, clip, plateforme));
-           ALTER TABLE clips_buffer ADD COLUMN IF NOT EXISTS url text;""")
-    # les plateformes en pause (ex. compte TikTok banni le 04/10) ne coûtent aucun appel à Buffer
-    a_faire = [b for b in lignes("a_faire") if not os.path.exists("/opt/raime/clippeur/pause-" + b["plateforme"])]
-    if a_faire:
-        try:
-            ids, pleines = chaines(), set()
-        except TropDeDemandes:
-            return
-        for b in a_faire:
-            if b["plateforme"] in pleines or os.path.exists("/opt/raime/clippeur/pause-" + b["plateforme"]):
-                continue                                   # file pleine, ou plateforme en pause (ex. changement de compte)
+           ALTER TABLE clips_buffer ADD COLUMN IF NOT EXISTS url text, ADD COLUMN IF NOT EXISTS prevu timestamptz;
+           ALTER TABLE clips_demandes ADD COLUMN IF NOT EXISTS cr_id text, ADD COLUMN IF NOT EXISTS plateformes text;
+           ALTER TABLE campagnes_proposees ADD COLUMN IF NOT EXISTS cr_id text;""")
+    actives = [pl for pl in PLATEFORMES if not en_pause(pl)]   # une plateforme en pause (TikTok banni le 04/10) ne coûte aucun appel
+    try:
+        ids = chaines()
+    except TropDeDemandes:
+        return
+    # 1. la file de Buffer, tenue à FILE_BUFFER publications d'avance par chaîne
+    for pl in actives:
+        deja = int(sql("SELECT count(*) FROM clips_buffer WHERE plateforme = :'p0' AND etat = 'programme';", pl) or 0)
+        if deja >= FILE_BUFFER:
+            continue
+        lignes = rangs("""SELECT coalesce(json_agg(b ORDER BY id), '[]') FROM (SELECT * FROM clips_buffer WHERE plateforme = :'p0'
+                          AND etat = 'a_faire' AND quand <= now()) b;""", pl)
+        dernier = sql("""SELECT campagne FROM clips_buffer WHERE plateforme = :'p0' AND etat IN ('programme', 'publie')
+                         ORDER BY coalesce(prevu, maj) DESC LIMIT 1;""", pl) or None
+        for b in prochains(lignes, dernier, FILE_BUFFER - deja):
             try:
                 programmer(b, ids)
             except FileBufferPleine:
-                pleines.add(b["plateforme"])               # la suite attend que Buffer publie et libère de la place
+                break                                      # la suite attend que Buffer publie et libère de la place
             except TropDeDemandes:
                 return
             except Exception as e:
                 sql("UPDATE clips_buffer SET etat = 'echec', message = :'p0', maj = now() WHERE id = :p1;", str(e)[:300], b["id"])
-    avant = {(x["campagne"], x["clip"], x["plateforme"]) for x in lignes("publie")}
-    # au-delà de 7 jours, une publication jamais partie est perdue : on cesse de la suivre
+    # 2. au-delà de 7 jours, une publication jamais partie est perdue (effacée chez Buffer) : on cesse de l'attendre
     sql("""UPDATE clips_buffer SET etat = 'perdu', message = coalesce(message, 'jamais publiée par Buffer en 7 jours'), maj = now()
-           WHERE etat = 'programme' AND cree_le < now() - interval '7 days';""")
-    for b in a_suivre():
-        try:
-            suivre(b)
-        except TropDeDemandes:
-            break
-        except Exception as e:
-            print("suivi", b["id"], str(e)[:200], flush=True)
-            sql("UPDATE clips_buffer SET maj = now() WHERE id = :p0;", b["id"])   # une erreur attend aussi 40 min avant la question suivante
-    nouveaux = [x for x in lignes("publie") if (x["campagne"], x["clip"], x["plateforme"]) not in avant]
+           WHERE etat = 'programme' AND coalesce(prevu, cree_le) < now() - interval '7 days';""")
+    # 3. une lecture groupée, seulement quand une publication a passé son heure
+    programmees = rangs("""SELECT coalesce(json_agg(json_build_object('id', id, 'campagne', campagne, 'clip', clip, 'plateforme', plateforme,
+                           'post_id', post_id, 'prevu_s', extract(epoch FROM prevu), 'maj_s', extract(epoch FROM maj))), '[]')
+                           FROM clips_buffer WHERE etat = 'programme';""")
+    try:
+        derniere = os.path.getmtime(LECTURE)
+    except OSError:
+        derniere = 0
+    if not programmees or not lecture_due(programmees, derniere, time.time()):
+        return
+    open(LECTURE, "w").close()
+    avant = set(r for r in sql("SELECT id FROM clips_buffer WHERE etat = 'publie';").split())
+    try:
+        suivre_tout(programmees, ids)
+    except TropDeDemandes:
+        return
+    nouveaux = rangs("""SELECT coalesce(json_agg(json_build_object('id', b.id, 'campagne', b.campagne, 'clip', b.clip, 'plateforme', b.plateforme,
+                        'lien', b.lien, 'nom', d.nom, 'fiche', d.fiche) ORDER BY b.campagne, b.id), '[]') FROM clips_buffer b
+                        LEFT JOIN LATERAL (SELECT p.nom, p.url_fiche AS fiche FROM clips_demandes q JOIN campagnes_proposees p ON p.cr_id = q.cr_id
+                        WHERE q.campagne = b.campagne ORDER BY p.id DESC LIMIT 1) d ON true WHERE b.etat = 'publie';""")
+    nouveaux = [x for x in nouveaux if str(x["id"]) not in avant]
     if nouveaux:
+        blocs, vus = [], []
+        for x in nouveaux:
+            if x["campagne"] not in vus:
+                vus.append(x["campagne"])
+                blocs.append("%s%s :" % (x.get("nom") or x["campagne"], (" (" + x["fiche"] + ")") if x.get("fiche") else ""))
+            blocs.append(x["lien"])
         prevenir("%d lien(s) à déclarer à Whop" % len(nouveaux),
-                 # d'abord les liens bruts, un par ligne, à copier tels quels dans « Submit clip » ; puis le détail
-                 chr(10).join(x["lien"] for x in nouveaux) + chr(10) * 3 + "Détail :" + chr(10)
-                 + chr(10).join("%s · %s · %s : %s" % (x["campagne"], x["clip"], x["plateforme"], x["lien"]) for x in nouveaux)
-                 + chr(10) * 2 + "À soumettre dans les 30 minutes qui suivent la publication.")
+                 # par campagne : son nom et sa page Content Rewards, puis les liens bruts, un par ligne, à copier dans « Submit clip »
+                 chr(10).join(blocs) + chr(10) * 2 + "À déclarer dans Content Rewards (« Submit clip ») le plus tôt possible : "
+                 "le budget est payé dans l'ordre d'approbation.")
 
 
 if __name__ == "__main__":

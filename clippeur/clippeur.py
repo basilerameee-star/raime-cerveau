@@ -2,7 +2,7 @@
 """LE CLIPPEUR (02/10/2026) — d'une vidéo source d'une campagne Whop autorisée, des clips verticaux prêts à publier.
 
 Voulu par Basile pour KinGKlip (TikTok, Instagram, YouTube) : la qualité d'un outil du marché, sans abonnement.
-  1. télécharge la source (yt-dlp, meilleure qualité, 1440p minimum, jamais d’agrandissement) ;
+  1. télécharge la source (yt-dlp, meilleure qualité, jamais d’agrandissement : 1080p au format « bandes », 1440p sinon) ;
   2. transcrit la voix au mot près (faster-whisper, sur le processeur du serveur) ;
   3. choisit les meilleurs passages (modèle gratuit Gemini, à partir de la transcription datée) ;
   4. monte en 1080 × 1920 : la vidéo nette au centre, un fond flou de la même image, l'accroche en haut les
@@ -329,8 +329,9 @@ def main():
     source = telecharger(o.url, dossier)
     h = subprocess.run(["ffprobe", "-v", "0", "-select_streams", "v:0", "-show_entries", "stream=height", "-of", "csv=p=0", str(source)],
                        capture_output=True, text=True).stdout.strip()
-    if h.isdigit() and int(h) < 1440:                     # 1440p minimum (règle de Basile, 02/10/2026) : jamais d'image grossie
-        sys.exit("Source en %sp : 1440p minimum exigé" % h)
+    mini = 1080 if profil.get("format", "bandes") == "bandes" else 1440    # jamais d'image grossie (02/10/2026) : le carré
+    if h.isdigit() and int(h) < mini:                     # du format « bandes » fait 1080 px, le plein écran en demande 1440 (15/10/2026)
+        sys.exit("Source en %sp : %dp minimum exigé" % (h, mini))
     tr = dossier / "transcription.json"
     if tr.is_file() and (dossier / "langue.txt").is_file():          # même source déjà transcrite : on la reprend
         mots, langue = json.loads(tr.read_text(encoding="utf-8")), (dossier / "langue.txt").read_text().strip()

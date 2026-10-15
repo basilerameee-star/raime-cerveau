@@ -45,3 +45,5 @@ jobs:
       - run: python3 -m unittest tests/banc/envoyeur_test.py
       # Le vérificateur des clips (08/10/2026) : après npm test, qui a préparé les bases ; son passage complet y écrit.
       - run: python3 -m unittest tests/banc/verificateur_clips_test.py
+      # Le pilote des clips KinGKlip (15/10/2026) : grille des campagnes, réserve, alternance et quota de Buffer.
+      - run: python3 -m unittest tests/banc/pilote_clips_test.py
