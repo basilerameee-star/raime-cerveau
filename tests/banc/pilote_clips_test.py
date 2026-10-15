@@ -105,13 +105,14 @@ class Pilote(unittest.TestCase):
         self.assertEqual([e["cr_id"] for e, _ in pilote.choisir(notes, self.SOURCES, reserve, [])], ["a", "b", "c"])
 
     def test_reserve_pleine_ne_lance_rien(self):
-        reserve = {"instagram": {"pret": 28, "attendu": 0}, "youtube": {"pret": 30, "attendu": 0}}
+        reserve = {"instagram": {"pret": 56, "attendu": 0}, "youtube": {"pret": 60, "attendu": 0}}
         self.assertEqual(pilote.choisir([note("a")], self.SOURCES, reserve, []), [])
 
     def test_la_decoupe_en_cours_compte(self):
         reserve = {"instagram": {"pret": 12, "attendu": 8}, "youtube": {"pret": 12, "attendu": 8}}
-        # 20 clips attendus = 5 jours : pas sous le seuil de 5 jours, rien ne part (ordre du 15/10/2026)
-        self.assertEqual(pilote.choisir([note(c) for c in "abc"], self.SOURCES, reserve, []), [])
+        # 56 clips = 14 jours : deux semaines d'avance, rien ne part (Basile, 15/10/2026 au soir)
+        plein = {"instagram": {"pret": 48, "attendu": 8}, "youtube": {"pret": 50, "attendu": 8}}
+        self.assertEqual(pilote.choisir([note(c) for c in "abc"], self.SOURCES, plein, []), [])
         # 19 clips = 4,75 jours : on remonte vers 14 jours, 3 sources au plus par passage
         reserve = {"instagram": {"pret": 12, "attendu": 7}, "youtube": {"pret": 12, "attendu": 8}}
         self.assertEqual(len(pilote.choisir([note(c) for c in "abc"], self.SOURCES, reserve, [])), 3)
