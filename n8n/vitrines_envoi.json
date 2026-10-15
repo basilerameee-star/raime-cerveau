@@ -55,7 +55,7 @@
       },
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT mode, plafond_jour, from_email, from_name, test_to FROM vitrines_envoi_config WHERE id = 1",
+        "query": "SELECT mode, plafond_envoi('vitrines') AS plafond_jour, from_email, from_name, test_to FROM vitrines_envoi_config WHERE id = 1",
         "options": {}
       }
     },
@@ -76,7 +76,7 @@
       },
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT e.id, e.to_email, e.sujet, e.corps FROM vitrines_envoi e WHERE e.statut = 'a_envoyer' AND e.to_email IS NOT NULL AND lower(e.to_email) NOT IN (SELECT lower(email) FROM suppression WHERE email IS NOT NULL) ORDER BY e.cree_le, e.id LIMIT greatest(0, (SELECT plafond_jour FROM vitrines_envoi_config WHERE id = 1) - (SELECT count(*) FROM vitrines_envoi WHERE statut IN ('envoye', 'teste') AND envoye_le >= date_trunc('day', now() AT TIME ZONE 'Europe/Paris') AT TIME ZONE 'Europe/Paris'))",
+        "query": "SELECT id, to_email, sujet, corps FROM envoi_vitrines ORDER BY cree_le, id LIMIT greatest(0, coalesce(plafond_envoi('vitrines'), 0) - (SELECT count(*)::int FROM vitrines_envoi WHERE statut IN ('envoye', 'teste') AND envoye_le >= date_trunc('day', now() AT TIME ZONE 'Europe/Paris') AT TIME ZONE 'Europe/Paris'))",
         "options": {}
       }
     },
@@ -143,7 +143,7 @@
         400
       ],
       "parameters": {
-        "jsCode": "// Chaque e-mail est marqué selon SA réponse de Resend : un refus au milieu du lot n'efface pas les envois réussis\n// (sinon ils repartiraient le lendemain). Un essai (mode test) n'est jamais compté comme un envoi.\nconst envois = $('Prepare').all();\nconst reponses = $input.all();\nconst q = (s) => \"'\" + String(s).replace(/'/g, \"''\") + \"'\";\nconst lignes = [];\nenvois.forEach((e, i) => {\n  const id = parseInt(e.json.id);\n  if (isNaN(id)) return;\n  const r = (reponses[i] || { json: {} }).json || {};\n  const ok = typeof r.id === 'string' && /^[A-Za-z0-9-]{8,64}$/.test(r.id) && !r.statusCode && !r.error;\n  const statut = ok ? (e.json.mode === 'live' ? 'envoye' : 'teste') : 'erreur';\n  const erreur = ok ? null : String(r.message || (r.error && (r.error.message || r.error)) || 'réponse inattendue de Resend').slice(0, 200);\n  lignes.push('(' + id + ',' + q(statut) + ',' + (ok ? q(r.id) : 'NULL') + ',' + (erreur === null ? 'NULL' : q(erreur)) + ')');\n});\nif (!lignes.length) return [];\nconst sql = 'UPDATE vitrines_envoi e SET statut = v.statut::text, resend_id = v.resend_id::text, erreur = v.erreur::text, '\n  + \"envoye_le = CASE WHEN v.statut::text <> 'erreur' THEN now() END, maj_le = now() \"\n  + 'FROM (VALUES ' + lignes.join(',') + \") AS v(id, statut, resend_id, erreur) WHERE e.id = v.id AND e.statut = 'a_envoyer';\";\nreturn [{ json: { sql, count: lignes.length } }];\n"
+        "jsCode": "// Chaque e-mail est marqué selon SA réponse de Resend (14/10/2026). Le 12, le 13 et le 14/10, l'Expéditeur des pré-audits marquait\n// « envoyé » les 18 du jour alors que Resend en refusait 8 (429, envoyés tous ensemble) : 24 e-mails jamais partis.\n// Resend n'a rien pris (429 : trop vite ou quota ; 5xx) : l'e-mail reste dans la file, il repart au passage suivant.\n// Une panne sans réponse (délai dépassé) est inconnue : peut-être parti ; marqué « erreur », jamais renvoyé (pas de doublon).\nconst envois = $('Prepare').all();\nconst reponses = $input.all();\nconst q = (s) => \"'\" + String(s).replace(/'/g, \"''\") + \"'\";\nconst lignes = [];\nenvois.forEach((e, i) => {\n  const id = parseInt(e.json.id, 10);\n  if (isNaN(id)) return;\n  const r = (reponses[i] || { json: {} }).json || {};\n  const ok = typeof r.id === 'string' && /^[A-Za-z0-9-]{8,64}$/.test(r.id) && !r.statusCode && !r.error;\n  const code = Number(r.statusCode || (r.error && (r.error.httpCode || r.error.status))) || (/\\b429\\b/.test(JSON.stringify(r.error || '')) ? 429 : 0);\n  const reessai = !ok && (code === 429 || code >= 500);\n  const statut = ok ? (e.json.mode === 'live' ? 'envoye' : 'teste') : (reessai ? null : 'erreur');\n  const erreur = ok ? null : String(r.message || (r.error && (r.error.message || r.error)) || 'réponse inattendue de Resend').slice(0, 200);\n  lignes.push('(' + id + ',' + (statut ? q(statut) : 'NULL') + ',' + (ok ? q(r.id) : 'NULL') + ',' + (erreur === null ? 'NULL' : q(erreur)) + ')');\n});\nif (!lignes.length) return [];\nconst sql = 'UPDATE vitrines_envoi e SET statut = coalesce(v.statut::text, e.statut), resend_id = coalesce(v.resend_id::text, e.resend_id), erreur = v.erreur::text, '\n  + \"envoye_le = CASE WHEN v.statut::text IN ('envoye', 'teste') THEN now() END, maj_le = now() \"\n  + 'FROM (VALUES ' + lignes.join(',') + \") AS v(id, statut, resend_id, erreur) WHERE e.id = v.id AND e.statut = 'a_envoyer';\";\nreturn [{ json: { sql, count: lignes.length } }];\n"
       }
     },
     {

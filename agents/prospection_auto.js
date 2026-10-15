@@ -6,8 +6,9 @@
 // (le pré-audit publié de son métier, sur raime.fr), un appel sans engagement, l'agenda. Écrit par le CODE, sans modèle :
 // rien d'inventé, aucun chiffre hors du pré-audit. Seuls les métiers qui ont un pré-audit publié reçoivent un e-mail.
 //
-// Il ne fait que des BROUILLONS (outreach, statut « brouillon ») : Basile les voit et les valide sur /prospection ; l'envoi
-// reste au workflow n8n « Expéditeur » (réglage pause / essai / réel). Remplace la rédaction de Héraut dans la boucle.
+// Il ne fait que des BROUILLONS (outreach, statut « brouillon ») ; depuis le 14/10/2026 (accord de Basile), ils partent seuls
+// par le workflow n8n « Expéditeur » (n8n/expediteur_envoi.json, vue envoi_preaudits de n8n/envois.sql) s'ils portent le lien
+// du pré-audit et que ce PDF répond. Basile peut encore les voir sur /prospection. Remplace la rédaction de Héraut dans la boucle.
 import fs from 'node:fs';
 import pg from 'pg';
 import { db } from './lib.js';

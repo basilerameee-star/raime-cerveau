@@ -29,7 +29,9 @@ for (const [t, ddl] of [['suppression', 'email text PRIMARY KEY, reason text'],
 }
 await n8n.query("INSERT INTO send_config (id, test_to) VALUES (1, 'essai@exemple.test') ON CONFLICT (id) DO NOTHING");
 after(async () => {
-  for (const t of ['vitrines_envoi', 'vitrines_envoi_config', ...crees]) await n8n.query(`DROP TABLE IF EXISTS ${t}`);
+  await n8n.query('DROP VIEW IF EXISTS envoi_preaudits, envoi_vitrines; DROP FUNCTION IF EXISTS plafond_envoi(text)');
+  for (const t of ['vitrines_envoi', 'vitrines_envoi_config', ...crees]) await n8n.query(`DROP TABLE IF EXISTS ${t} CASCADE`);
+  for (const c of ['resend_id', 'erreur', 'livraison']) await n8n.query(`ALTER TABLE outreach DROP COLUMN IF EXISTS ${c}`);
   for (const t of ['vitrines', 'vitrines_recherches', 'vitrines_villes']) await brain.query(`DROP TABLE IF EXISTS ${t}`);
   await n8n.end(); await brain.end();
   const b = require('../../jarvis/bases.cjs'); await b.cerveau.end(); await b.n8n.end();
@@ -86,8 +88,9 @@ test('live : vers le commerçant en semaine, jamais le week-end', () => {
   assert.deepEqual(executer('Prepare', { sources: { 'Lire config': config('live'), 'A envoyer': aEnvoyer }, maintenant: samedi }), []);
 });
 
-test('la file et le plafond : la requête « A envoyer » écarte les désinscrits et respecte le plafond du jour', async () => {
+test('la file et le plafond : la requête « A envoyer » écarte les désinscrits et la Suisse, et respecte le plafond du jour', async () => {
   await preparerEnvoi(n8n);
+  await n8n.query(fs.readFileSync(new URL('../../n8n/envois.sql', import.meta.url), 'utf8'));   // la vue envoi_vitrines et le plafond
   assert.equal((await n8n.query('SELECT mode, test_to FROM vitrines_envoi_config')).rows[0].mode, 'test', 'mode test par défaut');
   assert.equal((await n8n.query('SELECT test_to FROM vitrines_envoi_config')).rows[0].test_to, 'essai@exemple.test', 'adresse reprise de l’Expéditeur');
   await n8n.query("UPDATE vitrines_envoi_config SET plafond_jour = 2");
@@ -96,28 +99,35 @@ test('la file et le plafond : la requête « A envoyer » écarte les désinscri
   await n8n.query("INSERT INTO suppression (email, reason) VALUES ('b@x.test', 'opt-out')");
   const q = noeud('A envoyer').parameters.query;
   assert.deepEqual((await n8n.query(q)).rows.map((r) => r.id), [101, 103], 'le désinscrit (casse comprise) sauté, deux au plus');
+  await n8n.query("UPDATE vitrines_envoi SET to_email = 'c@x.ch' WHERE id = 103");
+  assert.deepEqual((await n8n.query(q)).rows.map((r) => r.id), [101, 104], 'jamais en Suisse');
+  await n8n.query("UPDATE vitrines_envoi SET to_email = 'c@x.test' WHERE id = 103");
   await n8n.query("UPDATE vitrines_envoi SET statut = 'envoye', envoye_le = now() WHERE id = 101");
   assert.deepEqual((await n8n.query(q)).rows.map((r) => r.id), [103], 'un envoi du jour compte dans le plafond');
   await n8n.query("DELETE FROM vitrines_envoi; DELETE FROM suppression; UPDATE vitrines_envoi_config SET plafond_jour = 10");
 });
 
 test('le marquage : chacun selon sa réponse ; un essai n’est jamais un envoi ; le SQL produit tourne vraiment', async () => {
-  await n8n.query(`INSERT INTO vitrines_envoi (id, to_email, sujet, corps) VALUES (201, 'a@x.test', 's', 'c'), (202, 'b@x.test', 's', 'c'), (203, 'c@x.test', 's', 'c')`);
-  const envois = [201, 202, 203].map((id) => ({ json: { id, mode: 'live' } }));
+  await n8n.query(`INSERT INTO vitrines_envoi (id, to_email, sujet, corps) VALUES (201, 'a@x.test', 's', 'c'), (202, 'b@x.test', 's', 'c'), (203, 'c@x.test', 's', 'c'),
+    (204, 'd@x.test', 's', 'c')`);
+  const envois = [201, 202, 203, 204].map((id) => ({ json: { id, mode: 'live' } }));
   const reponses = [{ json: { id: '4ef9a417-02e9-4d39-ad75-9611e0fcc33c' } },
     { json: { statusCode: 422, name: 'validation_error', message: "L'adresse n'est pas valide" } },
-    { json: { error: { message: 'timeout' } } }];
+    { json: { error: { message: 'timeout' } } },
+    { json: { statusCode: 429, name: 'rate_limit_exceeded', message: 'Too many requests' } }];
   const [m] = executer('Marque', { sources: { Prepare: envois }, entree: reponses });
   await n8n.query(m.json.sql);
   const etat = Object.fromEntries((await n8n.query('SELECT id, statut, erreur, envoye_le FROM vitrines_envoi ORDER BY id')).rows.map((r) => [r.id, r]));
   assert.equal(etat[201].statut, 'envoye'); assert.ok(etat[201].envoye_le);
   assert.equal(etat[202].statut, 'erreur'); assert.equal(etat[202].erreur, "L'adresse n'est pas valide"); assert.equal(etat[202].envoye_le, null);
   assert.equal(etat[203].statut, 'erreur'); assert.equal(etat[203].erreur, 'timeout');
+  assert.equal(etat[204].statut, 'a_envoyer', '429 : Resend n’a rien pris, il repartira'); assert.equal(etat[204].erreur, 'Too many requests');
+  assert.equal(etat[204].envoye_le, null);
   await n8n.query("UPDATE vitrines_envoi SET statut = 'a_envoyer', erreur = NULL, envoye_le = NULL");
-  const [t] = executer('Marque', { sources: { Prepare: envois.map((e) => ({ json: { ...e.json, mode: 'test' } })) },
-    entree: reponses.map(() => ({ json: { id: '4ef9a417-02e9-4d39-ad75-9611e0fcc33c' } })) });
+  const [t] = executer('Marque', { sources: { Prepare: envois.slice(0, 3).map((e) => ({ json: { ...e.json, mode: 'test' } })) },
+    entree: reponses.slice(0, 3).map(() => ({ json: { id: '4ef9a417-02e9-4d39-ad75-9611e0fcc33c' } })) });
   await n8n.query(t.json.sql);
-  assert.deepEqual((await n8n.query('SELECT DISTINCT statut FROM vitrines_envoi')).rows.map((r) => r.statut), ['teste']);
+  assert.deepEqual((await n8n.query('SELECT DISTINCT statut FROM vitrines_envoi WHERE id < 204')).rows.map((r) => r.statut), ['teste']);
   await n8n.query('DELETE FROM vitrines_envoi');
 });
 
@@ -133,6 +143,7 @@ test('la lecture d’une réponse : « stop », pas intéressé, rebond, absence
 
 test('la synchronisation : validé → file ; essai et envoi reviennent ; réponse et « stop » ; désinscrit écarté ; écarté annulé', async () => {
   await preparer(brain); await preparerEnvoi(n8n);
+  await n8n.query('UPDATE vitrines_envoi_config SET auto = false');   // la validation par Basile ; l'envoi seul a son test
   const ajouter = async (id, statut, email) => brain.query(`INSERT INTO vitrines (id, source, source_id, nom, ville, email, sujet, corps, statut, telephone, demo_html)
     VALUES ($1, 'osm', $2, $3, 'Annecy', $4, 'Sujet', 'Corps', $5, '04 50 00 00 00', '<div style="background-image:url(/demo/img/boulangerie/1.jpg)"></div>')`, [id, `osm:${id}`, `Commerce ${id}`, email, statut]);
   await ajouter(1, 'valide', 'un@x.test'); await ajouter(2, 'brouillon', 'deux@x.test'); await ajouter(3, 'valide', 'trois@x.test');
@@ -187,6 +198,38 @@ test('la synchronisation : validé → file ; essai et envoi reviennent ; répon
   assert.deepEqual(await fiche(6), { statut: 'ecarte', motif: 'désinscrit', envoye_le: null });
   assert.equal((await fiche(2)).statut, 'brouillon', 'les autres brouillons ne bougent pas');
   await brain.query('DROP TABLE IF EXISTS appels');
+  await n8n.query('UPDATE vitrines_envoi_config SET auto = true');
+});
+
+test('l’envoi seul (14/10/2026) : un brouillon à la maquette complète est validé par le code ; jamais une maquette incomplète, la Suisse ni un désinscrit', async () => {
+  await preparer(brain); await preparerEnvoi(n8n);
+  assert.equal((await n8n.query('SELECT auto FROM vitrines_envoi_config')).rows[0].auto, true, 'l’envoi seul est le réglage par défaut');
+  await n8n.query('DELETE FROM vitrines_envoi; DELETE FROM suppression');
+  await brain.query('DELETE FROM vitrines');
+  const photo = '<div style="background-image:url(/demo/img/boulangerie/1.jpg)"></div>';
+  const ajouter = (id, email, plus = {}) => brain.query(`INSERT INTO vitrines (id, source, source_id, nom, ville, email, sujet, corps, statut, telephone, demo_html, pays, departement)
+    VALUES ($1, 'osm', $2, $3, 'Annecy', $4, 'Sujet', 'Corps', 'brouillon', $5, $6, $7, $8)`,
+  [id, `osm:a${id}`, `Commerce ${id}`, email, plus.tel === undefined ? '04 50 00 00 00' : plus.tel, plus.html || photo, plus.pays || 'FR', plus.dep || '74']);
+  await ajouter(81, 'complet@x.test');
+  await ajouter(82, 'sansphoto@x.test', { html: '<p>maquette sans photo</p>' });
+  await ajouter(83, 'sanstel@x.test', { tel: null });
+  await ajouter(84, 'geneve@x.test', { pays: 'CH', dep: 'GE' });
+  await ajouter(85, 'boutique@x.ch');
+  await ajouter(86, 'parti@x.test');
+  await n8n.query("INSERT INTO suppression (email, reason) VALUES ('PARTI@x.test', 'opt-out')");
+  const b = await synchroniser({ brain, n8n });
+  assert.equal(b.valides_seuls, 1);
+  assert.deepEqual((await n8n.query('SELECT id FROM vitrines_envoi ORDER BY id')).rows.map((r) => r.id), [81], 'seul le complet entre dans la file');
+  const etat = Object.fromEntries((await brain.query('SELECT id, statut, motif FROM vitrines WHERE id BETWEEN 81 AND 86')).rows.map((r) => [r.id, r]));
+  assert.equal(etat[81].statut, 'valide'); assert.match(etat[81].motif, /^validé seul : maquette complète/);
+  for (const id of [82, 83, 84, 85]) assert.equal(etat[id].statut, 'brouillon', `n°${id} attend`);
+  assert.deepEqual([etat[86].statut, etat[86].motif], ['ecarte', 'désinscrit'], 'le désinscrit n’est jamais validé : il est écarté');
+  assert.equal((await synchroniser({ brain, n8n })).valides_seuls, 0, 'une seule fois');
+  await n8n.query('UPDATE vitrines_envoi_config SET auto = false');
+  await brain.query("UPDATE vitrines SET statut = 'brouillon' WHERE id = 81"); await n8n.query('DELETE FROM vitrines_envoi');
+  assert.equal((await synchroniser({ brain, n8n })).valides_seuls, 0, 'coupé : rien n’est validé sans Basile');
+  await n8n.query('UPDATE vitrines_envoi_config SET auto = true; DELETE FROM vitrines_envoi; DELETE FROM suppression');
+  await brain.query('DELETE FROM vitrines');
 });
 
 test('le Cockpit : l’état de l’envoi se lit ; le mode change d’un geste de Basile ; passer en réel envoie ce qui a été essayé', async () => {

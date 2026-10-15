@@ -12,7 +12,8 @@
 //   3. E-MAIL : la fiche OSM, les pages du site, puis la recherche web du serveur ; l'adresse doit avoir un MX.
 //   4. MAQUETTE : une page à son nom, servie par le Cockpit (/demo/<slug>), marquée « démonstration ».
 //   5. BROUILLON : le texte de Basile ; RIEN ne part d'ici.
-//   6. ENVOI : un brouillon que Basile valide passe dans la file du workflow n8n « Vitrines · Envoi »
+//   6. ENVOI : un brouillon complet est validé seul depuis le 14/10/2026 (accord de Basile ; vitrines_envoi_config.auto),
+//      ou par Basile, et passe dans la file du workflow n8n « Vitrines · Envoi »
 //      (n8n/vitrines_envoi.json, la clé Resend reste dans n8n) ; synchroniser() en rapporte l'issue, les réponses et les « stop ».
 //   7. APPEL : sans e-mail, tout de suite dans la liste d'appels ; avec, dès sa réponse ou sept jours après l'envoi (jarvis/appels.cjs).
 // Conditions de Google : les données d'un lieu écarté sont effacées au bout de 30 jours (seul son identifiant reste).
@@ -729,6 +730,8 @@ export async function preparerEnvoi(n8n) {
     mode text NOT NULL DEFAULT 'test' CHECK (mode IN ('pause', 'test', 'live')), plafond_jour int NOT NULL DEFAULT 10,
     from_email text NOT NULL DEFAULT 'contact@raime.fr', from_name text NOT NULL DEFAULT 'Basile Ramé · rAIme', test_to text)`);
   await n8n.query('INSERT INTO vitrines_envoi_config (id) VALUES (1) ON CONFLICT (id) DO NOTHING');
+  // L'envoi seul (Basile, 14/10/2026 : « Je ne veux plus valider ») ; false rend la validation à Basile.
+  await n8n.query('ALTER TABLE vitrines_envoi_config ADD COLUMN IF NOT EXISTS auto boolean NOT NULL DEFAULT true');
   // L'adresse de test est celle de l'Expéditeur des prospects : aucune adresse écrite dans le code.
   await n8n.query(`UPDATE vitrines_envoi_config SET test_to = (SELECT test_to FROM send_config WHERE id = 1)
     WHERE id = 1 AND test_to IS NULL`).catch(() => {});
@@ -780,9 +783,26 @@ export async function commanderPremium(brain, id) {
 
 export async function synchroniser({ brain, n8n }) {
   await preparer(brain); await preparerEnvoi(n8n);
-  const bilan = { en_file: 0, annules: 0, envoyes: 0, essais: 0, erreurs: 0, reponses: 0, desinscrits: 0 };
+  const bilan = { en_file: 0, annules: 0, envoyes: 0, essais: 0, erreurs: 0, reponses: 0, desinscrits: 0, valides_seuls: 0 };
 
-  // ① Les brouillons validés par Basile entrent dans la file (une seule fois ; une vitrine re-validée y revient).
+  // ⓪ L'envoi seul (Basile, 14/10/2026 : « Je ne veux plus valider… je veux la garantie que ça tourne tout seul ») : un
+  // brouillon dont la maquette est complète est validé par le code. Jamais en Suisse, jamais une adresse désinscrite ; les
+  // enseignes et les fiches de réseau ne sont jamais des brouillons (qualifier). Le reste des garde-fous suit dans ① et n8n.
+  const { rows: [reglage] } = await n8n.query('SELECT auto FROM vitrines_envoi_config WHERE id = 1');
+  if (reglage && reglage.auto) {
+    const { rows: prets } = await brain.query(`SELECT id, email, nom, ville, telephone, adresse, demo_html FROM vitrines
+      WHERE statut = 'brouillon' AND email IS NOT NULL AND sujet IS NOT NULL AND corps IS NOT NULL
+        AND coalesce(pays, 'FR') <> 'CH' AND coalesce(departement, '') <> 'GE' AND email !~* '\\.ch$'`);
+    let desinscrits = new Set();
+    try { desinscrits = new Set((await n8n.query('SELECT lower(email) AS e FROM suppression WHERE email IS NOT NULL')).rows.map((r) => r.e)); } catch { /* liste absente */ }
+    for (const v of prets) {
+      if (!maquetteComplete(v, v.demo_html) || desinscrits.has(String(v.email).toLowerCase())) continue;
+      bilan.valides_seuls += (await brain.query(`UPDATE vitrines SET statut = 'valide', motif = 'validé seul : maquette complète (envoi automatique, 14/10/2026)',
+        maj_le = now() WHERE id = $1 AND statut = 'brouillon'`, [v.id])).rowCount;
+    }
+  }
+
+  // ① Les brouillons validés (par le code ou par Basile) entrent dans la file (une seule fois ; une vitrine re-validée y revient).
   // Une maquette ne part jamais sans ses photos d'exemple ni sans les informations du commerce (règle de Basile).
   const { rows: valides } = (await brain.query(`SELECT id, email, sujet, corps, nom, ville, telephone, adresse, demo_html FROM vitrines
     WHERE statut = 'valide' AND email IS NOT NULL AND sujet IS NOT NULL AND corps IS NOT NULL`));
@@ -842,7 +862,7 @@ export async function synchroniser({ brain, n8n }) {
   const bouge = Object.values(bilan).some((n) => n > 0);
   if (bouge) {
     await brain.query(`INSERT INTO journal(acteur, changement, motif) VALUES ('vitrines', $1, $2)`,
-      [`Vitrines, envoi : ${bilan.en_file} en file, ${bilan.envoyes} envoyés, ${bilan.essais} essais, ${bilan.reponses} réponses`,
+      [`Vitrines, envoi : ${bilan.valides_seuls} validés seuls, ${bilan.en_file} en file, ${bilan.envoyes} envoyés, ${bilan.essais} essais, ${bilan.reponses} réponses`,
         `annulés ${bilan.annules}, refusés ${bilan.erreurs}, désinscrits ${bilan.desinscrits}`]);
   }
   return bilan;

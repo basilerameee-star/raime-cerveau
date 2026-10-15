@@ -36,7 +36,7 @@ Codex du 28/09 : `REPRISE_CODEX.md`.
 | Routeur de modèles | PARTIEL | chaîne gratuite (`jarvis/parole.cjs`) ; réparée le 30/09 : agents sur Gemini 3.5 Flash (9 s, 0 $), Hermes passe seul de 3.8 à 3.7 Flash (ordre 25 fait en 2 min) |
 | Routeur d'approbation / politiques | PARTIEL | le goût (`agents/gout.js`, 30/09) : AUTO / REVUE / BASILE / BLOQUE par règles puis JEV ; branché sur les questions de l'architecte ; gardien, cordon, sas à côté |
 | Gestionnaire d'état | PARTIEL | le cap vivant (passé, futur, leçons, versions gardées dans `cap`) ; tables buts, états, journal, commandes |
-| Watchdog | PARTIEL | crons watchdog, gardien, réparateur ; `/sante` du relais vérifie Hermes depuis le 30/09 |
+| Watchdog | PARTIEL | crons watchdog, gardien, réparateur ; `/sante` du relais vérifie Hermes depuis le 30/09 ; Sentinelle n8n réécrite le 14/10 (`n8n/sentinelle_diagnostic.sql`) : seulement l'actionnable, une fois ; le reste au rapport de 7 h 30 (`jarvis/envois.cjs`) |
 | Données et intelligence | ACTIF | veilleur, radar, portes CCI, chiffres officiels, répertoire public-apis (1 848 API, `apis_publiques`, outil MCP) |
 | PostgreSQL | ACTIF | |
 | RAG | PARTIEL | 10 708 extraits, recherche par mots (tsvector), pas de recherche sémantique |
@@ -48,8 +48,8 @@ Codex du 28/09 : `REPRISE_CODEX.md`.
 | Influenceur IA / clip farming | PLANIFIÉ / NON IMPLÉMENTÉ | |
 | Croissance et distribution | PARTIEL | clé Meta rangée ; module de publication à livrer |
 | Analyse et apprentissage | PARTIEL | métrologue ; architecte (70 s) et superviseur (26 s) repassés avec succès le 30/09, réflexif et penseur sur la même chaîne |
-| Ventes et administration | PARTIEL | prospection n8n (212 envois, 2 réponses au 30/09), brouillons, tri des e-mails, DocuSeal, appels de relance à J+7 (`jarvis/appels.cjs`) |
-| Vitrines (commerçants sans site) | PARTIEL | `agents/vitrines.js` en service (OpenStreetMap ; Google Places dès la clé) ; maquettes publiques `/demo/<slug>` ; brouillons ; liste d'appels ; l'envoi attend la validation du texte et son canal |
+| Ventes et administration | PARTIEL | pré-audits : brouillons écrits par le code (`agents/prospection_auto.js`), envoyés SEULS depuis le 14/10/2026 (accord de Basile) par l'Expéditeur n8n (`n8n/expediteur_envoi.json`) : un e-mail toutes les 0,7 s, chacun marqué selon la réponse de Resend (le 12–14/10, 24 refus 429 avaient été marqués envoyés), plafond qui monte (`n8n/envois.sql`), livraison relue chez Resend. Stock limité par le Fureteur (moteur de recherche fermé). Tri des e-mails, DocuSeal, appels de relance à J+7 (`jarvis/appels.cjs`) |
+| Vitrines (commerçants sans site) | PARTIEL | `agents/vitrines.js` en service (OpenStreetMap ; Google Places dès la clé) ; maquettes publiques `/demo/<slug>` ; un brouillon à la maquette complète est validé seul et part par « Vitrines · Envoi » (9 h, jours ouvrés, hors Suisse) depuis le 14/10/2026 ; liste d'appels |
 | Livraison client | PARTIEL | scripts d'audit, d'arbitrage, Score |
 | Finance / CFO | PARTIEL | dépense des modèles seulement ; table `revenus` vide |
 | Ingénierie / DevOps | ACTIF | porte GitHub → serveur (banc, OIDC) |

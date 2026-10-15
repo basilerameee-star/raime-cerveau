@@ -217,6 +217,9 @@ async function rapport() {
   const mep = await lire("SELECT changement FROM journal WHERE acteur = 'applicateur' AND changement LIKE '%mise en service%' AND created_at > now() - interval '24 hours' ORDER BY created_at");
   const rev = await esprit.revenusDuMois();
   const br = (await lireN8n("SELECT count(*)::int AS n FROM outreach WHERE status = 'brouillon'"))[0];
+  // 14/10/2026 : les brouillons de pré-audits partent seuls (send_config.auto_brouillons) ; « à valider » ne vaut que sans cela
+  const [auto] = await lireN8n("SELECT to_jsonb(s) ->> 'auto_brouillons' AS a FROM send_config s WHERE id = 1");
+  const envois = await require('./envois.cjs').section();
   const qs = await lire("SELECT question FROM demandes WHERE etat = 'ouverte' AND pour_basile ORDER BY bloquant DESC, cree_le DESC LIMIT 3");
   // 08/10/2026 : en premier, les relances du jour et en retard (10 au plus), avec le numéro ou l'adresse et le pourquoi.
   // 08/10/2026 : lus dans jarvis/simulations.mjs (le Cockpit ne voit pas agents/) ; une lecture en échec le DIT, jamais « pas de données »
@@ -235,6 +238,8 @@ async function rapport() {
     ...(retard ? [retard] : []),
     // 08/10/2026 : le bilan du Directeur (agents/directeur.js) ; il remplace les bilans séparés des anciens agents de réflexion
     { titre: 'La direction : le bilan du jour', lignes: dernierBilan ? dernierBilan.texte.split(String.fromCharCode(10)) : ['Pas encore de bilan : le Directeur passe entre 5 h et 7 h.'] },
+    // 14/10/2026 : les envois partent seuls ; le matin, leurs chiffres et le Fureteur (jarvis/envois.cjs), sans alerte
+    envois,
     // la bourse en simulation (08/10/2026) : une ligne par stratégie, jamais un conseil de placement
     { titre: 'Trading (entraînement simulé, 1 000 € fictifs par agent)', lignes: trading.length ? trading : ['Pas encore de données de trading.'] },
     { titre: 'Bourse (simulation, 1 000 € fictifs par stratégie)', lignes: bourse.length ? bourse : ['Pas encore de simulation : elle passe chaque soir après 22 h.'] },
@@ -243,7 +248,8 @@ async function rapport() {
     { titre: 'Améliorations mises en service seul (24 h)', lignes: mep.length ? mep.map((j) => court(j.changement, 160)) : ['Aucune.'] },
     { titre: 'Monétisation (2 000 € par plateforme)', lignes: [`${rev.mois} € ce mois sur ${rev.objectif} €.`,
       ...rev.plateformes.map((p) => `${p.plateforme} : ${p.montant} € sur ${p.objectif} €`), `À part : produits ${rev.produits} €, rAIme ${rev.raime} €.`] },
-    { titre: 'Ce qui attend ta décision', lignes: [`${br ? br.n : 0} brouillons d’e-mails à valider dans le Cockpit.`, ...qs.map((x) => court(x.question, 200))] },
+    { titre: 'Ce qui attend ta décision', lignes: [...(auto && auto.a === 'true' ? [] : [`${br ? br.n : 0} brouillons d’e-mails à valider dans le Cockpit.`]),
+      ...qs.map((x) => court(x.question, 200))].concat(auto && auto.a === 'true' && !qs.length ? ['Rien.'] : []) },
   ] };
 }
 
