@@ -58,10 +58,22 @@ def sources_connues():
     out = {}
     for f in (AUTO, os.path.join(ICI, "sources.json")):     # la main l'emporte sur l'agent
         try:
-            out.update({k: v for k, v in json.load(open(f, encoding="utf-8")).get("campagnes", {}).items() if v.get("url")})
+            out.update({k: v for k, v in json.load(open(f, encoding="utf-8")).get("campagnes", {}).items() if v.get("url") and une_video(v["url"])})
         except (OSError, ValueError):
             pass
     return out
+
+
+def une_video(u):
+    """Un lien qui désigne UNE vidéo (ou un dossier/fichier de la marque), jamais une chaîne entière (15/10/2026 :
+    twitch.tv/Awake et youtube.com/@tonalexina avaient été pris pour des sources)."""
+    if "youtu" in u:
+        return bool(re.search(r"watch\?v=|/shorts/|youtu\.be/|/live/", u))
+    if "twitch.tv" in u:
+        return bool(re.search(r"/videos?/|/clip/|clips\.twitch", u))
+    if "kick.com" in u:
+        return "/videos/" in u or "/clips/" in u
+    return True
 
 
 def source_du_brief(e, brief):
@@ -70,7 +82,7 @@ def source_du_brief(e, brief):
     import cr_agent
     morceaux = cr_agent.textes(brief.get("requirements")) if isinstance(brief, dict) else []
     texte = "\n".join(dict.fromkeys(morceaux))
-    liens = sorted(dict.fromkeys(cr.liens_video(texte)), key=lambda u: (not any(v in u for v in ("drive.google", "dropbox")), u))
+    liens = sorted([u for u in dict.fromkeys(cr.liens_video(texte)) if une_video(u)], key=lambda u: (not any(v in u for v in ("drive.google", "dropbox")), u))
     tags = sorted(set(re.findall(r"(?<![\w@])@[A-Za-z0-9_.]{2,30}", texte)))
     return {"nom": e["nom"], "url": liens[0] if liens else None, "autres": liens[1:6], "nombre": 20,
             "tags": {pl: " ".join(tags[:2]) for pl in e["plateformes"]},

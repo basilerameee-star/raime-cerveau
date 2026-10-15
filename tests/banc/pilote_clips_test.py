@@ -321,6 +321,12 @@ class Agent(unittest.TestCase):
         self.assertIn("@hardscope", s["tags"]["instagram"])
         self.assertIsNone(pilote.source_du_brief(note("y"), {"requirements": {"text": "clip anything"}})["url"])
 
+    def test_jamais_une_chaine_entiere(self):
+        for u in ("https://www.twitch.tv/Awake", "http://www.youtube.com/@tonalexina", "https://kick.com/jayguap00"):
+            self.assertFalse(pilote.une_video(u), u)
+        for u in ("https://www.youtube.com/watch?v=abc", "https://kick.com/x/videos/01a1", "https://drive.google.com/drive/folders/1"):
+            self.assertTrue(pilote.une_video(u), u)
+
     def test_a_rejoindre_toutes_les_compatibles_pas_deux_fois(self):
         notes = [note("a"), note("b", dedies=True), note("c"), note("d", candidature=True), note("e", n=10)]
         self.assertEqual([e["cr_id"] for e in pilote.a_rejoindre(notes, {"c": {}}, {"instagram": {}})], ["a"])
