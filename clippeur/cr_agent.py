@@ -175,11 +175,23 @@ def releve(pg, nom):
     return infos
 
 
-def deja_declare(ctx, cr_id, lien):
-    """Le lien figure-t-il dans les déclarations du compte pour cette campagne ? (la requête que la page fait elle-même)"""
+def identifiant(lien):
+    """L'identifiant de la vidéo dans un lien (reel/<id>, shorts/<id>, watch?v=<id>, video/<id>) : les deux pages ne
+    l'écrivent pas pareil (YouTube : shorts/ chez Buffer, watch?v= chez Content Rewards)."""
+    m = re.search(r"[?&]v=([\w-]{6,})", lien) or re.search(r"/(?:reel|reels|p|shorts|video)/([\w-]{6,})", lien)
+    return m.group(1) if m else lien.rstrip("/").split("/")[-1].split("?")[0]
+
+
+def deja_declare(ctx, cr_id, lien, pg=None):
+    """Le lien figure-t-il dans « Your submissions » (/c/submissions, relevé le 15/10/2026) ? On compare l'identifiant
+    de la vidéo aux liens « Open on … » de la page."""
+    pg = pg or ctx.new_page()
     try:
-        r = ctx.request.get(SITE + "/api/submission/submissions/intake?campaignIds=" + cr_id, timeout=30000)
-        return r.ok and lien.rstrip("/").split("?")[0] in r.text()
+        pg.goto(SITE + "/c/submissions", wait_until="domcontentloaded", timeout=60000)
+        pg.wait_for_timeout(6000)
+        refuser_cookies(pg)
+        liens = pg.locator("a[href]").evaluate_all("els => els.map(e => e.href)")
+        return identifiant(lien) in {identifiant(h) for h in liens if "contentrewards.com" not in h}
     except Exception:
         return False
 
@@ -188,7 +200,7 @@ def soumettre(ctx, pg, cr_id, lien, essai=False):
     """Déclarer un lien dans sa campagne (fenêtre relevée le 15/10/2026 : champ du lien, trois contrôles « compte relié »,
     « pas déjà déclaré », « publié il y a moins de 30 minutes », case des consignes, bouton « Submit clip »), puis vérifier
     qu'il apparaît dans les déclarations du compte."""
-    if deja_declare(ctx, cr_id, lien):
+    if deja_declare(ctx, cr_id, lien, pg):
         return {"ok": True, "verifie": True, "deja": True}
     pg.goto(FICHE + cr_id, wait_until="domcontentloaded", timeout=60000)
     pg.wait_for_timeout(5000)
@@ -227,7 +239,7 @@ def soumettre(ctx, pg, cr_id, lien, essai=False):
     o = obstacle(pg)
     if o:
         return bloquer(o)
-    ok = deja_declare(ctx, cr_id, lien)
+    ok = deja_declare(ctx, cr_id, lien, pg)
     if not ok:
         releve(pg, "verif-" + cr_id)
     return {"ok": ok, "verifie": ok, "raison": "" if ok else "lien envoyé mais absent des déclarations du compte ; relevé dans " + RELEVES}
