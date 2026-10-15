@@ -49,12 +49,75 @@ def slug(nom):
     return re.sub(r"[^a-z0-9]+", "-", s).strip("-")[:50]
 
 
+AUTO = os.path.join(ICI, "sources_auto.json")               # écrit par l'agent (briefs lus après adhésion), hors du rsync
+REJOINDRE_MAX = 5                                           # campagnes rejointes au plus par passage (3 passages par jour)
+
+
 def sources_connues():
-    """Les sources vérifiées, par campagne (sources.json : id Content Rewards → vidéo, mentions, hashtags)."""
+    """Les sources par campagne : vérifiées à la main (sources.json), puis lues dans le brief par l'agent (sources_auto.json)."""
+    out = {}
+    for f in (AUTO, os.path.join(ICI, "sources.json")):     # la main l'emporte sur l'agent
+        try:
+            out.update({k: v for k, v in json.load(open(f, encoding="utf-8")).get("campagnes", {}).items() if v.get("url")})
+        except (OSError, ValueError):
+            pass
+    return out
+
+
+def source_du_brief(e, brief):
+    """Ce que le pilote lit d'un brief rejoint (fonction pure) : la vidéo source (fichiers de la marque, Drive d'abord :
+    YouTube bloque le serveur), les mentions, les mots-dièse et les consignes. url None : aucune vidéo dans le brief."""
+    import cr_agent
+    morceaux = cr_agent.textes(brief.get("requirements")) if isinstance(brief, dict) else []
+    texte = "\n".join(dict.fromkeys(morceaux))
+    liens = sorted(dict.fromkeys(cr.liens_video(texte)), key=lambda u: (not any(v in u for v in ("drive.google", "dropbox")), u))
+    tags = sorted(set(re.findall(r"(?<![\w@])@[A-Za-z0-9_.]{2,30}", texte)))
+    return {"nom": e["nom"], "url": liens[0] if liens else None, "autres": liens[1:6], "nombre": 20,
+            "tags": {pl: " ".join(tags[:2]) for pl in e["plateformes"]},
+            "hashtags": sorted(set(re.findall(r"(?<![\w#])#[A-Za-z][A-Za-z0-9_]{1,30}", texte)))[:5],
+            "consignes": texte[:6000], "verifie": "%s : brief Content Rewards lu par l'agent après adhésion" % time.strftime("%d/%m/%Y")}
+
+
+def a_rejoindre(notes, deja_lus, reserve):
+    """Les campagnes compatibles de la grille pas encore rejointes (fonction pure). Basile, 15/10/2026 21 h 15 : en
+    rejoindre au maximum, en continu, pas seulement de quoi remplir la réserve."""
+    return [e for e in notes if not (e["exclusion"] or e["candidature"] or e["dedies"]) and e["note"] >= NOTE_MINI
+            and (e["cr_id"] not in deja_lus or reessayer(deja_lus[e["cr_id"]])) and set(e["plateformes"]) & set(reserve)][:REJOINDRE_MAX]
+
+
+def reessayer(lu, aujourd_hui=None):
+    """Une adhésion manquée (bouton absent, fenêtre imprévue) se retente le lendemain ; un brief lu, jamais."""
+    return bool(lu.get("echec")) and lu.get("le", "") < (aujourd_hui or time.strftime("%Y-%m-%d"))
+
+
+def rejoindre_et_lire(notes, reserve, prevenir, lanceur=None):
+    """L'agent rejoint les campagnes compatibles et écrit leur brief dans sources_auto.json ; blocage : une alerte."""
+    import cr_lanceur
+    lanceur = lanceur or cr_lanceur
     try:
-        return json.load(open(os.path.join(ICI, "sources.json"), encoding="utf-8")).get("campagnes", {})
+        auto = json.load(open(AUTO, encoding="utf-8"))
     except (OSError, ValueError):
-        return {}
+        auto = {"_lisezmoi": "Écrit par pilote.py et cr_agent.py (briefs lus après adhésion). Ne pas éditer à la main.", "campagnes": {}}
+    if not lanceur.pret():
+        lanceur.alerter_si_bloque(prevenir)
+        return 0
+    cibles = a_rejoindre(notes, auto["campagnes"], reserve)
+    if not cibles:
+        return 0
+    par_id = {e["cr_id"]: e for e in cibles}
+    n = 0
+    for r in lanceur.lancer("rejoindre", *par_id):
+        e = par_id.get(r.get("cr_id"))
+        if e and r.get("ok"):
+            auto["campagnes"][e["cr_id"]] = source_du_brief(e, r.get("brief") or {})
+            n += 1
+        elif e and not r.get("bloque"):
+            auto["campagnes"][e["cr_id"]] = {"nom": e["nom"], "url": None, "echec": (r.get("raison") or "")[:300],
+                                             "le": time.strftime("%Y-%m-%d")}
+    with open(AUTO, "w", encoding="utf-8") as f:
+        json.dump(auto, f, ensure_ascii=False, indent=1)
+    lanceur.alerter_si_bloque(prevenir)
+    return n
 
 
 def source_de(e, sources):
@@ -237,6 +300,11 @@ def main():
                 sql("""UPDATE clips_buffer SET etat = 'campagne_close', message = 'campagne fermée ou budget épuisé', maj = now()
                        WHERE campagne = :'p0' AND etat = 'a_faire';""", d["campagne"])
     reserve = mesurer(sql, actives)
+    try:
+        rejointes = rejoindre_et_lire(notes, reserve, prevenir)
+    except Exception as err:                                # l'agent ne bloque jamais le reste du pilote
+        rejointes = 0
+        print("agent Content Rewards :", str(err)[:200], flush=True)
     a_lancer = choisir(notes, sources_connues(), reserve, deja)
     noter_jour(sql, notes, a_lancer)
     blocs = []
@@ -259,7 +327,7 @@ def main():
     sans_source = [e for e in notes if not e["exclusion"] and not e["candidature"] and not e["dedies"]
                    and not source_de(e, sources_connues())][:3]
     if blocs or alerte or (panne and not deja_ce_jour):
-        texte = ("Campagnes lancées (rejoins-les sur Content Rewards, puis déclare les liens que tu recevras) :\n\n" + "\n\n".join(blocs) + "\n\n") if blocs else ""
+        texte = ("Campagnes lancées (l’agent les rejoint et déclare les clips lui-même) :\n\n" + "\n\n".join(blocs) + "\n\n") if blocs else ""
         if alerte:
             texte += "Réserve basse : %.1f jours de clips prêts (seuil %d jours).\n" % (j, ALERTE)
         if panne:
@@ -276,7 +344,7 @@ def main():
             with open(basse, "w", encoding="utf-8") as f:
                 f.write(time.strftime("%Y-%m-%d %H:%M"))
     print(time.strftime("%Y-%m-%d %H:%M"), len(campagnes), "campagnes,", len([e for e in notes if not e["exclusion"]]), "dans la grille,",
-          len(a_lancer), "lancée(s) ;", etat, ("; panne : " + panne) if panne else "", flush=True)
+          len(a_lancer), "lancée(s),", rejointes, "rejointe(s) ;", etat, ("; panne : " + panne) if panne else "", flush=True)
 
 
 if __name__ == "__main__":

@@ -296,5 +296,50 @@ class Drive(unittest.TestCase):
         self.assertFalse(file.trop_vieux({"cree_le": "2026-10-15T09:26:00+00:00"}, maintenant=now))
         self.assertTrue(file.trop_vieux({"cree_le": "2026-10-15T07:26:00+00:00"}, maintenant=now))
 
+
+class Agent(unittest.TestCase):
+    """L'agent Content Rewards (15/10/2026) : brief lu, campagnes à rejoindre, déclaration notée, une seule alerte."""
+
+    def setUp(self):
+        sys.modules.setdefault("fcntl", type(sys)("fcntl"))
+        import cr_lanceur
+        import declarer
+        self.lanceur, self.declarer = cr_lanceur, declarer
+
+    def test_source_du_brief_drive_d_abord(self):
+        brief = {"requirements": {"text": "Tag @hardscope and use #unpacked. Files: https://youtu.be/abc",
+                                  "files": [{"url": "https://drive.google.com/file/d/1abcdefghijklmnopqrstu/view"}]}}
+        s = pilote.source_du_brief(note("x"), brief)
+        self.assertEqual(s["url"], "https://drive.google.com/file/d/1abcdefghijklmnopqrstu/view")
+        self.assertEqual(s["hashtags"], ["#unpacked"])
+        self.assertIn("@hardscope", s["tags"]["instagram"])
+        self.assertIsNone(pilote.source_du_brief(note("y"), {"requirements": {"text": "clip anything"}})["url"])
+
+    def test_a_rejoindre_toutes_les_compatibles_pas_deux_fois(self):
+        notes = [note("a"), note("b", dedies=True), note("c"), note("d", candidature=True), note("e", n=10)]
+        self.assertEqual([e["cr_id"] for e in pilote.a_rejoindre(notes, {"c": {}}, {"instagram": {}})], ["a"])
+
+    def test_declaration_notee_seulement_si_relue(self):
+        vus = []
+        sql = lambda q, *p: vus.append((q.split()[0], p)) or ""
+        c = {"campagne": "k", "clip": "1", "plateforme": "youtube", "lien": "https://y/1", "declare_essais": 4}
+        self.assertEqual(self.declarer.noter(sql, c, {"ok": True, "verifie": False}), (False, True))   # 5e essai : abandon
+        self.assertEqual(self.declarer.noter(sql, c, {"ok": True, "verifie": True}), (True, False))
+        self.assertEqual(self.declarer.noter(sql, c, {"ok": False, "bloque": True}), (False, False))
+
+    def test_une_seule_alerte_par_blocage(self):
+        import tempfile
+        d = Path(tempfile.mkdtemp())
+        self.lanceur.BLOQUE, self.lanceur.ALERTE = str(d / "bloque"), str(d / "alerte")
+        (d / "bloque").write_text("captcha affiché par Content Rewards", encoding="utf-8")
+        envois = []
+        prevenir = lambda sujet, texte, **k: envois.append(sujet)
+        self.assertTrue(self.lanceur.alerter_si_bloque(prevenir))
+        self.assertFalse(self.lanceur.alerter_si_bloque(prevenir))
+        (d / "bloque").unlink()
+        self.assertFalse(self.lanceur.alerter_si_bloque(prevenir))
+        self.assertFalse((d / "alerte").exists())                # levé : la prochaine panne sera signalée
+        self.assertEqual(len(envois), 1)
+
 if __name__ == "__main__":
     unittest.main()
