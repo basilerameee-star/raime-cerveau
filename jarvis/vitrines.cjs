@@ -176,18 +176,22 @@ async function apresAppel(id, d = {}, { fetch = globalThis.fetch, webhook = proc
   if (!EMAIL_OK.test(a)) return { ok: false, message: 'Adresse e-mail incomplète.' };
   if (!sujet || !corps) return { ok: false, message: 'Il manque l’objet ou le texte.' };
   if (!corps.includes(modele.lien)) return { ok: false, message: 'Le lien de la maquette a disparu du texte : remets-le avant d’envoyer.' };
+  const r = await envoyerTout({ vitrineId: v.id, a, sujet, corps }, { fetch, webhook });
+  if (r.ok && !v.email) await lire('UPDATE vitrines SET email = $2, email_source = $3 WHERE id = $1 AND email IS NULL', [v.id, a, 'appel']).catch(() => {});
+  return r;
+}
+
+// L'envoi commun (maquette ou pré-audit) : la ligne en base, le webhook n8n, puis le statut relu en base.
+async function envoyerTout({ vitrineId, a, sujet, corps }, { fetch, webhook }) {
   await lireN8n(TABLE_APRES);
   const [stop] = await lireN8n('SELECT 1 AS x FROM suppression WHERE lower(email) = lower($1) LIMIT 1', [a]);
   if (stop) return { ok: false, message: 'Cette adresse s’est désinscrite : rien n’est envoyé.' };
-  const [l] = await lireN8n('INSERT INTO vitrines_apres_appel (vitrine_id, to_email, sujet, corps) VALUES ($1, $2, $3, $4) RETURNING id', [v.id, a, sujet, corps]);
+  const [l] = await lireN8n('INSERT INTO vitrines_apres_appel (vitrine_id, to_email, sujet, corps) VALUES ($1, $2, $3, $4) RETURNING id', [vitrineId, a, sujet, corps]);
   try {
     await fetch(webhook, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: l.id }), signal: AbortSignal.timeout(45000) });
   } catch (e) { /* le résultat se lit en base : un délai dépassé reste « inconnu », jamais « parti » */ }
   const [f] = await lireN8n('SELECT statut, erreur FROM vitrines_apres_appel WHERE id = $1', [l.id]);
-  if (f && f.statut === 'envoye') {
-    if (!v.email) await lire('UPDATE vitrines SET email = $2, email_source = $3 WHERE id = $1 AND email IS NULL', [v.id, a, 'appel']).catch(() => {});
-    return { ok: true, statut: 'envoye', message: `E-mail parti à ${a}.` };
-  }
+  if (f && f.statut === 'envoye') return { ok: true, statut: 'envoye', message: `E-mail parti à ${a}.` };
   if (f && f.statut === 'erreur') return { ok: false, statut: 'erreur', message: `Resend a refusé l’e-mail : ${f.erreur || 'raison inconnue'}.` };
   return { ok: false, statut: 'inconnu', message: 'Pas de réponse de l’envoi : vérifie dans un instant avant de renvoyer.' };
 }
@@ -354,4 +358,35 @@ Vitrines, envoi ${mode} : ${e.en_file} en file, ${e.envoyes_aujourdhui} parti(s)
     + `${e.envoyes} en tout, ${e.essais} essai(s)${e.refuses ? `, ${e.refuses} refusé(s)` : ''}.`;
 }
 
-module.exports = { LIEN_PAIEMENT, servirDemo, servirPhoto, apresAppel, emailApresAppel, servirApercu, servirPolice, servirHeros, servirImage, servirTuile, remplirPhotos, fiche, liste, uneFiche, agir, envoi, changerMode, phraseEnvoi, MODES };
+// LE PRÉ-AUDIT APRÈS L'APPEL (15/10/2026) : même geste pour une entreprise (Intégration IA) : son pré-audit de secteur,
+// avec l'e-mail « suite à notre conversation » ; vitrine_id = 0 dans vitrines_apres_appel.
+function emailAudit(nom, lien, email) {
+  return { a: email || '', lien, sujet: `${nom} : votre pré-audit, comme convenu`,
+    corps: `Bonjour,
+
+Suite à notre conversation téléphonique, je vous fais parvenir le pré-audit comme convenu :
+${lien}
+
+Il chiffre, sur une page, ce que l’IA peut faire pour votre métier : les heures libérées chaque mois, ce qu’elles valent, et les sources. Tout élément est modifiable et personnalisable à votre guise : l’audit de vos postes remplace ces estimations par vos chiffres réels.
+
+Si vous souhaitez en parler, répondez simplement à ce message.
+
+Bonne journée,
+Basile Ramé
+rAIme` };
+}
+async function auditApresAppel(siren, d = {}, { fetch = globalThis.fetch, webhook = process.env.N8N_APRES_APPEL || 'http://n8n:5678/webhook/vitrine-apres-appel' } = {}) {
+  const [p] = await lireN8n('SELECT siren, name, sector, contact_email FROM prospects WHERE siren = $1', [String(siren)]);
+  if (!p) return { ok: false, message: 'Entreprise introuvable.' };
+  const lien = require('./preaudits.cjs').preaudit(p.sector);
+  if (!lien) return { ok: false, message: 'Pas de pré-audit pour ce secteur.' };
+  const modele = emailAudit(p.name, lien, p.contact_email);
+  if (d.etape !== 'envoyer') return { ok: true, ...modele };
+  const a = String(d.a || '').trim(), sujet = String(d.sujet || '').trim().slice(0, 200), corps = String(d.corps || '').trim().slice(0, 6000);
+  if (!EMAIL_OK.test(a)) return { ok: false, message: 'Adresse e-mail incomplète.' };
+  if (!sujet || !corps) return { ok: false, message: 'Il manque l’objet ou le texte.' };
+  if (!corps.includes(lien)) return { ok: false, message: 'Le lien du pré-audit a disparu du texte : remets-le avant d’envoyer.' };
+  return envoyerTout({ vitrineId: 0, a, sujet, corps }, { fetch, webhook });
+}
+
+module.exports = { LIEN_PAIEMENT, servirDemo, servirPhoto, apresAppel, emailApresAppel, auditApresAppel, servirApercu, servirPolice, servirHeros, servirImage, servirTuile, remplirPhotos, fiche, liste, uneFiche, agir, envoi, changerMode, phraseEnvoi, MODES };

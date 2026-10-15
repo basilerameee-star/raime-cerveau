@@ -553,6 +553,7 @@ async function assembler({ maintenant = new Date(), executant = EXECUTANT, fetch
     if (p.site_preuve) histo.push([iso(p.found_at), 'Site prouvé par le Fureteur']);
     const nom = (brouillon || parti || os[0] || {}).prospect_name || agenda.joli(p.name) || p.siren;
     const client = { cle, seg: 'ia', siren: p.siren, nom, metier: appels.activite(p.naf, p.name, p.sector), ville: agenda.joli(p.city) || '', tel: tel(p.telephone),
+      audit: require('./preaudits.cjs').preaudit(p.sector),
       email: (brouillon && brouillon.to_email) || p.contact_email || '', histo: trier(histo), etape, envoye, rappel: s.ouvert ? s.ouvert.jour : null,
       dernier: dernierTexte(s, envoye ? `E-mail envoyé le ${court(envoye)}` : null, brouillon ? 'E-mail prêt, pas encore validé' : valide ? 'E-mail validé, pas encore parti' : 'Jamais contacté'),
       ...(etape === 'completer' ? { raison: 'Numéro de téléphone inconnu' } : {}),
@@ -875,6 +876,11 @@ async function router(req, res, { url, m, envoyer, json, autorise }) {
   if (m === 'POST' && (r = url.match(/^\/api\/v6\/maquette\/(\d{1,9})$/))) {
     if (!autorise(req)) { envoyer(res, 403, { ok: false }); return true; }
     const x = await require('./vitrines.cjs').apresAppel(r[1], await json(req, 12000)).catch((e) => ({ ok: false, message: 'Erreur du cockpit : ' + e.message }));
+    envoyer(res, 200, x.ok ? x : { ...x, erreur: x.message }); return true;
+  }
+  if (m === 'POST' && (r = url.match(/^\/api\/v6\/preaudit\/(\d{9})$/))) {
+    if (!autorise(req)) { envoyer(res, 403, { ok: false }); return true; }
+    const x = await require('./vitrines.cjs').auditApresAppel(r[1], await json(req, 12000)).catch((e) => ({ ok: false, message: 'Erreur du cockpit : ' + e.message }));
     envoyer(res, 200, x.ok ? x : { ...x, erreur: x.message }); return true;
   }
   if (m === 'POST' && url === '/api/v6/demande') {

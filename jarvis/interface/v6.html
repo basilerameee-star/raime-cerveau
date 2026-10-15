@@ -765,7 +765,7 @@ function carteAppel({ c, type, note, jour, motif }) {
     <div class="qui"><b>${esc(c.nom)}</b><small>${esc(c.metier)} · ${esc(c.ville)}</small></div>
     <div class="numero"><span class="num">${esc(c.tel)}</span><button type="button" data-copier="${esc(c.tel)}" aria-label="Copier le numéro">${ic('copier')}</button></div>
     <div class="resultat"><button class="btn noir" type="button" data-res="interesse">Intéressé</button><button class="btn" type="button" data-res="non">Pas intéressé</button><button class="btn" type="button" data-res="pasjoint">Pas joint</button><button class="btn" type="button" data-res="rappeler" aria-expanded="${ouvertRappel === c.cle}">À rappeler</button></div>
-    <div class="contexte">${ctx}<span>${esc(quoi)}</span>${c.slug ? `<a href="https://cockpit.raime.fr/demo/${esc(c.slug)}" target="_blank" rel="noopener">Voir sa maquette</a>` : ''}<a href="#" data-fiche="${c.cle}">Fiche</a>${c.seg === 'site' && c.slug ? `<button class="btn noir petit" type="button" data-envoi="${c.cle}">Envoyer la maquette</button>` : ''}</div>
+    <div class="contexte">${ctx}<span>${esc(quoi)}</span>${c.slug ? `<a href="https://cockpit.raime.fr/demo/${esc(c.slug)}" target="_blank" rel="noopener">Voir sa maquette</a>` : ''}<a href="#" data-fiche="${c.cle}">Fiche</a>${c.seg === 'site' && c.slug ? `<button class="btn noir petit" type="button" data-envoi="${c.cle}">Envoyer la maquette</button>` : ''}${c.seg === 'ia' && c.audit ? `<a href="${esc(c.audit)}" target="_blank" rel="noopener">Voir le pré-audit</a><button class="btn noir petit" type="button" data-envoi="${c.cle}">Envoyer le pré-audit</button>` : ''}</div>
     ${ouvertRappel === c.cle ? `<div class="form-rappel"><input type="date" id="r-date" value="${DEMAIN}" min="${DEMAIN}" aria-label="Date du rappel"><input type="text" id="r-note" placeholder="Une note ? (ex. : rappeler après 14 h, veut un devis)" aria-label="Note"><button class="btn noir petit" type="button" data-noter="${c.cle}">Noter</button>
       <p>Sans note, il revient dans ta liste d’appels le jour choisi. Avec une note, il part à l’agenda à cette date, ta note visible.</p></div>` : ''}</div>`;
 }
@@ -905,7 +905,7 @@ function fiche(c) {
     ${c.corps ? `<details class="bloc"><summary style="cursor:pointer;font-weight:700">L’e-mail ${c.etape === 'aenvoyer' ? 'prêt' : 'envoyé'} · ${esc(c.sujet || '')}</summary><div class="lettre" style="margin-top:10px;background:var(--surface)">${esc(c.corps)}</div></details>` : ''}
     <div><span class="etiq">Historique</span><ul class="histo" style="margin-top:10px">${(c.histo && c.histo.length ? c.histo : [['—', 'Rien encore']]).map(([t, x]) => `<li><time>${esc(t)}</time><span>${esc(x)}</span></li>`).join('')}</ul></div>
     ${c.seg === 'site' && c.statut === 'a_completer' ? `<div class="bloc"><span class="etiq">Compléter la fiche</span><div style="display:flex;gap:8px;flex-wrap:wrap"><input id="f-numero" type="tel" placeholder="04 50 12 34 56" aria-label="Son numéro, lu dans un annuaire" style="height:34px;border:1px solid var(--bord);border-radius:10px;padding:0 10px;background:var(--surface)"><button class="btn noir petit" type="button" id="f-numero-ok" data-vid="${c.vid}">Enregistrer le numéro</button></div><span class="raison">Le commerce passe ensuite dans ta liste d’appels.</span></div>` : ''}
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">${c.slug ? `<a class="btn petit" href="https://cockpit.raime.fr/demo/${esc(c.slug)}" target="_blank" rel="noopener">${ic('ext')}Voir la maquette</a><button class="btn noir petit" type="button" data-envoi="${c.cle}">Envoyer la maquette</button>` : ''}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">${c.slug ? `<a class="btn petit" href="https://cockpit.raime.fr/demo/${esc(c.slug)}" target="_blank" rel="noopener">${ic('ext')}Voir la maquette</a><button class="btn noir petit" type="button" data-envoi="${c.cle}">Envoyer la maquette</button>` : ''}${c.seg === 'ia' && c.audit ? `<a class="btn petit" href="${esc(c.audit)}" target="_blank" rel="noopener">${ic('ext')}Voir le pré-audit</a><button class="btn noir petit" type="button" data-envoi="${c.cle}">Envoyer le pré-audit</button>` : ''}
       <button class="btn petit" type="button" data-nouvelle="Client › ${esc(c.nom)}">${ic('drapeau')}Signaler</button></div>
 `);
   $$('[data-envoi]', $('#t-corps')).forEach((b) => b.onclick = () => envoiMaquette(c));
@@ -1013,20 +1013,20 @@ $('#theme').onclick = () => { const r = document.documentElement; r.dataset.them
 // l'e-mail part tout de suite (le cockpit dit « parti » seulement si Resend l'a pris).
 async function envoiMaquette(c) {
   if (!c) return;
-  const id = c.cle.slice(1);
-  tiroir('Site web · après l’appel', c.nom, `${c.metier} · ${c.ville}`, '<p class="note">Préparation de l’e-mail…</p>');
-  let m; try { m = await poster('/api/v6/maquette/' + id, { etape: 'apercu' }); } catch (e) { $('#t-corps').innerHTML = `<p class="raison">${esc(e.message)}</p>`; return; }
+  const id = c.cle.slice(1), audit = c.seg === 'ia', route = (audit ? '/api/v6/preaudit/' : '/api/v6/maquette/') + id;
+  tiroir(audit ? 'Intégration IA · après l’appel' : 'Site web · après l’appel', c.nom, `${c.metier} · ${c.ville}`, '<p class="note">Préparation de l’e-mail…</p>');
+  let m; try { m = await poster(route, { etape: 'apercu' }); } catch (e) { $('#t-corps').innerHTML = `<p class="raison">${esc(e.message)}</p>`; return; }
   $('#t-corps').innerHTML = `<div class="bloc"><span class="etiq">À</span><input id="e-a" type="email" value="${esc(m.a)}" placeholder="adresse@commerce.fr" aria-label="Adresse du commerçant" style="width:100%;height:38px;border:1px solid var(--bord);border-radius:10px;padding:0 12px;background:var(--surface)"></div>
     <div class="bloc"><span class="etiq">Objet</span><input id="e-sujet" type="text" value="${esc(m.sujet)}" aria-label="Objet" style="width:100%;height:38px;border:1px solid var(--bord);border-radius:10px;padding:0 12px;background:var(--surface)"></div>
     <div class="bloc"><span class="etiq">Le texte</span><textarea id="e-corps" rows="13" aria-label="Le texte de l’e-mail" style="width:100%;border:1px solid var(--bord);border-radius:10px;padding:10px 12px;background:var(--surface);font:inherit;line-height:1.5">${esc(m.corps)}</textarea></div>
-    <div class="bloc"><span class="etiq">La maquette jointe par le lien</span><iframe src="${esc(m.lien)}" title="La maquette" loading="lazy" style="width:100%;height:340px;border:1px solid var(--bord);border-radius:10px;background:#000"></iframe>
-      <a class="btn petit" style="margin-top:8px;align-self:flex-start" href="${esc(m.lien)}" target="_blank" rel="noopener">${ic('ext')}Ouvrir la maquette en grand</a></div>
+    <div class="bloc"><span class="etiq">${audit ? 'Le pré-audit joint par le lien' : 'La maquette jointe par le lien'}</span>${audit ? '' : `<iframe src="${esc(m.lien)}" title="La maquette" loading="lazy" style="width:100%;height:340px;border:1px solid var(--bord);border-radius:10px;background:#000"></iframe>`}
+      <a class="btn petit" style="margin-top:8px;align-self:flex-start" href="${esc(m.lien)}" target="_blank" rel="noopener">${ic('ext')}${audit ? 'Ouvrir le pré-audit' : 'Ouvrir la maquette en grand'}</a></div>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn noir" type="button" id="e-envoyer">Envoyer</button><span class="raison" id="e-etat">L’e-mail part dès le clic.</span></div>`;
   const b = $('#e-envoyer');
   b.onclick = async () => {
     $('#e-etat').textContent = 'Envoi…';
     try {
-      const r = await poster('/api/v6/maquette/' + id, { etape: 'envoyer', a: $('#e-a').value, sujet: $('#e-sujet').value, corps: $('#e-corps').value }, b);
+      const r = await poster(route, { etape: 'envoyer', a: $('#e-a').value, sujet: $('#e-sujet').value, corps: $('#e-corps').value }, b);
       $('#e-etat').textContent = r.message; toast(c.nom + ' : ' + r.message); b.disabled = true; b.textContent = 'Envoyé';
     } catch (e) { $('#e-etat').textContent = e.message; }
   };
