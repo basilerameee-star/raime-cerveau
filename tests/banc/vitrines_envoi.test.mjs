@@ -288,7 +288,12 @@ test('point 16 : un commerçant qui répond reçoit une maquette premium command
   assert.match(page.entetes['Content-Security-Policy'], /default-src 'none'/, 'et sans réseau');
   assert.deepEqual(await v.agir(61, { action: 'retablir_simple' }), { ok: true });
   page = await servir();
-  assert.equal(page.corps, '<p>maquette simple</p>');
+  assert.match(page.corps, /^<!doctype html>/i, 'un fleuriste a son site complet (15/10/2026), refait depuis sa fiche');
+  assert.match(page.corps, /Fleurs de Léa/);
+  assert.ok(!/allow-same-origin/.test(page.entetes['Content-Security-Policy']), 'le site anime dans une origine opaque');
+  await brain.query("UPDATE vitrines SET metier = 'cordonnier' WHERE id = 61");
+  page = await servir();
+  assert.equal(page.corps, '<p>maquette simple</p>', 'un métier sans gabarit garde sa maquette enregistrée');
   assert.ok(!/allow-scripts/.test(page.entetes['Content-Security-Policy']), 'la simple n’a aucun script');
   await brain.query("DELETE FROM commandes WHERE source = 'vitrines'");
   await n8n.query('DELETE FROM vitrines_envoi');
@@ -358,4 +363,34 @@ test('l’aperçu du héros v4 (15/10/2026) : /demo/v4/<slug> refait la page à 
   assert.equal(rows[0].demo_html, '<p>en ligne</p>', 'la maquette reçue par le commerçant ne change pas');
   assert.equal((await servir('aucun-commerce-ici', 'v4')).statut, 404);
   await brain.query('DELETE FROM vitrines WHERE id = 4077');
+});
+
+
+test('l’e-mail après l’appel : Basile voit le texte et le lien, puis il part tout de suite ; « parti » seulement si Resend l’a pris', async () => {
+  const v = require('../../jarvis/vitrines.cjs');
+  await brain.query(`INSERT INTO vitrines (id, source, source_id, nom, metier, ville, adresse, telephone, slug, demo_html, statut)
+    VALUES (4101, 'osm', 'osm:node/t4101', 'Chez Paul', 'boulangerie', 'Annecy', '3 rue Royale 74000 Annecy', '04 50 00 41 01', 'chez-paul-4101', '<p>m</p>', 'a_appeler')`);
+  const apercu = await v.apresAppel(4101, { etape: 'apercu' });
+  assert.equal(apercu.ok, true); assert.equal(apercu.a, '');
+  assert.equal(apercu.lien, 'https://cockpit.raime.fr/demo/chez-paul-4101');
+  assert.match(apercu.corps, /Suite à notre appel/); assert.ok(apercu.corps.includes(apercu.lien));
+  assert.match(apercu.corps, /500 €/); assert.match(apercu.corps, /votre adresse et votre numéro/);
+  const appels = [];
+  const fauxN8n = (statut) => async (url, o) => { appels.push(JSON.parse(o.body).id);
+    await n8n.query('UPDATE vitrines_apres_appel SET statut = $2, resend_id = $3, envoye_le = now() WHERE id = $1', [JSON.parse(o.body).id, statut, statut === 'envoye' ? 're_123456789' : null]); return { ok: true }; };
+  assert.equal((await v.apresAppel(4101, { etape: 'envoyer', a: 'pas-une-adresse', sujet: 'S', corps: apercu.corps }, { fetch: fauxN8n('envoye') })).ok, false);
+  assert.match((await v.apresAppel(4101, { etape: 'envoyer', a: 'paul@x.test', sujet: 'S', corps: 'sans lien' }, { fetch: fauxN8n('envoye') })).message, /lien de la maquette/);
+  assert.equal(appels.length, 0, 'rien n’est envoyé sans adresse ni lien');
+  const r = await v.apresAppel(4101, { etape: 'envoyer', a: 'paul@x.test', sujet: apercu.sujet, corps: apercu.corps }, { fetch: fauxN8n('envoye') });
+  assert.deepEqual([r.ok, r.statut], [true, 'envoye']); assert.equal(appels.length, 1);
+  assert.equal((await brain.query('SELECT email FROM vitrines WHERE id = 4101')).rows[0].email, 'paul@x.test', 'l’adresse donnée au téléphone est gardée');
+  const sansReponse = await v.apresAppel(4101, { etape: 'envoyer', a: 'paul@x.test', sujet: 'S', corps: apercu.corps }, { fetch: async () => { throw new Error('délai'); } });
+  assert.deepEqual([sansReponse.ok, sansReponse.statut], [false, 'inconnu'], 'sans réponse, jamais « parti »');
+  await n8n.query("INSERT INTO suppression (email, reason) VALUES ('stop@x.test', 'unsub') ON CONFLICT DO NOTHING");
+  assert.match((await v.apresAppel(4101, { etape: 'envoyer', a: 'STOP@x.test', sujet: 'S', corps: apercu.corps }, { fetch: fauxN8n('envoye') })).message, /désinscrite/);
+  const w = JSON.parse(fs.readFileSync(new URL('../../n8n/vitrines_apres_appel.json', import.meta.url), 'utf8'));
+  assert.equal(w.nodes.find((n) => n.type === 'n8n-nodes-base.webhook').parameters.path, 'vitrine-apres-appel');
+  assert.match(w.nodes.find((n) => n.name === "Lire l'e-mail").parameters.query, /interval '15 minutes'/, 'le webhook n’envoie qu’une ligne fraîche écrite par le cockpit');
+  await brain.query('DELETE FROM vitrines WHERE id = 4101');
+  await n8n.query("DELETE FROM vitrines_apres_appel; DELETE FROM suppression WHERE email = 'stop@x.test'");
 });

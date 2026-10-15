@@ -1,0 +1,89 @@
+{
+  "id": "vitrinesApres001",
+  "name": "Vitrines · Envoi après l'appel (un clic de Basile)",
+  "description": "Basile clique « Envoyer » dans Jarvis après un appel : le cockpit écrit l'e-mail dans vitrines_apres_appel puis appelle ce webhook avec son numéro ; le flux l'envoie tout de suite par Resend (sans plafond ni file : c'est le commerçant qui l'attend) et note la réponse. Le webhook n'envoie qu'une ligne écrite par le cockpit il y a moins de 15 minutes. Source : n8n/vitrines_apres_appel.json du dépôt raime-cerveau.",
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "nodes": [
+    {
+      "id": "a1f0c2e4-0001-4c5e-9a10-5e7d0f1a2b01",
+      "name": "Jarvis demande",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "6d2f1e8a-3b4c-4f7a-9e21-7a1c0e5b9d41",
+      "parameters": { "httpMethod": "POST", "path": "vitrine-apres-appel", "responseMode": "lastNode", "options": {} }
+    },
+    {
+      "id": "a1f0c2e4-0002-4c5e-9a10-5e7d0f1a2b02",
+      "name": "Lire l'e-mail",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [220, 0],
+      "credentials": { "postgres": { "id": "BrXTH33ssavnLbT5", "name": "Postgres rAIme" } },
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=SELECT a.id, a.to_email, a.sujet, a.corps, c.from_email, c.from_name FROM vitrines_apres_appel a CROSS JOIN vitrines_envoi_config c WHERE c.id = 1 AND a.id = {{ Math.max(0, Math.floor(Number(($json.body || {}).id) || 0)) }} AND a.statut = 'a_envoyer' AND a.cree_le > now() - interval '15 minutes' AND NOT EXISTS (SELECT 1 FROM suppression s WHERE lower(s.email) = lower(a.to_email))",
+        "options": {}
+      }
+    },
+    {
+      "id": "a1f0c2e4-0003-4c5e-9a10-5e7d0f1a2b03",
+      "name": "Prepare",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 0],
+      "parameters": {
+        "jsCode": "// Le même format que « Vitrines · Envoi des maquettes » : texte de Basile, liens cliquables, lien de désinscription.\nconst NL = String.fromCharCode(10);\nconst esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');\nconst liens = (s) => s.replace(/https:\\/\\/[^\\s<]+/g, (u) => '<a href=\"' + u + '\">' + u + '</a>');\nconst out = [];\nfor (const it of $input.all()) {\n  const d = it.json || {};\n  if (!d.id || !d.to_email || !d.corps) continue;\n  const fromEmail = d.from_email || 'contact@raime.fr';\n  const fromName = d.from_name || 'rAIme';\n  const desinscription = 'https://cockpit.raime.fr/unsub?e=' + encodeURIComponent(d.to_email);\n  const html = '<div style=\"font-family:-apple-system,Segoe UI,Roboto,sans-serif;font-size:15px;line-height:1.6;color:#1a1a1a\">'\n    + liens(esc(d.corps)).split(NL).join('<br>')\n    + '<p style=\"font-size:11px;color:#999999;margin-top:22px\">' + esc(fromEmail) + ' · <a href=\"' + desinscription + '\" style=\"color:#999999\">se désinscrire</a></p></div>';\n  out.push({ json: { id: d.id, email_body: { from: fromName + ' <' + fromEmail + '>', to: [d.to_email], reply_to: fromEmail,\n    subject: d.sujet || 'Votre site', html, text: d.corps + NL + NL + 'Se désinscrire : ' + desinscription,\n    headers: { 'List-Unsubscribe': '<' + desinscription + '>' } } } });\n}\nreturn out;"
+      }
+    },
+    {
+      "id": "a1f0c2e4-0004-4c5e-9a10-5e7d0f1a2b04",
+      "name": "Resend envoie",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, 0],
+      "credentials": { "httpHeaderAuth": { "id": "abAOr4U3s8bzRjWi", "name": "Header Auth account" } },
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.resend.com/emails",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.email_body }}",
+        "options": { "response": { "response": { "neverError": true } }, "timeout": 30000 }
+      }
+    },
+    {
+      "id": "a1f0c2e4-0005-4c5e-9a10-5e7d0f1a2b05",
+      "name": "Marque",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 0],
+      "parameters": {
+        "jsCode": "// L'e-mail est marqué selon SA réponse de Resend : un identifiant = parti ; sinon « erreur » avec le message.\nconst e = $('Prepare').first();\nconst r = ($input.first() || { json: {} }).json || {};\nconst q = (s) => \"'\" + String(s).replace(/'/g, \"''\") + \"'\";\nconst ok = typeof r.id === 'string' && /^[A-Za-z0-9-]{8,64}$/.test(r.id) && !r.statusCode && !r.error;\nconst erreur = ok ? null : String(r.message || (r.error && (r.error.message || r.error)) || 'réponse inattendue de Resend').slice(0, 200);\nconst sql = 'UPDATE vitrines_apres_appel SET statut = ' + q(ok ? 'envoye' : 'erreur') + ', resend_id = ' + (ok ? q(r.id) : 'NULL')\n  + ', erreur = ' + (erreur === null ? 'NULL' : q(erreur)) + ', envoye_le = ' + (ok ? 'now()' : 'NULL')\n  + ' WHERE id = ' + Number(e.json.id) + \" AND statut = 'a_envoyer' RETURNING id, statut, erreur;\";\nreturn [{ json: { sql } }];"
+      }
+    },
+    {
+      "id": "a1f0c2e4-0006-4c5e-9a10-5e7d0f1a2b06",
+      "name": "Ecrit statut",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [1100, 0],
+      "credentials": { "postgres": { "id": "BrXTH33ssavnLbT5", "name": "Postgres rAIme" } },
+      "parameters": { "operation": "executeQuery", "query": "={{ $json.sql }}", "options": {} }
+    }
+  ],
+  "connections": {
+    "Jarvis demande": { "main": [[{ "node": "Lire l'e-mail", "type": "main", "index": 0 }]] },
+    "Lire l'e-mail": { "main": [[{ "node": "Prepare", "type": "main", "index": 0 }]] },
+    "Prepare": { "main": [[{ "node": "Resend envoie", "type": "main", "index": 0 }]] },
+    "Resend envoie": { "main": [[{ "node": "Marque", "type": "main", "index": 0 }]] },
+    "Marque": { "main": [[{ "node": "Ecrit statut", "type": "main", "index": 0 }]] }
+  },
+  "pinData": {},
+  "staticData": null,
+  "tags": [],
+  "meta": null
+}

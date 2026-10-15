@@ -377,6 +377,7 @@ async function router(req, res) {
   if (m === 'GET' && (r = url.match(/^\/demo\/img\/([a-z0-9-]+)\/([1-9])\.jpg$/))) return vitrines.servirImage(r[1], Number(r[2]), res);
   if (m === 'GET' && (r = url.match(/^\/demo\/tuile\/(\d+)\/(\d+)\/(\d+)\.png$/))) return vitrines.servirTuile(Number(r[1]), Number(r[2]), Number(r[3]), res);
   if (m === 'GET' && (r = url.match(/^\/demo\/police\/([A-Za-z-]+\.woff2)$/))) return vitrines.servirPolice(r[1], res);
+  if (m === 'GET' && (r = url.match(/^\/demo\/photos\/([a-z0-9-]+)\/([a-z0-9]+\.webp)$/))) return vitrines.servirPhoto(r[1], r[2], res);
   if (m === 'GET' && (r = url.match(/^\/demo\/heros\/([a-z0-9-]+\.jpg)$/))) return vitrines.servirHeros(r[1], res);
   if (m === 'GET' && (r = url.match(/^\/demo\/(v3|v4)\/([a-z0-9-]+)\/?$/))) return vitrines.servirApercu(r[2], res, r[1]);
   if (m === 'GET' && (r = url.match(/^\/demo\/([a-z0-9-]+)\/?$/))) return vitrines.servirDemo(r[1], res);

@@ -105,15 +105,91 @@ const POLICES = "font-src https://cockpit.raime.fr";   // polices hébergées pa
 const CSP_SIMPLE = `sandbox allow-popups allow-popups-to-escape-sandbox; default-src 'none'; style-src 'unsafe-inline'; ${IMAGES}; ${POLICES}`;
 const CSP_PREMIUM = "sandbox allow-scripts allow-popups allow-popups-to-escape-sandbox; default-src 'none'; script-src 'unsafe-inline'; "
   + `style-src 'unsafe-inline'; ${IMAGES}; font-src data: https://cockpit.raime.fr; media-src data:`;
+// Le SITE COMPLET (validé par Basile le 15/10/2026 : « c'est exactement ça ») : pour un métier qui a son gabarit
+// (jarvis/maquette_site.mjs), /demo/<slug> montre le site refait à la volée depuis la fiche, donc toujours à jour ;
+// sinon la maquette enregistrée (demo_html). Une maquette premium garde la sienne. Le site anime ses apparitions : son
+// script tourne dans une origine opaque (sandbox sans allow-same-origin), sans accès au réseau.
+const CSP_SITE = "sandbox allow-scripts allow-popups allow-popups-to-escape-sandbox; default-src 'none'; script-src 'unsafe-inline'; "
+  + `style-src 'unsafe-inline'; ${IMAGES}; ${POLICES}`;
+let gabaritSite = null;
+const chargerSite = () => gabaritSite || (gabaritSite = import(require('url').pathToFileURL(path.join(__dirname, 'maquette_site.mjs')).href));
+async function siteComplet(v) {
+  if (!v || v.premium_le) return null;
+  const { maquetteSite } = await chargerSite();
+  return maquetteSite(v, { site: 'https://cockpit.raime.fr' });
+}
 async function servirDemo(slug, res) {
   let r = [];
   if (/^[a-z0-9-]{3,60}$/.test(slug)) {
-    r = await lire(`SELECT demo_html, to_jsonb(v) ->> 'premium_le' AS premium FROM vitrines v WHERE slug = $1 AND demo_html IS NOT NULL`, [slug]).catch(() => []);
+    r = await lire('SELECT * FROM vitrines v WHERE slug = $1 AND demo_html IS NOT NULL', [slug]).catch(() => []);
   }
   if (!r[0]) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end('Cette page n’existe pas ou plus.'); return; }
+  const site = await siteComplet(r[0]).catch(() => null);
   res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex',
-    'Content-Security-Policy': r[0].premium ? CSP_PREMIUM : CSP_SIMPLE, 'X-Content-Type-Options': 'nosniff' });
-  res.end(r[0].demo_html);
+    'Content-Security-Policy': site ? CSP_SITE : (r[0].premium_le ? CSP_PREMIUM : CSP_SIMPLE), 'X-Content-Type-Options': 'nosniff' });
+  res.end(site || r[0].demo_html);
+}
+
+// Les photos du site complet : trois par métier (héros, métier, fin), choisies à la main sur Pixabay et rangées dans le
+// dépôt (jarvis/interface/photos/<métier>/, provenance dans sources.json) ; servies d'ici comme les polices.
+const DOSSIER_PHOTOS = path.join(__dirname, 'interface', 'photos');
+function servirPhoto(dossier, nom, res) {
+  const f = path.join(DOSSIER_PHOTOS, dossier, nom);
+  if (!/^[a-z0-9-]+$/.test(dossier) || !/^[a-z0-9]+\.webp$/.test(nom) || !fs.existsSync(f)) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end('Image introuvable.'); return; }
+  res.writeHead(200, { 'Content-Type': 'image/webp', 'Cache-Control': 'public, max-age=604800', 'X-Content-Type-Options': 'nosniff' });
+  fs.createReadStream(f).pipe(res);
+}
+
+// L'E-MAIL APRÈS L'APPEL (Basile, 15/10/2026) : dans Jarvis, il voit l'e-mail et la maquette, corrige s'il veut, clique
+// « Envoyer » ; l'e-mail part tout de suite (flux n8n « Vitrines · Envoi après l'appel », webhook interne), hors plafond
+// et hors file : c'est le commerçant qui l'attend. Chaque envoi est gardé dans vitrines_apres_appel (base n8n).
+const TABLE_APRES = `CREATE TABLE IF NOT EXISTS vitrines_apres_appel (id serial PRIMARY KEY, vitrine_id int NOT NULL, to_email text NOT NULL,
+  sujet text NOT NULL, corps text NOT NULL, statut text NOT NULL DEFAULT 'a_envoyer', resend_id text, erreur text,
+  cree_le timestamptz NOT NULL DEFAULT now(), envoye_le timestamptz)`;
+const EMAIL_OK = /^[^\s@<>",;]+@[^\s@<>",;]+\.[a-z]{2,}$/i;
+function emailApresAppel(v) {
+  const lien = `https://cockpit.raime.fr/demo/${v.slug}`;
+  const donnees = [v.adresse && 'votre adresse', v.horaires && 'vos horaires', v.telephone && 'votre numéro'].filter(Boolean);
+  const avec = donnees.length ? `, avec ${donnees.length > 1 ? `${donnees.slice(0, -1).join(', ')} et ${donnees[donnees.length - 1]}` : donnees[0]}` : '';
+  return { a: v.email || '', lien, sujet: `${v.nom} : la maquette de votre site, comme convenu`,
+    corps: `Bonjour,
+
+Suite à notre appel, voici la maquette du site de ${v.nom}, préparée pour vous :
+${lien}
+
+`
+      + `Elle est déjà prête${avec}. Il ne reste qu’à la mettre en ligne : sous 7 jours, pour 500 €, hébergement inclus.
+
+`
+      + `Si elle vous plaît, répondez simplement à ce message.
+
+Bonne journée,
+Basile Ramé
+rAIme` };
+}
+async function apresAppel(id, d = {}, { fetch = globalThis.fetch, webhook = process.env.N8N_APRES_APPEL || 'http://n8n:5678/webhook/vitrine-apres-appel' } = {}) {
+  const [v] = await lire('SELECT id, nom, slug, email, adresse, horaires, telephone FROM vitrines WHERE id = $1 AND slug IS NOT NULL', [Number(id)]);
+  if (!v) return { ok: false, message: 'Commerce introuvable.' };
+  const modele = emailApresAppel(v);
+  if (d.etape !== 'envoyer') return { ok: true, ...modele };
+  const a = String(d.a || '').trim(), sujet = String(d.sujet || '').trim().slice(0, 200), corps = String(d.corps || '').trim().slice(0, 6000);
+  if (!EMAIL_OK.test(a)) return { ok: false, message: 'Adresse e-mail incomplète.' };
+  if (!sujet || !corps) return { ok: false, message: 'Il manque l’objet ou le texte.' };
+  if (!corps.includes(modele.lien)) return { ok: false, message: 'Le lien de la maquette a disparu du texte : remets-le avant d’envoyer.' };
+  await lireN8n(TABLE_APRES);
+  const [stop] = await lireN8n('SELECT 1 AS x FROM suppression WHERE lower(email) = lower($1) LIMIT 1', [a]);
+  if (stop) return { ok: false, message: 'Cette adresse s’est désinscrite : rien n’est envoyé.' };
+  const [l] = await lireN8n('INSERT INTO vitrines_apres_appel (vitrine_id, to_email, sujet, corps) VALUES ($1, $2, $3, $4) RETURNING id', [v.id, a, sujet, corps]);
+  try {
+    await fetch(webhook, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: l.id }), signal: AbortSignal.timeout(45000) });
+  } catch (e) { /* le résultat se lit en base : un délai dépassé reste « inconnu », jamais « parti » */ }
+  const [f] = await lireN8n('SELECT statut, erreur FROM vitrines_apres_appel WHERE id = $1', [l.id]);
+  if (f && f.statut === 'envoye') {
+    if (!v.email) await lire('UPDATE vitrines SET email = $2, email_source = $3 WHERE id = $1 AND email IS NULL', [v.id, a, 'appel']).catch(() => {});
+    return { ok: true, statut: 'envoye', message: `E-mail parti à ${a}.` };
+  }
+  if (f && f.statut === 'erreur') return { ok: false, statut: 'erreur', message: `Resend a refusé l’e-mail : ${f.erreur || 'raison inconnue'}.` };
+  return { ok: false, statut: 'inconnu', message: 'Pas de réponse de l’envoi : vérifie dans un instant avant de renvoyer.' };
 }
 
 // Les polices des maquettes (Inter, Instrument Serif : licences OFL dans jarvis/interface/polices/), servies d'ici pour
@@ -278,4 +354,4 @@ Vitrines, envoi ${mode} : ${e.en_file} en file, ${e.envoyes_aujourdhui} parti(s)
     + `${e.envoyes} en tout, ${e.essais} essai(s)${e.refuses ? `, ${e.refuses} refusé(s)` : ''}.`;
 }
 
-module.exports = { LIEN_PAIEMENT, servirDemo, servirApercu, servirPolice, servirHeros, servirImage, servirTuile, remplirPhotos, fiche, liste, uneFiche, agir, envoi, changerMode, phraseEnvoi, MODES };
+module.exports = { LIEN_PAIEMENT, servirDemo, servirPhoto, apresAppel, emailApresAppel, servirApercu, servirPolice, servirHeros, servirImage, servirTuile, remplirPhotos, fiche, liste, uneFiche, agir, envoi, changerMode, phraseEnvoi, MODES };

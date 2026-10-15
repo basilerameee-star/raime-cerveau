@@ -871,6 +871,12 @@ async function router(req, res, { url, m, envoyer, json, autorise }) {
     if (!autorise(req)) { envoyer(res, 403, { ok: false }); return true; }
     envoyer(res, 200, await noterAppel(r[1], await json(req, 4000))); return true;
   }
+  // L'e-mail après l'appel (15/10/2026) : aperçu, puis envoi tout de suite sur le clic de Basile.
+  if (m === 'POST' && (r = url.match(/^\/api\/v6\/maquette\/(\d{1,9})$/))) {
+    if (!autorise(req)) { envoyer(res, 403, { ok: false }); return true; }
+    const x = await require('./vitrines.cjs').apresAppel(r[1], await json(req, 12000)).catch((e) => ({ ok: false, message: 'Erreur du cockpit : ' + e.message }));
+    envoyer(res, 200, x.ok ? x : { ...x, erreur: x.message }); return true;
+  }
   if (m === 'POST' && url === '/api/v6/demande') {
     if (!autorise(req)) { envoyer(res, 403, { ok: false }); return true; }
     envoyer(res, 200, await demande(await json(req, 10000))); return true;
