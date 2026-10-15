@@ -129,14 +129,26 @@ function servirPolice(nom, res) {
 
 // L'APERÇU du héros v3 (07/10/2026) : la maquette d'un commerce refaite à la volée avec le nouveau gabarit, à l'adresse
 // /demo/v3/<slug>, SANS toucher à la maquette en ligne (demo_html) que le commerçant a reçue. Basile valide, puis on bascule.
-async function servirApercu(slug, res) {
+// 15/10/2026 : le héros v4 (quatre éléments, une photo choisie par métier) à /demo/v4/<slug>, de la même façon.
+async function servirApercu(slug, res, version = 'v3') {
   const r = /^[a-z0-9-]{3,60}$/.test(slug) ? await lire('SELECT * FROM vitrines WHERE slug = $1 AND demo_html IS NOT NULL', [slug]).catch(() => []) : [];
   if (!r[0]) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end('Cette page n’existe pas ou plus.'); return; }
-  const { maquettePremium } = await import(require('url').pathToFileURL(path.join(__dirname, 'maquette_premium.mjs')).href);
-  const html = maquettePremium(r[0], { images: 'https://cockpit.raime.fr/demo/img', v3: true });
+  const { maquettePremium, maquetteV4 } = await import(require('url').pathToFileURL(path.join(__dirname, 'maquette_premium.mjs')).href);
+  const html = version === 'v4' ? maquetteV4(r[0], { site: 'https://cockpit.raime.fr' })
+    : maquettePremium(r[0], { images: 'https://cockpit.raime.fr/demo/img', v3: true });
   res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex',
     'Content-Security-Policy': CSP_SIMPLE, 'X-Content-Type-Options': 'nosniff' });
   res.end(html);
+}
+
+// Les photos des héros v4 (15/10/2026) : une par métier, choisie à la main (sans marque ni écriture visible) et rangée
+// dans le dépôt, provenance dans interface/heros/SOURCES.md ; servies d'ici comme les polices, sans base ni recherche.
+const DOSSIER_HEROS = path.join(__dirname, 'interface', 'heros');
+function servirHeros(nom, res) {
+  const f = path.join(DOSSIER_HEROS, nom);
+  if (!/^[a-z0-9-]+\.jpg$/.test(nom) || !fs.existsSync(f)) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end('Image introuvable.'); return; }
+  res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Cache-Control': 'public, max-age=604800', 'X-Content-Type-Options': 'nosniff' });
+  fs.createReadStream(f).pipe(res);
 }
 
 // La fiche d'un commerce, pour l'interface : tout ce qu'il faut pour décider d'appeler.
@@ -266,4 +278,4 @@ Vitrines, envoi ${mode} : ${e.en_file} en file, ${e.envoyes_aujourdhui} parti(s)
     + `${e.envoyes} en tout, ${e.essais} essai(s)${e.refuses ? `, ${e.refuses} refusé(s)` : ''}.`;
 }
 
-module.exports = { LIEN_PAIEMENT, servirDemo, servirApercu, servirPolice, servirImage, servirTuile, remplirPhotos, fiche, liste, uneFiche, agir, envoi, changerMode, phraseEnvoi, MODES };
+module.exports = { LIEN_PAIEMENT, servirDemo, servirApercu, servirPolice, servirHeros, servirImage, servirTuile, remplirPhotos, fiche, liste, uneFiche, agir, envoi, changerMode, phraseEnvoi, MODES };

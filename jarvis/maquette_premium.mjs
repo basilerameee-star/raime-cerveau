@@ -287,3 +287,91 @@ h3{font-size:22px;letter-spacing:-.01em}
 export function maquetteComplete(v, html) {
   return !!(html && /\/demo\/img\//.test(html) && v.nom && v.ville && (v.telephone || v.adresse));
 }
+
+// ── LE HÉROS v4 (15/10/2026, aperçu /demo/v4/<slug>, à valider par Basile) ──────────────────────────────────────────
+// Basile, le 14/10 : « beaucoup trop basiques… une maquette d'un site web sexy… que le site donne envie… avec du beau
+// motion design » ; le 08/10 : « restriction volontaire de l'information, aucune répétition ». Le premier écran tient
+// en QUATRE éléments : le logo (le nom du commerce, une seule fois), un titre, un bouton, un objet.
+// - L'objet : UNE photo par métier, choisie à la main (Pixabay, sans marque ni écriture visible), posée dans le dépôt
+//   (jarvis/interface/heros/, provenance dans SOURCES.md) et servie par le Cockpit ; jamais une recherche automatique.
+// - Le titre : une promesse vraie pour TOUT commerce du métier (rien d'inventé : ni avis, ni prix, ni horaires) ; le
+//   mot-clé en italique, au début de la première ligne, pour qu'un retour à la ligne ne le déplace jamais.
+// - Le bouton dit ce qu'il fait : le numéro (un appel), « Appeler » sur téléphone ; sans numéro, « Itinéraire ».
+// - Trois couleurs : le ton sourd du métier (le fond), le papier (le texte), et le bouton qui les inverse.
+// - Un seul geste animé : la lumière monte sur l'objet pendant que la caméra recule, en CSS seul (la page est servie
+//   sans script), coupé si le visiteur préfère moins de mouvement.
+// Le reste de la page (prestations, images, nous trouver, la mention « maquette ») viendra une section à la fois,
+// après son accord ; /demo/<slug> et le gabarit des e-mails ne changent pas d'ici là.
+export const HEROS = {
+  // gauche : où commence la photo sur grand écran (le titre garde sa place) ; cadre : où tombe l'objet (object-position) ;
+  // fit : « contain » pour un objet long qu'on veut entier (la voiture) ;
+  // filtre : le grain de la photo accordé au ton (jamais de couleur vive) ; zoomM : sa taille sur téléphone ;
+  // centre et halo : la lumière posée sur l'objet (ce qui en sort s'éteint dans le fond).
+  boucherie: { ton: '#3b2421', titre: ['Le bon morceau', ',', 'coupé à la demande.'], photo: 'boucherie',
+    gauche: '30%', cadre: '78% 42%', cadreM: '76% 50%', centre: '56% 46%', filtre: 'sepia(.28) saturate(1.02)' },
+  'garage automobile': { ton: '#1f2b34', titre: ['Entretenue', ', réparée,', 'prête à repartir.'], photo: 'garage-automobile',
+    cadre: '50% 0%', cadreM: '50% 80%', fit: 'contain', fitM: 'contain', zoomM: 1.35, halo: 'ellipse 95% 130%', filtre: 'saturate(.42) brightness(1.18)' },
+  coiffeur: { ton: '#2b2730', titre: ['Le geste juste', ',', 'pour vos cheveux.'], photo: 'coiffeur',
+    gauche: '16%', cadre: '50% 36%', cadreM: '62% 40%', centre: '60% 42%', filtre: 'saturate(.38)' },
+};
+
+export function maquetteV4(v, o = {}) {
+  const site = String(o.site || 'https://cockpit.raime.fr').replace(/\/$/, '');
+  const heros = o.heros || `${site}/demo/heros`;
+  const telLisible = v.telephone ? (lisible(v.telephone) || String(v.telephone).trim()) : '';
+  const tel = telLisible.replace(/[^\d+]/g, '');
+  const metier = v.metier ? v.metier.charAt(0).toUpperCase() + v.metier.slice(1) : 'Commerce';
+  const h = HEROS[v.metier] || null;
+  const ton = h ? h.ton : (fiche(v.metier).c || DEFAUT.c)[0];
+  // un métier sans photo choisie garde l'en-tête d'exemple des maquettes en ligne, le temps d'en choisir une
+  const image = h ? `${heros}/${h.photo}.jpg` : `${site}/demo/img/${cleMetier(v.metier)}/1.jpg`;
+  const [cle, suite, ligne2] = h ? h.titre : [metier, '', `à ${v.ville || 'deux pas'}.`];
+  const itineraire = v.carte || `https://www.google.com/maps/search/${encodeURIComponent(`${v.nom} ${adresseComplete(v)}`)}`;
+  const bouton = tel
+    ? `<a class="appel" href="tel:${esc(tel)}"><span class="large">${esc(telLisible)}</span><span class="court">Appeler</span></a>`
+    : `<a class="appel" href="${esc(itineraire)}" target="_blank" rel="noopener">Itinéraire</a>`;
+  const polices = `${site}/demo/police`;
+  return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex"><meta name="theme-color" content="${ton}">
+<title>${esc(v.nom)} · ${esc(metier)} à ${esc(v.ville)}</title>
+<link rel="preload" as="image" href="${esc(image)}" fetchpriority="high"><style>
+@font-face{font-family:"Inter";src:url('${polices}/InterVariable.woff2') format('woff2');font-weight:100 900;font-display:swap}
+@font-face{font-family:"Instrument Serif";src:url('${polices}/InstrumentSerif-Regular.woff2') format('woff2');font-weight:400;font-display:swap}
+@font-face{font-family:"Instrument Serif";src:url('${polices}/InstrumentSerif-Italic.woff2') format('woff2');font-weight:400;font-style:italic;font-display:swap}
+:root{--ton:${ton};--papier:#f3eee7;--cadre:${h ? h.cadre : '50% 50%'};--cadre-m:${h ? h.cadreM : '50% 50%'};--fit:${h && h.fit || 'cover'};--fit-m:${h && h.fitM || 'cover'};--zoom:1;--zoom-m:${h && h.zoomM || 1};--filtre:${h ? h.filtre : 'saturate(.7)'};--gauche:${h && h.gauche || '0%'};--centre:${h && h.centre || '58% 48%'};--halo:${h && h.halo || 'ellipse 62% 78%'}}
+*{box-sizing:border-box;margin:0}
+body{background:var(--ton);color:var(--papier);font:400 18px/1.5 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+.h4{position:relative;height:100vh;height:100svh;min-height:540px;overflow:hidden;isolation:isolate;background:var(--ton)}
+.barre{position:absolute;z-index:3;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;gap:24px;padding:32px clamp(20px,4.4vw,64px)}
+.logo{font-size:14px;font-weight:600;letter-spacing:.26em;text-transform:uppercase;line-height:1.4}
+.appel{flex:none;font-size:14px;font-weight:600;letter-spacing:.06em;line-height:1;padding:15px 24px;border-radius:999px;background:var(--papier);color:var(--ton);transition:background .3s}
+.appel:hover{background:#fff}.appel:focus-visible{outline:2px solid var(--papier);outline-offset:4px}
+.appel .court{display:none}
+/* la photo se fond dans le ton : ses noirs prennent la couleur du fond (lighten), ses bords s'effacent (masque) */
+.scene{position:absolute;z-index:1;inset:0 0 0 var(--gauche);mix-blend-mode:lighten;
+  -webkit-mask-image:linear-gradient(90deg,transparent 2%,#000 42%),radial-gradient(var(--halo) at var(--centre),#000 48%,transparent 100%);
+  mask-image:linear-gradient(90deg,transparent 2%,#000 42%),radial-gradient(var(--halo) at var(--centre),#000 48%,transparent 100%);-webkit-mask-composite:source-in;mask-composite:intersect}
+.objet{display:block;width:100%;height:100%;object-fit:var(--fit);object-position:var(--cadre);filter:var(--filtre);
+  transform:scale(var(--zoom));transform-origin:60% 50%;animation:lumiere 2.8s cubic-bezier(.16,1,.3,1) .15s both}
+/* le seul geste : la lumière monte sur l'objet pendant que la caméra recule */
+@keyframes lumiere{from{opacity:0;filter:var(--filtre) brightness(.2);transform:scale(calc(var(--zoom) * 1.16))}to{opacity:1;filter:var(--filtre) brightness(1);transform:scale(var(--zoom))}}
+h1{position:absolute;z-index:2;left:clamp(20px,4.4vw,64px);right:clamp(20px,4.4vw,64px);bottom:clamp(40px,9vh,96px);
+  font:400 clamp(56px,min(8.8vw,17vh),150px)/.94 "Instrument Serif",Georgia,"Times New Roman",serif;letter-spacing:-.012em}
+h1 span{display:block}h1 em{font-style:italic}
+@media (max-width:700px){
+  .barre{padding:20px}.logo{letter-spacing:.18em}.appel{padding:13px 20px}
+  .appel .large{display:none}.appel .court{display:inline}
+  .scene{left:0;top:76px;bottom:176px;-webkit-mask-image:linear-gradient(180deg,transparent 0,#000 24%,#000 70%,transparent 100%);mask-image:linear-gradient(180deg,transparent 0,#000 24%,#000 70%,transparent 100%)}
+  .objet{object-fit:var(--fit-m);object-position:var(--cadre-m);--zoom:var(--zoom-m);transform-origin:50% 50%}
+  h1{font-size:clamp(38px,12.4vw,56px);bottom:48px;text-wrap:balance}
+}
+@media (prefers-reduced-motion:reduce){.objet{animation:none}}
+</style></head><body>
+<header class="h4">
+<div class="barre"><span class="logo">${esc(v.nom)}</span>${bouton}</div>
+<div class="scene"><img class="objet" src="${esc(image)}" alt="" decoding="async" fetchpriority="high"></div>
+<h1><span><em>${esc(cle)}</em>${esc(suite)}</span><span>${esc(ligne2)}</span></h1>
+</header>
+</body></html>`;
+}

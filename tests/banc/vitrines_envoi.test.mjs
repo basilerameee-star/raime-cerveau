@@ -334,3 +334,28 @@ test('la carte : le Cockpit demande les tuiles à OpenStreetMap en se nommant, l
   assert.ok(html.includes('https://cockpit.raime.fr/demo/tuile/16/') && !html.includes('tile.openstreetmap.org/'));
   assert.match(html, /--ton:#56664a/, 'le fleuriste a son ton, sourd');
 });
+
+test('l’aperçu du héros v4 (15/10/2026) : /demo/v4/<slug> refait la page à la volée, sans script, sans toucher à la maquette reçue', async () => {
+  const v = require('../../jarvis/vitrines.cjs');
+  await preparer(brain);
+  await brain.query(`INSERT INTO vitrines (id, source, source_id, nom, metier, ville, adresse, telephone, slug, demo_html, statut)
+    VALUES (4077, 'osm', 'osm:t4077', $1, 'boucherie', 'Annecy', $2, '+33 450644817', 'tad-market-v4test', '<p>en ligne</p>', 'a_appeler')`,
+  ['TAD MARKET', "8 Avenue d'Aix les Bains 74600"]);
+  const servir = async (slug, version) => {
+    const r = { corps: '' };
+    await v.servirApercu(slug, { writeHead: (s, h) => { r.statut = s; r.entetes = h; }, end: (c) => { r.corps = c; } }, version);
+    return r;
+  };
+  const p = await servir('tad-market-v4test', 'v4');
+  assert.equal(p.statut, 200);
+  assert.match(p.corps, /<header class="h4">/); assert.match(p.corps, /src="https:\/\/cockpit\.raime\.fr\/demo\/heros\/boucherie\.jpg"/);
+  assert.match(p.corps, />04 50 64 48 17</);
+  const csp = p.entetes['Content-Security-Policy'];
+  assert.ok(!/allow-scripts/.test(csp) && /default-src 'none'/.test(csp), 'sans script ni réseau');
+  assert.match(csp, /img-src data: https:\/\/cockpit\.raime\.fr/, 'la photo vient du Cockpit');
+  assert.match((await servir('tad-market-v4test', 'v3')).corps, /<header class="hero">/, 'l’aperçu v3 reste en place');
+  const { rows } = await brain.query('SELECT demo_html FROM vitrines WHERE id = 4077');
+  assert.equal(rows[0].demo_html, '<p>en ligne</p>', 'la maquette reçue par le commerçant ne change pas');
+  assert.equal((await servir('aucun-commerce-ici', 'v4')).statut, 404);
+  await brain.query('DELETE FROM vitrines WHERE id = 4077');
+});
