@@ -138,18 +138,53 @@ let fermeJusqua = 0;
 // les liens du moteur lui-même, pied de page compris (brave.com, status.brave.app, hackerone.com : relevés le 08/10/2026)
 const MOTEUR = (h) => /(^|\.)brave\.(com|app)$|search\.|(^|\.)hackerone\.com$/.test(h);
 export function lireResultats(html) {
+  return classerLiens([...String(html || '').matchAll(/href="(https?:\/\/[^"]+)"/gi)].map((m) => m[1]));
+}
+// Des liens de résultats → les sites candidats (4 au plus) et les pages de portail ; « vide » quand il n'y avait aucun résultat.
+export function classerLiens(liens) {
   const vus = new Set(), sites = [], portails = [];
   let resultats = 0;
-  for (const m of String(html || '').matchAll(/href="(https?:\/\/[^"]+)"/gi)) {
-    const h = hote(m[1]);
+  for (const lien of liens) {
+    const h = hote(lien);
     if (!h || MOTEUR(h)) continue;
     resultats++;
     // la page d'une étude sur son portail (notaires.fr/fr/office/…), jamais l'accueil du portail
-    if (estPortail(h)) { try { if (new URL(m[1]).pathname.length > 1 && portails.length < 3 && !portails.includes(m[1])) portails.push(m[1]); } catch { /* lien illisible */ } continue; }
+    if (estPortail(h)) { try { if (new URL(lien).pathname.length > 1 && portails.length < 3 && !portails.includes(lien)) portails.push(lien); } catch { /* lien illisible */ } continue; }
     if (vus.has(h) || PAS_UN_SITE(h) || sites.length >= 4) continue;
     vus.add(h); sites.push(`https://${h}`);
   }
   return { sites, portails, vide: resultats === 0 };
+}
+
+// 15/10/2026 : la recherche par l'API de Tavily, quand Basile a rangé sa clé gratuite (TAVILY_API_KEY : 1 000 crédits par mois,
+// sans carte bancaire ; une recherche simple = 1 crédit). Brave public bloque le serveur depuis le 07/10. Au plus
+// TAVILY_PAR_JOUR recherches par jour (témoin compris), soit ≈ 900 par mois : le quota gratuit n'est jamais dépassé.
+// Refus de la clé ou quota de Tavily épuisé (401, 403, 429, 432, 433) : fermé 24 heures. Panne de réseau : ce passage seulement.
+export const TAVILY_PAR_JOUR = 30;
+const FERME = { ferme: true, sites: [], portails: [], vide: true };
+export async function chercherTavily(q, { cle = process.env.TAVILY_API_KEY, fetch: f = globalThis.fetch } = {}) {
+  if (!cle || Date.now() < fermeJusqua) return FERME;
+  let r;
+  try {
+    r = await f('https://api.tavily.com/search', { method: 'POST', signal: AbortSignal.timeout(15000),
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cle}` },
+      body: JSON.stringify({ query: q, search_depth: 'basic', max_results: 8 }) });
+  } catch { return FERME; }
+  if (!r.ok) {
+    if ([401, 403, 429, 432, 433].includes(r.status)) fermeJusqua = Date.now() + 24 * 3600_000;
+    return FERME;
+  }
+  const d = await r.json().catch(() => null);
+  if (!d || !Array.isArray(d.results)) return FERME;
+  return { ferme: false, ...classerLiens(d.results.map((x) => x && x.url).filter(Boolean)) };
+}
+// Les recherches Tavily faites aujourd'hui (table recherches_web du cerveau) ; le passage n'en fait que ce qui reste.
+async function tavilyRestant(brain) {
+  if (!brain) return TAVILY_PAR_JOUR;
+  await brain.query('CREATE TABLE IF NOT EXISTS recherches_web (le timestamptz NOT NULL DEFAULT now(), moteur text NOT NULL, nombre int NOT NULL)');
+  const { rows: [r] } = await brain.query(`SELECT coalesce(sum(nombre), 0)::int AS n FROM recherches_web WHERE moteur = 'tavily'
+    AND le >= date_trunc('day', now() AT TIME ZONE 'Europe/Paris') AT TIME ZONE 'Europe/Paris'`);
+  return Math.max(0, TAVILY_PAR_JOUR - r.n);
 }
 async function chercher(q, lire = lirePage) {
   if (Date.now() < fermeJusqua) return { ferme: true, sites: [], portails: [], vide: true };
@@ -227,6 +262,16 @@ export async function passer({ n8n, brain, combien = 25, recherches = 15, dureeM
   await n8n.query(`UPDATE prospects SET furete_le = NULL WHERE site_statut IS NULL AND site_preuve IS NULL
     AND furete_le IS NOT NULL AND furete_note LIKE 'aucun site prouvé (moteur fermé)%'`);
   const etat = { ferme: false, temoin: null };
+  // Avec la clé Tavily, chaque recherche passe par son API, comptée contre le quota du jour (15/10/2026).
+  let tavily = null;
+  if (!outils.chercher && process.env.TAVILY_API_KEY) {
+    tavily = { restant: await tavilyRestant(brain), faites: 0 };
+    outils = { ...outils, chercher: (q) => {
+      if (tavily.faites >= tavily.restant) { tavily.quota = true; return FERME; }
+      tavily.faites++;
+      return chercherTavily(q);
+    } };
+  }
   // D'abord les métiers qui ont un pré-audit (l'e-mail part), puis les autres entreprises à but lucratif ; les fiches
   // dont le site n'a jamais été prouvé (celles de l'ancien Fureteur) passent avant les autres.
   const { rows } = await n8n.query(`SELECT siren, name, city, departement, website, contact_email, telephone FROM prospects
@@ -275,7 +320,12 @@ export async function passer({ n8n, brain, combien = 25, recherches = 15, dureeM
         [p.siren, garde, note + (p.website ? ` ; ancien site sans preuve retiré : ${String(p.website).slice(0, 120)}` : ''), v.statut]);
     }
   }
-  if (etat.ferme) bilan.moteur = 'fermé ou muet (on ne contourne pas)';
+  if (etat.ferme) bilan.moteur = tavily && tavily.quota ? `Tavily, quota du jour atteint (${TAVILY_PAR_JOUR})` : 'fermé ou muet (on ne contourne pas)';
+  else if (tavily) bilan.moteur = 'ouvert (Tavily)';
+  if (tavily) bilan.recherches_tavily = tavily.faites;
+  if (brain && tavily && tavily.faites) {
+    await brain.query("INSERT INTO recherches_web (moteur, nombre) VALUES ('tavily', $1)", [tavily.faites]).catch(() => {});
+  }
   if (brain) {
     await brain.query('INSERT INTO journal(acteur, changement, motif) VALUES($1,$2,$3)', ['fureteur',
       `${bilan.examinees} fiches : ${bilan.prouves} sites prouvés, ${bilan.absents} sans site, ${bilan.portails} sur un portail seulement, ${bilan.inconnus} à revoir demain, `

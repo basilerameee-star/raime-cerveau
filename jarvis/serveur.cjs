@@ -261,6 +261,8 @@ const RANGEMENTS = {
   JARVIS_VOIX: 'Voix de Jarvis (Gemini : Charon, Puck, Kore, Fenrir…)', AGENDA_ICAL: 'Adresse secrète iCal de ton Google Agenda (lecture seule)', METEO_VILLE: 'Ta ville, pour la météo',
   // 08/10/2026 : Places API (New), recherche texte : téléphone et site des commerces et cabinets (vitrines, entreprises sans site)
   GOOGLE_PLACES_API_KEY: 'Clé Google Places (Places API New : commerces, téléphones, sites)',
+  // 15/10/2026 : la recherche web du Fureteur (adresses des cabinets), offre gratuite sans carte : 1 000 crédits par mois
+  TAVILY_API_KEY: 'Clé Tavily (recherche web gratuite du Fureteur)',
 };
 const NOM_LIBRE = /^[A-Z][A-Z0-9_]{2,40}$/;
 

@@ -16,7 +16,8 @@ export const CLES_GRATUITES = ['GEMINI_API_KEY', 'GROQ_API_KEY', 'MISTRAL_API_KE
 // Et la clé de JEV (TypeSafe), payante mais donnée par Basile le 30/09/2026 pour le goût (agents/gout.js),
 // plafonnée à GOUT_PLAFOND_JOUR appels par jour (≈ 0,01 $).
 // 08/10/2026 : la clé Google Places de Basile (vitrines : découverte, téléphone et site des commerces), quota gratuit plafonné.
-export const CLES_AUTORISEES = ['TYPESAFE_API_KEY', 'JEV', 'GOOGLE_PLACES_API_KEY'];
+// 15/10/2026 : la clé Tavily de Basile (recherche web du Fureteur, offre gratuite sans carte, 30 recherches par jour au plus).
+export const CLES_AUTORISEES = ['TYPESAFE_API_KEY', 'JEV', 'GOOGLE_PLACES_API_KEY', 'TAVILY_API_KEY'];
 export function chargerClesGratuites(chemin = new URL('../.env', import.meta.url), env = process.env) {
   let texte = '';
   try { texte = readFileSync(chemin, 'utf8'); } catch { return []; }
