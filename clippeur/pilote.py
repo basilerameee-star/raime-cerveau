@@ -74,7 +74,7 @@ def source_du_brief(e, brief):
     tags = sorted(set(re.findall(r"(?<![\w@])@[A-Za-z0-9_.]{2,30}", texte)))
     return {"nom": e["nom"], "url": liens[0] if liens else None, "autres": liens[1:6], "nombre": 20,
             "tags": {pl: " ".join(tags[:2]) for pl in e["plateformes"]},
-            "hashtags": sorted(set(re.findall(r"(?<![\w#])#[A-Za-z][A-Za-z0-9_]{1,30}", texte)))[:5],
+            "hashtags": list({h.lower(): h for h in re.findall(r"(?<![\w#])#[A-Za-z][A-Za-z0-9_]{1,30}", texte)}.values())[:5],
             "consignes": texte[:6000], "verifie": "%s : brief Content Rewards lu par l'agent après adhésion" % time.strftime("%d/%m/%Y")}
 
 
@@ -90,7 +90,7 @@ def reessayer(lu, aujourd_hui=None):
     return bool(lu.get("echec")) and lu.get("le", "") < (aujourd_hui or time.strftime("%Y-%m-%d"))
 
 
-def rejoindre_et_lire(notes, reserve, prevenir, lanceur=None):
+def rejoindre_et_lire(notes, reserve, prevenir, lanceur=None, sql=None):
     """L'agent rejoint les campagnes compatibles et écrit leur brief dans sources_auto.json ; blocage : une alerte."""
     import cr_lanceur
     lanceur = lanceur or cr_lanceur
@@ -111,6 +111,10 @@ def rejoindre_et_lire(notes, reserve, prevenir, lanceur=None):
         if e and r.get("ok"):
             auto["campagnes"][e["cr_id"]] = source_du_brief(e, r.get("brief") or {})
             n += 1
+            if sql:                                         # le compte des campagnes rejointes (rapport du matin)
+                sql("""CREATE TABLE IF NOT EXISTS cr_adhesions (cr_id text PRIMARY KEY, nom text, source text, le timestamptz NOT NULL DEFAULT now());
+                       INSERT INTO cr_adhesions (cr_id, nom, source) VALUES (:'p0', :'p1', :'p2') ON CONFLICT (cr_id) DO NOTHING;""",
+                    e["cr_id"], e["nom"], auto["campagnes"][e["cr_id"]]["url"] or "")
         elif e and not r.get("bloque"):
             auto["campagnes"][e["cr_id"]] = {"nom": e["nom"], "url": None, "echec": (r.get("raison") or "")[:300],
                                              "le": time.strftime("%Y-%m-%d")}
@@ -301,7 +305,7 @@ def main():
                        WHERE campagne = :'p0' AND etat = 'a_faire';""", d["campagne"])
     reserve = mesurer(sql, actives)
     try:
-        rejointes = rejoindre_et_lire(notes, reserve, prevenir)
+        rejointes = rejoindre_et_lire(notes, reserve, prevenir, sql=sql)
     except Exception as err:                                # l'agent ne bloque jamais le reste du pilote
         rejointes = 0
         print("agent Content Rewards :", str(err)[:200], flush=True)

@@ -14,6 +14,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import cr_lanceur                                           # noqa: E402
 
 VERROU = "/tmp/clippeur-declarer.lock"
+# posé une fois les comptes KinGKlip reliés à Content Rewards (vérifié) : sans eux, chaque déclaration serait rejetée
+ACTIF = os.path.join(os.path.dirname(os.path.abspath(__file__)), "declarer-actif")
 ESSAIS_MAX = 5
 PAR_PASSAGE = 4
 
@@ -24,14 +26,14 @@ def a_declarer(sql):
     r = sql("""SELECT coalesce(json_agg(x), '[]') FROM (SELECT p.campagne, p.clip, p.plateforme, p.lien, p.declare_essais,
                (SELECT d.cr_id FROM clips_demandes d WHERE d.campagne = p.campagne AND d.cr_id IS NOT NULL ORDER BY d.id DESC LIMIT 1) AS cr_id
                FROM clips_publies p WHERE NOT coalesce(p.declare_whop, false) AND p.declare_essais < %d
-               AND p.publie_le > now() - interval '3 days' ORDER BY p.publie_le LIMIT %d) x WHERE x.cr_id IS NOT NULL;""" % (ESSAIS_MAX, PAR_PASSAGE))
+               AND p.publie_le > now() - interval '25 minutes' ORDER BY p.publie_le LIMIT %d) x WHERE x.cr_id IS NOT NULL;""" % (ESSAIS_MAX, PAR_PASSAGE))
     return json.loads(r[r.index("["):] if "[" in r else "[]")
 
 
 def noter(sql, c, r):
     """Le résultat d'une déclaration ; (fait ?, abandon ?)."""
     if r.get("ok") and r.get("verifie"):
-        sql("""UPDATE clips_publies SET declare_whop = true, declare_le = now(), declare_note = 'relu sur la page de la campagne'
+        sql("""UPDATE clips_publies SET declare_whop = true, declare_le = now(), declare_note = 'relu dans les déclarations du compte'
                WHERE campagne = :'p0' AND clip = :'p1' AND plateforme = :'p2';""", c["campagne"], c["clip"], c["plateforme"])
         return True, False
     if r.get("bloque"):                                     # captcha, session : rien n'est compté, l'alerte part une fois
@@ -49,6 +51,8 @@ def main(sql=None, prevenir=None, lanceur=cr_lanceur):
     try:
         fcntl.flock(verrou, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except OSError:
+        return
+    if not os.path.exists(ACTIF):
         return
     if not lanceur.pret():
         lanceur.alerter_si_bloque(prevenir)

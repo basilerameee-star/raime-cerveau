@@ -235,6 +235,7 @@ async function rapport() {
   const avance = await lire(`SELECT plateforme, jours, pret, attendu, maj FROM clips_reserve ORDER BY plateforme`).catch(() => null);
   const pub24 = await lire(`SELECT plateforme, count(*)::int AS n, count(*) FILTER (WHERE coalesce(declare_whop, false))::int AS d
     FROM clips_publies WHERE publie_le > now() - interval '24 hours' GROUP BY plateforme ORDER BY plateforme`).catch(() => []);
+  const adh = (await lire(`SELECT count(*)::int AS n, count(*) FILTER (WHERE source <> '')::int AS s, count(*) FILTER (WHERE le > now() - interval '24 hours')::int AS j FROM cr_adhesions`).catch(() => []))[0];
   const retard = await ordresRetard.enRetard(lireOuEchouer).then(ordresRetard.section)
     .catch((e) => ({ titre: 'Ordres en retard : lecture en échec', rouge: true, lignes: [`La table des ordres n’a pas pu être lue ce matin (${String(e && e.message || e).slice(0, 120)}) : ouvre le cockpit.`] }));
   return { sections: [
@@ -246,6 +247,7 @@ async function rapport() {
     envois,
     { titre: 'Clips KinGKlip : l’avance', rouge: !!(avance && avance.some((a) => Number(a.jours) < 2)), lignes: avance === null ? ['Lecture en échec : la table clips_reserve est absente ou illisible.']
       : [...avance.map((a) => `${a.plateforme === 'instagram' ? 'Instagram' : a.plateforme === 'youtube' ? 'YouTube' : a.plateforme} : ${String(a.jours).replace('.', ',')} jours d’avance (${a.pret} clips prêts${a.attendu ? `, ~${a.attendu} en découpe` : ''})`),
+        ...(adh ? [`Campagnes rejointes par l’agent : ${adh.n} (${adh.s} avec une vidéo source, ${adh.j} ces dernières 24 h)`] : []),
         ...(pub24.length ? pub24.map((p) => `${p.plateforme} : ${p.n} publié(s) en 24 h, ${p.d} déclaré(s) à Content Rewards`) : ['Aucune publication en 24 h.'])] },
     // la bourse en simulation (08/10/2026) : une ligne par stratégie, jamais un conseil de placement
     { titre: 'Trading (entraînement simulé, 1 000 € fictifs par agent)', lignes: trading.length ? trading : ['Pas encore de données de trading.'] },

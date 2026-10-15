@@ -79,17 +79,39 @@ def textes(x, out=None):
     return out
 
 
-def lire_brief(ctx, cr_id):
-    """Le brief d'une campagne rejointe (/requirements : 401 sans session, vérifié le 15/10/2026), et sa fiche complète."""
-    r = ctx.request.get(API + cr_id + "/requirements", timeout=30000)
-    if r.status != 200:
-        return None, r.status
-    brief = r.json()
-    try:
-        fiche = ctx.request.get(API + cr_id, timeout=30000).json()
-    except Exception:
-        fiche = {}
-    return {"requirements": brief, "fiche": fiche}, 200
+def lire_brief(ctx, pg, cr_id):
+    """Le brief d'une campagne rejointe, lu sur SA page (15/10/2026 : /requirements reste à 403 même après adhésion ; la
+    page sert le brief par des actions Next.js) : le texte complet, puis les « Reference materials » (Google Docs publics
+    lus en texte). (brief, None) si rejointe ; (None, raison) sinon."""
+    pg.goto(FICHE + cr_id, wait_until="domcontentloaded", timeout=60000)
+    pg.wait_for_timeout(5000)
+    refuser_cookies(pg)
+    o = obstacle(pg)
+    if o:
+        return None, o
+    if not bouton(pg, r"submit clip"):
+        return None, "pas rejointe"
+    plus = pg.locator("button:visible, span:visible").filter(has_text=re.compile(r"^\s*show more\s*$", re.I))
+    if plus.count():
+        try:
+            plus.first.click(timeout=3000)
+            pg.wait_for_timeout(1000)
+        except Exception:
+            pass
+    texte = pg.locator("main").first.inner_text() if pg.locator("main").count() else pg.inner_text("body")
+    liens = pg.locator("a[href]").evaluate_all("els => els.map(e => e.href).filter(h => !h.includes('contentrewards.com'))")
+    liens = list(dict.fromkeys(liens))[:20]
+    documents = []
+    for u in liens:
+        m = re.search(r"docs\.google\.com/document/d/([\w-]{20,})", u)
+        if m:
+            try:
+                r = ctx.request.get("https://docs.google.com/document/d/%s/export?format=txt" % m.group(1), timeout=30000)
+                if r.ok:
+                    documents.append({"lien": u, "texte": r.text()[:20000]})
+            except Exception:
+                pass
+    return {"requirements": {"page": texte[:20000], "liens": liens, "documents": documents}}, None
 
 
 def ouvrir(pw):
@@ -109,17 +131,11 @@ def bouton(pg, *noms):
 
 
 def rejoindre(ctx, pg, cr_id):
-    brief, statut = lire_brief(ctx, cr_id)
+    brief, raison = lire_brief(ctx, pg, cr_id)
     if brief:                                               # déjà rejointe
         return {"cr_id": cr_id, "ok": True, "deja": True, "brief": brief}
-    if statut == 401:
-        return dict(bloquer("session Content Rewards expirée : Basile doit se reconnecter une fois"), cr_id=cr_id)
-    pg.goto(FICHE + cr_id, wait_until="domcontentloaded", timeout=60000)
-    pg.wait_for_timeout(4000)
-    refuser_cookies(pg)
-    o = obstacle(pg)
-    if o:
-        return dict(bloquer(o), cr_id=cr_id)
+    if raison != "pas rejointe":
+        return dict(bloquer(raison), cr_id=cr_id)
     b = bouton(pg, r"^join campaign$", r"^join$")
     if not b:
         return {"cr_id": cr_id, "ok": False, "raison": "bouton « Join Campaign » absent (candidature ou campagne fermée ?)"}
@@ -138,10 +154,10 @@ def rejoindre(ctx, pg, cr_id):
     if c:
         c.click()
         pg.wait_for_timeout(5000)
-    brief, statut = lire_brief(ctx, cr_id)
+    brief, raison = lire_brief(ctx, pg, cr_id)
     if not brief:
         releve(pg, "rejoindre-" + cr_id)
-        return {"cr_id": cr_id, "ok": False, "raison": "rejointe ? le brief reste fermé (%s) ; relevé dans %s" % (statut, RELEVES)}
+        return {"cr_id": cr_id, "ok": False, "raison": "adhésion non confirmée (%s) ; relevé dans %s" % (raison, RELEVES)}
     return {"cr_id": cr_id, "ok": True, "brief": brief}
 
 
@@ -159,44 +175,62 @@ def releve(pg, nom):
     return infos
 
 
-def soumettre(ctx, pg, cr_id, lien):
-    """Déclarer un lien dans sa campagne, puis vérifier qu'il apparaît dans les déclarations de la campagne."""
+def deja_declare(ctx, cr_id, lien):
+    """Le lien figure-t-il dans les déclarations du compte pour cette campagne ? (la requête que la page fait elle-même)"""
+    try:
+        r = ctx.request.get(SITE + "/api/submission/submissions/intake?campaignIds=" + cr_id, timeout=30000)
+        return r.ok and lien.rstrip("/").split("?")[0] in r.text()
+    except Exception:
+        return False
+
+
+def soumettre(ctx, pg, cr_id, lien, essai=False):
+    """Déclarer un lien dans sa campagne (fenêtre relevée le 15/10/2026 : champ du lien, trois contrôles « compte relié »,
+    « pas déjà déclaré », « publié il y a moins de 30 minutes », case des consignes, bouton « Submit clip »), puis vérifier
+    qu'il apparaît dans les déclarations du compte."""
+    if deja_declare(ctx, cr_id, lien):
+        return {"ok": True, "verifie": True, "deja": True}
     pg.goto(FICHE + cr_id, wait_until="domcontentloaded", timeout=60000)
-    pg.wait_for_timeout(4000)
+    pg.wait_for_timeout(5000)
     refuser_cookies(pg)
     o = obstacle(pg)
     if o:
         return bloquer(o)
-    if lien in pg.content():
-        return {"ok": True, "verifie": True, "deja": True}
-    b = bouton(pg, r"submit (a )?(clip|post|video|content)", r"^submit$", r"new submission")
+    b = bouton(pg, r"submit clip")
     if not b:
         releve(pg, "soumettre-" + cr_id)
-        return {"ok": False, "raison": "bouton de déclaration introuvable ; relevé dans " + RELEVES}
-    b.click()
+        return {"ok": False, "raison": "bouton « Submit clip » absent (campagne pas rejointe ?) ; relevé dans " + RELEVES}
+    b.click(timeout=15000)
     pg.wait_for_timeout(3000)
-    champ = pg.locator("input[type=url], input[placeholder*='http' i], input[placeholder*='link' i], input[placeholder*='url' i]")
+    champ = pg.locator("input[placeholder*='http' i]:visible")
     if not champ.count():
         releve(pg, "fenetre-" + cr_id)
         return {"ok": False, "raison": "champ du lien introuvable ; relevé dans " + RELEVES}
     champ.first.fill(lien)
+    pg.wait_for_timeout(6000)                               # les trois contrôles de Content Rewards se font en direct
+    # la case « I've read the requirements… » : on clique son texte (la case elle-même est un élément décoré)
+    accord = pg.get_by_text(re.compile(r"read the requirements", re.I))
+    if not accord.count():
+        releve(pg, "case-" + cr_id)
+        return {"ok": False, "raison": "case des consignes introuvable ; relevé dans " + RELEVES}
+    accord.last.click(timeout=10000, force=True)
     pg.wait_for_timeout(1500)
-    envoyer = bouton(pg, r"^submit", r"^send", r"^confirm")
-    if not envoyer:
-        releve(pg, "envoi-" + cr_id)
-        return {"ok": False, "raison": "bouton d'envoi introuvable ; relevé dans " + RELEVES}
-    envoyer.click()
+    envoyer = pg.locator("button:visible").filter(has_text=re.compile(r"^\s*submit clip\s*$", re.I)).last
+    if not envoyer.count() or not envoyer.is_enabled():
+        infos = releve(pg, "refus-" + cr_id)
+        refus = pg.locator("[role=dialog]").first.inner_text()[:600] if pg.locator("[role=dialog]").count() else ""
+        return {"ok": False, "raison": "Content Rewards refuse le lien (contrôles non validés) : " + refus.replace("\n", " | "), "releve": infos}
+    if essai:                                               # essai à blanc : tout est rempli, rien n'est envoyé
+        return {"ok": True, "verifie": False, "essai": True, "releve": releve(pg, "essai-" + cr_id)}
+    envoyer.click(timeout=15000)
     pg.wait_for_timeout(6000)
     o = obstacle(pg)
     if o:
         return bloquer(o)
-    # la preuve : le lien figure dans la page de la campagne rechargée (les déclarations du compte)
-    pg.goto(FICHE + cr_id, wait_until="domcontentloaded", timeout=60000)
-    pg.wait_for_timeout(5000)
-    ok = lien in pg.content()
+    ok = deja_declare(ctx, cr_id, lien)
     if not ok:
         releve(pg, "verif-" + cr_id)
-    return {"ok": ok, "verifie": ok, "raison": "" if ok else "lien envoyé mais absent de la page de la campagne ; relevé dans " + RELEVES}
+    return {"ok": ok, "verifie": ok, "raison": "" if ok else "lien envoyé mais absent des déclarations du compte ; relevé dans " + RELEVES}
 
 
 def main(args):
@@ -228,7 +262,7 @@ def main(args):
                     if r.get("bloque"):
                         break
             elif args[0] == "soumettre":
-                print(json.dumps(soumettre(ctx, pg, args[1], args[2]), ensure_ascii=False), flush=True)
+                print(json.dumps(soumettre(ctx, pg, args[1], args[2], essai="--essai" in args), ensure_ascii=False), flush=True)
         finally:
             ctx.close()
 
