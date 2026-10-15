@@ -1,0 +1,2908 @@
+{
+ "_": "Textes fixes du cockpit v6 (jarvis/v6.cjs les assemble avec les données en direct). Fabriqué par cockpit-maquette/v6_textes.js.",
+ "date": "2026-10-14",
+ "plan": {
+  "quartiers": [
+   {
+    "cle": "commerce",
+    "nom": "Commerce",
+    "x": 0,
+    "secteurs": [
+     "siteweb",
+     "integration",
+     "appels"
+    ]
+   },
+   {
+    "cle": "emploi",
+    "nom": "Candidatures",
+    "secteurs": [
+     "candidatures"
+    ]
+   },
+   {
+    "cle": "medias",
+    "nom": "Clipping",
+    "secteurs": [
+     "clipping"
+    ]
+   },
+   {
+    "cle": "finance",
+    "nom": "Argent",
+    "secteurs": [
+     "trading",
+     "bourse",
+     "dropshipping",
+     "libre"
+    ]
+   },
+   {
+    "cle": "cerveau",
+    "nom": "Gouvernance",
+    "secteurs": [
+     "gouvernance",
+     "direction"
+    ]
+   },
+   {
+    "cle": "infra",
+    "nom": "Machine",
+    "secteurs": [
+     "jarvis",
+     "serveur"
+    ]
+   }
+  ],
+  "secteurs": [
+   {
+    "cle": "siteweb",
+    "nom": "Site web"
+   },
+   {
+    "cle": "integration",
+    "nom": "Intégration IA"
+   },
+   {
+    "cle": "appels",
+    "nom": "Appels"
+   },
+   {
+    "cle": "candidatures",
+    "nom": "Candidatures"
+   },
+   {
+    "cle": "clipping",
+    "nom": "Clipping"
+   },
+   {
+    "cle": "trading",
+    "nom": "Trading"
+   },
+   {
+    "cle": "bourse",
+    "nom": "Bourse"
+   },
+   {
+    "cle": "dropshipping",
+    "nom": "Dropshipping"
+   },
+   {
+    "cle": "libre",
+    "nom": "Agent libre"
+   },
+   {
+    "cle": "gouvernance",
+    "nom": "Gouvernance"
+   },
+   {
+    "cle": "direction",
+    "nom": "Idées et labo"
+   },
+   {
+    "cle": "jarvis",
+    "nom": "Jarvis"
+   },
+   {
+    "cle": "serveur",
+    "nom": "Serveur"
+   }
+  ],
+  "flux": [
+   [
+    "vitrines",
+    "maquettes"
+   ],
+   [
+    "maquettes",
+    "envoi_vit"
+   ],
+   [
+    "envoi_vit",
+    "rep_vit"
+   ],
+   [
+    "vitrines",
+    "liste_app"
+   ],
+   [
+    "liste_app",
+    "agenda"
+   ],
+   [
+    "sherlock",
+    "fureteur"
+   ],
+   [
+    "fureteur",
+    "redacteur"
+   ],
+   [
+    "redacteur",
+    "expediteur"
+   ],
+   [
+    "expediteur",
+    "receptionniste"
+   ],
+   [
+    "collecte",
+    "lettres"
+   ],
+   [
+    "lettres",
+    "envoyeur"
+   ],
+   [
+    "chercheur_camp",
+    "decoupeur"
+   ],
+   [
+    "decoupeur",
+    "publication"
+   ],
+   [
+    "publication",
+    "verif_pub"
+   ],
+   [
+    "t_minute",
+    "labo_trading"
+   ],
+   [
+    "veille",
+    "labo"
+   ],
+   [
+    "penseur",
+    "labo"
+   ],
+   [
+    "labo",
+    "hermes"
+   ],
+   [
+    "courrier",
+    "matin"
+   ],
+   [
+    "agenda",
+    "matin"
+   ],
+   [
+    "sauvegardes",
+    "livraison"
+   ],
+   [
+    "directeur",
+    "hermes"
+   ],
+   [
+    "directeur",
+    "gouv_jetons"
+   ],
+   [
+    "directeur",
+    "gouv_reflexif"
+   ],
+   [
+    "gouv_reflexif",
+    "analystes"
+   ],
+   [
+    "gouv_reflexif",
+    "labo"
+   ],
+   [
+    "gouv_reflexif",
+    "penseur"
+   ],
+   [
+    "gouv_jetons",
+    "courrier"
+   ]
+  ]
+ },
+ "agents": [
+  {
+   "outils": [
+    [
+     "OpenStreetMap (Overpass)",
+     "0 jeton",
+     "code"
+    ],
+    [
+     "Registre des entreprises",
+     "0 jeton",
+     "code"
+    ],
+    [
+     "Photos Pixabay",
+     "0 jeton",
+     "code"
+    ]
+   ],
+   "id": "vitrines",
+   "secteur": "siteweb",
+   "nom": "Chercheur de commerces",
+   "rythme": "toutes les 2 h",
+   "src": {
+    "boucle": [
+     "vitrines"
+    ],
+    "toutes_h": 2
+   },
+   "mesure": "vitrines",
+   "maintenant": "Cherche autour d’Annecy les commerces sans site, sur OpenStreetMap et le registre des entreprises, et garde leur numéro.",
+   "bloque": "Rien ne le bloque.",
+   "ensuite": "Élargir à d’autres départements (point 47 de la feuille de route)."
+  },
+  {
+   "outils": [
+    [
+     "Gabarit héros v3",
+     "0 jeton",
+     "code"
+    ],
+    [
+     "Carte servie par le cockpit",
+     "0 jeton",
+     "code"
+    ]
+   ],
+   "id": "maquettes",
+   "secteur": "siteweb",
+   "nom": "Maquettiste",
+   "rythme": "à chaque commerce retenu",
+   "src": {
+    "boucle": [
+     "vitrines"
+    ],
+    "toutes_h": 2
+   },
+   "mesure": "maquettes",
+   "maintenant": "Prépare la maquette « héros v3 » de chaque commerce retenu, au ton de son métier.",
+   "bloque": "Rien ne le bloque.",
+   "ensuite": "Rien de prévu."
+  },
+  {
+   "outils": [
+    [
+     "Resend (3 000 e-mails/mois gratuits)",
+     "0 jeton",
+     "code"
+    ]
+   ],
+   "id": "envoi_vit",
+   "secteur": "siteweb",
+   "nom": "Envoi des maquettes",
+   "rythme": "chaque matin à 9 h",
+   "src": {
+    "n8n": "vitrinesEnvoi01",
+    "toutes_h": 24,
+    "retard_h": 26
+   },
+   "mesure": "envoi_vit",
+   "maintenant": "Envoie à 9 h les maquettes que tu as validées, avec l’e-mail de leur métier.",
+   "bloque": "Une maquette validée sans numéro de téléphone ne part pas (voir « Bloquées » dans Site web).",
+   "ensuite": "Relancer seul, par e-mail, un envoi resté 7 jours sans réponse (à construire)."
+  },
+  {
+   "outils": [
+    [
+     "Boîte contact@raime.fr",
+     "0 jeton",
+     "code"
+    ]
+   ],
+   "id": "rep_vit",
+   "secteur": "siteweb",
+   "nom": "Réponses des commerçants",
+   "rythme": "toutes les heures",
+   "src": {
+    "boucle": [
+     "vitrines_envoi"
+    ],
+    "toutes_h": 1
+   },
+   "constat": "vide",
+   "maintenant": "Lit les réponses des commerçants à l’e-mail de leur maquette et les range.",
+   "bloque": "Deux réponses par e-mail en tout, deux « pas intéressé » (boucheries) ; aucune positive (relevé du 14/10).",
+   "ensuite": "Sans réponse au bout de 7 jours, le commerce remonte seul dans ta liste d’appels."
+  },
+  {
+   "outils": [
+    [
+     "API Sirene (Insee)",
+     "0 jeton",
+     "code"
+    ],
+    [
+     "n8n",
+     "0 jeton",
+     "code"
+    ]
+   ],
+   "id": "sherlock",
+   "secteur": "integration",
+   "nom": "Sherlock",
+   "rythme": "toutes les 3 h",
+   "src": {
+    "n8n": "sherlockSrc00001",
+    "toutes_h": 3
+   },
+   "mesure": "sherlock",
+   "maintenant": "Trouve dans le registre public les entreprises des métiers ciblés : comptables, avocats, notaires, conseil, immobilier.",
+   "bloque": "Rien ne le bloque.",
+   "ensuite": "Rien de prévu."
+  },
+  {
+   "outils": [
+    [
+     "Lecture des sites",
+     "0 jeton",
+     "code"
+    ],
+    [
+     "SearXNG",
+     "0 jeton",
+     "code"
+    ]
+   ],
+   "id": "fureteur",
+   "secteur": "integration",
+   "nom": "Fureteur",
+   "rythme": "toutes les heures",
+   "src": {
+    "boucle": [
+     "fureteur"
+    ],
+    "toutes_h": 1
+   },
+   "mesure": "fureteur",
+   "maintenant": "Prouve le site de chaque entreprise et y lit son adresse e-mail.",
+   "bloque": "Le moteur de recherche ne répond plus depuis le serveur : il lit des fiches mais ne prouve presque plus aucun site (constat du 14/10).",
+   "ensuite": "Trouver une autre façon de chercher les sites depuis le serveur."
+  },
+  {
+   "outils": [
+    [
+     "Pré-audits PDF (9 métiers)",
+     "0 jeton",
+     "code"
+    ],
+    [
+     "Modèle d’e-mail",
+     "0 jeton",
+     "code"
+    ]
+   ],
+   "id": "redacteur",
+   "secteur": "integration",
+   "nom": "Rédacteur des e-mails",
+   "rythme": "chaque jour",
+   "src": {
+    "boucle": [
+     "prospection"
+    ],
+    "toutes_h": 24,
+    "retard_h": 30
+   },
+   "mesure": "redacteur",
+   "maintenant": "Écrit chaque jour les e-mails de prospection, avec le pré-audit du métier ; rien ne part sans ta validation.",
+   "bloque": "Ta validation.",
+   "ensuite": "Rien de prévu."
+  },
+  {
+   "outils": [
+    [
+     "Resend",
+     "0 jeton",
+     "code"
+    ],
+    [
+     "n8n",
+     "0 jeton",
+     "code"
+    ]
+   ],
+   "id": "expediteur",
+   "secteur": "integration",
+   "nom": "Expéditeur",
+   "rythme": "chaque matin à 8 h",
+   "src": {
+    "n8n": "expediteurEnv001",
+    "toutes_h": 24,
+    "retard_h": 26
+   },
+   "mesure": "expediteur",
+   "maintenant": "Envoie chaque matin les e-mails que tu as validés.",
+   "bloque": "Il envoie tout d’un coup : Resend en refuse une partie, et ces refus sont comptés comme envoyés (24 sur 54, du 12 au 14/10, relevé du 14/10).",
+   "ensuite": "Une pause entre deux envois, et chaque refus gardé pour un nouvel essai (prévu)."
+  },
+  {
+   "outils": [
+    [
+     "n8n",
+     "0 jeton",
+     "code"
+    ]
+   ],
+   "id": "receptionniste",
+   "secteur": "integration",
+   "nom": "Réceptionniste",
+   "rythme": "à chaque e-mail reçu",
+   "src": {
+    "n8n": "receptionni01"
+   },
+   "mesure": "receptionniste",
+   "maintenant": "Range les réponses des entreprises et te prévient quand quelqu’un répond.",
+   "bloque": "Rien ne le bloque.",
+   "ensuite": "Rien de prévu."
+  },
+  {
+   "outils": [
+    [
+     "Règles de garde",
+     "0 jeton",
+     "code"
+    ]
+   ],
+   "id": "cordon",
+   "secteur": "integration",
+   "nom": "Cordon et nettoyage",
+   "rythme": "toutes les heures",
+   "src": {
+    "boucle": [
+     "cordon"
+    ],
+    "toutes_h": 1
+   },
+   "maintenant": "Annule un e-mail fautif avant son départ et retire les annuaires de la liste.",
+   "bloque": "Rien ne le bloque.",
+   "ensuite": "Rien de prévu."
+  },
+  {
+   "outils": [
+    [
+     "Cockpit",
+     "0 jeton",
+     "code"
+    ],
+    [
+     "Numéros vérifiés",
+     "0 jeton",
+     "code"
+    ]
+   ],
+   "id": "liste_app",
+   "secteur": "appels",
+   "nom": "Liste d’appels",
+   "rythme": "en continu",
+   "src": {
+    "cockpit": true
+   },
+   "mesure": "liste_app",
+   "maintenant": "Range tes appels du jour : rendez-vous de l’agenda, rappels, relances à 7 jours, puis les nouveaux.",
+   "bloque": "Rien ne la bloque.",
+   "ensuite": "Rien de prévu."
+  },
+  {
+   "outils": [
+    [
+     "Cockpit",
+     "0 jeton",
+     "code"
+    ],
+    [
+     "E-mail de 7 h 30",
+     "0 jeton",
+     "code"
+    ]
+   ],
+   "id": "agenda",
+   "secteur": "appels",
+   "nom": "Agenda des relances",
+   "rythme": "en continu · e-mail de 7 h 30",
+   "src": {
+    "cockpit": true
+   },
+   "mesure": "agenda",
+   "maintenant": "Garde tes rappels datés ; ceux du jour et en retard remontent en tête, ici et dans l’e-mail de 7 h 30.",
+   "bloque": "Rien ne le bloque.",
+   "ensuite": "Rien de prévu."
+  },
+  {
+   "outils": [
+    [
+     "jobup.ch, jobs.ch",
+     "0 jeton",
+     "code"
+    ],
+    [
+     "Michael Page",
+     "0 jeton",
+     "code"
+    ]
+   ],
+   "id": "collecte",
+   "secteur": "candidatures",
+   "nom": "Collecte des offres",
+   "rythme": "deux fois par jour, depuis ton PC",
+   "src": {
+    "mesure": true
+   },
+   "mesure": "collecte",
+   "maintenant": "Ton PC relève les offres (jobup, jobs.ch, LinkedIn, Michael Page…) et les envoie au Bureau des candidatures.",
+   "bloque": "Elle dépend de ton PC : PC éteint, aucune offre.",
+   "ensuite": "Rien de prévu."
+  },
+  {
+   "outils": [
+    [
+     "Gemini (gratuit)",
+     "non compté",
+     "ia"
+    ]
+   ],
+   "id": "lettres",
+   "secteur": "candidatures",
+   "nom": "Rédacteur des lettres",
+   "rythme": "toutes les 10 min",
+   "src": {
+    "cockpit": true
+   },
+   "mesure": "lettres",
+   "maintenant": "Écrit pour chaque nouvelle offre l’avis, l’accroche et la lettre, à ton style, sur un modèle gratuit.",
+   "bloque": "Rien ne le bloque.",
+   "ensuite": "Compter ses jetons (il ne les déclare pas encore)."
+  },
+  {
+   "outils": [
+    [
+     "Navigateur du serveur",
+     "0 jeton",
+     "code"
+    ],
+    [
+     "Relais IPv6",
+     "0 jeton",
+     "code"
+    ],
+    [
+     "CV au format suisse",
+     "0 jeton",
+     "code"
+    ]
+   ],
+   "id": "envoyeur",
+   "secteur": "candidatures",
+   "nom": "Envoyeur",
+   "rythme": "toutes les 15 min",
+   "src": {
+    "mesure": true
+   },
+   "mesure": "envoyeur",
+   "maintenant": "Postule seul aux offres que tu valides, par le formulaire du site ou par e-mail, avec ta lettre et ton CV suisse.",
+   "bloque": "Les offres « à toi » renvoient au site de l’employeur : il ne sait pas y postuler.",
+   "ensuite": "Un agent de formulaires (Workday, Zoho, SuccessFactors)."
+  },
+  {
+   "outils": [
+    [
+     "Navigateur du serveur",
+     "0 jeton",
+     "code"
+    ]
+   ],
+   "id": "mpage",
+   "secteur": "candidatures",
+   "nom": "Canal Michael Page",
+   "rythme": "à blanc",
+   "etat": "construction",
+   "depuis": "2026-10-08",
+   "duree": "attend ton accord",
+   "maintenant": "Essai à blanc réussi le 08/10 : formulaire rempli, rien envoyé.",
+   "bloque": "Ton accord pour l’envoi réel.",
+   "ensuite": "Envoi automatique, comme jobup."
+  },
+  {
+   "outils": [
+    [
+     "Gmail",
+     "0 jeton",
+     "code"
+    ]
+   ],
+   "id": "veille_cand",
+   "secteur": "candidatures",
+   "nom": "Veille des candidatures",
+   "rythme": "toutes les 30 min",
+   "src": {
+    "hote": [
+     "veille_candidatures"
+    ],
+    "toutes_h": 0.5,
+    "retard_h": 2
+   },
+   "mesure": "veille_cand",
+   "maintenant": "T’écrit quand une candidature validée ne part pas, quand une offre revient « à toi » ou quand la collecte s’arrête.",
+   "bloque": "Rien ne la bloque.",
+   "ensuite": "Rien de prévu."
+  },
+  {
+   "outils": [
+    [
+     "Whop (lecture sans connexion)",
+     "0 jeton",
+     "code"
+    ]
+   ],
+   "id": "chercheur_camp",
+   "secteur": "clipping",
+   "nom": "Chercheur de campagnes",
+   "rythme": "chaque jour à 8 h",
+   "src": {
+    "hote": [
+     "chercheur"
+    ],
+    "toutes_h": 24,
+    "retard_h": 26
+   },
+   "mesure": "chercheur",
+   "maintenant": "Lit chaque matin les campagnes Whop et garde celles qui passent ta grille.",
+   "bloque": "Aucune des campagnes proposées n’a été lancée depuis le 04/10 (constat du 14/10).",
+   "ensuite": "Choisir seul dès qu’une campagne passe la grille (ta délégation du 08/10)."
+  },
+  {
+   "outils": [
+    [
+     "yt-dlp (depuis ton PC)",
+     "0 jeton",
+     "code"
+    ],
+    [
+     "faster-whisper (local)",
+     "0 jeton",
+     "code"
+    ],
+    [
+     "Gemini (choix des moments)",
+     "non compté",
+     "ia"
+    ],
+    [
+     "ffmpeg, OpenCV",
+     "0 jeton",
+     "code"
+    ]
+   ],
+   "id": "decoupeur",
+   "secteur": "clipping",
+   "nom": "Découpeur",
+   "rythme": "à la demande",
+   "src": {
+    "mesure": true
+   },
+   "mesure": "decoupeur",
+   "maintenant": "Découpe une vidéo en clips : il choisit les moments, sous-titre et cadre.",
+   "bloque": "Aucune campagne choisie : rien à découper.",
+   "ensuite": "Monter la prochaine campagne retenue."
+  },
+  {
+   "outils": [
+    [
+     "API Buffer (200 appels/jour)",
+     "0 jeton",
+     "code"
+    ]
+   ],
+   "id": "publication",
+   "secteur": "clipping",
+   "nom": "Publication (Buffer)",
+   "rythme": "toutes les 2 min",
+   "src": {
+    "mesure": true
+   },
+   "mesure": "publication",
+   "maintenant": "Publie les clips prêts sur YouTube, Instagram et TikTok, par Buffer.",
+   "bloque": "Rien à publier : aucune campagne en cours. TikTok a coupé la publication le 04/10.",
+   "ensuite": "Au moins 3 publications par jour et par compte, dès la prochaine campagne."
+  },
+  {
+   "outils": [
+    [
+     "oEmbed YouTube et TikTok",
+     "0 jeton",
+     "code"
+    ],
+    [
+     "Page Instagram",
+     "0 jeton",
+     "code"
+    ]
+   ],
+   "id": "verif_pub",
+   "secteur": "clipping",
+   "nom": "Vérificateur de publications",
+   "rythme": "chaque jour à 5 h 40",
+   "src": {
+    "mesure": true
+   },
+   "mesure": "verif_pub",
+   "maintenant": "Teste chaque matin chaque lien publié et signale un clip disparu.",
+   "bloque": "Rien ne le bloque.",
+   "ensuite": "Rien de prévu."
+  },
+  {
+   "outils": [
+    [
+     "Navigateur du serveur",
+     "0 jeton",
+     "code"
+    ]
+   ],
+   "id": "soumission",
+   "secteur": "clipping",
+   "nom": "Soumission Whop",
+   "rythme": "",
+   "etat": "afaire",
+   "depuis": "2026-10-02",
+   "duree": "attend une session Whop",
+   "maintenant": "N’existe pas : aucun clip déclaré, donc 0 € gagné.",
+   "bloque": "La session Whop ne tient pas sur le serveur.",
+   "ensuite": "Déclarer chaque clip publié dans sa campagne (point 52)."
+  },
+  {
+   "outils": [
+    [
+     "Flux Binance (BTC, ETH)",
+     "0 jeton",
+     "code"
+    ]
+   ],
+   "id": "t_seconde",
+   "secteur": "trading",
+   "nom": "Agent à la seconde",
+   "rythme": "chaque seconde",
+   "src": {
+    "mesure": true
+   },
+   "mesure": "trading",
+   "echelles": [
+    "seconde"
+   ],
+   "maintenant": "Achète et vend du bitcoin et de l’ether à la seconde, en simulation, avec 1 000 € fictifs.",
+   "bloque": "Les frais (0,12 % par opération) dépassent ce qu’il gagne.",
+   "ensuite": "Le laboratoire le coupera ou changera sa règle."
+  },
+  {
+   "outils": [
+    [
+     "Flux Binance",
+     "0 jeton",
+     "code"
+    ]
+   ],
+   "id": "t_minute",
+   "secteur": "trading",
+   "nom": "Agent à la minute",
+   "rythme": "chaque minute",
+   "src": {
+    "mesure": true
+   },
+   "mesure": "trading",
+   "echelles": [
+    "minute"
+   ],
+   "maintenant": "Achète et vend à la minute, en simulation, avec 1 000 € fictifs.",
+   "bloque": "Rien ne le bloque.",
+   "ensuite": "Ses règles muteront selon ses résultats."
+  },
+  {
+   "outils": [
+    [
+     "Flux Binance",
+     "0 jeton",
+     "code"
+    ]
+   ],
+   "id": "t_heure",
+   "secteur": "trading",
+   "nom": "Agent à l’heure",
+   "rythme": "chaque heure",
+   "src": {
+    "mesure": true
+   },
+   "mesure": "trading",
+   "echelles": [
+    "heure"
+   ],
+   "maintenant": "Achète et vend à l’heure, en simulation, avec 1 000 € fictifs.",
+   "bloque": "Rien ne le bloque.",
+   "ensuite": "Rien de prévu."
+  },
+  {
+   "outils": [
+    [
+     "Flux Binance",
+     "0 jeton",
+     "code"
+    ]
+   ],
+   "id": "t_longs",
+   "secteur": "trading",
+   "nom": "Jour, semaine, mois, trimestre",
+   "rythme": "à chaque clôture",
+   "src": {
+    "mesure": true
+   },
+   "mesure": "trading",
+   "echelles": [
+    "jour",
+    "semaine",
+    "mois",
+    "trimestre"
+   ],
+   "maintenant": "Quatre agents lents, en simulation, avec 1 000 € fictifs chacun.",
+   "bloque": "Rien ne les bloque.",
+   "ensuite": "Rien de prévu."
+  },
+  {
+   "outils": [
+    [
+     "Rétro-test",
+     "0 jeton",
+     "code"
+    ]
+   ],
+   "id": "labo_trading",
+   "secteur": "trading",
+   "nom": "Laboratoire des règles",
+   "rythme": "",
+   "etat": "construction",
+   "depuis": "2026-10-08",
+   "duree": "commencé le 08/10, rien de livré",
+   "maintenant": "En construction (branche labo-trading) : rien en service.",
+   "bloque": "À finir et à passer au banc d’essai.",
+   "ensuite": "Chaque nuit, les règles mutent et sont testées sur une période jamais vue, frais compris."
+  },
+  {
+   "outils": [
+    [
+     "Yahoo Finance",
+     "0 jeton",
+     "code"
+    ],
+    [
+     "Binance",
+     "0 jeton",
+     "code"
+    ],
+    [
+     "BCE (change)",
+     "0 jeton",
+     "code"
+    ]
+   ],
+   "id": "portefeuilles",
+   "secteur": "bourse",
+   "nom": "Portefeuilles boursiers",
+   "rythme": "chaque soir, 22 h – minuit",
+   "src": {
+    "boucle": [
+     "bourse"
+    ],
+    "toutes_h": 24,
+    "retard_h": 30
+   },
+   "mesure": "bourse",
+   "maintenant": "Suit cinq portefeuilles fictifs de 1 000 € : en réel depuis le 08/10, et en rétro-test sur 12 mois.",
+   "bloque": "Rien ne le bloque.",
+   "ensuite": "Rien de prévu."
+  },
+  {
+   "outils": [],
+   "id": "produits",
+   "secteur": "dropshipping",
+   "nom": "Recherche de produits",
+   "rythme": "",
+   "etat": "afaire",
+   "depuis": "2026-09-04",
+   "duree": "attend tes réponses",
+   "maintenant": "N’existe pas : aucun agent de dropshipping ne tourne.",
+   "bloque": "La niche (point 30) et la clé AliExpress (point 20) attendent tes réponses.",
+   "ensuite": "3 produits par semaine, avec leur rentabilité."
+  },
+  {
+   "outils": [],
+   "id": "libre",
+   "secteur": "libre",
+   "nom": "Agent libre",
+   "rythme": "",
+   "etat": "afaire",
+   "depuis": "2026-10-01",
+   "duree": "≈ 1 jour de travail (estimé)",
+   "maintenant": "N’existe pas (point 42 de la feuille de route).",
+   "bloque": "Ton adresse de réception (portefeuille) et ton accord sur ses règles.",
+   "ensuite": "Un parent qui garde la mémoire ; des enfants qui meurent s’ils ne gagnent rien."
+  },
+  {
+   "outils": [
+    [
+     "JEV (TypeSafe), par le goût",
+     "84 appels · 0,0026 $ / 30 j (au 09/10)",
+     "ia"
+    ]
+   ],
+   "id": "directeur",
+   "secteur": "gouvernance",
+   "nom": "Directeur",
+   "rythme": "chaque matin, 5 h – 7 h",
+   "src": {
+    "boucle": [
+     "directeur"
+    ],
+    "toutes_h": 24,
+    "retard_h": 30
+   },
+   "mesure": "directeur",
+   "maintenant": "Fait chaque matin le bilan de chaque agent et de ce que la maison a produit, et confie au plus un diagnostic à Hermes.",
+   "bloque": "Rien ne le bloque.",
+   "ensuite": "Rien de prévu."
+  },
+  {
+   "outils": [
+    [
+     "Économe",
+     "0 jeton",
+     "code"
+    ],
+    [
+     "Gardien du budget",
+     "0 jeton",
+     "code"
+    ],
+    [
+     "Compteur agent_runs",
+     "0 jeton",
+     "code"
+    ]
+   ],
+   "id": "gouv_jetons",
+   "secteur": "gouvernance",
+   "nom": "Gouverneur des jetons",
+   "rythme": "à chaque appel d’un modèle",
+   "etat": "construction",
+   "depuis": "2026-10-08",
+   "duree": "en conception",
+   "maintenant": "Plus de la moitié des appels aux modèles ne passent par aucun compteur : Jarvis, le courrier, les fiches de candidature, le clippeur, l’éclaireur. Hermes compte à part (2,73 M jetons en 30 jours au 09/10, 0 € réel).",
+   "bloque": "Trois budgets différents (16 €, 15 € et 150 €) et aucun filtre par agent.",
+   "ensuite": "Un seul point de passage pour tous les appels : le code d’abord, puis le modèle gratuit ; un budget par pôle et par agent ; les réponses déjà obtenues réutilisées ; tout compté au même endroit."
+  },
+  {
+   "outils": [],
+   "id": "gouv_reflexif",
+   "secteur": "gouvernance",
+   "nom": "Gouverneur réflexif",
+   "rythme": "chaque jour",
+   "etat": "afaire",
+   "depuis": "2026-10-08",
+   "duree": "en conception",
+   "maintenant": "N’existe pas encore. Le cerveau écrit beaucoup de mémoire mais presque rien ne la relit : 95 leçons et 20 croyances sans lecteur depuis le retrait de l’architecte, 27 idées du penseur jamais essayées, 103 jugements du goût sans suite.",
+   "bloque": "Le cap envoyé aux agents coupe « ce que la maison a appris » depuis le 30/09 ; ni le penseur ni le Directeur ne relisent leur production de la veille.",
+   "ensuite": "Chaque jour : chaque pôle écrit ses leçons dans une mémoire unique, les relit au passage suivant ; chaque idée reçoit un verdict ; une mesure qui recule déclenche une alerte et une proposition de retour arrière."
+  },
+  {
+   "outils": [],
+   "id": "analystes",
+   "secteur": "gouvernance",
+   "nom": "Analystes de pôle (proposé)",
+   "rythme": "chaque jour",
+   "etat": "afaire",
+   "depuis": "2026-10-14",
+   "duree": "à décider avec toi",
+   "maintenant": "Proposition : un analyste par pôle, en code (0 jeton), qui calcule les mesures propres au pôle ; le gouverneur réflexif les lit et juge si le pôle progresse.",
+   "bloque": "Ta décision sur l’organisation : un gouverneur des jetons et un gouverneur réflexif pour tout le système, un analyste par pôle.",
+   "ensuite": "Trading : gain après frais, pire baisse. Clipping : vues et € par clip. Commerce : réponses, rendez-vous, ventes. Candidatures : envois, réponses, entretiens. Dropshipping : marge et retour sur la pub."
+  },
+  {
+   "outils": [],
+   "id": "penseur",
+   "secteur": "direction",
+   "nom": "Penseur",
+   "rythme": "chaque nuit, appelé par le Directeur",
+   "src": {
+    "mesure": true
+   },
+   "mesure": "penseur",
+   "maintenant": "Propose chaque nuit au plus trois idées sourcées, jugées ensuite par le goût.",
+   "bloque": "Ses idées ne sont essayées par personne.",
+   "ensuite": "Ses idées partiront au laboratoire des essais.",
+   "outils_runs": [
+    "penseur"
+   ]
+  },
+  {
+   "outils": [
+    [
+     "GitHub",
+     "0 jeton",
+     "code"
+    ],
+    [
+     "Hacker News",
+     "0 jeton",
+     "code"
+    ],
+    [
+     "arXiv",
+     "0 jeton",
+     "code"
+    ]
+   ],
+   "id": "veille",
+   "secteur": "direction",
+   "nom": "Veille par pôle",
+   "rythme": "chaque jour",
+   "src": {
+    "boucle": [
+     "poles",
+     "veilleur"
+    ],
+    "toutes_h": 24,
+    "retard_h": 30
+   },
+   "mesure": "veille",
+   "maintenant": "Cherche chaque jour sur GitHub, Hacker News et arXiv ce qui peut servir à chaque pôle, et le range à son nom.",
+   "bloque": "Rien ne la bloque.",
+   "ensuite": "Essayer les outils trouvés (point 54)."
+  },
+  {
+   "outils": [
+    [
+     "Bac à sable d’Hermes",
+     "0 jeton",
+     "code"
+    ]
+   ],
+   "id": "labo",
+   "secteur": "direction",
+   "nom": "Laboratoire des essais",
+   "rythme": "",
+   "etat": "construction",
+   "depuis": "2026-10-08",
+   "duree": "commencé le 08/10, rien de livré",
+   "maintenant": "En construction (branche labo-essais) : rien en service.",
+   "bloque": "À finir et à passer au banc d’essai.",
+   "ensuite": "Hermes essaie chaque nuit les idées du penseur, en bac à sable."
+  },
+  {
+   "outils": [
+    [
+     "Gemini (gratuit)",
+     "non compté",
+     "ia"
+    ],
+    [
+     "Modèle local gemma",
+     "0 jeton",
+     "code"
+    ]
+   ],
+   "id": "hermes",
+   "secteur": "direction",
+   "nom": "Hermes",
+   "rythme": "sur ordre · chaque nuit",
+   "src": {
+    "mesure": true
+   },
+   "mesure": "hermes",
+   "maintenant": "Exécute les ordres courants sur les modèles gratuits, et une séance d’apprentissage chaque nuit.",
+   "bloque": "Il a refusé sa séance de nuit 4 fois sur 6, du 09 au 14/10 (relevé du 14/10).",
+   "ensuite": "Les essais du laboratoire."
+  },
+  {
+   "outils": [],
+   "id": "ordres",
+   "secteur": "direction",
+   "nom": "Ordres pour Claude",
+   "rythme": "à chaque session",
+   "src": {
+    "mesure": true
+   },
+   "mesure": "ordres",
+   "maintenant": "Les ordres que tu donnes à Claude attendent qu’une session les prenne.",
+   "bloque": "Claude ne travaille que quand une session est ouverte.",
+   "ensuite": "Rien de prévu."
+  },
+  {
+   "outils": [],
+   "id": "veilleur_ordres",
+   "secteur": "direction",
+   "nom": "Veilleur des ordres",
+   "rythme": "toutes les heures",
+   "src": {
+    "boucle": [
+     "veilleur_ordres"
+    ],
+    "toutes_h": 1
+   },
+   "maintenant": "Fait remonter en rouge tout ordre en attente depuis plus de 24 h, ici et dans l’e-mail de 7 h 30.",
+   "bloque": "Rien ne le bloque.",
+   "ensuite": "Rien de prévu."
+  },
+  {
+   "outils": [
+    [
+     "JEV (TypeSafe), par le goût",
+     "compté à part",
+     "ia"
+    ]
+   ],
+   "id": "anciens",
+   "secteur": "direction",
+   "nom": "Architecte, superviseur, réflexif",
+   "rythme": "remplacés par le Directeur",
+   "etat": "arret",
+   "depuis": "2026-10-08T08:10:00Z",
+   "maintenant": "Remplacés par le Directeur le 08/10.",
+   "bloque": "—",
+   "ensuite": "Rien.",
+   "outils_runs": [
+    "architecte",
+    "superviseur",
+    "reflexif"
+   ]
+  },
+  {
+   "outils": [
+    [
+     "Gmail (lecture seule)",
+     "0 jeton",
+     "code"
+    ],
+    [
+     "Gemini (gratuit)",
+     "non compté",
+     "ia"
+    ]
+   ],
+   "id": "courrier",
+   "secteur": "jarvis",
+   "nom": "Tri du courrier",
+   "rythme": "toutes les 15 min",
+   "src": {
+    "mesure": true
+   },
+   "mesure": "courrier",
+   "maintenant": "Lit ta boîte Gmail (lecture seule) et classe chaque e-mail par importance.",
+   "bloque": "Rien ne le bloque.",
+   "ensuite": "Compter ses jetons."
+  },
+  {
+   "outils": [
+    [
+     "Resend",
+     "0 jeton",
+     "code"
+    ],
+    [
+     "n8n",
+     "0 jeton",
+     "code"
+    ]
+   ],
+   "id": "matin",
+   "secteur": "jarvis",
+   "nom": "E-mail de 7 h 30",
+   "rythme": "chaque jour à 7 h 30",
+   "src": {
+    "n8n": "heraut00000001",
+    "toutes_h": 24,
+    "retard_h": 26
+   },
+   "maintenant": "T’envoie chaque matin tes relances, les ordres en retard, le bilan du Directeur, le trading et la bourse.",
+   "bloque": "Rien ne le bloque.",
+   "ensuite": "Rien de prévu."
+  },
+  {
+   "outils": [
+    [
+     "n8n",
+     "0 jeton",
+     "code"
+    ],
+    [
+     "Resend (alertes)",
+     "0 jeton",
+     "code"
+    ]
+   ],
+   "id": "sentinelle",
+   "secteur": "jarvis",
+   "nom": "Sentinelle et Gardien",
+   "rythme": "toutes les 6 h · Gardien toutes les 30 min",
+   "src": {
+    "n8n": "sentinelleMon01",
+    "toutes_h": 6,
+    "retard_h": 7
+   },
+   "mesure": "sentinelle",
+   "constat": "alerte",
+   "maintenant": "Surveille les flux, les envois et le budget, et t’écrit en cas d’alerte.",
+   "bloque": "Deux règles se trompent : elle annonce à chaque passage « Fureteur ne tourne plus » alors qu’il passe, et sa règle sur les e-mails envoyés ne voit plus rien (constat du 14/10).",
+   "ensuite": "Corriger ces deux règles."
+  },
+  {
+   "outils": [
+    [
+     "Voix Gemini",
+     "non compté",
+     "ia"
+    ]
+   ],
+   "id": "voix",
+   "secteur": "jarvis",
+   "nom": "Voix de Jarvis",
+   "rythme": "à la demande",
+   "etat": "attente",
+   "depuis": "2026-09-25T09:34:56Z",
+   "duree": "non mesuré",
+   "maintenant": "Transcrit ce que tu dis et te répond à voix haute (voix Gemini, puis celle du serveur).",
+   "bloque": "Son usage n’est pas mesuré.",
+   "ensuite": "Te répondre à l’oral quand tu parles à l’oral (ordre n° 16)."
+  },
+  {
+   "outils": [
+    [
+     "Cloudflare R2 (10 Go gratuits)",
+     "0 jeton",
+     "code"
+    ]
+   ],
+   "id": "sauvegardes",
+   "secteur": "serveur",
+   "nom": "Sauvegardes",
+   "rythme": "chaque nuit à 5 h (copie à 5 h 30)",
+   "src": {
+    "hote": [
+     "backup",
+     "offsite"
+    ],
+    "toutes_h": 24,
+    "retard_h": 26
+   },
+   "mesure": "sauvegardes",
+   "maintenant": "Sauvegarde chaque nuit n8n et le cerveau, et en garde une copie chiffrée sur Cloudflare R2 ; la restauration est testée chaque lundi.",
+   "bloque": "Rien ne les bloque.",
+   "ensuite": "Rien de prévu."
+  },
+  {
+   "outils": [
+    [
+     "GitHub (banc d’essai)",
+     "0 jeton",
+     "code"
+    ],
+    [
+     "Porte de déploiement",
+     "0 jeton",
+     "code"
+    ]
+   ],
+   "id": "livraison",
+   "secteur": "serveur",
+   "nom": "Livraison du code",
+   "rythme": "à chaque changement",
+   "src": {
+    "hote": [
+     "porte"
+    ]
+   },
+   "mesure": "livraison",
+   "maintenant": "Met en service chaque version après le banc d’essai, et revient seule en arrière si la santé échoue.",
+   "bloque": "Rien ne la bloque.",
+   "ensuite": "Rien de prévu."
+  },
+  {
+   "outils": [
+    [
+     "Hetzner CX43",
+     "0 jeton",
+     "code"
+    ]
+   ],
+   "id": "machine",
+   "secteur": "serveur",
+   "nom": "Machine Hetzner",
+   "rythme": "en continu",
+   "src": {
+    "mesure": true
+   },
+   "mesure": "machine",
+   "maintenant": "Le serveur Hetzner qui fait tourner tous les conteneurs.",
+   "bloque": "Rien ne la bloque.",
+   "ensuite": "Régler la facture s’il y en a une en retard (voir Facturations)."
+  },
+  {
+   "outils": [
+    [
+     "n8n",
+     "0 jeton",
+     "code"
+    ],
+    [
+     "Metabase",
+     "0 jeton",
+     "code"
+    ]
+   ],
+   "id": "inutiles",
+   "secteur": "serveur",
+   "nom": "Metabase, allumé pour rien",
+   "rythme": "allumé en continu",
+   "etat": "arret",
+   "src": {
+    "hote": [
+     "conteneurs"
+    ]
+   },
+   "mesure": "inutiles",
+   "maintenant": "Metabase tourne sans que personne ne l’ouvre ; le Portier est retiré du service depuis le 14/10.",
+   "bloque": "Ton accord pour éteindre Metabase.",
+   "ensuite": "L’éteindre : de la mémoire en plus pour le reste."
+  }
+ ],
+ "vies": {
+  "clipping": {
+   "etat": "panne",
+   "resume": "À l’arrêt depuis le 04/10. 45 clips publiés (R3born et Hardscope), aucun de la campagne Sartain ; 0 € gagné.",
+   "outils": [
+    [
+     "API Buffer",
+     "0 jeton",
+     "code"
+    ],
+    [
+     "Gemini · choix des moments",
+     "non compté",
+     "ia"
+    ],
+    [
+     "yt-dlp",
+     "0 jeton",
+     "code"
+    ],
+    [
+     "faster-whisper (local)",
+     "0 jeton",
+     "code"
+    ],
+    [
+     "ffmpeg, OpenCV",
+     "0 jeton",
+     "code"
+    ]
+   ],
+   "passe": [
+    [
+     "02/10",
+     "Comptes KinGKlip créés ; tu valides le style des clips (« franchement, c’est top »)."
+    ],
+    [
+     "02/10 – 03/10",
+     "43 clips R3born publiés par Buffer : 17 Instagram, 16 TikTok, 10 YouTube."
+    ],
+    [
+     "03/10",
+     "Tu choisis la campagne Michael Sartain (ordre n° 40). L’ordre part à Claude et n’est jamais exécuté."
+    ],
+    [
+     "04/10",
+     "2 clips Hardscope sur YouTube. TikTok refuse la publication puis bannit le compte."
+    ],
+    [
+     "04/10 – 08/10",
+     "Le relais Buffer boucle sur 24 000 refus (quota épuisé) ; bridé le 08/10 à 200 appels par jour."
+    ],
+    [
+     "06/10",
+     "Pause TikTok posée sur le serveur."
+    ]
+   ],
+   "present": [
+    [
+     "Buffer",
+     "1 488 appels restants sur 3 000 jusqu’au 01/11 (relevé du 09/10) ; le relais croyait en avoir 250 par jour."
+    ]
+   ],
+   "avenir": [
+    [
+     "Objectif",
+     "Le premier dollar : au moins 3 publications par jour et par compte, sur YouTube et Instagram, avec une source de bonne qualité."
+    ],
+    [
+     "Ta règle du 14/10",
+     "Une campagne qui exige des comptes dédiés : on vide les comptes, puis on relance. Sartain est abandonné."
+    ],
+    [
+     "Dès qu’une campagne passe la grille",
+     "Choix, montage et publication seuls (ta délégation du 08/10), sur Instagram et YouTube."
+    ],
+    [
+     "Plus tard",
+     "La soumission Whop (point 52), quand une session Whop tiendra sur le serveur."
+    ]
+   ],
+   "explication": {
+    "titre": "Pourquoi on t’a dit que les clips Sartain étaient partis",
+    "points": [
+     "Les 45 clips publiés sont ceux de R3born et de Hardscope. Aucun clip Sartain n’a été monté : la vidéo n’a jamais été téléchargée.",
+     "Ton ordre n° 40 du 03/10 a été confié à Claude, qui ne travaille que quand une session est ouverte. Rien ne signale un ordre resté en attente : il dort depuis 5 jours.",
+     "Dans la maquette d’hier, j’ai écrit « les 45 clips publiés ne rapportent rien » juste sous la campagne Sartain : ma phrase laissait croire que c’étaient les siens. L’erreur vient de moi.",
+     "Aucun agent ne vérifie qu’un clip « publié » est vraiment en ligne : Buffer répond « publié » et on le croit. Les 16 TikTok ont disparu sans que personne ne le voie.",
+     "J’avais aussi écrit que Sartain ne payait que TikTok et X : c’est faux. Sa fiche Whop paie YouTube 1,50 $ et Instagram 2 $ les 1 000 vues, et exige des comptes consacrés à lui seul."
+    ],
+    "date": "2026-10-08"
+   },
+   "sous": [
+    {
+     "n": 1,
+     "nom": "Chercheur de campagnes",
+     "fait": "Lit les campagnes Whop et les note sur ta grille.",
+     "quand": "Chaque jour à 8 h",
+     "pourquoi": "Grille codée : niche streamers, budget restant ≥ 500 $, au moins 1 $ les 1 000 vues. Elle ignore les plateformes payées et les sources ; le budget est parfois mal lu (Dillon Danis noté 4 000 $ pour 2 $ restants).",
+     "outils": [
+      [
+       "Whop (lecture)",
+       "0 jeton",
+       "code"
+      ]
+     ],
+     "etat": "vide"
+    },
+    {
+     "n": 1,
+     "nom": "Découpeur",
+     "fait": "Télécharge, transcrit, choisit les moments, recadre et monte.",
+     "quand": "À la demande · derniers clips le 03/10",
+     "pourquoi": "Garde les moments notés 7 sur 10 ou plus, de 12 à 35 s, coupés sur une fin de phrase.",
+     "outils": [],
+     "etat": "arret"
+    },
+    {
+     "n": 2,
+     "nom": "Téléchargement",
+     "fait": "Récupère la vidéo de la campagne.",
+     "quand": "À la demande",
+     "pourquoi": "Depuis ton PC : YouTube bloque l’adresse du serveur.",
+     "outils": [
+      [
+       "yt-dlp",
+       "0 jeton",
+       "code"
+      ]
+     ],
+     "etat": "arret"
+    },
+    {
+     "n": 2,
+     "nom": "Transcription",
+     "fait": "Chaque mot daté.",
+     "quand": "À la demande",
+     "pourquoi": "Sur le serveur, sans service payant.",
+     "outils": [
+      [
+       "faster-whisper",
+       "0 jeton",
+       "code"
+      ]
+     ],
+     "etat": "arret"
+    },
+    {
+     "n": 2,
+     "nom": "Choix des moments",
+     "fait": "Les moments, puis les clips, en deux étapes.",
+     "quand": "À la demande",
+     "pourquoi": "Garde ce qui retient l’attention, sans rien inventer.",
+     "outils": [
+      [
+       "Gemini (gratuit)",
+       "non compté",
+       "ia"
+      ]
+     ],
+     "etat": "arret"
+    },
+    {
+     "n": 2,
+     "nom": "Montage",
+     "fait": "Recadrage sur le visage, sous-titres de 3 mots, mot dit en jaune.",
+     "quand": "À la demande",
+     "pourquoi": "Le style que tu as validé le 02/10.",
+     "outils": [
+      [
+       "ffmpeg, OpenCV",
+       "0 jeton",
+       "code"
+      ]
+     ],
+     "etat": "arret"
+    },
+    {
+     "n": 1,
+     "nom": "File de publication",
+     "fait": "Étale 3 à 4 clips par jour et par compte.",
+     "quand": "Toutes les 2 min",
+     "pourquoi": "Chaque clip part sur YouTube, Instagram et TikTok, même quand la campagne ne paie pas la plateforme.",
+     "outils": [
+      [
+       "Cron du serveur",
+       "0 jeton",
+       "code"
+      ]
+     ],
+     "etat": "vide"
+    },
+    {
+     "n": 1,
+     "nom": "Relais Buffer",
+     "fait": "Publie, puis suit chaque publication.",
+     "quand": "Toutes les 2 min",
+     "pourquoi": "Buffer donne 3 000 appels par mois (1 488 restants jusqu’au 01/11) ; chaque publication programmée est relue toutes les 40 min.",
+     "outils": [
+      [
+       "API Buffer",
+       "0 jeton",
+       "code"
+      ]
+     ],
+     "etat": "panne"
+    },
+    {
+     "n": 1,
+     "nom": "Lecteur des réponses",
+     "fait": "Lance la campagne que tu choisis en répondant « 1 », « 2 » ou « 3 » à l’e-mail.",
+     "quand": "Toutes les 5 min",
+     "pourquoi": "Aucune réponse reçue depuis le 02/10.",
+     "outils": [
+      [
+       "Gmail (IMAP)",
+       "0 jeton",
+       "code"
+      ]
+     ],
+     "etat": "vide"
+    },
+    {
+     "n": 1,
+     "nom": "Vérificateur de publications",
+     "fait": "Teste chaque lien publié, chaque jour.",
+     "quand": "Chaque jour à 5 h 40",
+     "pourquoi": "Livré le 14/10 : personne ne voyait les clips disparus.",
+     "outils": [
+      [
+       "oEmbed YouTube, TikTok",
+       "0 jeton",
+       "code"
+      ]
+     ],
+     "etat": "ok"
+    },
+    {
+     "n": 1,
+     "nom": "Soumission Whop",
+     "fait": "Déclare chaque clip dans sa campagne.",
+     "quand": "À construire (point 52)",
+     "pourquoi": "Sans déclaration, Whop ne paie rien.",
+     "outils": [
+      [
+       "Navigateur du serveur",
+       "0 jeton",
+       "code"
+      ]
+     ],
+     "etat": "afaire"
+    },
+    {
+     "n": 1,
+     "nom": "Analyste du pôle",
+     "fait": "Calcule chaque jour : vues, € gagnés et taux d’approbation par clip et par plateforme.",
+     "quand": "À construire",
+     "pourquoi": "Ta demande du 14/10 : un outil d’analyse dans chaque pôle, lu par le gouverneur réflexif.",
+     "outils": [
+      [
+       "Code",
+       "0 jeton",
+       "code"
+      ]
+     ],
+     "etat": "afaire"
+    },
+    {
+     "n": 1,
+     "nom": "Mémoire du pôle",
+     "fait": "Garde les leçons du pôle et les fait relire à chaque passage.",
+     "quand": "À construire",
+     "pourquoi": "Le gouverneur réflexif vérifie qu’elle est écrite et relue.",
+     "outils": [
+      [
+       "Base de données",
+       "0 jeton",
+       "code"
+      ]
+     ],
+     "etat": "afaire"
+    }
+   ],
+   "problemes": [
+    "TikTok a banni le compte le 04/10 (trop de publications par API).",
+    "L’ordre Sartain n’a jamais été exécuté ; Sartain est abandonné et l’ordre n° 40 fermé le 14/10.",
+    "Sartain paie YouTube (1,50 $) et Instagram (2 $) les 1 000 vues, mais exige des comptes qui ne montrent que lui : KinGKlip ne l’est pas encore.",
+    "Aucun clip déclaré sur Whop."
+   ],
+   "reussites": [
+    "Le style des clips, validé par toi.",
+    "Le relais Buffer respecte enfin son quota (08/10)."
+   ],
+   "solutions": [
+    "Vérificateur de publications : livré le 14/10.",
+    "Veilleur des ordres : livré le 14/10.",
+    "Grille de campagnes réparée et 3 publications par jour : prochaine étape."
+   ]
+  },
+  "trading": {
+   "etat": "alerte",
+   "resume": "7 agents en entraînement simulé depuis le 08/10 à 11 h 48 : 1 000 € fictifs chacun, frais de 0,12 % comptés, aucun ordre réel.",
+   "outils": [
+    [
+     "Flux Binance (public)",
+     "0 jeton",
+     "code"
+    ],
+    [
+     "Base de données",
+     "0 jeton",
+     "code"
+    ]
+   ],
+   "passe": [
+    [
+     "08/10 · 10 h 49",
+     "La bourse simulée démarre : quatre portefeuilles de 1 000 €."
+    ],
+    [
+     "08/10 · 11 h 40",
+     "Les sept agents de trading sont lancés, un par échelle de temps."
+    ],
+    [
+     "08/10 · après-midi",
+     "L’agent à la seconde perd 19,8 % en 3 heures : les frais mangent ses gains."
+    ],
+    [
+     "08/10 · soir",
+     "Ta décision : les règles muteront selon les résultats, la nuit."
+    ]
+   ],
+   "present": [],
+   "avenir": [
+    [
+     "Chaque nuit, dès que le laboratoire est livré",
+     "Les règles mutent et sont testées sur une période jamais vue, frais compris ; « ne rien faire » est un candidat."
+    ],
+    [
+     "Plus tard",
+     "Le réel, sur ton compte, avec ta clé et ton activation. Claude ne passe jamais d’ordre."
+    ],
+    [
+     "À tester d’abord",
+     "Le suivi de tendance de 1 à 12 mois (prouvé sur 67 marchés depuis 1880 : Hurst, Ooi, Pedersen, 2017), le portage sur les devises, le ciblage de la volatilité. Sous la journée, les études montrent des pertes une fois les frais comptés."
+    ],
+    [
+     "Nouveaux marchés",
+     "Or (4GLD.DE), pétrole Brent (BRNT.L) et EUR/USD par la BCE : sources gratuites testées depuis le serveur le 09/10."
+    ],
+    [
+     "Long terme",
+     "Repères publics : JPMorgan attend 6,4 % par an pour un portefeuille 60/40 sur 10 à 15 ans (hypothèses 2026) ; Vanguard 3,9 à 5,9 % pour les actions américaines sur 10 ans (janvier 2026)."
+    ]
+   ],
+   "sous": [
+    {
+     "n": 1,
+     "nom": "Agent à la seconde",
+     "fait": "Achète et vend le bitcoin et l’ether chaque seconde.",
+     "quand": "Chaque seconde",
+     "pourquoi": "Règle de départ : acheter quand le RSI 2 passe sous 10, revendre au retour à la moyenne.",
+     "outils": [
+      [
+       "Flux Binance",
+       "0 jeton",
+       "code"
+      ]
+     ],
+     "etat": "panne"
+    },
+    {
+     "n": 1,
+     "nom": "Agent à la minute",
+     "fait": "Même règle, à la minute.",
+     "quand": "Chaque minute",
+     "pourquoi": "Retour à la moyenne.",
+     "outils": [
+      [
+       "Flux Binance",
+       "0 jeton",
+       "code"
+      ]
+     ],
+     "etat": "ok"
+    },
+    {
+     "n": 1,
+     "nom": "Agent à l’heure",
+     "fait": "Même règle, à l’heure.",
+     "quand": "Chaque heure",
+     "pourquoi": "Aucun signal depuis le départ : il n’a rien acheté.",
+     "outils": [
+      [
+       "Flux Binance",
+       "0 jeton",
+       "code"
+      ]
+     ],
+     "etat": "ok"
+    },
+    {
+     "n": 1,
+     "nom": "Jour, semaine, mois, trimestre",
+     "fait": "Une position prise au démarrage, suivie à chaque clôture.",
+     "quand": "À chaque clôture",
+     "pourquoi": "Retour à la moyenne pour le jour, suivi de tendance pour les autres.",
+     "outils": [
+      [
+       "Flux Binance",
+       "0 jeton",
+       "code"
+      ]
+     ],
+     "etat": "ok"
+    },
+    {
+     "n": 1,
+     "nom": "Laboratoire des règles",
+     "fait": "Fait muter les règles et garde celle qui gagne vraiment.",
+     "quand": "Chaque nuit (en construction)",
+     "pourquoi": "Ta décision du 08/10.",
+     "outils": [
+      [
+       "Rétro-test",
+       "0 jeton",
+       "code"
+      ]
+     ],
+     "etat": "construction"
+    },
+    {
+     "n": 1,
+     "nom": "Portefeuilles boursiers",
+     "fait": "Quatre stratégies et l’indice Monde, 1 000 € fictifs chacune.",
+     "quand": "Chaque soir, 22 h – minuit",
+     "pourquoi": "ETF UCITS cotés en Europe (les ETF américains sont interdits aux particuliers résidant en France).",
+     "outils": [
+      [
+       "Yahoo Finance",
+       "0 jeton",
+       "code"
+      ],
+      [
+       "BCE (change)",
+       "0 jeton",
+       "code"
+      ]
+     ],
+     "etat": "ok"
+    },
+    {
+     "n": 1,
+     "nom": "Analyste du pôle",
+     "fait": "Calcule chaque jour : gain après frais, pire baisse et nombre d’opérations de chaque règle.",
+     "quand": "À construire",
+     "pourquoi": "Ta demande du 14/10 : un outil d’analyse dans chaque pôle, lu par le gouverneur réflexif.",
+     "outils": [
+      [
+       "Code",
+       "0 jeton",
+       "code"
+      ]
+     ],
+     "etat": "afaire"
+    },
+    {
+     "n": 1,
+     "nom": "Mémoire du pôle",
+     "fait": "Garde les leçons du pôle et les fait relire à chaque passage.",
+     "quand": "À construire",
+     "pourquoi": "Le gouverneur réflexif vérifie qu’elle est écrite et relue.",
+     "outils": [
+      [
+       "Base de données",
+       "0 jeton",
+       "code"
+      ]
+     ],
+     "etat": "afaire"
+    }
+   ],
+   "problemes": [],
+   "reussites": [
+    "Toute la donnée est gardée, seconde par seconde (14 jours).",
+    "Les agents lents perdent peu : −1,3 % avec le bitcoin du jour."
+   ],
+   "solutions": [
+    "Le laboratoire des règles (en construction, branche labo-trading)."
+   ]
+  },
+  "dropshipping": {
+   "etat": "gris",
+   "resume": "Aucun agent ne tourne : 0 produit, 0 fournisseur, 0 boutique.",
+   "outils": [],
+   "passe": [
+    [
+     "04/09",
+     "Projet « friction » : un entonnoir à décisions, aucune pub avant un fournisseur vérifié et une marge qui tient."
+    ],
+    [
+     "01/10",
+     "Le personnage Obito AF et une niche pressentie (accessoires street-luxe) ; Page et Instagram @obitoooaf créés."
+    ]
+   ],
+   "present": [
+    [
+     "En production",
+     "Rien."
+    ],
+    [
+     "Sur ton PC",
+     "Le dossier du projet « friction » n’est plus dans C:\\Users\\Lenovo\\Projets."
+    ],
+    [
+     "Attend toi",
+     "La niche (point 30), la clé AliExpress (point 20), la déclaration d’activité de vente (point 22)."
+    ]
+   ],
+   "avenir": [
+    [
+     "Stratégie recommandée",
+     "L’affiliation TikTok Shop d’abord (0 € de stock, commissions fixées par les vendeurs, de 5 à 20 % selon un guide spécialisé), avec les vidéos de l’agent ; ton propre produit, en stock dans l’UE, seulement quand il s’est vendu."
+    ],
+    [
+     "À savoir",
+     "L’envoi depuis la Chine est exclu sur TikTok Shop : remise au transporteur sous 7 jours ouvrés, depuis le pays de la boutique. Commission de la plateforme : 9 % depuis le 08/01/2026."
+    ],
+    [
+     "Après tes réponses",
+     "Recherche de produits : 3 par semaine, avec saison, tendance sourcée et conformité UE (point 19)."
+    ],
+    [
+     "Ensuite",
+     "Rentabilité de chaque produit (point 21), puis la page produit avec Stripe (point 22)."
+    ],
+    [
+     "Plus tard",
+     "Publicités Meta plafonnées à 300 € par mois, une par une avec ton accord (point 7)."
+    ]
+   ],
+   "sous": [
+    {
+     "n": 1,
+     "nom": "Chercheur de produits",
+     "fait": "Trouve 3 produits par semaine dans la niche.",
+     "quand": "À construire",
+     "pourquoi": "Point 19.",
+     "outils": [],
+     "etat": "afaire"
+    },
+    {
+     "n": 1,
+     "nom": "Calcul de rentabilité",
+     "fait": "Prix d’achat, livraison, frais, pub par vente, marge nette.",
+     "quand": "À construire",
+     "pourquoi": "Point 21 : rien ne se lance sans marge.",
+     "outils": [],
+     "etat": "afaire"
+    },
+    {
+     "n": 1,
+     "nom": "Fournisseurs",
+     "fait": "Stock, délai vers la France, entrepôt UE.",
+     "quand": "Attend ta clé AliExpress",
+     "pourquoi": "Point 20.",
+     "outils": [],
+     "etat": "afaire"
+    },
+    {
+     "n": 1,
+     "nom": "Boutique",
+     "fait": "Une page produit légère, paiement Stripe, CGV.",
+     "quand": "Attend ta déclaration de vente à distance",
+     "pourquoi": "Point 22.",
+     "outils": [],
+     "etat": "afaire"
+    },
+    {
+     "n": 1,
+     "nom": "Calendrier des saisons",
+     "fait": "Prépare les produits 6 à 8 semaines avant chaque temps fort : rentrée, Halloween, fin d’année, soldes, Saint-Valentin, fête des mères, été.",
+     "quand": "À construire",
+     "pourquoi": "Ta demande du 14/10 : choisir le produit selon la saison.",
+     "outils": [
+      [
+       "Code",
+       "0 jeton",
+       "code"
+      ]
+     ],
+     "etat": "afaire"
+    },
+    {
+     "n": 1,
+     "nom": "Analyste du pôle",
+     "fait": "Calcule chaque jour : marge par vente et retour sur la publicité.",
+     "quand": "À construire",
+     "pourquoi": "Ta demande du 14/10 : un outil d’analyse dans chaque pôle, lu par le gouverneur réflexif.",
+     "outils": [
+      [
+       "Code",
+       "0 jeton",
+       "code"
+      ]
+     ],
+     "etat": "afaire"
+    },
+    {
+     "n": 1,
+     "nom": "Mémoire du pôle",
+     "fait": "Garde les leçons du pôle et les fait relire à chaque passage.",
+     "quand": "À construire",
+     "pourquoi": "Le gouverneur réflexif vérifie qu’elle est écrite et relue.",
+     "outils": [
+      [
+       "Base de données",
+       "0 jeton",
+       "code"
+      ]
+     ],
+     "etat": "afaire"
+    }
+   ],
+   "problemes": [
+    "Rien ne peut démarrer sans tes trois réponses."
+   ],
+   "reussites": [],
+   "solutions": []
+  },
+  "libre": {
+   "etat": "gris",
+   "resume": "N’existe pas encore. Ta règle : gagner chaque jour, sinon mourir ; le suivant renaît avec la mémoire de tous les essais.",
+   "outils": [],
+   "passe": [
+    [
+     "01/10",
+     "Ta demande : un agent libre de gagner de l’argent sur Internet, légalement."
+    ],
+    [
+     "01/10",
+     "Tes règles : budget zéro, un gain chaque jour dès le jour 1 ; à partir du jour 14, 5 € nets par jour en moyenne sur 7 jours."
+    ],
+    [
+     "08/10",
+     "Ton schéma : un parent garde la mémoire et crée un enfant qui meurt s’il ne gagne rien."
+    ]
+   ],
+   "present": [
+    [
+     "En production",
+     "Rien."
+    ],
+    [
+     "Attend toi",
+     "Les adresses de RÉCEPTION de ta Ledger (Bitcoin, Cardano, XRP, USDC sur Base). Jamais la phrase de 24 mots."
+    ]
+   ],
+   "avenir": [
+    [
+     "Après tes adresses",
+     "Construction du parent et du premier enfant : ≈ 1 jour de travail (estimé)."
+    ]
+   ],
+   "schema": [
+    [
+     "Parent · la mémoire",
+     "Garde chaque essai : l’idée, ce qu’elle a coûté, ce qu’elle a rapporté, pourquoi elle est morte. Il ne gagne rien lui-même."
+    ],
+    [
+     "Enfant · un essai",
+     "Une seule idée à la fois (service aux particuliers, aux entreprises, à d’autres IA). Il a une journée pour encaisser."
+    ],
+    [
+     "Le soir",
+     "Un gain : il continue. Zéro : il meurt, le parent écrit la leçon et crée un enfant différent."
+    ]
+   ],
+   "garde_fous": [
+    "Il encaisse seulement : toi seul retires, échanges ou places.",
+    "Ses dépenses passent par un portefeuille plafonné que tu alimentes ; au-delà, il demande.",
+    "Le nombre d’enfants est borné ; un coupe-circuit les arrête tous.",
+    "Des activités légales uniquement."
+   ],
+   "sous": [],
+   "problemes": [],
+   "reussites": [],
+   "solutions": []
+  },
+  "candidatures": {
+   "etat": "alerte",
+   "resume": "29 candidatures envoyées en tout ; 48 offres « à toi » t’attendent (relevé du 14/10).",
+   "outils": [
+    [
+     "Navigateur du serveur",
+     "0 jeton",
+     "code"
+    ],
+    [
+     "Relais IPv6",
+     "0 jeton",
+     "code"
+    ],
+    [
+     "Gemini · lettres",
+     "non compté",
+     "ia"
+    ],
+    [
+     "Gmail (alertes)",
+     "0 jeton",
+     "code"
+    ]
+   ],
+   "passe": [
+    [
+     "01/10",
+     "Le bureau des candidatures ouvre dans Jarvis (critères, profil, CV suisse)."
+    ],
+    [
+     "07/10",
+     "Le relais IPv6 est posé : premier envoi réussi par ce relais (Conforama, jobup)."
+    ],
+    [
+     "07/10",
+     "Dernière candidature à 19 h 41 ; 27 en tout sur la semaine."
+    ],
+    [
+     "08/10",
+     "Michael Page : essai à blanc réussi ; le salaire et le visa corrigés et testés."
+    ]
+   ],
+   "present": [],
+   "avenir": [
+    [
+     "Après ton accord",
+     "Michael Page en envoi automatique."
+    ],
+    [
+     "Ensuite",
+     "Un agent de formulaires (Workday, Zoho, SuccessFactors)."
+    ],
+    [
+     "Question ouverte",
+     "Élargir aux métiers proches : service client, administration des ventes, back-office (question 57)."
+    ]
+   ],
+   "sous": [
+    {
+     "n": 1,
+     "nom": "Collecte",
+     "fait": "Lit les sites d’emploi.",
+     "quand": "Deux fois par jour",
+     "pourquoi": "Garde ce qui passe tes critères (lieu, métier, contrat).",
+     "outils": [
+      [
+       "jobup.ch, jobs.ch",
+       "0 jeton",
+       "code"
+      ],
+      [
+       "Michael Page",
+       "0 jeton",
+       "code"
+      ]
+     ],
+     "etat": "ok"
+    },
+    {
+     "n": 1,
+     "nom": "Rédacteur des lettres",
+     "fait": "Une lettre par offre, à ton style.",
+     "quand": "À chaque offre",
+     "pourquoi": "Ton profil et l’annonce, rien d’inventé.",
+     "outils": [
+      [
+       "Gemini (gratuit)",
+       "non compté",
+       "ia"
+      ]
+     ],
+     "etat": "ok"
+    },
+    {
+     "n": 1,
+     "nom": "Envoyeur",
+     "fait": "Remplit les formulaires avec ton CV suisse.",
+     "quand": "En continu",
+     "pourquoi": "Seulement les offres validées qui ont un canal.",
+     "outils": [
+      [
+       "Navigateur du serveur",
+       "0 jeton",
+       "code"
+      ]
+     ],
+     "etat": "vide"
+    },
+    {
+     "n": 2,
+     "nom": "jobup et jobs.ch",
+     "fait": "Candidature simplifiée.",
+     "quand": "En continu",
+     "pourquoi": "27 envoyées.",
+     "outils": [],
+     "etat": "ok"
+    },
+    {
+     "n": 2,
+     "nom": "Michael Page",
+     "fait": "Formulaire en trois étapes.",
+     "quand": "À blanc",
+     "pourquoi": "Attend ton accord pour l’envoi réel.",
+     "outils": [],
+     "etat": "construction"
+    },
+    {
+     "n": 2,
+     "nom": "Par e-mail",
+     "fait": "Candidature envoyée par e-mail.",
+     "quand": "Toutes les 15 min, de 7 h à 20 h",
+     "pourquoi": "Aucune offre de ce type pour l’instant.",
+     "outils": [],
+     "etat": "vide"
+    },
+    {
+     "n": 1,
+     "nom": "Veille",
+     "fait": "T’alerte d’une offre à valider ou « à toi ».",
+     "quand": "Toutes les 30 min",
+     "pourquoi": "Dernière alerte le 07/10 à 20 h.",
+     "outils": [
+      [
+       "Gmail",
+       "0 jeton",
+       "code"
+      ]
+     ],
+     "etat": "ok"
+    },
+    {
+     "n": 1,
+     "nom": "Analyste du pôle",
+     "fait": "Calcule chaque jour : envois, réponses et entretiens par canal.",
+     "quand": "À construire",
+     "pourquoi": "Ta demande du 14/10 : un outil d’analyse dans chaque pôle, lu par le gouverneur réflexif.",
+     "outils": [
+      [
+       "Code",
+       "0 jeton",
+       "code"
+      ]
+     ],
+     "etat": "afaire"
+    },
+    {
+     "n": 1,
+     "nom": "Mémoire du pôle",
+     "fait": "Garde les leçons du pôle et les fait relire à chaque passage.",
+     "quand": "À construire",
+     "pourquoi": "Le gouverneur réflexif vérifie qu’elle est écrite et relue.",
+     "outils": [
+      [
+       "Base de données",
+       "0 jeton",
+       "code"
+      ]
+     ],
+     "etat": "afaire"
+    }
+   ],
+   "problemes": [],
+   "reussites": [
+    "27 candidatures en une semaine (du 01 au 07/10), grâce au relais IPv6.",
+    "Michael Page rempli correctement à blanc (08/10)."
+   ],
+   "solutions": [
+    "Michael Page automatique (attend ton accord).",
+    "Agent de formulaires (à construire)."
+   ]
+  }
+ },
+ "modeles": {
+  "site": {
+   "objet": "[Commerce] : votre maquette de site est prête",
+   "corps": "Bonjour,\n\nJe suis Basile, de rAIme. J’ai préparé une maquette de site pour [Commerce] : [lien de la maquette].\n\nPourquoi maintenant : 76 % des Français cherchent une information en ligne avant d’aller en magasin. Sans site, c’est le commerce d’à côté qui apparaît, avec ses horaires, ses photos et son numéro, et c’est chez lui que le client entre.\n\nCe que je propose : votre site, simple et à votre image, livré en 7 jours pour 500 €, hébergement compris. Vous relisez, j’ajuste, je m’occupe de tout le reste.\n\nLa maquette vous reste offerte, que vous donniez suite ou non.\n\nBelle journée,\nBasile Ramé\nrAIme · raime.fr",
+   "sources": [
+    [
+     "76 % des Français cherchent en ligne avant d’aller en magasin",
+     "Shopfully, « The State of Shopping » 2025 : 9 400 consommateurs dans 8 pays dont la France, mars-avril 2025 (repris par E-Commerce Nation, 21/11/2025)",
+     "https://www.ecommerce-nation.fr/?p=123761"
+    ]
+   ]
+  },
+  "ia": {
+   "objet": "[Entreprise] : les tâches que l’IA peut retirer de vos semaines",
+   "corps": "Bonjour,\n\nJe suis Basile, de rAIme. J’aide les entreprises à repérer les tâches que l’IA peut faire à leur place, puis je les mets en place avec elles.\n\nLe mouvement est rapide : en 2025, 18 % des entreprises de 10 salariés ou plus utilisent l’IA, trois fois plus qu’en 2023. Celles qui s’équipent maintenant prennent de l’avance sur leurs concurrents ; les autres continuent de passer des heures sur :\n- [tâche 1 du métier]\n- [tâche 2]\n- [tâche 3]\n- [tâche 4]\n- [tâche 5]\n\nJ’ai préparé un pré-audit gratuit pour votre métier : [heures] heures récupérables par an, chiffrées tâche par tâche (en pièce jointe).\n\nEnsuite, je vous accompagne : l’analyse avec vous, la mise en place, puis le suivi des gains.\n\nSi vous avez aujourd’hui une tâche administrative particulièrement chronophage, vous pouvez simplement me répondre en me l’indiquant : je pourrai vous dire concrètement si elle peut être automatisée, et de quelle manière.\n\nBien cordialement,\nBasile Ramé\nrAIme · conseil IA indépendant · raime.fr",
+   "exemple": "Cabinet comptable : ≈ 473 h et ≈ 19 300 € par an (pré-audit du métier, chiffré par le moteur de ROI).",
+   "sources": [
+    [
+     "18 % des entreprises de 10 salariés ou plus utilisent l’IA en 2025 ; 6 % en 2023",
+     "Insee Première n° 2120, « Les technologies de l’information et de la communication dans les entreprises en 2025 », 21/07/2026 ; chiffre retrouvé aussi par Hermes le 25/09 (ordre n° 10)",
+     "https://www.insee.fr/fr/statistiques/9025878"
+    ]
+   ]
+  }
+ },
+ "modeles_date": "2026-10-08",
+ "categories": [
+  {
+   "nom": "Restaurants et pizzerias",
+   "metiers": [
+    "restaurant",
+    "pizzeria"
+   ],
+   "phrase": "Avant de réserver, on regarde la carte, les photos et les horaires : votre site les montre en un coup d’œil, et le client appelle directement."
+  },
+  {
+   "nom": "Coiffure et beauté",
+   "metiers": [
+    "coiffeur",
+    "institut de beauté"
+   ],
+   "phrase": "On choisit son salon sur son téléphone : les prestations, les prix, un numéro pour prendre rendez-vous. Votre site les donne sans détour."
+  },
+  {
+   "nom": "Garages",
+   "metiers": [
+    "garage automobile"
+   ],
+   "phrase": "Quand la voiture tombe en panne, on cherche le garage le plus proche sur son téléphone : votre site dit ce que vous réparez et comment vous joindre."
+  },
+  {
+   "nom": "Métiers de bouche",
+   "metiers": [
+    "boulangerie",
+    "boucherie",
+    "fromagerie",
+    "caviste"
+   ],
+   "phrase": "Vos produits, vos horaires et votre adresse, sur le téléphone du client avant qu’il ne sorte de chez lui."
+  },
+  {
+   "nom": "Artisans du bâtiment",
+   "metiers": [
+    "plombier",
+    "électricien",
+    "peintre en bâtiment"
+   ],
+   "phrase": "Pour un dépannage ou un devis, on appelle l’artisan qui inspire confiance en ligne : votre site montre vos réalisations et votre numéro."
+  },
+  {
+   "nom": "Autres commerces",
+   "metiers": [
+    "fleuriste",
+    "pressing",
+    "cordonnier"
+   ],
+   "phrase": "Vos services, vos horaires, votre adresse : l’essentiel, visible avant que le client ne se déplace."
+  }
+ ],
+ "factures": [
+  {
+   "cle": "hetzner",
+   "nom": "Serveur Hetzner",
+   "quoi": "Serveur CX43 · client K0843535326",
+   "montant": "14,98 €",
+   "rythme": "chaque mois",
+   "etat": "panne",
+   "etatTxt": "Paiement en retard",
+   "lignes": [
+    [
+     "27/09",
+     "Facture 081001188609 : 14,98 €"
+    ],
+    [
+     "28/09",
+     "Prélèvement de la carte refusé"
+    ],
+    [
+     "08/10",
+     "Rappel de paiement reçu (PDF joint à l’e-mail)"
+    ]
+   ],
+   "prochaine": null,
+   "prochaineTxt": "À régler maintenant sur le compte Hetzner",
+   "lien": {
+    "texte": "Régler sur accounts.hetzner.com",
+    "url": "https://accounts.hetzner.com"
+   },
+   "courriels": {
+    "de": "hetzner",
+    "sujets": "(payment|invoice|rechnung|zahlung|mahnung)"
+   },
+   "montant_eur": 14.98
+  },
+  {
+   "cle": "claude",
+   "nom": "Abonnement Claude Pro",
+   "quoi": "Anthropic · 18,00 € + TVA 3,60 €",
+   "montant": "21,60 €",
+   "rythme": "chaque mois",
+   "etat": "ok",
+   "etatTxt": "Payé",
+   "lignes": [
+    [
+     "29/09",
+     "Premier prélèvement refusé : accès mis en pause"
+    ],
+    [
+     "30/09",
+     "Payé : 21,60 € (reçu 2023-5845-1520), période du 29/09 au 29/10"
+    ]
+   ],
+   "prochaine": "2026-10-29",
+   "prochaineTxt": "Prochain prélèvement : jeudi 29 octobre, 21,60 €",
+   "courriels": {
+    "de": "(anthropic|claude)",
+    "sujets": "(receipt|reçu|payment|paiement|invoice|facture)"
+   },
+   "montant_eur": 21.6
+  },
+  {
+   "cle": "workspace",
+   "nom": "Google Workspace",
+   "quoi": "contact@raime.fr",
+   "montant": "≈ 9 €",
+   "rythme": "chaque mois",
+   "etat": "alerte",
+   "etatTxt": "Date inconnue",
+   "lignes": [
+    [
+     "—",
+     "Aucune facture dans basilerameee@gmail.com"
+    ],
+    [
+     "—",
+     "Les factures se lisent dans la console d’administration Google, rubrique Facturation"
+    ],
+    [
+     "—",
+     "Carte à remplacer : en attente de ta décision"
+    ]
+   ],
+   "prochaine": null,
+   "prochaineTxt": "Date à relever dans la console d’administration",
+   "montant_eur": 9,
+   "approx": true
+  }
+ ],
+ "factures_date": "2026-10-08",
+ "credits": {
+  "openrouter": "−0,18 $",
+  "openrouter_detail": "10 $ achetés, 10,18 $ consommés ; clé retirée du cockpit le 14/10 ; 0 $ en octobre",
+  "date": "2026-10-14",
+  "gemini": "Gemini gratuit : une seule clé partagée par tous les agents, sans plafond par agent. Du 01 au 07/10, Hermes a reçu 120 refus « quota dépassé » et 94 « modèle saturé ». Le quota restant ne se lit pas par l’API."
+ },
+ "modeles_hors_compteur": [
+  {
+   "nom": "Hermes : Gemini 3.8 / 3.7 Flash, 3.1 Flash Lite, Gemma",
+   "fournisseur": "Google et serveur",
+   "prix": "Gratuit, compté à part",
+   "j7": null,
+   "j30": 2734639,
+   "cout": "0 $ réel",
+   "agents": "Hermes (relevé du 09/10)"
+  },
+  {
+   "nom": "JEV (TypeSafe.ai)",
+   "fournisseur": "TypeSafe",
+   "prix": "Payant à l’usage, 500 appels par jour au plus",
+   "j7": null,
+   "j30": null,
+   "cout": "0,0026 $ (84 appels)",
+   "agents": "le goût : Directeur et architecte (relevé du 09/10)"
+  },
+  {
+   "nom": "GPT-4o mini",
+   "fournisseur": "OpenRouter",
+   "prix": "Payant, coupé le 14/10",
+   "j7": null,
+   "j30": 0,
+   "cout": "0 $",
+   "agents": "Portier, retiré du service le 14/10"
+  }
+ ],
+ "noms_modeles": [
+  [
+   "^Gemini · gemini-(.*)$",
+   "Gemini $1",
+   "Google",
+   "Gratuit (quota du jour)"
+  ],
+  [
+   "^local · gemma4:(.*)$",
+   "Gemma 4 ($1)",
+   "Sur le serveur (Ollama)",
+   "Gratuit"
+  ],
+  [
+   "^local · (.*)$",
+   "$1 (sur le serveur)",
+   "Sur le serveur (Ollama)",
+   "Gratuit"
+  ],
+  [
+   "^deepseek/deepseek-v4-pro.*$",
+   "DeepSeek v4 Pro",
+   "OpenRouter",
+   "Payant, coupé depuis le 26/09"
+  ],
+  [
+   "^deepseek/deepseek-v4-flash.*$",
+   "DeepSeek v4 Flash",
+   "OpenRouter",
+   "Payant, coupé depuis le 26/09"
+  ],
+  [
+   "^qwen/qwen3-max-thinking.*$",
+   "Qwen3 Max Thinking",
+   "OpenRouter",
+   "Payant, coupé depuis le 26/09"
+  ],
+  [
+   "^upstage/solar-pro4.*$",
+   "Solar Pro 4",
+   "OpenRouter",
+   "Payant, coupé depuis le 26/09"
+  ]
+ ],
+ "modeles_note": "Ne passent par aucun compteur : Gemini pour les clips, les fiches de candidature, le tri du courrier et Jarvis. Le Gouverneur des jetons les fera tous passer par le même compteur.",
+ "notes": {
+  "quand": "vérifié sur le serveur le 14/10 vers 17 h",
+  "lignes": [
+   [
+    "ok",
+    "Le Directeur passe seul chaque matin depuis le 09/10 (dernier passage : 14/10 à 5 h 21)."
+   ],
+   [
+    "alerte",
+    "Hermes a refusé sa séance de nuit 4 fois sur 6 (10, 11, 12 et 13/10) ; il l’a faite les 09 et 14/10."
+   ],
+   [
+    "info",
+    "Deux livraisons : la réflexivité (pannes durables, outils isolés) le 11/10, la vérification des livrables d’Hermes le 14/10."
+   ],
+   [
+    "panne",
+    "Aucun clip publié depuis le 04/10. Huit campagnes proposées du 10 au 13/10, dont Sartain à nouveau le 11/10 ; aucune lancée."
+   ],
+   [
+    "alerte",
+    "Sartain : sa fiche Whop paie YouTube (1,50 $) et Instagram (2 $), avec des comptes qui ne montrent que lui. J’avais écrit le contraire : corrigé."
+   ],
+   [
+    "ok",
+    "OpenRouter coupé le 14/10 avec ton accord : le Portier est retiré du service et la clé enlevée du cockpit. Elle reste, sans effet, dans la boucle ; celle d’Hermes est à vérifier."
+   ],
+   [
+    "ok",
+    "Livrés le 14/10 : le vérificateur des clips (chaque matin à 5 h 40) et le veilleur des ordres en retard."
+   ],
+   [
+    "info",
+    "Sartain abandonné le 14/10 ; son ordre n° 40 est fermé."
+   ]
+  ]
+ },
+ "majs": {
+  "encours": [
+   {
+    "titre": "Laboratoire de trading et des essais",
+    "pour": "Claude",
+    "depuis": "2026-10-08",
+    "detail": "Deux branches commencées (labo-trading, labo-essais) ; rien n’est encore livré (au 14/10)."
+   }
+  ],
+  "titres": {
+   "14": "Publier sur Facebook, gratuitement",
+   "15": "La page de qualification des prospects",
+   "16": "Me répondre à l’oral quand je parle à l’oral",
+   "18": "Voir le code s’écrire en direct",
+   "38": "La garantie que ce que je demande est vraiment fait",
+   "52": "Améliorer le classement des pistes de recherche"
+  },
+  "stats_08_10": {
+   "n": 197,
+   "echecs": 1,
+   "porte_med": 35,
+   "total_med": 221,
+   "depuis": "2026-09-24T08:13:32Z",
+   "date": "2026-10-08"
+  },
+  "sujets": {
+   "fda8d3ad9d18": "Sources des clips : le PC télécharge en 1080p (carré natif du format « bandes »), envoi 2 à 3 fois plus léger",
+   "0d227c0e9d51": "Clips KinGKlip : le pilote choisit seul les campagnes et tient 3 publications par jour sur Instagram et YouTube",
+   "b43529de97ef": "Sentinelle : la clause des clips garde son espace devant UNION ALL ; un test exécute la requête recomposée",
+   "4e607a4dcc63": "Deux veilleurs : les clips publiés sont vérifiés chaque matin, les ordres oubliés passent en rouge",
+   "ac0e1f5b9b45": "Vérifier les livrables et fiabiliser les reprises et le chargement d’Hermes (#35)",
+   "e29a288474da": "Réflexivité : pannes durables et outils isolés (#34)",
+   "e1d4321682f0": "Refuser aussi les identifiants dans les champs JSON imbriqués",
+   "d08501845ad6": "Conserver un utilisateur non privilégié compatible avec le nettoyage du banc",
+   "ce440fc426b4": "Prouver la reprise après adoption et vérifier l’ordre Hermes réellement réparé",
+   "69418872444b": "Réparer le disque jetable du banc et refuser une clé Hermes absente",
+   "46abf0e2fed0": "Relier les pannes à la recherche, la sandbox et aux outils autonomes",
+   "d8a0cbf07942": "Réparer la lecture de la sandbox et le résumé des propositions",
+   "b8e3eca79c56": "Fiabilité : reprises vérifiées, alertes de silence et première boucle autonome bornée",
+   "a0d495c4bc7a": "Rapport du matin et cockpit : trading et bourse lus dans jarvis/simulations.mjs (le Cockpit ne voit pas agents/ : l'e-mail disait « pas de …",
+   "55e5fa16a017": "Michael Page : le salaire suit le libellé visible (« CDI » y était rempli), « visa actuel » → Non ; tests Python de l'Envoyeur en CI ; le t…",
+   "a4bfa1b52ff5": "Audit des tests (mutations) : la requête des brouillons testée sur une vraie base, le retard de l'agenda, le verdict du Fureteur, le seuil …",
+   "8d4e678ff444": "Feuille de route : Google Places abandonné (pas de carte), découverte des commerces à 0 € par OpenStreetMap et le registre",
+   "7eb07488cc9d": "Maquettes : numéro lisible (04 50 64 48 17), adresse avec sa ville, « Un savoir-faire de boucher » (TAD MARKET)",
+   "eac81b2814d3": "Coffre : case « Clé Google Places » ; la boucle peut charger GOOGLE_PLACES_API_KEY (vitrines, quota gratuit plafonné)",
+   "ef94c0da4090": "Feuille de route : pôle de recherche par agent (point 54 en cours)",
+   "eacba3bf6107": "Pôle de recherche par agent (GitHub, Hacker News, arXiv, rangé au nom de chaque agent) ; le Directeur compte la veille et le trading ; les …",
+   "5244849fcbc5": "Sept agents de trading en entraînement simulé (seconde, minute, heure, jour, semaine, mois, trimestre)",
+   "e2a90d5e3e74": "Relais Buffer : 200 appels par jour au plus (Buffer en permet 250), et après un refus l'attente exacte donnée par Buffer (Retry-After)",
+   "c5bf0d8a14a9": "Trading simulé (point 56) : un cinquième portefeuille fictif, court terme (RSI 2 jours dans une tendance haussière)",
+   "f359f0eba667": "Agent bourse en simulation (point 55) : quatre portefeuilles fictifs de 1 000 € (long terme, tendance, momentum, indice)",
+   "eb5b435227f8": "Directeur : un échec isolé est dit aussi ; feuille de route : point 41 fait (un seul flux de réflexion)",
+   "06f1ed02eefa": "Les rythmes des agents dans agents/rythmes.js, lus par la boucle et par le Directeur (lancé à la main aussi)",
+   "59b6af6b5101": "Le Directeur : un seul flux de réflexion (points 41 et 58)",
+   "836ab882ee81": "Feuille de route : agenda des relances fait (point 59), avancement de la prospection et des vitrines",
+   "31b9d7b7d1a3": "Fusion de main dans Michael Page",
+   "7f584665809f": "Envoyeur : canal Michael Page (essai à blanc, captcha jamais résolu, envoi incertain jamais renvoyé), connexion par adresses, collecte Mich…",
+   "d9169c31b5a6": "Fusion de main dans « sans site » (liste des codes exclus partagée, badge « déjà appelé » et bilan sans site sur la page de validation)",
+   "7dc88d806c6c": "Entreprises sans site (en cours) : Fureteur à trois états, pont vers les vitrines, fiches à compléter",
+   "5bdeea74e44d": "Ignorer les copies de travail isolées des chantiers",
+   "041138b78227": "Agenda : tests au Cockpit local, historique lu par son texte",
+   "4b8b1e09315a": "Fusion de main dans l'agenda",
+   "d8d937428452": "Agenda : bandeau résumé et alertes dans le cockpit, bouton Agenda, choix de la date et « mal classé » dans la liste d'appels, tests",
+   "6604782cdfa2": "Fusion : découverte des commerçants sans site réparée (Overpass multi-serveurs, contour de commune)",
+   "5732b06ca3fd": "Agenda des relances (en cours) : jarvis/agenda.cjs, page /agenda, appels et catégories corrigés",
+   "856b037c51a3": "Vitrines : la découverte des commerçants sans site réparée (plusieurs serveurs Overpass, une requête par ville et par contour, « sans site …",
+   "2c602a9e0a54": "Relais Buffer : une publication effacée chez Buffer est classée perdue au lieu d'être réinterrogée toutes les 2 minutes (≈ 300 appels/h, d'…",
+   "f5c8a0663621": "Prospection : « Associés » avec son accent, même quand le registre écrit en minuscules",
+   "b0385b9a994d": "Prospection : le nom d'usage quand le nom officiel est long (Fiduralp), abréviations du registre développées",
+   "c868bfca65b3": "Site raime.fr : copie fidele de la version en ligne (2026-10-07)",
+   "d56d8dc53973": "Prospection : recrutement, courtage en assurance et architectes ont leur pré-audit publié ; jamais les groupements d'employeurs, assureurs,…",
+   "5c3ad807b2fa": "Feuille de route : copie Markdown régénérée, le banc compte 58 points",
+   "f7ee0824a818": "Prospection : seulement une adresse lue sur le site prouvé de l'entreprise (jamais une adresse devinée par l'ancien Fureteur)",
+   "35742600f8cb": "Feuille de route : veilleur GitHub qui se met à jour, agents bourse et trading (simulation d'abord), comptes Buffer, une seule entité rAIme…",
+   "dace4b87e11c": "Fureteur : moteur fermé = 24 h de pause ; un ancien site visité sans preuve est retiré ; 06 12 34 56 78 n'est pas un numéro",
+   "2307f3a78408": "Site raime.fr : copie fidele de la version en ligne (2026-10-07)",
+   "393c874ca7e6": "Prospection : l'immobilier a son pré-audit publié (raime.fr/dossiers/rAIme-pre-audit-immobilier.pdf), les agences reçoivent l'e-mail",
+   "fe23cab3bfd7": "Fureteur réécrit : le site doit prouver être celui de l'entreprise (SIREN, ou nom et ville), l'adresse doit y être écrite, jamais devinée",
+   "c2462bb6b390": "Prospection : une boîte = un e-mail (deux cabinets d'un même groupe ne reçoivent pas deux messages)",
+   "46fe37570ef8": "Prospection : noms d'usage des études, annuaires et site national des notaires refusés, mots du métier ignorés",
+   "4cc0c5fd2bbf": "Prospection : l'adresse doit être celle de l'entreprise (domaine du site ou de son nom ; ni plateforme ni no-reply)",
+   "381c6498ea8f": "Prospection : à but lucratif seulement (ni AGC, Cerfrance, associations, ordres, chambres), sigle répété retiré du nom",
+   "c036fc33d892": "Prospection : une ligne par entreprise — l'ancien e-mail annulé ou jamais reçu est remplacé par le nouveau brouillon",
+   "062d057ddfbf": "Prospection automatisation : le même e-mail que les vitrines, avec le pré-audit du métier, écrit par le code",
+   "4c9faca1faa5": "Fusion de la note automatique du carnet",
+   "6f62d3881dd7": "Bureau : plus de « Valider » sur une offre sans canal automatique ; « Ouvrir l'annonce » et « J'ai postulé moi-même »",
+   "0bc18f568187": "Carnet : retour automatique après l'échec de 31ec62c7a86c",
+   "31ec62c7a86c": "Envoyeur : « Trop de requêtes » de jobup = pause du passage (rien n'est parti, pas compté comme échec) ; 90 s entre deux envois",
+   "58c86331feeb": "Décisions : seules celles écrites pour Basile s'affichent (pour_basile), avec leur raison ; réponse ou rejet d'un geste",
+   "311c91edcb90": "À appeler : « plus tard » à une date choisie (demain, semaine prochaine, un jour précis) et tri par catégorie",
+   "3b88d3af19d7": "Banc : / et /jarvis sont la 3D, l'ancienne page à /jarvis/classique (les deux gardent conversation, dictée, saisie, sphère)",
+   "e59667088546": "Tableau de bord : la 3D de Codex devient Jarvis (/ et /jarvis), l'ancienne page reste à /jarvis/classique",
+   "034203bf4eeb": "Interface 3D : tests (identifiants, routes existantes, empreintes Three.js, liste blanche /3d/, gzip et 304, /api/reseau)",
+   "7938a64d1cd5": "Fusion de main dans interface-3d",
+   "c378d844ea7c": "Interface 3D (travail en cours) : routes /jarvis3d et /3d/, début de /api/reseau",
+   "cb7bf3cc3594": "Ordres : une séance d'apprentissage de la nuit qui échoue est refusée chez Hermes, plus jamais envoyée à Claude",
+   "17cfe4119ff7": "Héraut : le pré-audit du secteur dans l'e-mail d'automatisation (seul lien permis, posé par le code)",
+   "ebd7e48c1d84": "Fusion de main (désinscription, porte, prospection) dans interface-3d",
+   "c611ce48e992": "Interface 3D (travail en cours) : sources de Codex copiées dans jarvis/interface/3d, début du portage",
+   "10b6ebcc5bb8": "Désinscription : le lien affiche une confirmation, seul le bouton désinscrit",
+   "13051930fb25": "Porte : relance l'Envoyeur et le service d'outils d'Hermes quand leur code change à la livraison",
+   "f8e72c4ff0ad": "Prospection : la page s'ouvre sur l'offre qui a des e-mails à valider",
+   "ba5f2f523232": "Prospection : page de validation des e-mails (sites vitrines + automatisation)",
+   "423b7c3b2eb3": "Candidatures : canal « candidature par e-mail » (consigne de l'annonce, envoi depuis le Gmail de Basile)",
+   "c820ed481cba": "Envoyeur : sortie par un relais IPv6 de l'hôte (jobup/jobs.ch refusent l'IPv4 du serveur depuis le 06/10 au soir)",
+   "eeb34223b00d": "Vitrines v3 : voile plus dense derrière le texte (photos chargées, téléphone)",
+   "5acf25d9e8be": "Vitrines v3 : le héros ne prend plus la hauteur de l'ancien en-tête sur téléphone",
+   "5ea85a62b0e6": "Vitrines : héros v3 à valider (plein écran, nom en Instrument Serif, encart des vraies infos, deux actions) en aperçu /demo/v3/<slug>",
+   "f2a93869bd41": "Candidatures : balayage complet de la Suisse romande (jobup + jobs.ch, tous les cantons et les villes, toutes les pages)",
+   "34174ac0b760": "Candidatures : Suisse seulement (collecte HelloWork arrêtée, aucune offre française proposée)",
+   "413174297718": "Bureau des candidatures : valider = envoyé",
+   "216f5f6d82c2": "Envoyeur jobup : numéro tapé sans l'indicatif déjà affiché et vérifié chiffre à chiffre ; permis de travail = Citoyen de l'UE",
+   "bc1b9418c291": "Clips/Buffer : arrêt net sur « trop de demandes » (30 min de silence), suivi d'une publication au plus toutes les 40 min, perdue après 7 jo…",
+   "7edfc04ba7bf": "Envoyeur : jamais « Oui » à une expérience située en Suisse (réponse vraie : Non) ; verrou d'écran retiré au démarrage",
+   "dcc1b1dc3912": "Jarvis : la barre (écrire, dicter, parler) repart — bloc-courriels retiré mais encore visé ; test des identifiants de chaque page",
+   "12252e4f7485": "Envoyeur jobup : boutons Oui/Non par leur rôle, numéro tapé en entier après le choix du pays, partage Spotted décoché",
+   "18fb9e308327": "Envoyeur jobup : indicatif téléphonique (codes à 2, 3 puis 1 chiffre)",
+   "866cf8a85496": "Envoyeur jobup : choix de l'indicatif par la liste des options",
+   "046299e53fb6": "Envoyeur jobup : coordonnées par identifiant, indicatif téléphonique du bon pays, questions Oui/Non (nouvelle mise en page)",
+   "610589b0dc44": "Envoyeur jobup/jobs.ch : bandeau de cookies fermé (essentiels uniquement), coordonnées remplies sans session (plus de dépendance à la conne…",
+   "5cbed26e38c1": "Jarvis : panneau « À appeler » (commerçants sans réponse depuis 7 jours, téléphone, appelé / plus tard / pas intéressé) à la place des e-ma…",
+   "e90b4e92bceb": "Page Clips : script réparé (le formulaire partait sans JavaScript) + test de syntaxe",
+   "3f613deb23bd": "Chercheur v2 : fiches lues sans connexion (règles, paiement, liens vidéo), jeux d'argent exclus, réponse 1/2/3 par e-mail qui lance la déco…",
+   "ed3c0fa560c0": "Chercheur de campagnes Whop : lecture quotidienne (session de Basile), grille + niche par Gemini, 3 propositions par e-mail et sur Jarvis",
+   "cf5df4cdf94e": "Durée : elle suit le moment (12 à 35 s, ou le minimum du brief)",
+   "f89bdc3f86ec": "Stratégie : étude des Shorts qui sur-performent (vues/abonnés)",
+   "76a003881cb1": "Légendes : hashtags plafonnés par plateforme (YouTube 3, autres 5)",
+   "85961f9e4ffc": "Clippeur : format « bandes noires » par défaut (titre en haut, carré net, sous-titres) ; conseils de sélection des campagnes",
+   "bd7ca2118a78": "Stratégie : résultat du test Claude contre Gemini",
+   "cfe4d084e174": "Clippeur : formulation de l'étape 2",
+   "944651f3e5a9": "Clippeur : sélection en deux étapes (moments forts puis clips), prompt « moments pas scènes », note sévère, sans chevauchement — testé sur …",
+   "16a89623e8a1": "Clippeur : note prédite gardée pour calibrage ; stratégie : la note est une estimation, plan de vérification",
+   "9619a939f1b9": "Clippeur : la qualité avant le volume (note >= 7/10) ; stratégie : croissance de chaîne et monétisation",
+   "89ea2b91bdda": "Stratégie des formats courts (recherche 02/10) : sélection des passages, question en fin de légende ; Jarvis la connaît",
+   "ddc1fc67fd04": "Jarvis : 1440p minimum dans la routine des clips",
+   "d213bce2f285": "Clips : 1440p minimum, meilleure qualité, jamais d'agrandissement ; Jarvis connaît la routine et l'état des clips",
+   "b5163900b55b": "Clips : source 1440p, netteté après recadrage, crf 16 ; e-mail des liens bruts, un par ligne",
+   "8f5441259d50": "Feuille de route : 53 points (agent de soumission Whop, agent Analytics), tests à jour",
+   "76410b80636f": "Clips : brief en document (texte entier + liens), brief complet gardé ; feuille de route : agent de soumission Whop",
+   "577bbdf3d13e": "Relais Buffer : quota du jour atteint = nouvel essai le lendemain",
+   "d502ebecc26e": "Alertes : SMTP 587 (465 fermé)",
+   "3c69bc707448": "Clips : le brief seul suffit (lien vidéo lu dedans), alertes e-mail à chaque étape",
+   "81877deab850": "Relais Buffer et attente : lecture JSON multi-lignes",
+   "4db5a0d6e359": "Clips de A à Z sans Claude : brief collé = profil (Gemini), sources YouTube par la tâche du PC, file non bloquée",
+   "a9d4e228fda0": "Relais Buffer : pause par plateforme (fichier pause-<plateforme>)",
+   "42673c5dd31f": "Publication auto : jamais un moment déjà publié (deja_publies)",
+   "4eaed0f8b287": "Feuille de route : influenceur IA (Pinokio) et chercheur de campagnes Whop",
+   "f74a04816195": "Clips en continu : publication automatique après découpe (brief), file Buffer pleine = attente, liens signés côté relais",
+   "9a72c80fcb5c": "Clips : dossier de campagne (brief, paiement, liens Whop), brief obligatoire, clips 18-20 s ; feuille de route : pôles et superviseur",
+   "f052089f4f7a": "Clippeur : sous-titres continus (plus de trou entre deux groupes) ; Buffer en file (créneaux de Basile)",
+   "196a15a52c3d": "Clips : bouton Programmer (Buffer, soir à New York), lien signé 7 jours avec HEAD",
+   "b60b9301f1d4": "Clippeur : mot prononcé en jaune, texte blanc, sans bandeau de titre ; relais Buffer (en attente du lien vidéo)",
+   "92fe566c14a2": "Clippeur : accroche sans juron (repli sur le titre)",
+   "91a34058156f": "Sélection : formulation exacte du délai de validation",
+   "ba59ea7e2c78": "Sélection Whop : approbation >= 30 %, validation <= 48 h",
+   "d07a01e0649f": "Clippeur : fin sur une fin de phrase, sous-titres plus gros, titre en bandeau tout le clip",
+   "882c3a65784b": "Clips : bouton Publier sur Instagram (@kinggklip), lien signé 1 h",
+   "4d45640f216f": "Clippeur : compte rendu de découpe dans file.log ; R3born min 12 s",
+   "4258b719a07c": "Clippeur : blancs retirés (no dead air), mots recollés, R3born 15-35 s",
+   "701aac0b6811": "R3born : nos sous-titres remis (la source n'en a que par moments ; le brief les exige)",
+   "c8c3cc44a021": "Clippeur : jurons et injures censurés à l'écran, source déjà sous-titrée sans doublon (cadrage plein écran au centre), orthographe imposée …",
+   "9b86d6a25e96": "Clips : profil de campagne (tags par plateforme, hashtags obligatoires, mots interdits écartés jusque dans les sous-titres, consignes du br…",
+   "12cc5534eb95": "Clippeur : une source YouTube attend la vidéo déposée depuis le PC (sources/<campagne>.mp4) au lieu d'échouer",
+   "775487c96029": "Clip farming KinGKlip : la page /clips (demande de découpe, clips lisibles sur téléphone, légende à copier, liens publiés pour Whop), le cl…",
+   "ed1d887cef5c": "L'Envoyeur de Jarvis sur le serveur : collecte chaque matin, envoi chaque heure, navigateur visible par noVNC derrière le Cockpit ; données…",
+   "8b725acfb6ec": "Feuille de route : 5 points ajoutés (raccord Jarvis → Claude, refonte de raime.fr d'après les références, prospection des automatisations, …",
+   "a96d1780cccf": "Candidatures : une annonce expirée est rangée (écartée) au lieu de revenir à Basile",
+   "8de2ce818ac0": "Candidatures : la file de l'Envoyeur rend toutes les fiches validées (300 au plus), pas seulement les 30 plus anciennes",
+   "70d5cd52aaf8": "Bureau des candidatures dans Jarvis : fiches par modèles gratuits, file de l'Envoyeur (jeton du coffre), données personnelles hors dépôt",
+   "e070a58e2c12": "Vitrines : une source de recherche secondaire muette ne reporte plus la qualification quand bing ou yahoo ont répondu",
+   "410a1350355f": "Vitrines : la phrase validée par Basile dans l'e-mail (les clients regardent sur leur téléphone avant de se déplacer)",
+   "ea14782e783a": "Vitrines : une fiche sans téléphone ni e-mail cherche son numéro (site du commerce, puis recherche web, numéro le plus cité, jamais un 08) …",
+   "85edb5d794a9": "Vitrines : sans coordonnées, pas de carte du point 0,0 ; Overpass saturé, l'adresse localise quand même ; « votre fiche en ligne »",
+   "3ccb350e5119": "Vitrines : le site d'un nom en deux mots collés est reconnu (jeanlain.com) ; la page d'un réseau envoie le commerçant aux appels, pas à l'e…",
+   "5bea5f9e718f": "Vitrines : carte servie par le Cockpit, tons sourds par métier, annuaires reconnus, franchisés aux appels",
+   "dfc822ad0fcb": "Vitrines : maquette v4 blanc et noir, canton de Genève, tri par région et métier",
+   "48fe7fe350f8": "Vitrines : maquette v3 selon les principes Sam Crawford (une police, trois tailles de titres, trois couleurs, aucun arrondi ni relief ni ba…",
+   "2f6d640c0647": "Vitrines : maquette v2 (photos d'exemple Pixabay par métier servies par le Cockpit, vraie carte OpenStreetMap, bouton d'action du métier, m…",
+   "f9f7ea7d4572": "Vitrines : le lien de paiement Stripe (500 €) dans la fiche et un bouton pour le copier ; feuille de route : décisions du 01/10 (bon de com…",
+   "87e59af14e3e": "Consigne pour Codex : garder le tiroir VITRINES (voir la maquette, valider, écarter) dans l'interface 3D",
+   "d827e05b3b12": "Vitrines : une recherche web bloquée (moteurs suspendus) ne conclut jamais « aucun site » ; la fiche est reportée et le passage s'arrête",
+   "416f95c7e19a": "Vitrines : un nom court (RNP) retrouve son site ; avant « aucun site » ou « site mort », l'agent cherche toujours un site actuel sur le web",
+   "8f3cc4995f57": "Feuille de route au 01/10 midi : Meta branché (n°6), TikTok en examen (n°8), compte pub créé (n°7), statistiques faisables seul (n°31)",
+   "2ec6d0a76656": "TikTok : après la connexion, « Continuer » ramène à la page TikTok",
+   "23fd3d302459": "TikTok : les 5 autorisations ouvertes (sans video.publish) ; la vidéo part dans les brouillons, Basile publie depuis l'application",
+   "5570b7ae703d": "TikTok : page /tiktok du Cockpit (connexion, statistiques, publication conforme aux règles de TikTok, vidéos publiées) et publication direc…",
+   "d3344107df05": "TikTok : connexion du compte de la marque (Login Kit) — /tiktok/connecter, /tiktok/retour, /api/tiktok ; accès au coffre, renouvelé seul, j…",
+   "b96da6c62398": "Cockpit : /api/interne/chat, la parole sans frais pour les workflows n8n (forme OpenAI, modèles gratuits puis local) — le Réceptionniste n'…",
+   "7f9a8b4c6a83": "Hermes peut écrire ses livrables dans /travail (HERMES_WRITE_SAFE_ROOT, appliqué sur le serveur) ; gabarit de maquette premium écrit (pas e…",
+   "9a59c180ea17": "Vitrines, point 16 : qui répond reçoit une maquette premium commandée à Hermes (site-premium, un seul fichier, rien de chargé dehors, rien …",
+   "6aca6865fdca": "Point 18 fait (preuve écrite) : les enseignes sont aussi retirées des fiches pas encore qualifiées",
+   "9ae76e2874f3": "Vitrines, point 18 : les enseignes nationales (Paul, Brioche Dorée, Jean Louis David, Carrefour…) ne sont ni découvertes, ni qualifiées, ni…",
+   "375212a8bddc": "Feuille de route : point 12 fait, preuve écrite (essai réel reçu par Basile) ; un point « fait » exige sa preuve ; point 13 dit le geste de…",
+   "fce2e0c153b2": "Interface Jarvis : tiroir VITRINES (brouillons à valider ou écarter d'un clic, lien vers la maquette, envoi Pause / Essai / Réel avec confi…",
+   "81bfc35b250f": "Vitrines : une adresse de site sans https:// se lit (elle passait pour morte) ; les enseignes (étiquette brand d'OpenStreetMap) ne sont pas…",
+   "4db85987c39a": "Cockpit : l'envoi des vitrines se lit (/api/vitrines/envoi, /api/etat, Jarvis à l'oral) et son mode (pause, test, live) change d'un geste d…",
+   "c1b4e86f2511": "Vitrines : une page Facebook, Instagram ou une fiche d'annuaire n'est pas un site — ce commerçant est la cible (« je n'ai trouvé qu'une pag…",
+   "c06ee524b7b2": "Vitrines : ne rien affirmer de faux — une page supprimée d'un site vivant n'est plus « aucun site » (la racine est lue), un site qui répond…",
+   "030c08d6b13c": "Vitrines : canal d'envoi (point 12) — workflow n8n « Vitrines · Envoi » versionné, file et réglage dans la base n8n, synchronisation (issue…",
+   "2948ae4e993c": "Marque média : nom « Obito AF » retenu (masque d'Obito, risque de droits noté) ; carnet : Expéditeur corrigé (pause = rien, test = teste, 4…",
+   "70c596610957": "Personnage : toujours cagoulé, visage jamais montré ; tenues et couleurs qui changent (précision de Basile)",
+   "3b818b65e752": "Marque média : le personnage influenceur voulu par Basile (cagoule blanche, street, visage caché) ; la niche « petites galères » est refusée",
+   "b9e731319886": "Trois changements approuvés par Basile : un moteur à la fois, une niche unique (média et produits), la preuve avant le prix ; objectif n° 1…",
+   "09e1130bbc0c": "Feuille de route du cerveau : 41 points, source unique lue par Jarvis, le cap des agents et Hermes (demande de Basile)",
+   "82ef0865c620": "Jarvis : une réponse brève n'est jamais un ordre ; « relance les ordres 23 et 24 » relance par du code ; à la voix, réponse à la voix seule…",
+   "0e6266cf5fa9": "Carnet et état réel : l'agent des vitrines en service",
+   "25614f4a79fd": "Vitrines : Overpass exige une signature de programme (406) ; la Haute-Savoie d'abord (Annecy), puis les voisins",
+   "af9adba614a3": "Vitrines : les commerçants sans site (ou au site ancien), une maquette prête, un brouillon, la liste d'appels (demande du 30/09)",
+   "04791ab2b964": "Carnet et état réel : ménage, API automatiques, routines, appels de relance",
+   "603410284a37": "Appels de relance à J+7 : le numéro du prospect sans réponse sous les yeux de Basile (demande du 30/09)",
+   "f4204f57a806": "Ménage de l'ancien modèle (accord de Basile) et requêtes automatiques vers les API publiques",
+   "8dd8046e1ecf": "Contrôle de la structure (30/09) : verdict, doublons à retirer, capacités du cap, du goût et des API publiques",
+   "053cb4114005": "Goût : le code d'abord pour les questions (internes ou trouvables), JEV sait ce que la maison possède",
+   "5ded04f35a4f": "Architecte : le goût filtre aussi les questions de la métaréflexion",
+   "8dff03947118": "Le cap, le goût et les API publiques (demandes de Basile, 30/09/2026)",
+   "0c17bfaf4e46": "État réel : réparations du 30/09 prouvées (ordre 25, architecte, superviseur)",
+   "20462bd65f6d": "Parole sans frais : la réflexion profonde essaie aussi Gemini 3.5 Flash et 3.1 Flash Lite avant le local",
+   "7b3664eae443": "Banc : le tri des e-mails est en place ; l'agenda reste à brancher",
+   "c9a1e3d24a67": "État réel face à la cible (docs/ARCHITECTURE_CURRENT.md), carnet du 30/09, tri des e-mails en place",
+   "cb1299ac7c46": "Merge remote-tracking branch 'origin/cloud/fiabiliser-liaison-hermes'",
+   "482751321019": "Hermes : le repli atteint vraiment le modèle local (adresse écrite) et passe d'abord par deux autres Gemini gratuits ; la boucle lit les cl…",
+   "b86872946035": "Create MASTER_ARCHITECTURE.md",
+   "f6608bffcf44": "Jarvis : vérifier la liaison Hermes avant de déclarer les mains prêtes",
+   "d4c8b642f1bc": "Ordres débloqués, objectif = monétisation des contenus, utilitaires, voix Gemini (#28, accord de Basile)",
+   "e4d31bf9d65c": "Jarvis : sphère réactive à la voix, tri des e-mails, éclaireur, capacités, honnêteté et affichage (#27, accord de Basile)",
+   "9884931bd187": "Hermes : compétences marketing, stop-slop, UI UX Pro Max, Remotion, context engineering (#26, accord de Basile)",
+   "74bebe6f2b45": "Jarvis : installation compatible avec la surcharge compose du serveur (#25, accord de Basile)",
+   "d74113ef1005": "Nouveau Cockpit Jarvis : reconstruit à neuf, à jour à chaque livraison, sans OpenRouter (#24, accord de Basile)",
+   "6ee4b2da8c09": "Ménage : 20 fichiers en double ou à usage unique supprimés (#23, demande de Basile)",
+   "bef10bbd5602": "Jarvis : visage humain en particules, ton naturel, ordres « fais-moi… » confiés à Hermes (#22)",
+   "8c8578f37c8c": "Modèle local : Gemma 4 E4B au lieu de Qwen3, contexte 16 384 (#21)",
+   "bfa3f38eba2e": "Cockpit : mise à jour depuis sa copie de construction, sans écraser un changement hors dépôt (#20)",
+   "71f4a7fd52f1": "Installation en une commande, Gemma 4, WhatsApp, influenceur IA (#19, accord de Basile)",
+   "4bcadff05ca6": "Scan de sécurité complet (#18, accord de Basile)",
+   "d52b3d320c8b": "La parole et les ordres ne s'arrêtent plus avec le crédit (#17, accord de Basile)",
+   "32e18afda786": "Preuve de bout en bout de la bascule Hermes ; dossier Windows corrigé (#16)",
+   "9a3b50d9c08f": "Compétence vidéo d'Hermes : WanGP sur le PC (#15)",
+   "e94ec1e95cd9": "Hermes devient l'exécutant du Cockpit (#14)",
+   "9f787ee513ed": "Hermes : l'étape Telegram et la preuve de bout en bout (accord de Basile)",
+   "e0f033a558d6": "Hermes : il répond avec la mémoire de la maison ; l'étape Telegram",
+   "5e5e42b86482": "Hermes : démarrer en passerelle (accord de Basile)",
+   "eaf33a646799": "Hermes : démarrer en passerelle, sinon il redémarre en boucle",
+   "9594f7f2989d": "Hermes maison : le cerveau branché par MCP (choix recommandé, accord de Basile)",
+   "da54711eae44": "Hermes maison : le vrai Hermes Agent chez rAIme, le cerveau branché par MCP",
+   "42e489a356a1": "Jarvis : le catalogue réel des offres et des prix (grille de raime.fr), offre d'entrée = journée Dirigeant 690 €",
+   "4357639e2c7d": "Jarvis : une coupure brève est invisible (données gardées, réessais silencieux, question renvoyée)",
+   "cb009ed89201": "Jarvis : à l'oral, recherche web seulement quand Basile la demande (latence)",
+   "c283a402f902": "Jarvis : réponse d'abord par Gemini 3.1 Flash Lite (latence), boule qui suit la voix en douceur",
+   "dbff45903b93": "Coffre : emplacements pour la clé Meta et le lien de la page de réservation Google Agenda",
+   "2bb9a9414acb": "Exécutant : compte rendu final en français uniquement",
+   "54f16e415172": "Apprentissage automatique : séance de nuit (skills GitHub en attente) + contrôleur (règles, relecture V4 Pro, installation des sûrs, journa…",
+   "fad6c07e9515": "Veille : tendances Hugging Face (adoption réelle, hors grand public) et publications du jour ; mots du code (SWE-bench, Hermes, harness)",
+   "6d1e60ec652e": "Exécutant : V4 Pro par défaut ; il se sert de ses skills (charte + compétences du cerveau) sans en installer seul",
+   "dbf053deb9e9": "Rapport du matin : partie « Le cerveau » (pensée, demandes faites, mises en service autonomes, budget, décisions attendues) lue sur le cock…",
+   "701405186b23": "Jarvis : points de situation sur faits exacts (agents qui ont travaillé, état réel de la prospection), l'état prime sur l'historique, aucun…",
+   "3f62fc49328b": "Déposeur : un fichier suspect est retenu seul, le reste de la réalisation est déposé avec la liste des fichiers retenus",
+   "f4c785a67bdf": "Applicateur : le code qui appelle le réseau, lance des commandes, évalue du code ou lit les clés passe par la relecture de Claude ; numéros…",
+   "67f7044555f6": "Déposeur : chaque réalisation terminée va sur la branche « realisations » (sans dépendances, sans secret, 100 Mo au plus)",
+   "1265f2b7bdb9": "Héraut : l'en-tête des adresses génériques ne parle plus d'obligation de formation (angle AI Act abandonné)",
+   "3ddff4f14d6a": "Banc : le test du Héraut suit le message v3 de Basile ; la règle de pause devient « brouillons seulement, jamais d'envoi par le Héraut »",
+   "bdeeb314dfc3": "Cerveau (demande n°10) : Répertoire des chiffres officiels IA (chiffres_ia)",
+   "aa893f9a7565": "Héraut v3 : le message dicté par Basile (≥ 5 tâches du métier, sa phrase d'appel, aucun chiffre non sourcé, jamais le CPF) ; repris en brou…",
+   "8d7525f5010c": "Applicateur : le cerveau met en service ses propres améliorations (zones protégées, cas figés sans réseau, porte avec retour arrière) ; con…",
+   "6f2c23475640": "Cerveau (demande n°9) : amélioration demandée",
+   "ad9e881e88b0": "Cerveau (demande n°8) : amélioration demandée",
+   "f591d9db4648": "Cerveau (demande n°0) : Documenter la mise en service autonome dans le RUNBOOK",
+   "ce0de302f7e5": "Exécutant : exigence premium sur chaque tâche (charte rAIme, vérifications complètes, rien d'inventé)",
+   "d6b4670c50ff": "Relais résistant aux redémarrages : santé de l'exécutant avant envoi, résultat déposé dans le dossier de la demande, « occupé » = attendre,…",
+   "34f4d911edaa": "Le cerveau connaît sa dimension : Jarvis = voix, exécutant = mains ; exécutant avec Internet, GitHub, installation, 45 min, son propre code…",
+   "8fa0ebc058c2": "Jarvis : Gemini gratuit d'abord (3.8 Flash puis 3.5 Flash Lite, 3.1 Pro pour réfléchir à fond), DeepSeek au-delà ; une question ou un point…",
+   "5629c3d6d726": "Coffre à clés (/coffre), exécutant DeepSeek Harness sur le serveur, relais Jarvis → exécutant, livrables en lecture seule",
+   "30871f532a80": "Boucle : heure de Paris lue correctement (en-GB) ; penseur toutes les 12 h dans la fenêtre 2 h-5 h",
+   "5b75633ead6e": "Surveillance : pas de modèle quand rien n'a changé ; penseur chaque nuit (2 h-5 h) ; secours de Jarvis sur V4 Pro au lieu de gpt-4.1",
+   "bf8520c70bf4": "Jarvis sur DeepSeek V4 Flash avec réflexion ; V4 Pro quand Basile demande de réfléchir à fond",
+   "2e42084624de": "Jarvis sur Gemini 3.1 Flash Lite, micro qui s'arrête, chiffres toutes les 15 s ; l'économe suit les crédits du compte entier",
+   "331780665b4e": "Jarvis : colonnes qui tiennent, tri du budget élargi, une seule voix dans les mesures",
+   "b7d35d2e4e5a": "L'économe : le cerveau règle sa dépense ; Jarvis montre le budget en clair",
+   "fc5b936abbf0": "Jarvis parle : conversation vocale, budget, commandes pour Claude",
+   "9731af908c05": "Fusion de la nuit du 25/09/2026 (accord de Basile) : essayeur, kit serveur client, Constitution v2 en proposition, Gardien sas, penseur, pr…",
+   "42537af58866": "Bibliotheque universelle : les sources legales par domaine, la regle d'entree, le chemin d'ingestion",
+   "9618135b5ca7": "Jarvis : l'interface unique (boule de particules blanches aux reflets roses, l'essentiel sur les cotes, parole ecrite et vocale)",
+   "52be0af7ee74": "Architecte : priorite des buts calculee par le code, choix borne au top 3 avec raison ; justesse de ses annonces (Brier)",
+   "7b703a65539e": "Sas : un fait (prix) se dit enregistre au catalogue, jamais mis en service ; penseur : anomalie interne = a verifier",
+   "c252b743179b": "Le penseur : la pensee de la nuit (au plus 3 idees sourcees, predictions datees et probabilisees, jamais de placement)",
+   "307334a79e7d": "cron.raime n'est pas installe (verifie sur le serveur) ; les deux faces du Gardien ; note au carnet",
+   "a7505f15b42f": "Merge remote-tracking branch 'origin/main' into nuit-2026-09-25",
+   "af244f2f0a5f": "Gardien version sas (bac a sable avant coupe-circuit, extraire le positif) ; Constitution v2 en proposition",
+   "a2146c33ac92": "Héraut : la pause vaut aussi pour le cron (choix recommandé, accord de Basile)",
+   "69c79b24e3f2": "Héraut : la pause vaut aussi pour le cron du matin",
+   "698c361d994d": "Kit serveur client : n8n, PostgreSQL, Caddy, sauvegarde de nuit, restauration, notice",
+   "095171d05ea4": "Essayeur : un lien d'archive est juge la ou il mene (accepte s'il reste dans le depot)",
+   "a923f055c419": "Essayeur : recherche GitHub progressive (tous les mots, puis de moins en moins)",
+   "5abd5ef27413": "L'essayeur : du code trouve sur GitHub, compare, essaye dans un bac a sable, avant d'entrer",
+   "d8a9f4532b2d": "Le site raime.fr entre dans le depot (accord de Basile du 25/09/2026)",
+   "d0add83dbd1d": "Constitution : corriger seul ce qui decrit mal la realite (parole de Basile du 25/09/2026)",
+   "67436223a2d3": "Rapports : dates a l'heure de Paris (le serveur est en UTC)",
+   "cd32dd4df45b": "Arbitrage : nom du prestataire sans la precision entre parentheses",
+   "05a7e20cbbfd": "Auditeur : seconde lecture des criteres juges absents, citation exacte verifiee par le code",
+   "979ecc1a3cf9": "Arbitrage : le cout horaire est un fait du client, et le score se recalcule sans modele",
+   "a5c0ec8526c8": "Arbitrage : l'Auditeur note avec le Score rAIme v2.0 (sur 1000), comparateur d'offres ARB-01",
+   "5849d96c567d": "Cortex : le déclencheur « je ne sais pas » mesure ce que la bibliothèque couvre, pas combien elle rend",
+   "eaf3d197adfc": "Recherche Internet classique : Cortex et le rechercheur passent par le moteur souverain du serveur",
+   "83024960222f": "Droit d'exécution rendu à run.sh, raime-audit.sh et deploy.sh (perdu sous Windows) ; premier envoi au carnet",
+   "5c0d8b24f4b1": "Carnet : retour automatique après l'échec de b1b3a02088ce",
+   "b1b3a02088ce": "Feuille de route (le cerveau, la vente de services, l'identité) ; Wikipédia n'est plus une source de fond",
+   "6facf0e8bba0": "Porte : posée sur le serveur ; les deux pièges de la pose dans la notice et au carnet",
+   "30ccf7ee53b9": "Mémoire d'expérience (première brique JEPA) et nouveaux buts du cerveau",
+   "677f9d8edf6d": "Carnet : la porte sans secret, la boucle qui ne rejoue plus tout, et un message pour la session cloud",
+   "8d7f8b78c3f3": "La porte sans secret, le savoir vivant, et une boucle qui ne rejoue plus tout",
+   "72413cd16260": "Chantier 6 : documentation (accord de Basile)",
+   "b3542e195d32": "Documentation : l'architecture, le runbook, et les compétences remises au vrai",
+   "92a33bf1eb57": "Chantier 4 bis : les portes d'entrée jusqu'au lot (accord de Basile)",
+   "76f5f442b39a": "Portes d'entrée : cartographier les CCI et organismes, peser, préparer, présenter un lot",
+   "ac2e184e5e67": "Chantier 4 (suite) : rechercher_solution (accord de Basile)",
+   "1f833d25478b": "Architecte : chercher une solution partout, et la juger par le code",
+   "8be8c77fa08d": "Chantier 5 : la publicité en brouillons (accord de Basile)",
+   "a3b3005062d7": "Publiciste : le calendrier de la semaine, en brouillons, prêt à partir",
+   "3523b36b9040": "Chantier 4 : l'architecte ouvre des chantiers (accord de Basile)",
+   "e8d89420286c": "Architecte : il ouvre un chantier quand il ne peut pas se corriger seul",
+   "0363d1b07a87": "Chantier 3, première partie : l'atelier (confirmé par Basile)",
+   "30d0596236e0": "Carnet : la fusion du chantier 2 et l'atelier hors ligne",
+   "d6d7dd80acb0": "Atelier : une phrase devient un service vendable, contrôlé par le code",
+   "b4b33ce413f7": "Modèle factice : une réponse peut aussi dépendre de la demande",
+   "7c153525f416": "Le savoir entre dans le cerveau, et le capitaine pèse lui-même ses manœuvres",
+   "fa5b7d10fb25": "Chantier 2 : la livraison automatique (confirmé par Basile)",
+   "f111a8b0fa33": "Carnet : la fusion du chantier 1 et la porte essayée à blanc",
+   "79ba5e5dde34": "Livraison : chaque fusion sur main part en ligne par la porte, après le banc",
+   "780c14d95bb9": "Résumé pour Basile : exigé en tête de chaque pull request, vérifié par le code",
+   "4a57e1a6ad33": "Porte de déploiement : poser une version, la vérifier, revenir seule en arrière",
+   "fb49295b17b1": "Chantier 1 : le banc d'essai et la CI (confirmé par Basile)",
+   "6a82fd1796da": "Carnet : les leçons du chantier 1",
+   "ecdc07bfd6ab": "CI : le banc d'essai tourne sur chaque pull request",
+   "cc42ff7c7294": "Banc d'essai : npm test fait tourner cinq agents sur des bases fictives",
+   "03ff0e54230b": "Modèle factice : des réponses fixes, sans réseau ni clé, pour les tests",
+   "4952e6e8e7fa": "Héraut : le CPF et l'OPCO passaient le contrôle sans être vus",
+   "8f5b49d09b6b": "Mission : la branche principale est main",
+   "cad6921967e5": "Rattache le cerveau à la branche principale main créée par GitHub",
+   "cec7f34d8dcc": "Mission : la branche principale s'appelle master sur GitHub",
+   "0234e91f34c4": "Initial commit",
+   "32a73c8dc8ef": "Mission v2 : des services en ligne et vendables, confirmés par Basile d'un mot",
+   "84a5b8ea399b": "Mission cloud : le cerveau peut grandir en parallele, sans toucher la production",
+   "2a5500118d8f": "L architecte v2 : le cycle reflexif complet, et ce qu il a appris en trois tours",
+   "385a9c4340c3": "Le Heraut rendait des messages vides : trois causes trouvees, trois corrigees",
+   "04cc306b2073": "Une route « decision » dans le routage : granite, cinq fois moins cher, mesure",
+   "c0aa5bacbd92": "Une famille « decision » dans la batterie : le travail de JEV, mesure chez nous",
+   "1e1b867abbfc": "Installeur : le point-virgule avale par un commentaire",
+   "edb5d6cdbf1a": "L installeur : chercher des competences dehors, les poser en quarantaine",
+   "be6d34f76a5f": "Menage : quatorze flux retires, deux crons retires, zero fonction perdue",
+   "29ffd79d0a12": "JEV branche : la decision typee entre dans la maison",
+   "98bf01180509": "Le veilleur : les yeux de la maison sur le monde",
+   "f1acae5f0d53": "Un README pour la vitrine publique : le principe, les agents, la souverainete",
+   "ccffbe2a7669": "Les listes de prospection sortent du depot : elles nomment des personnes",
+   "fa67af2025ca": "Les modeles gratuits entrent aussi a la batterie : un prix nul reste un prix",
+   "41991b23f5eb": "Le chasseur juge face au titulaire du jour, et cesse d insister",
+   "93a354997a33": "La bibliotheque : la memoire longue du cerveau",
+   "b571a194e140": "Le chasseur : la veille des modeles va au bout, chaque jour",
+   "5c3567d6bafc": "Le reflexif entre dans la boucle : une amelioration mesuree par jour",
+   "e82f16659d36": "Le cerveau de rAIme : agents, boucle permanente, base de connaissance, plugin de competences"
+  }
+ },
+ "conteneurs_inutiles": [
+  "raime-metabase-1"
+ ]
+}

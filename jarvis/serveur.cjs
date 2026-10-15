@@ -23,6 +23,8 @@ const prospection = require('./prospection.cjs');
 const agenda = require('./agenda.cjs');
 const reseau = require('./reseau.cjs');
 const ordresRetard = require('./ordres_retard.cjs');
+// Le cockpit v6 en direct (jarvis/v6.cjs, 15/10/2026) : /v6 et /api/v6 ; son absence ne fait jamais tomber le cockpit.
+let v6 = null; try { v6 = require('./v6.cjs'); } catch (e) { console.error('[jarvis] v6 indisponible :', e.message); }
 // lire() rend [] quand la base échoue ; le Veilleur des ordres, lui, doit savoir qu'il n'a pas pu lire.
 const lireOuEchouer = (sql, params) => require('./bases.cjs').cerveau.query(sql, params || []).then((r) => r.rows);
 const { repondreSansFrais } = require('./parole.cjs');
@@ -268,6 +270,8 @@ async function router(req, res) {
   if (await agenda.router(req, res, { url, m, envoyer, json, autorise, fichierInterface })) return;
   // Le clip farming de KinGKlip : demandes de découpe, clips prêts, liens publiés (jarvis/clips.cjs).
   if (await require('./clips.cjs').router(req, res, { url, m, envoyer, json, fichierInterface })) return;
+  // 15/10/2026 : le cockpit v6, la maquette validée branchée sur les vraies données (à côté de / tant que Basile n'a pas dit oui)
+  if (v6 && await v6.router(req, res, { url, m, envoyer, json, autorise })) return;
   // 07/10/2026 : le tableau de bord EST la 3D (demande de Basile) ; l'ancienne page reste à /jarvis/classique,
   // liée depuis le menu ··· et proposée quand l'appareil n'a pas WebGL 2. Retour arrière : rétablir ces deux lignes.
   if (m === 'GET' && (url === '/' || url === '/jarvis' || url === '/jarvis3d')) return servir3d(req, res, path.join(TROIS_D, 'index.html'), false);
@@ -531,7 +535,7 @@ const serveur = http.createServer((req, res) => {
 });
 
 if (require.main === module) {
-  Promise.all([preparer(), courrier.preparer(), outils.preparer()]).finally(() => {
+  Promise.all([preparer(), courrier.preparer(), outils.preparer(), v6 ? v6.preparer().catch(() => {}) : null]).finally(() => {
     serveur.listen(PORT, () => console.log(`[jarvis] en service sur :${PORT}, version ${VERSION}`));
     candidatures.demarrer();
     agenda.demarrer();   // les tables, la reprise des « plus tard », puis les réponses reçues toutes les 5 minutes

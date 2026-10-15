@@ -1,0 +1,1037 @@
+<!doctype html>
+<html lang="fr">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Cockpit rAIme</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/shaders/CopyShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/postprocessing/EffectComposer.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/postprocessing/RenderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/postprocessing/ShaderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+<style>
+/* COCKPIT rAIme v6 EN DIRECT (15/10/2026) : la maquette validée, branchée sur /api/v6 (jarvis/v6.cjs) et sur de vrais boutons.
+   Avant, la maquette v6 (14/10/2026) : Agents et Commerce en haut, Machine en bas ; la gouvernance (Directeur, Gouverneur des jetons, Gouverneur réflexif)
+   dans la 3D ; les modèles d'IA (JEV compris) et leurs crédits dans les factures ; postuler en un clic ; « Renvoyer » sur chaque ligne d'appel ;
+   l'e-mail par catégorie ; les clients = seulement les intéressés. Avant : v5 (08/10/2026). Trois rubriques : Machine (ce qui tourne, la 3D, les mises à jour, les factures), Agents (la vie de chaque
+   agent : passé, présent, avenir, sous-agents, outils et jetons), Commerce (site web, intégration IA, agenda, clients).
+   Tout est blanc, comme le reste : gris clair, surfaces blanches, le noir pour l'action. Aucune durée inventée : une estimation est marquée « estimé ». */
+:root {
+  --fond: #ECECEA; --surface: #FFFFFF; --surface-2: #F5F5F3; --encre: #121212; --encre-2: #3B3B39; --doux: #6B6B67; --pale: #A1A19D;
+  --bord: rgba(18,18,18,.08); --noir: #121212; --sur-noir: #F5F5F2; --sur-noir-2: #A6A6A1; --survol: rgba(18,18,18,.045);
+  --ok: #1E9A5E; --alerte: #C9820F; --panne: #D93C35; --info: #3756C9; --gris: #9C9C98;
+  --ombre: 0 1px 1px rgba(0,0,0,.03), 0 8px 24px rgba(0,0,0,.05);
+  --police: 'Manrope', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --fond: #0F0F0F; --surface: #191918; --surface-2: #212120; --encre: #EDEDE9; --encre-2: #C9C9C5; --doux: #A3A39F; --pale: #6E6E6A;
+  --bord: rgba(255,255,255,.08); --noir: #EDEDE9; --sur-noir: #121212; --sur-noir-2: #5E5E5A; --survol: rgba(255,255,255,.05);
+  --ok: #45C385; --alerte: #E3A646; --panne: #F0645C; --info: #8AA3F0; --gris: #7A7A76; --ombre: 0 1px 1px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.3); color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --fond: #0F0F0F; --surface: #191918; --surface-2: #212120; --encre: #EDEDE9; --encre-2: #C9C9C5; --doux: #A3A39F; --pale: #6E6E6A;
+  --bord: rgba(255,255,255,.08); --noir: #EDEDE9; --sur-noir: #121212; --sur-noir-2: #5E5E5A; --survol: rgba(255,255,255,.05);
+  --ok: #45C385; --alerte: #E3A646; --panne: #F0645C; --info: #8AA3F0; --gris: #7A7A76; --ombre: 0 1px 1px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.3); color-scheme: dark; }
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; font: 14px/1.5 var(--police); color: var(--encre); background: var(--fond); -webkit-font-smoothing: antialiased; }
+body.plein { overflow: hidden; }
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--info); outline-offset: 2px; }
+.num { font-variant-numeric: tabular-nums; }
+svg.i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+.app { display: grid; grid-template-columns: 236px minmax(0, 1fr); min-height: 100%; }
+.menu { position: sticky; top: 0; height: 100vh; padding: 20px 14px; display: flex; flex-direction: column; background: var(--surface); border-right: 1px solid var(--bord); overflow-y: auto; scrollbar-width: none; }
+.menu::-webkit-scrollbar { display: none; }
+.marque { display: flex; align-items: center; gap: 10px; padding: 0 10px 20px; font-weight: 800; font-size: 19px; letter-spacing: -.03em; }
+.marque b { width: 32px; height: 32px; border-radius: 10px; background: var(--noir); color: var(--sur-noir); display: grid; place-items: center; font-size: 15px; }
+.groupe { display: flex; flex-direction: column; gap: 1px; margin-bottom: 16px; }
+.groupe > span { font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--pale); padding: 0 12px 6px; }
+.lien { display: flex; align-items: center; gap: 12px; height: 38px; padding: 0 12px; border-radius: 12px; border: 0; background: none; text-align: left; color: var(--encre-2); font-weight: 600; }
+.lien:hover { background: var(--survol); }
+.lien[aria-current="page"] { background: var(--noir); color: var(--sur-noir); }
+.lien .compte { margin-left: auto; min-width: 22px; height: 22px; padding: 0 7px; border-radius: 11px; display: grid; place-items: center; font-size: 11.5px; font-weight: 700; background: var(--survol); }
+.lien[aria-current="page"] .compte { background: rgba(127,127,127,.3); }
+.lien .compte.rouge { background: var(--panne); color: #fff; }
+.menu .pied { margin-top: auto; padding-top: 14px; border-top: 1px solid var(--bord); display: flex; align-items: center; gap: 10px; padding-inline: 8px; }
+.menu .pied i { width: 34px; height: 34px; border-radius: 50%; background: var(--noir); color: var(--sur-noir); display: grid; place-items: center; font-style: normal; font-weight: 700; flex: none; }
+.menu .pied div { line-height: 1.25; } .menu .pied small { color: var(--doux); font-size: 11.5px; }
+.menu .pied button { margin-left: auto; width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--bord); background: none; display: grid; place-items: center; }
+
+main { min-width: 0; padding: 22px 28px 40px; display: flex; flex-direction: column; gap: 20px; }
+body.plein main { padding-bottom: 20px; }
+.entete { display: flex; align-items: center; gap: 16px; min-height: 52px; }
+.entete .titre { min-width: 0; flex: 1; }
+.entete h1 { margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -.03em; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.entete p { margin: 2px 0 0; color: var(--doux); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.outils-entete { display: flex; align-items: center; gap: 8px; flex: none; }
+.cherche { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px; border-radius: 20px; background: var(--surface); border: 1px solid var(--bord); width: 230px; }
+.cherche input { border: 0; outline: none; background: none; width: 100%; min-width: 0; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 38px; padding: 0 16px; border-radius: 19px; border: 1px solid var(--bord); background: var(--surface); font-weight: 600; font-size: 13.5px; white-space: nowrap; text-decoration: none; color: inherit; }
+.btn:hover { border-color: var(--encre); }
+.btn.noir { background: var(--noir); color: var(--sur-noir); border-color: var(--noir); }
+.btn.petit { height: 32px; padding: 0 12px; font-size: 12.5px; border-radius: 16px; }
+.btn.discret { border-color: transparent; background: none; color: var(--doux); }
+.btn.discret:hover { color: var(--encre); background: var(--survol); }
+.btn:disabled { opacity: .45; cursor: default; }
+.raison { font-size: 12px; color: var(--doux); }
+.date-txt { font-size: 11.5px; color: var(--pale); font-weight: 600; }
+.alerte-lecture { border-left: 4px solid var(--alerte); padding: 12px 18px; font-size: 13px; }
+.rond.noir.actif { background: var(--panne); border-color: var(--panne); }
+.rond { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--bord); background: var(--surface); display: grid; place-items: center; flex: none; }
+.rond.noir { background: var(--noir); color: var(--sur-noir); border-color: var(--noir); }
+
+.carte { background: var(--surface); border: 1px solid var(--bord); border-radius: 22px; box-shadow: var(--ombre); }
+.carte-tete { display: flex; align-items: center; gap: 10px; padding: 18px 20px 8px; }
+.carte-tete h2 { margin: 0; font-size: 15px; font-weight: 700; letter-spacing: -.01em; }
+.carte-tete .plus { margin-left: auto; }
+.etiq { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--doux); }
+.point { width: 9px; height: 9px; border-radius: 50%; flex: none; display: inline-block; }
+.point.ok { background: var(--ok); } .point.alerte { background: var(--alerte); } .point.panne { background: var(--panne); } .point.info { background: var(--info); } .point.gris { background: var(--gris); }
+.puce { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 12px; font-size: 12px; font-weight: 600; background: var(--survol); color: var(--encre-2); white-space: nowrap; }
+.puce.ok { color: var(--ok); } .puce.alerte { color: var(--alerte); } .puce.panne { color: var(--panne); } .puce.info { color: var(--info); }
+.vide { padding: 34px 20px; text-align: center; color: var(--doux); }
+.note { color: var(--doux); font-size: 13px; margin: 0; }
+.chiffres { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.chiffre { padding: 18px 20px; display: flex; flex-direction: column; gap: 4px; text-align: left; border: 1px solid var(--bord); }
+button.chiffre:hover { border-color: var(--encre); }
+.chiffre b { font-size: 32px; font-weight: 600; letter-spacing: -.04em; line-height: 1.1; }
+.chiffre small { color: var(--doux); }
+.chiffre.noir { background: var(--noir); color: var(--sur-noir); border-color: var(--noir); } .chiffre.noir small, .chiffre.noir .etiq { color: var(--sur-noir-2); }
+.trois { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.deux { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 16px; align-items: start; }
+.filtres { display: flex; flex-wrap: wrap; gap: 8px; }
+.filtre { height: 36px; padding: 0 15px; border-radius: 18px; border: 1px solid var(--bord); background: var(--surface); font-weight: 600; display: inline-flex; align-items: center; gap: 8px; }
+.filtre b { font-weight: 800; }
+.filtre[aria-pressed="true"] { background: var(--noir); color: var(--sur-noir); border-color: var(--noir); }
+.bandeau { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.bandeau .cherche { margin-left: auto; width: 250px; }
+
+/* les outils et leurs jetons, en petit, en haut à droite */
+.outils { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
+.outil { display: inline-flex; align-items: baseline; gap: 5px; padding: 2px 8px; border-radius: 8px; background: var(--surface-2); border: 1px solid var(--bord); font-size: 11px; font-weight: 600; color: var(--encre-2); white-space: nowrap; }
+.outil i { font-style: normal; font-weight: 500; color: var(--doux); }
+.outil.ia i { color: var(--info); } .outil.ancien i { color: var(--pale); }
+
+/* ── état des agents ── */
+.colonne { padding-bottom: 8px; }
+.colonne > header { display: flex; align-items: center; gap: 10px; padding: 18px 20px 10px; }
+.colonne > header h2 { margin: 0; font-size: 15px; font-weight: 700; }
+.colonne > header .num { margin-left: auto; font-weight: 800; font-size: 13px; color: var(--doux); }
+.ligne-a { width: 100%; display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 4px 12px; align-items: baseline; padding: 11px 20px; border: 0; border-top: 1px solid var(--bord); background: none; text-align: left; }
+.ligne-a:hover { background: var(--surface-2); }
+.ligne-a .point { align-self: center; }
+.ligne-a b { font-weight: 700; font-size: 13.5px; overflow-wrap: anywhere; }
+.ligne-a .quand { font-size: 12px; font-weight: 700; color: var(--doux); white-space: nowrap; }
+.ligne-a .quand.rouge { color: var(--panne); }
+.ligne-a small { grid-column: 2 / -1; color: var(--doux); font-size: 12.5px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ligne-a em { font-style: normal; color: var(--pale); font-weight: 600; font-size: 11.5px; }
+
+/* la fiche vivante d'un agent (3D et tiroir) */
+.vivant { display: grid; grid-template-columns: 82px minmax(0, 1fr); gap: 9px 12px; margin: 0; font-size: 13px; line-height: 1.45; }
+.vivant dt { color: var(--doux); font-weight: 700; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; padding-top: 2px; }
+.vivant dd { margin: 0; min-width: 0; }
+.vivant dd.rouge { color: var(--panne); }
+
+/* ── vue 3D, toute blanche ── */
+.v3 { position: relative; height: calc(100vh - 116px); min-height: 520px; border-radius: 22px; overflow: hidden; background: var(--surface-2); border: 1px solid var(--bord); }
+.v3 canvas { display: block; width: 100%; height: 100%; }
+.v3-etiquettes { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.v3-et { position: absolute; transform: translate(-50%, -100%); white-space: nowrap; pointer-events: none; transition: opacity .15s; }
+.v3-et.quartier { font-size: 11.5px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: var(--encre); }
+.v3-et.secteur { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; color: var(--doux); }
+.v3-et.agent { font-size: 12px; font-weight: 700; color: var(--sur-noir); background: var(--noir); padding: 4px 9px; border-radius: 8px; }
+.v3-nav { position: absolute; top: 14px; left: 14px; display: flex; gap: 2px; padding: 4px; border-radius: 14px; background: var(--surface); border: 1px solid var(--bord); box-shadow: var(--ombre); }
+.v3-nav button { border: 0; background: none; height: 30px; padding: 0 11px; border-radius: 10px; font-weight: 700; font-size: 12px; color: var(--doux); }
+.v3-nav button:hover { color: var(--encre); background: var(--survol); }
+.v3-nav button[aria-pressed="true"] { background: var(--noir); color: var(--sur-noir); }
+.v3-legende { position: absolute; left: 16px; bottom: 14px; display: flex; gap: 14px; font-size: 11.5px; color: var(--doux); font-weight: 600; }
+.v3-legende span { display: inline-flex; align-items: center; gap: 6px; }
+.v3-zoom { position: absolute; right: 14px; bottom: 14px; display: flex; gap: 6px; }
+.v3-zoom button { width: 36px; height: 36px; border-radius: 12px; border: 1px solid var(--bord); background: var(--surface); box-shadow: var(--ombre); font-size: 16px; font-weight: 700; display: grid; place-items: center; }
+.v3-carte { position: absolute; top: 14px; right: 14px; width: 372px; max-height: calc(100% - 78px); overflow: hidden; padding: 18px 20px 18px; display: none; flex-direction: column; gap: 14px;
+  background: var(--surface); border: 1px solid var(--bord); border-radius: 20px; box-shadow: 0 18px 48px rgba(0,0,0,.12); }
+.v3-carte.vue { display: flex; }
+.v3-carte .vivant dd { display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
+.tete-ag { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 10px; align-items: start; }
+.tete-ag h3 { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -.02em; line-height: 1.25; }
+.tete-ag .sous { color: var(--doux); font-size: 12.5px; margin-top: 4px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.v3-fermer { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--bord); background: none; display: grid; place-items: center; }
+.v3-erreur { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 30px; color: var(--doux); }
+
+/* ── pages d'agents ── */
+.bandeau-ag { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 46%); gap: 16px; align-items: start; padding: 18px 20px; }
+.bandeau-ag p { margin: 6px 0 0; font-size: 15px; font-weight: 600; line-height: 1.45; letter-spacing: -.01em; }
+.bandeau-ag .outils { padding-top: 2px; }
+.temps { list-style: none; margin: 0; padding: 4px 20px 18px; display: flex; flex-direction: column; gap: 12px; container-type: inline-size; }
+@container (max-width: 360px) { ol.temps li { grid-template-columns: 1fr; gap: 2px; } }
+.temps li { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 10px; font-size: 13px; line-height: 1.45; }
+.temps time { color: var(--doux); font-weight: 700; font-size: 12px; }
+.temps.present time { color: var(--encre); }
+.explication { padding: 18px 22px; border-left: 4px solid var(--panne); }
+.explication ol { margin: 10px 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; font-size: 13.5px; line-height: 1.5; }
+.tableau { width: 100%; border-collapse: collapse; }
+.tableau th { text-align: left; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--pale); padding: 10px 16px; border-bottom: 1px solid var(--bord); white-space: nowrap; }
+.tableau td { padding: 12px 16px; border-bottom: 1px solid var(--bord); vertical-align: top; font-size: 13px; }
+.tableau tr:last-child td { border-bottom: 0; }
+.tableau tbody tr.cliquable { cursor: pointer; } .tableau tbody tr.cliquable:hover td { background: var(--surface-2); }
+.tableau .qui b { display: block; font-weight: 700; } .tableau .qui small { color: var(--doux); }
+.tableau td.droite, .tableau th.droite { text-align: right; white-space: nowrap; }
+.tableau tr.niveau2 td:first-child { padding-left: 40px; }
+.tableau tr.niveau2 td:first-child b::before { content: ''; display: inline-block; width: 9px; height: 8px; margin-right: 8px; border-left: 1.5px solid var(--pale); border-bottom: 1.5px solid var(--pale); transform: translateY(-3px); }
+.tableau .outils { justify-content: flex-start; }
+.defile { overflow-x: auto; }
+.listes { list-style: none; margin: 0; padding: 2px 20px 18px; display: flex; flex-direction: column; gap: 9px; font-size: 13px; line-height: 1.45; }
+.listes li { display: grid; grid-template-columns: 10px minmax(0, 1fr); gap: 10px; }
+.listes li .point { margin-top: 5px; }
+.schema { display: grid; grid-template-columns: 1fr 28px 1fr 28px 1fr; align-items: stretch; padding: 6px 20px 20px; }
+.schema .etape-s { padding: 16px; border-radius: 16px; background: var(--surface-2); font-size: 13px; line-height: 1.5; }
+.schema .etape-s b { display: block; font-size: 14px; margin-bottom: 4px; }
+.schema .etape-s.noire { background: var(--noir); color: var(--sur-noir); }
+.schema .fleche { display: grid; place-items: center; color: var(--pale); font-size: 20px; font-weight: 700; }
+
+/* ── commerce : liste d'appels ── */
+.appels { display: flex; flex-direction: column; gap: 10px; container-type: inline-size; }
+.section-appels > h3 { margin: 6px 4px 8px; display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--doux); }
+.section-appels > h3 .num { color: var(--encre); }
+.section-appels > h3 small { text-transform: none; letter-spacing: 0; font-weight: 600; color: var(--pale); }
+/* la carte d'appel s'adapte à la largeur réelle de la liste (et non de l'écran) : le nom du commerce n'est jamais écrasé par les boutons */
+.appel { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'qui num' 'ctx ctx' 'res res'; gap: 8px 18px; align-items: center; padding: 14px 18px; }
+@container (min-width: 1020px) { .appel { grid-template-columns: minmax(240px, 1fr) 190px auto; grid-template-areas: 'qui num res' 'ctx ctx ctx'; } .appel .resultat { justify-content: flex-end; } }
+.appel .qui { grid-area: qui; min-width: 0; } .appel .numero { grid-area: num; } .appel .resultat { grid-area: res; } .appel .contexte { grid-area: ctx; }
+.appel .qui b { display: block; font-weight: 700; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.appel .qui small { color: var(--doux); }
+.appel .contexte { font-size: 12.5px; color: var(--doux); display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.appel .contexte a { color: var(--info); font-weight: 700; text-decoration: none; }
+.appel .note-rdv { width: 100%; padding: 9px 12px; border-radius: 12px; background: var(--surface-2); color: var(--encre); font-size: 13px; }
+.numero { display: flex; align-items: center; gap: 6px; }
+.numero span { font-size: 18px; font-weight: 600; letter-spacing: .01em; user-select: all; white-space: nowrap; }
+.numero button { width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--bord); background: none; display: grid; place-items: center; color: var(--doux); }
+.resultat { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-start; }
+.resultat .btn { height: 34px; padding: 0 12px; font-size: 12.5px; }
+.form-rappel { grid-column: 1 / -1; display: grid; grid-template-columns: 170px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding-top: 6px; }
+.form-rappel input { height: 36px; border: 1px solid var(--bord); background: var(--surface-2); border-radius: 10px; padding: 0 10px; outline: none; }
+.form-rappel input:focus { border-color: var(--encre); }
+.form-rappel p { grid-column: 1 / -1; margin: 0; font-size: 12px; color: var(--doux); }
+.cote { display: flex; flex-direction: column; gap: 16px; position: sticky; top: 16px; }
+.mini-liste { list-style: none; margin: 0; padding: 0 20px 16px; display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+.mini-liste li { display: flex; justify-content: space-between; gap: 10px; }
+.mini-liste li span:last-child { font-weight: 700; }
+.coches { display: flex; flex-direction: column; }
+.coche { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 20px; border-top: 1px solid var(--bord); }
+.coche:hover { background: var(--surface-2); }
+.coche.offre { grid-template-columns: minmax(0, 1fr) auto; }
+@media (max-width: 600px) { .coche.offre { grid-template-columns: 1fr; } }
+@media (max-width: 1080px) { .deux[style] { grid-template-columns: minmax(0, 1fr) !important; } }
+@media (max-width: 600px) { .carte-tete { flex-wrap: wrap; } }
+.coche input { width: 16px; height: 16px; accent-color: var(--noir); }
+.coche b { font-weight: 700; font-size: 13.5px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.coche small { color: var(--doux); font-size: 12px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.lettre { background: var(--surface-2); border-radius: 16px; padding: 18px 20px; white-space: pre-wrap; font-size: 13.5px; line-height: 1.65; }
+.source { font-size: 12px; color: var(--doux); line-height: 1.5; }
+.source a { color: var(--info); font-weight: 600; text-decoration: none; }
+
+/* agenda */
+.boite { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 16px; align-items: start; }
+.boite .liste { padding: 10px; max-height: calc(100vh - 150px); overflow-y: auto; position: sticky; top: 16px; }
+.boite .liste h3 { margin: 12px 10px 6px; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--doux); display: flex; justify-content: space-between; }
+.element { width: 100%; display: flex; flex-direction: column; gap: 2px; text-align: left; padding: 11px 12px; border-radius: 14px; border: 0; background: none; }
+.element:hover { background: var(--surface-2); }
+.element b { font-weight: 700; font-size: 13.5px; }
+.element small { color: var(--doux); font-size: 12px; line-height: 1.4; }
+
+/* tiroir, fenêtre, message */
+.voile { position: fixed; inset: 0; background: rgba(10,10,10,.28); opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 40; }
+.voile.ouvert { opacity: 1; pointer-events: auto; }
+.tiroir { position: fixed; top: 12px; right: 12px; bottom: 12px; width: min(500px, calc(100% - 24px)); z-index: 50; background: var(--surface); border-radius: 24px; box-shadow: 0 30px 80px rgba(0,0,0,.22);
+  transform: translateX(calc(100% + 24px)); transition: transform .26s cubic-bezier(.2,.8,.2,1); display: flex; flex-direction: column; overflow: hidden; }
+.tiroir.ouvert { transform: none; }
+.tiroir header { display: flex; align-items: flex-start; gap: 12px; padding: 22px 22px 12px; }
+.tiroir header h2 { margin: 2px 0 0; font-size: 22px; font-weight: 600; letter-spacing: -.02em; }
+.tiroir header p { margin: 2px 0 0; color: var(--doux); }
+.tiroir header .rond { margin-left: auto; width: 36px; height: 36px; }
+.tiroir .corps { padding: 6px 22px 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+.bloc { background: var(--surface-2); border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.meta { display: grid; grid-template-columns: 90px minmax(0, 1fr); gap: 8px 14px; font-size: 13.5px; margin: 0; }
+.meta dt { color: var(--doux); } .meta dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.histo { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.histo li { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 10px; font-size: 13px; } .histo time { color: var(--doux); }
+.fenetre { position: fixed; inset: 0; z-index: 60; display: none; place-items: center; background: rgba(10,10,10,.3); padding: 16px; }
+.fenetre.ouverte { display: grid; }
+.fenetre .carte { width: min(560px, 100%); padding: 22px; display: flex; flex-direction: column; gap: 14px; }
+.fenetre h2 { margin: 0; font-size: 20px; font-weight: 700; }
+.champ { display: flex; flex-direction: column; gap: 6px; }
+.champ label { font-size: 12.5px; font-weight: 700; color: var(--doux); }
+.champ select, .champ textarea { border: 1px solid var(--bord); background: var(--surface-2); border-radius: 12px; padding: 10px 12px; outline: none; }
+.champ textarea { min-height: 120px; resize: vertical; }
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 16px); opacity: 0; transition: .2s; z-index: 80; pointer-events: none;
+  display: flex; align-items: center; gap: 14px; padding: 10px 10px 10px 18px; border-radius: 22px; background: var(--noir); color: var(--sur-noir); box-shadow: 0 16px 40px rgba(0,0,0,.25); max-width: calc(100% - 32px); }
+.toast.vu { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+.toast button { height: 32px; padding: 0 14px; border-radius: 16px; border: 0; background: var(--sur-noir); color: var(--noir); font-weight: 700; }
+.toast.simple { padding: 12px 18px; }
+
+@media (max-width: 1280px) { .cherche { width: 180px; } .deux { grid-template-columns: minmax(0, 1fr) 290px; } }
+@media (max-width: 1080px) { .trois, .deux, .boite { grid-template-columns: 1fr; } .cote { position: static; } .boite .liste { position: static; max-height: 340px; } .bandeau-ag { grid-template-columns: 1fr; } .bandeau-ag .outils { justify-content: flex-start; }
+  .schema { grid-template-columns: 1fr; } .schema .fleche { transform: rotate(90deg); height: 28px; } .v3-carte { width: calc(100% - 28px); top: auto; bottom: 64px; max-height: 55%; } }
+@media (max-width: 860px) {
+  .app { grid-template-columns: 1fr; }
+  .menu { position: sticky; top: 0; z-index: 30; height: auto; flex-direction: row; align-items: center; padding: 8px 10px; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--bord); }
+  .marque, .groupe > span, .menu .pied { display: none; } .groupe { flex-direction: row; margin: 0; } .lien { flex: none; } .lien .compte { display: none; }
+  main { padding: 16px 16px 32px; } .cherche { display: none; } .chiffres { grid-template-columns: 1fr; }
+  .appel { grid-template-columns: 1fr; grid-template-areas: 'qui' 'num' 'res' 'ctx'; } .resultat { justify-content: flex-start; } .form-rappel { grid-template-columns: 1fr; }
+  .entete { flex-wrap: wrap; } .entete h1 { font-size: 23px; } .v3 { height: 70vh; } .v3-nav { overflow-x: auto; max-width: calc(100% - 28px); } .v3-legende { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+</style>
+
+<div class="app">
+  <nav class="menu" aria-label="Menu du cockpit">
+    <div class="marque"><b>r</b>rAIme</div>
+    <div id="menu"></div>
+    <div class="pied"><i>B</i><div><b>Basile</b><br><small id="pied-direct">En direct</small></div>
+      <button type="button" id="theme" aria-label="Changer de thème"><svg class="i" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg></button></div>
+  </nav>
+  <main>
+    <header class="entete">
+      <div class="titre"><h1 id="titre"></h1><p id="sous-titre"></p></div>
+      <div class="outils-entete">
+        <label class="cherche"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/></svg><input id="cherche-global" placeholder="Chercher une fiche…" aria-label="Chercher une fiche"></label>
+        <button class="btn noir" type="button" id="nouvelle-demande"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Demande</button>
+        <button class="rond noir" type="button" id="micro" aria-label="Parler à Jarvis"><svg class="i" viewBox="0 0 24 24"><rect x="9" y="3.5" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v2.5"/></svg></button>
+      </div>
+    </header>
+    <section id="vue"></section>
+  </main>
+</div>
+<div class="voile" id="voile"></div>
+<aside class="tiroir" id="tiroir" role="dialog" aria-modal="true" aria-labelledby="t-titre" aria-hidden="true">
+  <header><div style="min-width:0;flex:1"><span class="etiq" id="t-sur"></span><h2 id="t-titre"></h2><p id="t-sous"></p></div>
+    <button class="rond" type="button" id="t-fermer" aria-label="Fermer"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></header>
+  <div class="corps" id="t-corps"></div>
+</aside>
+<div class="fenetre" id="fenetre" role="dialog" aria-modal="true" aria-labelledby="f-titre">
+  <form class="carte" id="f-demande">
+    <h2 id="f-titre">Nouvelle demande</h2>
+    <p class="note">Ce qui ne va pas, ce qu’il faut améliorer, une idée. Elle arrive dans la file des ordres de Claude ; tu la suis dans « Mises à jour ».</p>
+    <div class="champ"><label for="f-sujet">À propos de</label><select id="f-sujet"></select></div>
+    <div class="champ"><label for="f-texte">Ta demande</label><textarea id="f-texte" placeholder="Exemple : dans la liste d’appels, mets d’abord les commerces d’Annecy."></textarea></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" type="button" id="f-annuler">Annuler</button><button class="btn noir" type="submit">Envoyer la demande</button></div>
+  </form>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+// ══ LES DONNÉES : lues en direct sur /api/v6 (jarvis/v6.cjs) ; les textes fixes portent leur date ══
+let D = null, NOW, AUJ, DEMAIN, HEURE_P;
+// le jour de la lecture, à l'heure de Paris : « aujourd'hui » et « demain » en découlent
+function dates() {
+  NOW = new Date(D.NOW); AUJ = NOW.toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' });
+  DEMAIN = (() => { const d = new Date(AUJ + 'T12:00:00'); d.setDate(d.getDate() + 1); return isoDe(d); })();
+  HEURE_P = Number(NOW.toLocaleTimeString('en-GB', { timeZone: 'Europe/Paris', hour: '2-digit', hour12: false }));
+}
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const TZ = { timeZone: 'Europe/Paris' };
+const isoDe = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+const plus = (s, n) => { const d = new Date(s + 'T12:00:00'); d.setDate(d.getDate() + n); return isoDe(d); };
+const dateFr = (iso, o) => new Date(iso + 'T12:00:00').toLocaleDateString('fr-FR', o);
+const jourP = (iso) => iso.length === 10 ? iso : new Date(iso).toLocaleDateString('sv-SE', TZ);
+const heureP = (iso) => new Date(iso).toLocaleTimeString('fr-FR', { ...TZ, hour: '2-digit', minute: '2-digit' }).replace(':', ' h ');
+const nomJour = (j) => j === AUJ ? 'aujourd’hui' : j === plus(AUJ, -1) ? 'hier' : j === DEMAIN ? 'demain' : 'le ' + j.slice(8, 10) + '/' + j.slice(5, 7);
+const quandDT = (iso) => !iso ? '—' : iso.length === 10 ? nomJour(iso) : nomJour(jourP(iso)) + ' à ' + heureP(iso);
+const quand = (j) => j === AUJ ? 'aujourd’hui' : j === DEMAIN ? 'demain' : dateFr(j, { weekday: 'long', day: 'numeric', month: 'long' });
+// une durée réelle, de l'instant donné jusqu'au relevé
+const ecart = (iso) => {
+  if (!iso) return '';
+  if (iso.length === 10) { const j = Math.round((new Date(AUJ + 'T12:00:00') - new Date(iso + 'T12:00:00')) / 864e5); return j <= 0 ? 'aujourd’hui' : j < 14 ? j + ' j' : Math.round(j / 7) + ' sem.'; }
+  const m = Math.max(0, Math.round((NOW - new Date(iso)) / 60000)); if (m < 60) return m + ' min';
+  const h = Math.floor(m / 60); if (h < 24) return h + ' h' + (h < 10 && m % 60 ? ' ' + String(m % 60).padStart(2, '0') : '');
+  const j = Math.floor(h / 24); return j < 14 ? j + ' j' + (j < 3 && h % 24 ? ' ' + (h % 24) + ' h' : '') : Math.round(j / 7) + ' sem.';
+};
+const jj = (iso) => iso ? String(iso).slice(8, 10) + '/' + String(iso).slice(5, 7) : '';
+const euros = (n) => Number(n || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+const duree = (s) => s == null ? '—' : s < 60 ? s + ' s' : s < 3600 ? Math.floor(s / 60) + ' min ' + String(s % 60).padStart(2, '0') + ' s' : Math.floor(s / 3600) + ' h ' + String(Math.floor(s % 3600 / 60)).padStart(2, '0');
+
+const P = {
+  etat: '<path d="M3 12h4l2.5-6 5 12 2.5-6H21"/>',
+  vue3d: '<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/>',
+  majs: '<path d="M20 11a8 8 0 0 0-14.6-4.5M4 4.5V8h3.5M4 13a8 8 0 0 0 14.6 4.5M20 19.5V16h-3.5"/>',
+  factures: '<path d="M6 3.5h12v17l-3-2-3 2-3-2-3 2z"/><path d="M9 8.5h6M9 12h6"/>',
+  clipping: '<circle cx="6.5" cy="6.5" r="2.5"/><circle cx="6.5" cy="17.5" r="2.5"/><path d="M8.6 8l11 9M8.6 16l11-9"/>',
+  trading: '<path d="M4 19.5h16M6 15l4-4 3 3 5-6"/><path d="M15 8h3v3"/>',
+  dropshipping: '<path d="M5.5 8h13l-1 12h-11z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/>',
+  libre: '<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M18 6l-2.5 2.5M8.5 15.5L6 18"/>',
+  candidatures: '<rect x="3.5" y="7.5" width="17" height="12" rx="2.5"/><path d="M9 7.5V6a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 6v1.5M3.5 12.5h17"/>',
+  siteweb: '<rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M3.5 9h17M7 6.8h.01M9.5 6.8h.01"/>',
+  integration: '<rect x="7" y="7" width="10" height="10" rx="2"/><path d="M10 3.5V7M14 3.5V7M10 17v3.5M14 17v3.5M3.5 10H7M3.5 14H7M17 10h3.5M17 14h3.5"/>',
+  agenda: '<rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M4 10h16M9 3v4M15 3v4"/>',
+  clients: '<circle cx="9" cy="8.5" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 5a3.5 3.5 0 0 1 0 7M18 14.5a6.5 6.5 0 0 1 3.5 5.5"/>',
+  copier: '<rect x="8" y="8" width="11" height="11" rx="2"/><path d="M5 15V6.5A1.5 1.5 0 0 1 6.5 5H15"/>',
+  ext: '<path d="M14 5h5v5M19 5l-8 8M17 14v4.5a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 4 18.5v-10A1.5 1.5 0 0 1 5.5 7H10"/>',
+  drapeau: '<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>',
+  fermer: '<path d="M6 6l12 12M18 6L6 18"/>',
+};
+const ic = (k) => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${P[k] || ''}</svg>`;
+
+let minut;
+function toast(texte, annuler) {
+  const t = $('#toast'); t.className = 'toast' + (annuler ? '' : ' simple'); t.innerHTML = `<span>${esc(texte)}</span>${annuler ? '<button type="button" id="t-annuler">Annuler</button>' : ''}`;
+  requestAnimationFrame(() => t.classList.add('vu')); clearTimeout(minut);
+  if (annuler) $('#t-annuler').onclick = () => { annuler(); t.classList.remove('vu'); rendre(); };
+  minut = setTimeout(() => t.classList.remove('vu'), annuler ? 10000 : 3200);
+}
+
+// ══ LES AGENTS ══
+let AG = [], SECT = {};
+const ETATS = { inconnu: ['gris', 'Non relevé'], ok: ['ok', 'Fonctionne'], vide: ['alerte', 'Tourne à vide'], panne: ['panne', 'En panne'], arret: ['gris', 'Arrêté'], attente: ['info', 'Pas encore prouvé'], construction: ['info', 'En construction'], afaire: ['gris', 'À construire'], alerte: ['alerte', 'À surveiller'], gris: ['gris', 'N’existe pas encore'] };
+const puceEtat = (e) => `<span class="puce ${ETATS[e][0]}"><span class="point ${ETATS[e][0]}"></span>${ETATS[e][1]}</span>`;
+const COLONNE = (a) => a.etat === 'ok' ? 'bien' : ['vide', 'panne', 'arret'].includes(a.etat) ? 'mal' : 'afaire';
+const outilsHTML = (l) => l && l.length ? `<div class="outils">${l.map(([n, j, t]) => `<span class="outil ${t || ''}" title="${esc(n)} : ${esc(j)}">${esc(n)}<i>${esc(j)}</i></span>`).join('')}</div>` : '';
+// la santé, en une phrase : dernière panne et depuis quand, ou « jamais en panne »
+function sante(a) {
+  const c = COLONNE(a);
+  if (a.etat === 'inconnu') return `État non relevé : ${a.derniere_panne ? a.derniere_panne.texte : 'sa source n’a pas pu être lue'}.`;
+  if (a.etat === 'alerte') return `À surveiller${a.constat_le ? ' (constat du ' + jj(a.constat_le) + ')' : ''}.${a.dernier ? ' Dernier passage ' + quandDT(a.dernier) + '.' : ''}`;
+  if (c === 'mal' && !a.fige) {
+    const dep = a.depuis ? ` depuis ${quandDT(a.depuis)} (${ecart(a.depuis)})` : a.constat_le ? ` (constat du ${jj(a.constat_le)})` : a.etat === 'vide' ? ' (mesuré sur les dernières 24 h)' : '';
+    return `${ETATS[a.etat][1]}${dep}.${a.derniere_panne && a.derniere_panne.texte ? ' Cause : ' + a.derniere_panne.texte + '.' : ''}${a.dernier ? ' Dernier passage ' + quandDT(a.dernier) + '.' : ''}`;
+  }
+  if (c === 'afaire') return a.etat === 'attente' ? `Pas encore prouvé${a.depuis ? ' depuis ' + quandDT(a.depuis) : ''}.` : `Demandé ${quandDT(a.depuis)}${a.depuis && ecart(a.depuis) !== 'aujourd’hui' && a.depuis !== D.NOW ? ', il y a ' + ecart(a.depuis) : ''}.`;
+  if (c === 'mal') return `${ETATS[a.etat][1]} depuis ${quandDT(a.depuis) || '—'}${a.depuis ? ' (' + ecart(a.depuis) + ')' : ''}.${a.derniere_panne ? ' Cause : ' + a.derniere_panne.texte + '.' : ''}`;
+  const s = a.sante;
+  if (a.derniere_panne && a.derniere_panne.le) return `Dernière panne ${quandDT(a.derniere_panne.le)} : ${a.derniere_panne.texte}. Sain depuis ${quandDT(s ? s.depuis : a.derniere_panne.le)} (${ecart(s ? s.depuis : a.derniere_panne.le)}).`;
+  if (s && s.type === 'jamais' && s.debut_releve) return `Aucune panne enregistrée depuis le ${jj(jourP(s.depuis))} (${s.debut_releve}).`;
+  if (s && s.type === 'jamais') return `Jamais en panne depuis sa mise en service, ${quandDT(s.depuis)} (${ecart(s.depuis)}).`;
+  if (s && s.type === 'sain') return `Dernière panne ${quandDT(s.panne)}. Sain depuis ${quandDT(s.depuis)} (${ecart(s.depuis)}).`;
+  return a.dernier ? `Dernier passage ${quandDT(a.dernier)}. Ses pannes ne sont pas enregistrées.` : 'Aucun passage enregistré.';
+}
+function vivant(a) {
+  return `<dl class="vivant">${a.mesure ? `<dt>En direct</dt><dd>${esc(a.mesure)}</dd>` : ''}<dt>Maintenant</dt><dd>${esc(a.maintenant)}</dd><dt>Bloque sur</dt><dd${/^Rien ne |^—/.test(a.bloque) ? '' : ' class="rouge"'}>${esc(a.bloque)}</dd>
+    <dt>Ensuite</dt><dd>${esc(a.ensuite)}${a.duree ? ` <span style="color:var(--doux)">· ${esc(a.duree)}</span>` : ''}</dd><dt>Santé</dt><dd>${esc(sante(a))}</dd></dl><p class="date-txt" style="margin:0">${a.fige ? 'État écrit' : 'État lu en direct'} ; textes écrits le ${jj(a.texte_le)}.</p>`;
+}
+function teteAgent(a, fermer) {
+  return `<div class="tete-ag"><div style="min-width:0"><span class="etiq">${esc(SECT[a.secteur] || '')}</span><h3>${esc(a.nom)}</h3><div class="sous">${puceEtat(a.etat)}${a.rythme ? `<span>${esc(a.rythme)}</span>` : ''}</div></div>
+    ${fermer ? `<button class="v3-fermer" type="button" id="v3-fermer" aria-label="Fermer">${ic('fermer')}</button>` : ''}</div>${outilsHTML(a.outils)}`;
+}
+function ficheAgent(a) {
+  tiroir(SECT[a.secteur] || 'Agent', a.nom, (a.rythme || '') + (a.dernier ? ' · dernier passage ' + quandDT(a.dernier) : ''),
+    `<div>${puceEtat(a.etat)}</div>${a.outils.length ? `<div><span class="etiq">Outils et jetons</span><div style="margin-top:8px">${outilsHTML(a.outils).replace('class="outils"', 'class="outils" style="justify-content:flex-start"')}</div></div>` : ''}
+    ${vivant(a)}<div><button class="btn petit" type="button" data-nouvelle="${esc(SECT[a.secteur])} › ${esc(a.nom)}">${ic('drapeau')}Signaler sur cet agent</button></div>`);
+}
+
+// ══ MENU ══
+let C = [], RAPPELS = [], OFFRES = [];
+const MENU = [
+  ['Agents', [['clipping', 'Clipping'], ['trading', 'Trading'], ['dropshipping', 'Dropshipping'], ['libre', 'Agent libre'], ['candidatures', 'Candidatures', () => OFFRES.filter((o) => o.etat === 'clic').length]]],
+  ['Commerce', [['siteweb', 'Site web', () => listeDuJour('site', jourListe).filter((x) => x.type !== 'nouveau').length], ['integration', 'Intégration IA', () => D.brouillons.filter((k) => !envoyes.has(k)).length], ['agenda', 'Agenda', () => RAPPELS.filter((r) => r.note && r.jour <= DEMAIN).length], ['clients', 'Clients', () => interesses().length]]],
+  ['Machine', [['etat', 'État des agents', () => AG.filter((a) => COLONNE(a) === 'mal').length, true], ['vue3d', 'Vue 3D'], ['majs', 'Mises à jour', () => D.majs.attente.length, true], ['factures', 'Facturations', () => D.factures.filter((f) => f.etat === 'panne').length, true]]],
+];
+let RELEVE = '', TITRES = {};
+const titres = () => ({
+  etat: ['État des agents', 'Ce qui tourne, ce qui ne tourne pas, ce qui reste à faire · ' + RELEVE],
+  vue3d: ['Vue 3D', 'Tourne, zoome, clique sur un agent : ce qu’il fait, où il bloque, ce qui vient'],
+  majs: ['Mises à jour', 'Ce qui est en cours, ce qui attend, et ce qui a été livré, avec les vraies durées'],
+  factures: ['Facturations', 'Serveur, Workspace, Claude · relevé du ' + jj(D.factures[0] && D.factures[0].date) + ' et e-mails reçus depuis'],
+  clipping: ['Clipping', 'KinGKlip : découper, publier, déclarer sur Whop'], trading: ['Trading', 'Sept agents en simulation, et la bourse'],
+  dropshipping: ['Dropshipping', 'Trouver un produit, vérifier le fournisseur, puis seulement tester'], libre: ['Agent libre', 'Gagner chaque jour, ou mourir et renaître plus sage'],
+  candidatures: ['Candidatures', 'En un clic quand c’est possible ; sinon l’annonce s’ouvre, la lettre est prête'],
+  siteweb: ['Site web', 'Sites vitrines à 500 € · ta liste d’appels et tes relances'], integration: ['Intégration IA', 'Entreprises et pré-audits · ta liste d’appels et tes e-mails'],
+  agenda: ['Agenda', 'Seulement les rappels importants : ceux qui ont une note'], clients: ['Clients', 'Seulement ceux qui sont intéressés, séparés par activité'],
+});
+// la lecture installée : dates, raccourcis, titres ; le jour de la liste d'appels et le mois de l'agenda gardent le choix de Basile
+function installer(d) {
+  D = d; dates();
+  AG = D.agents; SECT = Object.fromEntries(D.plan.secteurs.map((s) => [s.cle, s.nom]));
+  C = D.clients; RAPPELS = D.rappels; OFFRES = D.offres;
+  RELEVE = 'lu en direct à ' + heureP(D.NOW);
+  TITRES = titres();
+  if (!jourListe || jourListe < AUJ) jourListe = HEURE_P >= 19 ? DEMAIN : AUJ;
+  if (!curseur) curseur = AUJ;
+  $('#pied-direct').textContent = 'En direct · ' + heureP(D.NOW);
+}
+
+// ══ MACHINE · ÉTAT DES AGENTS ══
+function etat() {
+  const col = (k) => AG.filter((a) => COLONNE(a) === k);
+  const bien = col('bien').sort((a, b) => (a.sante ? 0 : 1) - (b.sante ? 0 : 1)), mal = col('mal').sort((a, b) => ['panne', 'vide', 'arret'].indexOf(a.etat) - ['panne', 'vide', 'arret'].indexOf(b.etat)), af = col('afaire');
+  const ligne = (a, droite, rouge, detail) => `<button class="ligne-a" type="button" data-agent="${a.id}"><span class="point ${ETATS[a.etat][0]}"></span><b>${esc(a.nom)}</b>
+    <span class="quand${rouge ? ' rouge' : ''}">${esc(droite)}</span><small><em>${esc(SECT[a.secteur])} ·</em> ${esc(detail)}</small></button>`;
+  const lecture = D.direct || {}, rh = lecture.releve_hote;
+  const alertes = [...(lecture.erreurs || []).map((e) => 'Lecture en échec : ' + e),
+    ...(!rh ? ['Le relevé du serveur (journaux des tâches, porte, conteneurs) n’est pas encore arrivé.'] : !rh.frais ? ['Le relevé du serveur date de ' + quandDT(rh.le) + ' : les agents qui en dépendent sont « non relevés ».'] : [])];
+  const depuisBien = (a) => a.sante ? 'sain depuis ' + ecart(a.sante.depuis) : a.dernier ? 'passé il y a ' + ecart(a.dernier) : '';
+  return `<div class="chiffres">
+      <div class="carte chiffre"><span class="etiq">Tournent bien</span><b class="num" style="color:var(--ok)">${bien.length}</b><small>Le plus ancien sans panne : ${esc(bien.filter((a) => a.sante && a.sante.type === 'jamais').sort((a, b) => a.sante.depuis.localeCompare(b.sante.depuis))[0]?.nom || '—')}</small></div>
+      <div class="carte chiffre"><span class="etiq">Ne tournent pas</span><b class="num" style="color:var(--panne)">${mal.length}</b><small>${mal.filter((a) => a.etat === 'panne').length} en panne · ${mal.filter((a) => a.etat === 'vide').length} à vide · ${mal.filter((a) => a.etat === 'arret').length} arrêtés</small></div>
+      <div class="carte chiffre noir"><span class="etiq">À mettre en place ou réparer</span><b class="num">${af.length + mal.filter((a) => a.etat === 'panne').length}</b><small>Les durées sont des estimations, marquées comme telles</small></div></div>
+    ${alertes.length ? `<div class="carte alerte-lecture">${alertes.map(esc).join('<br>')}</div>` : ''}
+    ${depuisHTML()}
+    <div class="trois">
+      <div class="carte colonne"><header><span class="point ok"></span><h2>Tourne bien</h2><span class="num">${bien.length}</span></header>${bien.map((a) => ligne(a, depuisBien(a), false, a.mesure || a.maintenant)).join('')}</div>
+      <div class="carte colonne"><header><span class="point panne"></span><h2>Ne tourne pas</h2><span class="num">${mal.length}</span></header>${mal.map((a) => ligne(a, a.depuis ? 'depuis ' + ecart(a.depuis) : '—', a.etat === 'panne', a.bloque)).join('')}</div>
+      <div class="carte colonne"><header><span class="point info"></span><h2>À mettre en place ou réparer</h2><span class="num">${af.length + mal.filter((a) => a.etat === 'panne').length}</span></header>${af.map((a) => ligne(a, a.duree || '', false, a.ensuite)).join('')}
+        ${mal.filter((a) => a.etat === 'panne').map((a) => ligne(a, 'réparer', true, a.ensuite)).join('')}</div></div>`;
+}
+
+// ce qui a changé depuis le relevé complet (vérifié sur le serveur le jour dit)
+function depuisHTML() {
+  if (!D.depuis || !D.depuis.lignes.length) return '';
+  return `<div class="carte"><div class="carte-tete"><span class="point info"></span><h2>Vérifié à la main</h2><span class="note plus">${esc(D.depuis.quand)}</span></div><ul class="listes">${D.depuis.lignes.map(([e, t]) => `<li><span class="point ${e}"></span><span>${esc(t)}</span></li>`).join('')}</ul></div>`;
+}
+// ══ MACHINE · VUE 3D ══
+let V = null, filtreQ = null;
+function vue3d() {
+  return `<div class="v3" id="scene3d"><div class="v3-etiquettes" id="etiquettes3d"></div>
+    <div class="v3-nav" role="group" aria-label="Quartiers"><button type="button" data-q3="" aria-pressed="true">Tout</button>${D.plan.quartiers.map((q) => `<button type="button" data-q3="${q.cle}" aria-pressed="false">${esc(q.nom)}</button>`).join('')}</div>
+    <div class="v3-legende"><span><span class="point ok"></span>fonctionne</span><span><span class="point alerte"></span>à vide</span><span><span class="point panne"></span>en panne</span><span><span class="point info"></span>en construction</span><span><span class="point gris"></span>arrêté, à construire</span></div>
+    <div class="v3-zoom"><button type="button" id="z-moins" aria-label="Dézoomer">−</button><button type="button" id="z-plus" aria-label="Zoomer">+</button><button type="button" id="z-tout" aria-label="Tout voir">⌂</button></div>
+    <div class="v3-carte" id="carte3d" aria-live="polite"></div></div>`;
+}
+const sombre = () => { const r = document.documentElement.dataset.theme; return r ? r === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches; };
+function monter3d() {
+  const hote = $('#scene3d'); if (!hote) return;
+  if (!window.THREE || !THREE.OrbitControls) { hote.insertAdjacentHTML('beforeend', '<div class="v3-erreur">La vue 3D n’a pas pu se charger.<br>Tout est lisible dans « État des agents ».</div>'); return; }
+  let renderer; try { renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' }); } catch (e) { hote.insertAdjacentHTML('beforeend', '<div class="v3-erreur">WebGL indisponible : la vue 3D ne peut pas s’afficher.</div>'); return; }
+  const nuit = sombre(); if (THREE.ColorManagement) THREE.ColorManagement.legacyMode = false;
+  const PAL = nuit ? { fond: 0x0D0D0D, sol: 0x121212, g1: 0x262626, g2: 0x1B1B1B, dalle: 0x1C1C1B, tour: 0x232322, toit: 0xEDEDE9, socle: 0x2C2C2A, tube: 0xEDEDE9, bille: 0xEDEDE9, fen: ['#121212', 'rgba(237,237,233,.55)', 'rgba(237,237,233,.12)'] }
+    : { fond: 0xF5F5F3, sol: 0xEFEFEC, g1: 0xDDDDD8, g2: 0xE7E7E3, dalle: 0xFFFFFF, tour: 0xFFFFFF, toit: 0x121212, socle: 0xE6E6E2, tube: 0x121212, bille: 0x121212, fen: ['#FFFFFF', '#CDD1D8', '#ECEDEF'] };
+  const COUL = nuit ? { inconnu: 0x7A7A76, alerte: 0xE3A646, ok: 0x45C385, vide: 0xE3A646, panne: 0xF0645C, attente: 0x8AA3F0, construction: 0x8AA3F0, arret: 0x7A7A76, afaire: 0x7A7A76 }
+    : { inconnu: 0xA4A4A0, alerte: 0xC9820F, ok: 0x1E9A5E, vide: 0xC9820F, panne: 0xD93C35, attente: 0x3756C9, construction: 0x3756C9, arret: 0xA4A4A0, afaire: 0xA4A4A0 };
+  const W = () => hote.clientWidth, H = () => hote.clientHeight;
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5)); renderer.setSize(W(), H()); renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; hote.prepend(renderer.domElement);
+  const scene = new THREE.Scene(); scene.background = new THREE.Color(PAL.fond); scene.fog = new THREE.Fog(PAL.fond, 80, 170);
+  const camera = new THREE.PerspectiveCamera(34, W() / H(), 0.5, 400);
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  Object.assign(controls, { enableDamping: true, dampingFactor: .08, minDistance: 12, maxDistance: 120, maxPolarAngle: 1.22, minPolarAngle: .42, screenSpacePanning: false, rotateSpeed: .6 });
+  scene.add(new THREE.HemisphereLight(0xFFFFFF, nuit ? 0x101010 : 0xBDBDB8, nuit ? .5 : .75));
+  const soleil = new THREE.DirectionalLight(0xFFFFFF, nuit ? .9 : 1.05); soleil.position.set(30, 60, 26); soleil.castShadow = true; soleil.shadow.mapSize.set(1024, 1024); soleil.shadow.radius = 4;
+  Object.assign(soleil.shadow.camera, { left: -60, right: 60, top: 60, bottom: -60, near: 1, far: 160 }); scene.add(soleil);
+  const sol = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshStandardMaterial({ color: PAL.sol, roughness: 1 })); sol.rotation.x = -Math.PI / 2; sol.receiveShadow = true; scene.add(sol);
+  const grille = new THREE.GridHelper(400, 200, PAL.g1, PAL.g2); grille.position.y = .01; grille.material.transparent = true; grille.material.opacity = .7; scene.add(grille);
+  const PLAN = { commerce: [-15, -10, 26, 17], emploi: [11, -10, 14, 17], medias: [28, -10, 14, 17], finance: [-15, 11, 26, 17], cerveau: [11, 11, 14, 17], infra: [28, 11, 14, 17] };
+  const decal = -7, cliquables = [], etiquettes = [], flux = [], pulsants = [], positions = {}, boules = {};
+  const fenetres = (() => { const c = document.createElement('canvas'); c.width = 64; c.height = 128; const x = c.getContext('2d'); x.fillStyle = PAL.fen[0]; x.fillRect(0, 0, 64, 128);
+    for (let i = 0; i < 4; i++) for (let j = 0; j < 12; j++) { x.fillStyle = Math.random() > .3 ? PAL.fen[1] : PAL.fen[2]; x.fillRect(6 + i * 14, 6 + j * 10, 8, 5); }
+    const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.wrapS = t.wrapT = THREE.RepeatWrapping; return t; })();
+  const pireDe = (ag) => ag.some((a) => a.etat === 'panne') ? 'panne' : ag.some((a) => a.etat === 'vide') ? 'vide' : 'ok';
+  for (const q of D.plan.quartiers) {
+    const [cx, cz, w, d] = PLAN[q.cle]; const x0 = cx + decal, z0 = cz;
+    const ag = AG.filter((a) => q.secteurs.includes(a.secteur)), pire = pireDe(ag);
+    const dalle = new THREE.Mesh(new THREE.BoxGeometry(w, .6, d), new THREE.MeshStandardMaterial({ color: PAL.dalle, roughness: .9 }));
+    dalle.position.set(x0, .3, z0); dalle.receiveShadow = true; dalle.castShadow = true; dalle.userData = { quartier: q.cle }; scene.add(dalle); cliquables.push(dalle);
+    const bord = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(w, .6, d)), new THREE.LineBasicMaterial({ color: COUL[pire], transparent: true, opacity: nuit ? .8 : .55 }));
+    bord.position.copy(dalle.position); scene.add(bord);
+    etiquettes.push({ el: ajoutEtiquette('quartier', q.nom), pos: new THREE.Vector3(x0, 1, z0 + d / 2 + 1.6), type: 'quartier', q: q.cle });
+    const ss = q.secteurs, part = w / ss.length;
+    ss.forEach((sk, i) => {
+      // la tour de la gouvernance domine les autres : c'est d'elle que partent les règles
+      const sx = x0 - w / 2 + part * (i + .5), sz = z0 - d / 2 + 4.2, ags = AG.filter((a) => a.secteur === sk), haut = sk === 'gouvernance' ? 13 : 3.2 + ags.length * 1.05, larg = Math.min(5, part - 2.2);
+      const tex = fenetres.clone(); tex.needsUpdate = true; tex.repeat.set(1, haut / 4);
+      // la gouvernance : une tour sombre au milieu des tours blanches (claire dans le thème sombre)
+      const gouv = sk === 'gouvernance';
+      const mat = gouv ? new THREE.MeshStandardMaterial({ color: nuit ? 0xEDEDE9 : 0x161616, roughness: .28, metalness: .45 })
+        : nuit ? new THREE.MeshStandardMaterial({ color: PAL.tour, roughness: .5, metalness: .3, emissive: 0xFFFFFF, emissiveMap: tex, emissiveIntensity: .35 })
+        : new THREE.MeshStandardMaterial({ color: 0xFFFFFF, map: tex, roughness: .55, metalness: .05 });
+      const tour = new THREE.Mesh(new THREE.BoxGeometry(larg, haut, 4), mat);
+      tour.position.set(sx, .6 + haut / 2, sz); tour.castShadow = true; tour.receiveShadow = true; tour.userData = { quartier: q.cle }; scene.add(tour); cliquables.push(tour);
+      const toit = new THREE.Mesh(new THREE.BoxGeometry(larg + .2, .18, 4.2), new THREE.MeshStandardMaterial({ color: gouv ? (nuit ? 0x121212 : 0xFFFFFF) : PAL.toit, roughness: .6 })); toit.position.set(sx, .6 + haut + .09, sz); toit.castShadow = true; scene.add(toit);
+      etiquettes.push({ el: ajoutEtiquette('secteur', SECT[sk]), pos: new THREE.Vector3(sx, .6 + haut + 1.1, sz), type: 'secteur', q: q.cle });
+      const cols = Math.min(3, ags.length), ecartA = Math.min(2.6, (part - 1) / Math.max(cols, 1));
+      ags.forEach((a, j) => {
+        const ax = sx + (j % cols - (cols - 1) / 2) * ecartA, az = sz + 4.4 + Math.floor(j / cols) * 2.5;
+        const socle = new THREE.Mesh(new THREE.CylinderGeometry(.5, .62, .36, 28), new THREE.MeshStandardMaterial({ color: PAL.socle, roughness: .6 }));
+        socle.position.set(ax, .6 + .18, az); socle.castShadow = true; socle.receiveShadow = true; scene.add(socle);
+        const boule = new THREE.Mesh(new THREE.SphereGeometry(.38, 32, 16), nuit ? new THREE.MeshBasicMaterial({ color: COUL[a.etat] }) : new THREE.MeshStandardMaterial({ color: COUL[a.etat], roughness: .3, emissive: COUL[a.etat], emissiveIntensity: .12 }));
+        boule.position.set(ax, 1.55, az); boule.castShadow = true; boule.userData = { agent: a.id }; socle.userData = { agent: a.id }; scene.add(boule); cliquables.push(boule, socle);
+        const anneau = new THREE.Mesh(new THREE.RingGeometry(.7, .82, 36), new THREE.MeshBasicMaterial({ color: COUL[a.etat], transparent: true, opacity: .45, side: THREE.DoubleSide }));
+        anneau.rotation.x = -Math.PI / 2; anneau.position.set(ax, .62, az); scene.add(anneau);
+        if (a.etat === 'panne') { const faisceau = new THREE.Mesh(new THREE.CylinderGeometry(.06, .06, 8, 8, 1, true), new THREE.MeshBasicMaterial({ color: COUL.panne, transparent: true, opacity: .5 }));
+          faisceau.position.set(ax, 5.6, az); scene.add(faisceau); pulsants.push(boule); }
+        positions[a.id] = new THREE.Vector3(ax, 1.55, az); boules[a.id] = boule;
+        etiquettes.push({ el: ajoutEtiquette('agent', a.nom), pos: new THREE.Vector3(ax, 2.4, az), type: 'agent', agent: a.id, boule, base: 1.55, etat: a.etat });
+      });
+    });
+  }
+  // les agents qui circulent : des billes le long des liens, quand l'agent de départ travaille
+  for (const [a, b] of D.plan.flux) {
+    const pa = positions[a], pb = positions[b]; if (!pa || !pb) continue;
+    const milieu = pa.clone().add(pb).multiplyScalar(.5); milieu.y = 3 + pa.distanceTo(pb) * .08;
+    const courbe = new THREE.QuadraticBezierCurve3(pa, milieu, pb);
+    scene.add(new THREE.Mesh(new THREE.TubeGeometry(courbe, 40, .035, 6, false), new THREE.MeshBasicMaterial({ color: PAL.tube, transparent: true, opacity: nuit ? .25 : .16 })));
+    if ((AG.find((x) => x.id === a) || {}).etat === 'ok') for (let k = 0; k < 2; k++) { const p = new THREE.Mesh(new THREE.SphereGeometry(.12, 12, 8), new THREE.MeshBasicMaterial({ color: PAL.bille })); scene.add(p); flux.push({ p, courbe, decal: k * .5 + Math.random() * .2 }); }
+  }
+  let composer = null;
+  if (nuit && THREE.EffectComposer && THREE.UnrealBloomPass) { composer = new THREE.EffectComposer(renderer); composer.addPass(new THREE.RenderPass(scene, camera)); composer.addPass(new THREE.UnrealBloomPass(new THREE.Vector2(W() / 2, H() / 2), .7, .5, .2)); }
+  function ajoutEtiquette(type, texte) { const el = document.createElement('div'); el.className = 'v3-et ' + type; el.textContent = texte; $('#etiquettes3d').appendChild(el); return el; }
+  // la caméra : vue d'ensemble calculée sur le plan (centre et recul selon l'écran)
+  const boite = new THREE.Box3(); for (const k in PLAN) { const [cx, cz, w, d] = PLAN[k]; boite.expandByPoint(new THREE.Vector3(cx + decal - w / 2, 0, cz - d / 2)); boite.expandByPoint(new THREE.Vector3(cx + decal + w / 2, 10, cz + d / 2)); }
+  const centre = boite.getCenter(new THREE.Vector3()); centre.y = 2;
+  const DIR = new THREE.Vector3(0.62, 0.95, 1).normalize(), ENS = { cible: centre.clone(), pos: new THREE.Vector3() };
+  const recul = () => { const r = boite.getSize(new THREE.Vector3()).length() / 2, vf = THREE.MathUtils.degToRad(camera.fov) / 2, hf = Math.atan(Math.tan(vf) * camera.aspect); return r / Math.sin(Math.min(vf, hf)) * .76; };
+  const placerEnsemble = () => { ENS.pos.copy(centre).add(DIR.clone().multiplyScalar(recul())); controls.maxDistance = recul() * 1.4; };
+  placerEnsemble(); camera.position.copy(ENS.pos); controls.target.copy(ENS.cible); controls.update();
+  let vol = null;
+  const voler = (cible, distance) => { const dir = camera.position.clone().sub(controls.target).normalize(); vol = { de: camera.position.clone(), deC: controls.target.clone(), vers: cible.clone().add(dir.multiplyScalar(distance)), versC: cible.clone(), debut: performance.now() }; };
+  const toutVoir = () => { vol = { de: camera.position.clone(), deC: controls.target.clone(), vers: ENS.pos.clone(), versC: ENS.cible.clone(), debut: performance.now() }; };
+  const allerQuartier = (k) => { filtreQ = k || null; $$('[data-q3]').forEach((b) => b.setAttribute('aria-pressed', String((b.dataset.q3 || null) === filtreQ))); if (!k) return toutVoir(); const [cx, cz] = PLAN[k]; voler(new THREE.Vector3(cx + decal, 0, cz), 38); };
+  const ray = new THREE.Raycaster(), souris = new THREE.Vector2(); let appui = null, survol = null;
+  const viser = (e) => { const r = renderer.domElement.getBoundingClientRect(); souris.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1); ray.setFromCamera(souris, camera); return ray.intersectObjects(cliquables, false)[0]; };
+  renderer.domElement.addEventListener('pointerdown', (e) => { appui = [e.clientX, e.clientY]; });
+  renderer.domElement.addEventListener('pointermove', (e) => { const h = viser(e); survol = h && h.object.userData.agent || null; renderer.domElement.style.cursor = h ? 'pointer' : 'grab'; });
+  renderer.domElement.addEventListener('pointerleave', () => { survol = null; });
+  renderer.domElement.addEventListener('pointerup', (e) => {
+    if (!appui || Math.hypot(e.clientX - appui[0], e.clientY - appui[1]) > 5) return; const h = viser(e); if (!h) return; const u = h.object.userData;
+    if (u.agent) { choisir(u.agent); voler(positions[u.agent], 20); } else if (u.quartier) allerQuartier(u.quartier);
+  });
+  function choisir(id) { const a = AG.find((x) => x.id === id), c = $('#carte3d'); V.choisi = id; if (!a) { c.classList.remove('vue'); return; }
+    c.innerHTML = teteAgent(a, true) + vivant(a) + `<div style="display:flex;gap:8px"><button class="btn petit" type="button" data-agent="${a.id}">Tout voir</button><button class="btn petit discret" type="button" data-nouvelle="${esc(SECT[a.secteur])} › ${esc(a.nom)}">${ic('drapeau')}Signaler</button></div>`;
+    c.classList.add('vue'); $('#v3-fermer').onclick = () => { c.classList.remove('vue'); V.choisi = null; }; $$('[data-agent]', c).forEach((b) => b.onclick = () => ficheAgent(a)); }
+  $$('[data-q3]').forEach((b) => b.onclick = () => allerQuartier(b.dataset.q3));
+  $('#z-plus').onclick = () => voler(controls.target.clone(), Math.max(12, camera.position.distanceTo(controls.target) * .7));
+  $('#z-moins').onclick = () => voler(controls.target.clone(), Math.min(controls.maxDistance, camera.position.distanceTo(controls.target) * 1.4));
+  $('#z-tout').onclick = () => { allerQuartier(''); $('#carte3d').classList.remove('vue'); V.choisi = null; };
+  const v = new THREE.Vector3(), horloge = new THREE.Clock(), calme = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function boucle() {
+    V.raf = requestAnimationFrame(boucle); const t = horloge.getElapsedTime();
+    if (vol) { vol.t = Math.min(1, (performance.now() - vol.debut) / 750); const k = 1 - Math.pow(1 - vol.t, 3); camera.position.lerpVectors(vol.de, vol.vers, k); controls.target.lerpVectors(vol.deC, vol.versC, k); if (vol.t >= 1) vol = null; }
+    controls.update();
+    if (!calme) { for (const f of flux) f.p.position.copy(f.courbe.getPoint((t * .2 + f.decal) % 1)); for (const o of pulsants) o.scale.setScalar(1 + .22 * Math.sin(t * 4)); }
+    // les étiquettes : les quartiers de loin, les secteurs de près ; un agent seulement survolé ou choisi ; jamais deux l'une sur l'autre
+    const dist = camera.position.distanceTo(controls.target), loin = recul(), places = [], w = W(), h = H();
+    const prio = (e) => e.type === 'agent' ? 0 : e.type === 'quartier' ? 1 : 2;
+    for (const e of etiquettes.slice().sort((a, b) => prio(a) - prio(b))) {
+      if (!calme && e.boule && e.etat === 'ok') e.boule.position.y = e.base + Math.sin(t * 2 + e.pos.x) * .07;
+      const voulu = e.type === 'agent' ? (e.agent === survol || e.agent === V.choisi) : e.type === 'quartier' ? dist > loin * .42 : dist < loin * .62;
+      v.copy(e.pos).project(camera); let ok = voulu && v.z < 1 && Math.abs(v.x) < 1 && Math.abs(v.y) < 1;
+      if (ok) { const x = (v.x + 1) / 2 * w, y = (1 - v.y) / 2 * h; e.lw = e.lw || e.el.offsetWidth; e.lh = e.lh || e.el.offsetHeight;
+        const r = [x - e.lw / 2 - 4, y - e.lh - 4, x + e.lw / 2 + 4, y + 4];
+        if (places.some((p) => r[0] < p[2] && r[2] > p[0] && r[1] < p[3] && r[3] > p[1])) ok = false; else { places.push(r); e.el.style.left = x + 'px'; e.el.style.top = y + 'px'; } }
+      e.el.style.opacity = ok ? 1 : 0;
+    }
+    composer ? composer.render() : renderer.render(scene, camera);
+  }
+  const redim = () => { const w = W(), h = H(); if (!w || !h) return; renderer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix(); if (composer) composer.setSize(w, h);
+    const avant = ENS.pos.clone(); placerEnsemble(); if (camera.position.distanceTo(avant) < .5) { camera.position.copy(ENS.pos); controls.update(); } };
+  const obs = new ResizeObserver(redim); obs.observe(hote);
+  V = { raf: 0, renderer, obs, choisi: null, choisir }; boucle();
+}
+function demonter3d() { if (!V) return; cancelAnimationFrame(V.raf); V.obs.disconnect(); V.renderer.dispose(); V.renderer.forceContextLoss && V.renderer.forceContextLoss(); V = null; }
+
+// ══ MACHINE · MISES À JOUR ══
+function majs() {
+  const M = D.majs, s = M.stats;
+  return `<div class="chiffres">
+      <div class="carte chiffre"><span class="etiq">Livraisons depuis le ${jj(jourP(s.depuis))}</span><b class="num">${s.n}</b><small>${s.echecs} refusée${s.echecs > 1 ? 's' : ''} par la vérification, chaque fois remplacée${s.echecs > 1 ? 's' : ''} par la précédente${s.fige ? ' · relevé du ' + jj(s.date) : ''}</small></div>
+      <div class="carte chiffre"><span class="etiq">Du changement à la mise en service</span><b class="num">${duree(s.total_med)}</b><small>Médiane relevée le ${jj(s.total_date || s.date)} : banc d’essai GitHub compris</small></div>
+      <div class="carte chiffre"><span class="etiq">Mise en service seule</span><b class="num">${duree(s.porte_med)}</b><small>${s.fige ? 'Médiane relevée le ' + jj(s.date) : 'Médiane des ' + s.porte_sur + ' dernières'} : de l’arrivée sur le serveur au redémarrage</small></div></div>
+    <div class="deux" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr)">
+      <div class="carte"><div class="carte-tete"><span class="point info"></span><h2>En cours</h2></div><ul class="listes">${M.encours.map((e) => `<li><span class="point info"></span><div><b>${esc(e.titre)}</b> <span style="color:var(--doux)">· ${esc(e.pour)} · commencé ${quandDT(e.depuis)}</span><div style="color:var(--doux)">${esc(e.detail)}</div></div></li>`).join('')}</ul></div>
+      <div class="carte"><div class="carte-tete"><span class="point panne"></span><h2>En attente</h2><span class="note plus">En rouge : plus de 24 h, signalés par le veilleur des ordres</span></div><ul class="listes">${M.attente.sort((a, b) => a.depuis.localeCompare(b.depuis)).map((e) => `<li><span class="point ${e.retard ? 'panne' : 'info'}"></span><div><b>${esc(e.titre)}</b> <span style="color:${e.retard ? 'var(--panne)' : 'var(--doux)'};font-weight:700">· depuis ${ecart(e.depuis)}</span><div style="color:var(--doux)">Ordre n° ${e.id} du ${quandDT(e.depuis).replace(/^le /, '')} · pour ${esc(e.pour)}</div></div></li>`).join('') || '<li class="vide">Aucun ordre en attente.</li>'}</ul></div></div>
+    <div class="carte"><div class="carte-tete"><span class="point ok"></span><h2>Livré</h2><span class="note plus">Les dernières · lues dans le journal de la porte${D.direct && D.direct.releve_hote ? ', relevé ' + quandDT(D.direct.releve_hote.le) : ''}</span></div><div class="defile"><table class="tableau"><thead><tr><th>Mis en service</th><th>Changement</th><th class="droite">Version</th><th class="droite">Mise en service</th></tr></thead><tbody>
+      ${M.livrees.map((l) => `<tr><td class="num" style="white-space:nowrap;color:${l.ok ? 'var(--doux)' : 'var(--panne)'}">${quandDT(l.le)}</td><td>${esc(l.sujet || (l.ok ? 'Sujet à lire sur GitHub' : 'Version refusée, retour arrière'))}</td><td class="droite num">${l.lien ? `<a href="${esc(l.lien)}" target="_blank" rel="noopener" style="color:var(--info)">${esc(l.sha)}</a>` : '—'}</td><td class="droite num">${duree(l.porte)}</td></tr>`).join('') || '<tr><td colspan="4" class="vide">Le journal de la porte arrive avec le relevé du serveur.</td></tr>'}</tbody></table></div></div>`;
+}
+
+// ══ MACHINE · FACTURATIONS ══
+function factures() {
+  const F = D.factures, total = F.reduce((s, f) => s + (f.montant_eur || 0), 0), aRegler = F.filter((f) => f.etat === 'panne');
+  const proch = F.filter((f) => f.prochaine && f.prochaine >= AUJ).sort((a, b) => a.prochaine.localeCompare(b.prochaine))[0];
+  return `<div class="chiffres">
+      <div class="carte chiffre noir"><span class="etiq">À régler maintenant</span><b class="num">${aRegler.length ? euros(aRegler.reduce((s, f) => s + (f.montant_eur || 0), 0)) : 'Rien'}</b><small>${aRegler.map((f) => esc(f.nom + ' : ' + f.etatTxt + (f.dernierMail ? ', dernier e-mail ' + quandDT(f.dernierMail.le) : ''))).join(' · ') || 'Aucune facture en retard connue'}</small></div>
+      <div class="carte chiffre"><span class="etiq">Prochain prélèvement connu</span><b class="num">${proch ? jj(proch.prochaine) : '—'}</b><small>${proch ? esc(proch.nom + ' : ' + proch.montant) : 'Aucun connu'}</small></div>
+      <div class="carte chiffre"><span class="etiq">Abonnements par mois</span><b class="num">≈ ${total.toFixed(0)} €</b><small>${F.map((f) => (f.approx ? '≈ ' : '') + (f.approx ? String(f.montant_eur) : euros(f.montant_eur).replace(' €', ''))).join(' + ')} (montants relevés le ${jj(F[0] && F[0].date)})</small></div></div>
+    <div class="trois">${F.map((f) => `<div class="carte" style="padding:18px 20px;display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;align-items:flex-start;gap:10px"><div style="min-width:0;flex:1"><span class="etiq">${esc(f.rythme)}</span><h2 style="margin:2px 0 0;font-size:18px;font-weight:700">${esc(f.nom)}</h2><div class="note">${esc(f.quoi)}</div></div><b style="font-size:22px;font-weight:600;letter-spacing:-.03em" class="num">${esc(f.montant)}</b></div>
+      <div>${puceEtat(f.etat === 'panne' ? 'panne' : f.etat === 'ok' ? 'ok' : 'alerte').replace(/>[^<]*<\/span>$/, '>' + esc(f.etatTxt) + '</span>')}</div>
+      <ul class="histo">${f.lignes.map(([d, t]) => `<li><time>${esc(d)}</time><span>${esc(t)}</span></li>`).join('')}</ul>
+      <div class="bloc"><span class="etiq">Prochaine échéance</span><div style="font-weight:700">${esc(f.prochaineTxt)}</div></div>
+      <p class="date-txt" style="margin:0">Relevé du ${jj(f.date)}${f.dernierMail ? ' ; e-mails reçus depuis : lus en direct' : ''}.</p>
+      ${f.lien ? `<a class="btn noir petit" style="align-self:flex-start" href="${esc(f.lien.url)}" target="_blank" rel="noopener">${esc(f.lien.texte)}</a>` : ''}</div>`).join('')}</div>
+    ${creditsHTML()}
+    <div class="carte"><div class="carte-tete"><h2>Les modèles d’IA et ce qu’ils coûtent</h2><span class="note plus">${esc(D.modelesSource)}</span></div><div class="defile"><table class="tableau"><thead><tr><th>Modèle</th><th>Chez</th><th>Prix</th><th class="droite">Jetons 7 j</th><th class="droite">Jetons 30 j</th><th class="droite">Coût 30 j</th><th>Qui l’utilise</th></tr></thead><tbody>
+      ${D.modelesIA.map((m) => `<tr><td><b>${esc(m.nom)}</b></td><td style="color:var(--doux)">${esc(m.fournisseur)}</td><td><span class="puce${/^Gratuit/.test(m.prix) ? ' ok' : /coupé/.test(m.prix) ? '' : ' alerte'}">${esc(m.prix)}</span></td><td class="droite num">${m.j7 == null ? '—' : kJ(m.j7)}</td><td class="droite num">${m.j30 == null ? '—' : kJ(m.j30)}</td><td class="droite num">${esc(m.cout)}</td><td style="color:var(--doux);font-size:12.5px">${esc(m.agents)}</td></tr>`).join('')}</tbody></table></div>
+      <p class="note" style="padding:12px 20px 18px">${esc(D.modelesNote)}</p></div>`;
+}
+const kJ = (n) => !n ? '0' : n >= 1e6 ? (n / 1e6).toFixed(2).replace('.', ',') + ' M' : n >= 1000 ? Math.round(n / 1000) + ' k' : String(n);
+function creditsHTML() {
+  const c = D.credits || {}, b = D.budget || {}, g = b.gardien, abo = D.factures.reduce((s, f) => s + (f.montant_eur || 0), 0);
+  const cases = b.plafond != null ? [['Budget des modèles payants', euros(b.plafond), 'Plafond de l’Économe, ce mois'], ['Dépensé ce mois', euros(b.depense), 'Économe, lu ' + quandDT(b.le)], ['Reste ce mois', euros(b.reste), 'Avant le plafond']]
+    : [['Budget des modèles payants', '—', 'Lecture de l’Économe en échec']];
+  if (c.openrouter) cases.push(['Crédit OpenRouter', c.openrouter, (c.openrouter_detail || '') + ' (relevé du ' + jj(c.date) + ')']);
+  return `<div class="carte"><div class="carte-tete"><h2>Crédits du mois</h2><span class="note plus">Abonnements ≈ ${abo.toFixed(0)} € + IA ${euros(b.depense || 0)} ce mois</span></div>
+    ${g ? `<p class="note" style="padding:0 20px 8px">Gardien, ${quandDT(g.le)} : ${euros(g.estime)} estimés sur ${euros(g.budget)} de budget ce mois.</p>` : ''}
+    <div style="display:grid;grid-template-columns:repeat(${cases.length},minmax(0,1fr));gap:12px;padding:4px 20px 20px">${cases.map(([e, v, s]) => `<div class="bloc"><span class="etiq">${esc(e)}</span><b style="font-size:24px;font-weight:600;letter-spacing:-.03em" class="num">${esc(v)}</b><span class="note">${esc(s)}</span></div>`).join('')}</div>
+    ${c.gemini ? `<p class="note" style="padding:0 20px 18px">${esc(c.gemini)}</p>` : ''}</div>`;
+}
+
+// ══ AGENTS · leurs pages ══
+function pageAgent(k) {
+  const v = D.vies[k], e = v.etat;
+  const liste = (l, cls) => l && l.length ? `<ol class="temps${cls ? ' ' + cls : ''}">${l.map(([t, x]) => `<li><time>${esc(t)}</time><span>${esc(x)}</span></li>`).join('')}</ol>` : '<p class="vide" style="padding:16px 20px">Rien.</p>';
+  const puces = (l, c) => l && l.length ? `<ul class="listes">${l.map((x) => `<li><span class="point ${c}"></span><span>${esc(x)}</span></li>`).join('')}</ul>` : '<p class="vide" style="padding:16px 20px">Rien pour l’instant.</p>';
+  let extra = '', avant = '';
+  if (v.explication) avant = `<div class="carte explication"><b style="font-size:15px">${esc(v.explication.titre)}</b>${v.explication.date ? ` <span class="date-txt">· écrit le ${jj(v.explication.date)}</span>` : ''}<ol>${v.explication.points.map((p) => `<li>${esc(p)}</li>`).join('')}</ol></div>`;
+  if (v.verification) extra += `<div class="carte"><div class="carte-tete"><h2>Les ${v.verification.reduce((s, x) => s + x[2], 0)} publications, vérifiées une par une</h2><span class="note plus">${v.verification_le ? 'Liens testés ' + quandDT(v.verification_le) : 'Pas encore vérifiées'}</span></div><div class="defile"><table class="tableau"><thead><tr><th>Plateforme</th><th>Compte</th><th class="droite">Publiés</th><th class="droite">En ligne</th><th class="droite">Introuvables</th></tr></thead><tbody>
+    ${v.verification.map(([p, c, n, ok, ko]) => `<tr><td><b>${esc(p)}</b></td><td style="color:var(--doux)">${esc(c)}</td><td class="droite num">${n}</td><td class="droite num" style="color:var(--ok);font-weight:700">${ok}</td><td class="droite num" style="color:${ko ? 'var(--panne)' : 'var(--doux)'};font-weight:700">${ko}</td></tr>`).join('')}</tbody></table></div></div>`;
+  if (v.tableau) extra += `<div class="deux" style="grid-template-columns:minmax(0,1.4fr) minmax(0,1fr)"><div class="carte"><div class="carte-tete"><h2>Les sept agents</h2><span class="note plus">1 000 € fictifs chacun · ${esc(RELEVE)}</span></div><div class="defile"><table class="tableau"><thead><tr><th>Agent</th><th>Règle de départ</th><th class="droite">Valeur</th><th class="droite">Résultat</th><th class="droite">Opérations</th><th class="droite">Frais</th></tr></thead><tbody>
+    ${v.tableau.map(([n, r, val, op, fr]) => { const p = (val - 1000) / 10; return `<tr><td><b>${esc(n)}</b></td><td style="color:var(--doux)">${esc(r)}</td><td class="droite num">${val.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €</td><td class="droite num" style="font-weight:700;color:${p < -10 ? 'var(--panne)' : p < 0 ? 'var(--alerte)' : 'var(--doux)'}">${(p > 0 ? '+' : p < 0 ? '−' : '') + Math.abs(p).toFixed(1).replace('.', ',')} %</td><td class="droite num">${op.toLocaleString('fr-FR')}</td><td class="droite num">${fr.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €</td></tr>`; }).join('')}</tbody></table></div></div>
+    <div class="carte"><div class="carte-tete"><h2>Bourse</h2><span class="note plus">Rétro-test 12 mois · réel au ${jj(v.bourse_le)}</span></div><div class="defile"><table class="tableau"><thead><tr><th>Stratégie</th><th class="droite">12 mois</th><th class="droite">En réel</th></tr></thead><tbody>
+    ${v.bourse.map(([n, r, a]) => `<tr><td><b>${esc(n)}</b></td><td class="droite num" style="font-weight:700;color:${r.startsWith('−') ? 'var(--panne)' : 'var(--ok)'}">${esc(r)}</td><td class="droite num">${esc(a)}</td></tr>`).join('')}</tbody></table></div></div></div>`;
+  if (v.schema) extra += `<div class="carte"><div class="carte-tete"><h2>Comment il vivra</h2><span class="note plus">Ton schéma du 08/10</span></div><div class="schema">${v.schema.map(([t, x], i) => `${i ? '<div class="fleche">→</div>' : ''}<div class="etape-s${i === 0 ? ' noire' : ''}"><b>${esc(t)}</b>${esc(x)}</div>`).join('')}</div></div>
+    <div class="carte"><div class="carte-tete"><h2>Ses garde-fous</h2></div>${puces(v.garde_fous, 'gris')}</div>`;
+  const sous = v.sous && v.sous.length ? `<div class="carte"><div class="carte-tete"><h2>Sous-agents : qui fait quoi, quand, pourquoi</h2></div><div class="defile"><table class="tableau"><thead><tr><th>Sous-agent</th><th>Ce qu’il fait</th><th>Quand</th><th>Pourquoi ce choix</th><th>Outils · jetons</th><th class="droite">État</th></tr></thead><tbody>
+    ${v.sous.map((s) => `<tr class="${s.n === 2 ? 'niveau2' : ''}"><td style="min-width:150px"><b>${esc(s.nom)}</b></td><td>${esc(s.fait)}</td><td style="color:var(--doux);min-width:110px">${esc(s.quand)}</td><td style="color:var(--doux)">${esc(s.pourquoi)}</td><td>${outilsHTML(s.outils)}</td><td class="droite">${puceEtat(s.etat)}</td></tr>`).join('')}</tbody></table></div></div>` : '';
+  return `<div class="carte bandeau-ag"><div>${puceEtat(e)}<p>${esc(v.resume)}</p></div>${outilsHTML(v.outils) || '<div class="outils"><span class="outil">Aucun outil<i>0 jeton</i></span></div>'}</div>
+    ${k === 'candidatures' ? offresHTML() : ''}${avant}
+    <div class="trois"><div class="carte"><div class="carte-tete"><span class="etiq">Passé</span></div>${liste(v.passe)}</div><div class="carte"><div class="carte-tete"><span class="etiq" style="color:var(--encre)">Présent</span></div>${liste(v.present, 'present')}</div><div class="carte"><div class="carte-tete"><span class="etiq">Avenir</span></div>${liste(v.avenir)}</div></div>
+    ${extra}
+    ${sous}
+    <p class="date-txt" style="margin:0">Textes écrits le ${jj(D.direct && D.direct.textes_le)} ; résumé, chiffres et tableaux ${esc(RELEVE)}.</p>
+    <div class="trois"><div class="carte"><div class="carte-tete"><span class="point panne"></span><h2>Problèmes</h2></div>${puces(v.problemes, 'panne')}</div><div class="carte"><div class="carte-tete"><span class="point ok"></span><h2>Réussites</h2></div>${puces(v.reussites, 'ok')}</div><div class="carte"><div class="carte-tete"><span class="point info"></span><h2>Solutions en cours</h2></div>${puces(v.solutions, 'info')}</div></div>`;
+}
+
+// ══ CANDIDATURES : en un clic quand un canal existe ; sinon l'annonce s'ouvre, la lettre est prête ══
+let voirToutesOffres = false;
+function offresHTML() {
+  const g = (e) => OFFRES.filter((o) => o.etat === e);
+  const ligne = (o, boutons) => `<div class="coche offre"><span style="min-width:0"><b>${esc(o.titre)}</b><small>${esc(o.entreprise)}${o.lieu ? ' · ' + esc(o.lieu) : ''} · ${esc(o.source)}${o.lettre ? ' · lettre prête' : ''}${o.raison ? ' · ' + esc(o.raison) : ''}</small></span><span style="display:flex;gap:6px">${boutons}</span></div>`;
+  const clic = g('clic'), file = g('file'), mp = g('mpage'), ouv = g('ouvrir').sort((a, b) => (b.lettre - a.lettre) || ((b.score || 0) - (a.score || 0))), env = g('envoye');
+  const vus = voirToutesOffres ? ouv : ouv.slice(0, 10);
+  return `<div class="deux" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr)">
+    <div class="carte"><div class="carte-tete"><h2>En un clic</h2><span class="puce plus">${clic.length}</span></div><p class="note" style="padding:0 20px 10px">« Postuler » la valide : l’Envoyeur la prend à son prochain passage, avec ta lettre et ton CV suisse.</p>
+      <div class="coches">${clic.map((o) => ligne(o, `<button class="btn noir petit" type="button" data-postuler="${esc(o.cle)}">Postuler</button>`)).join('') || '<div class="vide">Aucune offre à canal automatique en attente.</div>'}
+      ${file.length ? `<div class="section-appels" style="padding:12px 20px 0"><h3>Dans la file de l’Envoyeur <span class="num">${file.length}</span></h3></div>${file.map((o) => ligne({ ...o, raison: 'validée ' + quandDT(o.depuis) + (o.detail ? ' · ' + o.detail : '') }, '')).join('')}` : ''}
+      ${mp.length ? `<div class="section-appels" style="padding:12px 20px 0"><h3>Michael Page <span class="num">${mp.length}</span><small>· l’envoi automatique attend ton accord</small></h3></div>${mp.slice(0, 4).map((o) => ligne(o, `<a class="btn petit" href="${esc(o.lien)}" target="_blank" rel="noopener">${ic('ext')}Annonce</a><button class="btn noir petit" type="button" data-postule="${esc(o.cle)}">J’ai postulé</button>`)).join('')}` : ''}</div></div>
+    <div class="carte"><div class="carte-tete"><h2>À ouvrir toi-même</h2><span class="puce plus">${ouv.length}</span></div><p class="note" style="padding:0 20px 10px">Pas de canal automatique (LinkedIn, sites d’entreprise…) : l’annonce s’ouvre, tu postules, puis « J’ai postulé ».</p>
+      <div class="coches">${vus.map((o) => ligne(o, `${o.lien ? `<a class="btn petit" href="${esc(o.lien)}" target="_blank" rel="noopener">${ic('ext')}Annonce</a>` : ''}<button class="btn noir petit" type="button" data-postule="${esc(o.cle)}">J’ai postulé</button>`)).join('')}</div>
+      ${ouv.length > vus.length ? `<div style="padding:12px 20px 18px"><button class="btn petit" type="button" id="voir-offres">Voir les ${ouv.length - vus.length} autres</button></div>` : ''}</div></div>
+    <p class="note">${env.length} candidatures déjà envoyées (lu en direct ; les offres françaises ne sont jamais proposées).</p>`;
+}
+async function postuler(cle, moi, bouton) {
+  const o = OFFRES.find((x) => x.cle === cle); if (!o) return;
+  try {
+    await poster('/api/candidatures/' + encodeURIComponent(cle), { statut: moi ? 'postule_main' : 'valide' }, bouton);
+    toast(moi ? `${o.titre} : noté « postulé »` : `${o.titre} : validée, l’Envoyeur la prend à son prochain passage`);
+    await charger(false);
+  } catch (e) { toast(`${o.titre} : ${e.message}`); }
+}
+
+// ══ COMMERCE ══
+// La liste d'un jour : 1. les rendez-vous de l'agenda (rappels avec une note) ; 2. « à rappeler » sans note ; 3. les relances à 7 jours ; 4. les nouveaux.
+let jourListe = HEURE_P >= 19 ? DEMAIN : AUJ, ouvertRappel = null, ouvertRenvoi = null;
+function corpsCategorie(k) { return D.modeles.site.corps.replace('Ce que je propose', k.phrase + '\n\nCe que je propose'); }
+function ouvrirCategorie(nom) {
+  const k = D.categories.find((x) => x.nom === nom), m = D.modeles.site;
+  tiroir('Site web · e-mail par catégorie', k.nom, `${k.metiers.join(', ')} · ${k.n} commerces dans ta base`,
+    `<div class="note">Objet : <b style="color:var(--encre)">${esc(m.objet)}</b></div><div class="lettre">${esc(corpsCategorie(k))}</div>
+    <div class="bloc"><span class="etiq">Ce qui change selon la catégorie</span><div>${esc(k.phrase)}</div></div>
+    <div class="bloc"><span class="etiq">Source du chiffre, vérifiée le 08/10</span>${m.sources.map(([c, s, u]) => `<div class="source"><b style="color:var(--encre)">${esc(c)}</b><br>${esc(s)} · <a href="${esc(u)}" target="_blank" rel="noopener">la source</a></div>`).join('')}</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="btn" type="button" data-nouvelle="E-mail par catégorie · ${esc(k.nom)}">Demander une retouche</button><span class="raison">Pour valider la phrase, demande-le : elle sera posée par Claude.</span></div>`);
+}
+function carteCategories() {
+  return `<div class="carte"><div class="carte-tete"><h2>L’e-mail par catégorie</h2><span class="puce alerte plus">À valider</span></div><p class="note" style="padding:0 20px 10px">Le même e-mail, avec une phrase propre au métier (proposition du 14/10, pas encore en service).</p>
+    <div class="coches">${D.categories.map((k) => `<button class="coche" type="button" data-categorie="${esc(k.nom)}" style="border-left:0;border-right:0;border-bottom:0;background:none;text-align:left;grid-template-columns:minmax(0,1fr) auto"><span style="min-width:0"><b>${esc(k.nom)}</b><small>${esc(k.metiers.join(', '))}</small></span><span class="note num">${k.n}</span></button>`).join('')}</div></div>`;
+}
+const notes = new Map(); // vide : chaque appel noté est relu sur le serveur
+const envoyes = new Set();
+const segDe = (c) => c.seg;
+function listeDuJour(seg, jour) {
+  const dejaNote = (c) => notes.has(c.cle);
+  const r = RAPPELS.filter((x) => x.jour <= jour).map((x) => ({ x, c: C.find((c) => c.cle === x.cle) })).filter(({ c }) => c && segDe(c) === seg && !dejaNote(c) && c.tel && c.etape !== 'non');
+  const rdv = r.filter(({ x }) => x.note).map(({ c, x }) => ({ c, type: 'rdv', note: x.note, jour: x.jour }));
+  const arap = r.filter(({ x }) => !x.note).map(({ c, x }) => ({ c, type: 'rappel', jour: x.jour, motif: x.motif }));
+  const avecRappel = new Set(RAPPELS.map((x) => x.cle));
+  const rel = C.filter((c) => segDe(c) === seg && c.etape === 'attente' && c.envoye && plus(c.envoye, 7) <= jour && !avecRappel.has(c.cle) && !dejaNote(c) && c.tel).map((c) => ({ c, type: 'relance' }));
+  const nouv = C.filter((c) => segDe(c) === seg && c.etape === 'aappeler' && c.tel && !avecRappel.has(c.cle) && !dejaNote(c)).map((c) => ({ c, type: 'nouveau' }));
+  return [...rdv, ...arap, ...rel, ...nouv];
+}
+let voirTousNouveaux = false;
+function carteAppel({ c, type, note, jour, motif }) {
+  const ctx = type === 'rdv' ? `<div class="note-rdv"><b>Ta note :</b> ${esc(note)}</div>` : '';
+  const quoi = { rdv: `Rendez-vous de l’agenda · ${quand(jour)}`, rappel: `${motif ? motif.charAt(0).toUpperCase() + motif.slice(1) : 'À rappeler, sans note'}${jour < AUJ ? ' · en retard depuis le ' + jj(jour) : ''}`,
+    relance: `Relance : ${c.seg === 'site' ? 'maquette' : 'e-mail'} envoyé${c.seg === 'site' ? 'e' : ''} ${quandDT(c.envoye)}, sans réponse depuis 7 jours`, nouveau: c.dernier || 'Jamais appelé' }[type];
+  return `<div class="carte appel" data-cle="${c.cle}">
+    <div class="qui"><b>${esc(c.nom)}</b><small>${esc(c.metier)} · ${esc(c.ville)}</small></div>
+    <div class="numero"><span class="num">${esc(c.tel)}</span><button type="button" data-copier="${esc(c.tel)}" aria-label="Copier le numéro">${ic('copier')}</button></div>
+    <div class="resultat"><button class="btn noir" type="button" data-res="interesse">Intéressé</button><button class="btn" type="button" data-res="non">Pas intéressé</button><button class="btn" type="button" data-res="pasjoint">Pas joint</button><button class="btn" type="button" data-res="rappeler" aria-expanded="${ouvertRappel === c.cle}">À rappeler</button></div>
+    <div class="contexte">${ctx}<span>${esc(quoi)}</span>${c.slug ? `<a href="https://cockpit.raime.fr/demo/${esc(c.slug)}" target="_blank" rel="noopener">Voir sa maquette</a>` : ''}<a href="#" data-fiche="${c.cle}">Fiche</a></div>
+    ${ouvertRappel === c.cle ? `<div class="form-rappel"><input type="date" id="r-date" value="${DEMAIN}" min="${DEMAIN}" aria-label="Date du rappel"><input type="text" id="r-note" placeholder="Une note ? (ex. : rappeler après 14 h, veut un devis)" aria-label="Note"><button class="btn noir petit" type="button" data-noter="${c.cle}">Noter</button>
+      <p>Sans note, il revient dans ta liste d’appels le jour choisi. Avec une note, il part à l’agenda à cette date, ta note visible.</p></div>` : ''}</div>`;
+}
+function sectionsAppels(seg) {
+  const l = listeDuJour(seg, jourListe), g = (t) => l.filter((x) => x.type === t);
+  const S = [['rdv', 'Rendez-vous de l’agenda', 'avec ta note'], ['rappel', 'À rappeler', 'notés sans note : ils reviennent ici'], ['relance', 'Relances à 7 jours', 'e-mail sans réponse : ils remontent seuls'], ['nouveau', 'Nouveaux à appeler', '']];
+  return S.map(([t, n, s]) => { let x = g(t); if (!x.length) return ''; const tout = x.length; if (t === 'nouveau' && !voirTousNouveaux) x = x.slice(0, 12);
+    return `<div class="section-appels"><h3>${n} <span class="num">${tout}</span>${s ? `<small>· ${s}</small>` : ''}</h3><div class="appels">${x.map(carteAppel).join('')}</div>
+      ${t === 'nouveau' && tout > x.length ? `<button class="btn" style="margin-top:10px" type="button" id="voir-nouveaux">Voir les ${tout - x.length} autres</button>` : ''}</div>`; }).join('') || '<div class="carte vide">Personne à appeler ce jour-là.</div>';
+}
+function bandeauJour(seg) {
+  return `<div class="bandeau"><div class="filtres" role="group" aria-label="Jour">${[[AUJ, 'Aujourd’hui'], [DEMAIN, 'Demain, ' + dateFr(DEMAIN, { weekday: 'long', day: 'numeric' })]].map(([j, n]) => `<button class="filtre" type="button" data-jourl="${j}" aria-pressed="${jourListe === j}">${n}<b class="num">${listeDuJour(seg, j).filter((x) => x.type !== 'nouveau').length}</b></button>`).join('')}</div>
+    <p class="note" style="margin-left:auto">Tu appelles avec ton téléphone, puis un clic sur le résultat : la liste et l’agenda suivent.</p></div>`;
+}
+function carteModele(k) {
+  const m = D.modeles[k];
+  return `<div class="carte"><div class="carte-tete"><h2>Le modèle d’e-mail</h2><span class="puce alerte plus">À valider</span></div>
+    <div style="padding:0 20px 18px;display:flex;flex-direction:column;gap:10px"><div class="note">Objet : <b style="color:var(--encre)">${esc(m.objet)}</b></div>
+    <p class="note">Ce que fait rAIme, le risque de ne rien faire, un chiffre sourcé, puis l’offre et l’accompagnement.</p>
+    <button class="btn noir petit" style="align-self:flex-start" type="button" data-modele="${k}">Lire le modèle et ses sources</button></div></div>`;
+}
+function ouvrirModele(k) {
+  const m = D.modeles[k];
+  tiroir(k === 'site' ? 'Site web · commerces' : 'Intégration IA · entreprises', 'Le modèle d’e-mail', 'Objet : ' + m.objet,
+    `<div class="lettre">${esc(m.corps)}</div>${m.exemple ? `<div class="bloc"><span class="etiq">Exemple de chiffre du pré-audit</span><div>${esc(m.exemple)}</div></div>` : ''}
+    <div class="bloc"><span class="etiq">Sources vérifiées le 08/10</span>${m.sources.map(([c, s, u]) => `<div class="source"><b style="color:var(--encre)">${esc(c)}</b><br>${esc(s)} · <a href="${esc(u)}" target="_blank" rel="noopener">la source</a></div>`).join('')}</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="btn" type="button" data-nouvelle="Modèle d’e-mail · ${k === 'site' ? 'site web' : 'intégration IA'}">Demander une retouche</button><span class="raison">Modèle relevé le 08/10.</span></div>`);
+}
+function siteweb() {
+  const rel = Object.entries(D.relances), bloq = C.filter((c) => c.seg === 'site' && c.etape === 'completer');
+  return `${bandeauJour('site')}<div class="deux"><div style="display:flex;flex-direction:column;gap:18px;min-width:0">${sectionsAppels('site')}</div>
+    <aside class="cote">
+      <div class="carte"><div class="carte-tete"><h2>Relances automatiques</h2></div><p class="note" style="padding:0 20px 8px">Une maquette sans réponse au bout de 7 jours remonte seule dans ta liste, ce jour-là.</p>
+        <ul class="mini-liste">${D.relancesRetard ? `<li><span>En retard, déjà dans ta liste</span><span class="num">${D.relancesRetard}</span></li>` : ''}${rel.map(([j, n]) => `<li><span>${dateFr(j, { weekday: 'long', day: 'numeric' })}</span><span class="num">${n}</span></li>`).join('') || (D.relancesRetard ? '' : '<li><span>Aucune à venir</span><span></span></li>')}</ul></div>
+      <div class="carte"><div class="carte-tete"><h2>Bloquées</h2><span class="puce panne plus">${bloq.length}</span></div><p class="note" style="padding:0 20px 10px">Sans numéro de téléphone : validées sans pouvoir partir, ou numéro à lire dans un annuaire.</p>
+        <div class="coches">${bloq.map((c) => `<button class="coche" type="button" data-fiche="${c.cle}" style="border-left:0;border-right:0;border-bottom:0;background:none;text-align:left;grid-template-columns:minmax(0,1fr) auto"><span style="min-width:0"><b>${esc(c.nom)}</b><small>${esc(c.metier)} · ${esc(c.ville)}</small></span><span class="note">Compléter</span></button>`).join('') || '<div class="vide">Aucune.</div>'}</div></div>
+      ${carteCategories()}</aside></div>`;
+}
+const choisis = new Set();
+function integration() {
+  const b = D.brouillons.filter((k) => !envoyes.has(k)).map((k) => C.find((c) => c.cle === k)).filter(Boolean);
+  return `<div class="deux"><div style="display:flex;flex-direction:column;gap:18px;min-width:0">
+      <div class="carte"><div class="carte-tete"><h2>E-mails prêts à valider</h2><span class="puce plus">${b.length}</span></div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:0 20px 12px"><button class="btn petit" type="button" id="tout-choisir">${choisis.size === b.length && b.length ? 'Tout désélectionner' : 'Tout sélectionner'}</button>
+          <button class="btn noir petit" type="button" id="envoyer-choix"${choisis.size ? '' : ' disabled'}>Valider la sélection (${choisis.size})</button><span class="note" style="margin-left:auto">L’Expéditeur les envoie chaque matin à 8 h, chacun avec le pré-audit de son métier</span></div>
+        <div class="coches">${b.map((c) => `<label class="coche"><input type="checkbox" data-choix="${c.cle}"${choisis.has(c.cle) ? ' checked' : ''}><span style="min-width:0"><b>${esc(c.nom)}</b><small>${esc(c.metier)} · ${esc(c.ville)} · ${esc(c.email || '')}</small></span><button class="btn petit discret" type="button" data-fiche="${c.cle}">Lire</button></label>`).join('') || '<div class="vide">Tout est parti.</div>'}</div></div>
+      ${bandeauJour('ia')}${sectionsAppels('ia')}</div>
+    <aside class="cote"><div class="carte"><div class="carte-tete"><h2>Relances automatiques</h2></div><p class="note" style="padding:0 20px 8px">Un pré-audit sans réponse au bout de 7 jours remonte seul dans ta liste, ce jour-là.</p>
+      <ul class="mini-liste">${D.relancesIaRetard ? `<li><span>En retard, déjà dans ta liste</span><span class="num">${D.relancesIaRetard}</span></li>` : ''}${Object.entries(D.relancesIa || {}).map(([j, n]) => `<li><span>${dateFr(j, { weekday: 'long', day: 'numeric' })}</span><span class="num">${n}</span></li>`).join('') || (D.relancesIaRetard ? '' : '<li><span>Aucune à venir</span><span></span></li>')}</ul></div>
+      ${carteModele('ia')}</aside></div>`;
+}
+// Agenda : seulement les rappels avec une note
+let curseur = AUJ;
+function agenda() {
+  const o = RAPPELS.filter((r) => r.note).sort((a, b) => a.jour.localeCompare(b.jour));
+  const gr = [['En retard', (r) => r.jour < AUJ], ['Aujourd’hui', (r) => r.jour === AUJ], ['Demain', (r) => r.jour === DEMAIN], ['Plus tard', (r) => r.jour > DEMAIN]];
+  const d = new Date(curseur + 'T12:00:00'), titre = d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  const sansNote = RAPPELS.filter((r) => !r.note).length;
+  return `<div class="boite"><div class="carte liste">${gr.map(([t, f]) => { const l = o.filter(f); return l.length ? `<h3><span>${t}</span><span class="num">${l.length}</span></h3>` + l.map((r) => `<button class="element" type="button" data-rappel="${r.id}"><b>${esc(r.nom)} · ${quand(r.jour)}</b><small>${esc(r.note)}</small></button>`).join('') : ''; }).join('')}
+      <p class="note" style="padding:12px 12px 6px">${sansNote} rappels sans note ne sont pas ici : ils reviennent dans ta liste d’appels, le jour dit. Glisse un rappel sur un autre jour pour le reporter. <a href="/agenda" style="color:var(--info);font-weight:700;text-decoration:none">L’agenda complet</a></p></div>
+    <div class="carte" style="padding:18px 20px 20px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:16px"><h2 style="margin:0 auto 0 0;font-size:22px;font-weight:600;letter-spacing:-.02em">${titre.charAt(0).toUpperCase() + titre.slice(1)}</h2>
+      <button class="rond" type="button" id="prec" aria-label="Mois précédent">‹</button><button class="rond" type="button" id="suiv" aria-label="Mois suivant">›</button></div>${mois(o)}</div></div>`;
+}
+function mois(o) {
+  const d = new Date(curseur + 'T12:00:00'), p = new Date(d.getFullYear(), d.getMonth(), 1, 12), s = new Date(p); s.setDate(1 - ((p.getDay() + 6) % 7));
+  let h = ['lun', 'mar', 'mer', 'jeu', 'ven', 'sam', 'dim'].map((j) => `<div class="etiq" style="padding:0 6px 6px">${j}</div>`).join('');
+  for (let i = 0; i < 42; i++) { const c = new Date(s); c.setDate(s.getDate() + i); const j = isoDe(c), l = o.filter((r) => r.jour === j), hors = c.getMonth() !== d.getMonth();
+    h += `<div data-jour="${j}" style="min-height:96px;padding:6px;border-radius:12px;background:var(--surface-2);display:flex;flex-direction:column;gap:4px;min-width:0;${hors ? 'opacity:.4' : ''}">
+      <span class="num" style="width:24px;height:24px;display:grid;place-items:center;border-radius:50%;font-size:12px;font-weight:700;${j === AUJ ? 'background:var(--noir);color:var(--sur-noir)' : 'color:var(--doux)'}">${c.getDate()}</span>
+      ${l.map((r) => `<div draggable="true" data-id="${r.id}" data-rappel="${r.id}" title="${esc(r.nom)} : ${esc(r.note)}" style="font-size:11.5px;padding:4px 8px;border-radius:8px;background:var(--noir);color:var(--sur-noir);cursor:grab;line-height:1.3"><b>${esc(r.nom)}</b><div style="opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.note)}</div></div>`).join('')}</div>`; }
+  return `<div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px">${h}</div>`;
+}
+// Clients : seulement les intéressés, séparés Site web / Intégration IA (demande du 08/10 au soir)
+const interesses = () => C.filter((c) => c.etape === 'interesse' || c.etape === 'gagne');
+function clients() {
+  const bloc = (seg, titre, sous) => { const l = interesses().filter((c) => c.seg === seg);
+    return `<div class="carte"><div class="carte-tete"><h2>${titre}</h2><span class="puce ok plus">${l.length}</span></div><p class="note" style="padding:0 20px 12px">${sous}</p>
+      ${l.length ? `<div class="coches">${l.map((c) => { const r = RAPPELS.find((x) => x.cle === c.cle);
+        return `<div class="coche" style="grid-template-columns:minmax(0,1fr) auto auto"><span style="min-width:0"><b>${esc(c.nom)}</b><small>${esc(c.metier)} · ${esc(c.ville)} · ${esc(c.tel || '')}</small><small>${esc(c.dernier || '')}${r ? ' · ' + (r.note ? 'à l’agenda ' : 'à rappeler ') + quand(r.jour) : ''}</small></span>
+          ${seg === 'site' && c.slug ? `<a class="btn petit" href="https://cockpit.raime.fr/demo/${esc(c.slug)}" target="_blank" rel="noopener">Sa maquette</a>` : '<span></span>'}<button class="btn noir petit" type="button" data-fiche="${c.cle}">Fiche</button></div>`; }).join('')}</div>`
+        : '<div class="vide">Personne pour l’instant. Un clic sur « Intéressé » dans une liste d’appels l’ajoute ici.</div>'}</div>`; };
+  return `<div class="deux" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr)">${bloc('site', 'Site web', 'Intéressés par un site à 500 €.')}${bloc('ia', 'Intégration IA', 'Intéressés par l’IA dans leur entreprise.')}</div>
+    <p class="note">Les autres fiches restent dans Site web et Intégration IA ; « Pas intéressé » sort de toutes les listes.</p>`;
+}
+// la recherche du haut : toutes les fiches, ouvertes dans le panneau
+function chercherPartout(q) {
+  q = q.toLowerCase().trim(); if (!q) return;
+  const l = C.filter((c) => (c.nom + ' ' + c.ville + ' ' + c.metier + ' ' + (c.tel || '')).toLowerCase().includes(q)).slice(0, 30);
+  if (l.length === 1) return fiche(l[0]);
+  tiroir('Recherche', `« ${q} »`, `${l.length} fiche${l.length > 1 ? 's' : ''}`, l.length ? `<div class="coches">${l.map((c) => `<button class="coche" type="button" data-fiche="${c.cle}" style="border-left:0;border-right:0;border-bottom:0;background:none;text-align:left;grid-template-columns:minmax(0,1fr) auto"><span style="min-width:0"><b>${esc(c.nom)}</b><small>${c.seg === 'site' ? 'Site web' : 'Intégration IA'} · ${esc(c.metier)} · ${esc(c.ville)}</small></span><span class="note">${esc(notes.get(c.cle) || ETAPE_TXT[c.etape] || '')}</span></button>`).join('')}</div>` : '<div class="vide">Aucune fiche.</div>');
+  $$('[data-fiche]', $('#t-corps')).forEach((b) => b.onclick = () => fiche(C.find((c) => c.cle === b.dataset.fiche)));
+}
+let segC = 'tous', statC = 'tous', chercheC = '';
+const contacte = (c) => ['attente', 'rappel', 'interesse', 'non', 'appele', 'repondu', 'gagne'].includes(c.etape);
+const STATS_C = [['tous', 'Tous', () => true], ['contactes', 'Déjà contactés', contacte], ['recontacter', 'À recontacter', (c) => !!c.rappel], ['repondu', 'Ont répondu', (c) => ['interesse', 'non', 'repondu', 'gagne'].includes(c.etape)]];
+const ETAPE_TXT = { non: 'Pas intéressé', appele: 'Appelé', aenvoyer: 'E-mail prêt à valider', rappel: 'À rappeler', interesse: 'Intéressé', aappeler: 'À appeler', attente: 'Contacté, sans réponse', completer: 'Fiche à compléter',
+  repondu: 'A répondu à l’e-mail', valide: 'Validé, pas encore parti', gagne: 'Client', nonrecu: 'E-mail non reçu' };
+function clientsTous() {
+  const q = chercheC.toLowerCase(), f = STATS_C.find((s) => s[0] === statC)[2];
+  const base = C.filter((c) => segC === 'tous' || c.seg === segC);
+  const l = base.filter(f).filter((c) => !q || (c.nom + ' ' + c.ville + ' ' + c.metier + ' ' + (c.tel || '')).toLowerCase().includes(q)).sort((a, b) => a.nom.localeCompare(b.nom));
+  return `<div class="bandeau"><div class="filtres" role="group" aria-label="Activité">${[['tous', 'Tout'], ['site', 'Site web'], ['ia', 'Intégration IA']].map(([k, n]) => `<button class="filtre" type="button" data-segc="${k}" aria-pressed="${segC === k}">${n}</button>`).join('')}</div>
+      <span style="width:1px;height:24px;background:var(--bord);margin:0 4px"></span>
+      <div class="filtres" role="group" aria-label="Statut">${STATS_C.map(([k, n, g]) => `<button class="filtre" type="button" data-statc="${k}" aria-pressed="${statC === k}">${n}<b class="num">${base.filter(g).length}</b></button>`).join('')}</div>
+      <label class="cherche"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/></svg><input id="cherche-c" value="${esc(chercheC)}" placeholder="Nom, ville, métier, numéro…" aria-label="Chercher un client"></label></div>
+    <div class="carte defile"><table class="tableau"><thead><tr><th>Client</th><th>Ville</th><th>Où en est-on</th><th>Dernier contact</th><th>Téléphone</th></tr></thead><tbody>
+      ${l.slice(0, 200).map((c) => `<tr class="cliquable" data-fiche="${c.cle}"><td class="qui"><b>${esc(c.nom)}</b><small>${c.seg === 'site' ? 'Site web' : 'Intégration IA'} · ${esc(c.metier)}</small></td><td>${esc(c.ville)}</td>
+        <td><span class="puce${c.etape === 'interesse' ? ' ok' : ''}">${notes.has(c.cle) ? esc(notes.get(c.cle)) : ETAPE_TXT[c.etape] || ''}${c.rappel ? ' · ' + nomJour(c.rappel) : ''}</span></td><td style="color:var(--doux)">${esc(c.dernier || '—')}</td><td class="num" style="white-space:nowrap">${esc(c.tel || '—')}</td></tr>`).join('') || '<tr><td colspan="5" class="vide">Aucun client.</td></tr>'}</tbody></table></div>
+    ${l.length > 200 ? `<p class="note">${l.length - 200} autres : précise ta recherche.</p>` : ''}`;
+}
+// noter un appel : /api/v6/appel (l'agenda et la liste d'appels du serveur) ; puis tout est relu
+async function noterAppel(cle, res, jour, note) {
+  const c = C.find((x) => x.cle === cle); if (!c) return;
+  const boutons = $$(`[data-cle="${cle}"] button`); boutons.forEach((b) => { b.disabled = true; });
+  const resultat = { interesse: 'interesse', non: 'pas_interesse', pasjoint: 'pas_joint', rappeler: 'rappeler' }[res];
+  try {
+    const d = await poster('/api/v6/appel/' + cle, resultat === 'rappeler' ? { resultat, echeance: jour, note: note || null } : { resultat });
+    const suite = d.suivant ? quand(d.suivant.jour) : null;
+    const msg = resultat === 'rappeler' ? (note ? `${c.nom} : à l’agenda ${quand(jour)}, avec ta note` : `${c.nom} : revient dans ta liste d’appels ${quand(jour)}`)
+      : resultat === 'interesse' ? `${c.nom} : intéressé, noté${suite ? ' ; relance ' + suite : ''}` : resultat === 'pas_joint' ? `${c.nom} : pas joint${suite ? ', il revient dans ta liste ' + suite : ''}`
+      : `${c.nom} : pas intéressé, noté`;
+    ouvertRappel = null; toast(msg); await charger(false);
+  } catch (e) { boutons.forEach((b) => { if (b.isConnected) b.disabled = false; }); toast(`${c.nom} : ${e.message}`); }
+}
+
+// ══ TIROIR, FICHE CLIENT, DEMANDE ══
+let dernierFocus = null;
+function tiroir(sur, titre, sous, html) { dernierFocus = document.activeElement; $('#t-sur').textContent = sur; $('#t-titre').textContent = titre; $('#t-sous').textContent = sous; $('#t-corps').innerHTML = html;
+  $('#tiroir').classList.add('ouvert'); $('#tiroir').setAttribute('aria-hidden', 'false'); $('#voile').classList.add('ouvert'); $('#t-fermer').focus(); }
+function fermerTiroir() { if (!$('#tiroir').classList.contains('ouvert')) return; $('#tiroir').classList.remove('ouvert'); $('#tiroir').setAttribute('aria-hidden', 'true'); $('#voile').classList.remove('ouvert'); if (dernierFocus && dernierFocus.focus) dernierFocus.focus(); }
+$('#t-fermer').onclick = fermerTiroir; $('#voile').onclick = fermerTiroir;
+function fiche(c) {
+  const r = RAPPELS.find((x) => x.cle === c.cle);
+  tiroir(c.seg === 'site' ? 'Site web · commerce' : 'Intégration IA · entreprise', c.nom, `${c.metier} · ${c.ville}`,
+    `<div class="bloc"><span class="etiq">Où en est-on</span><div style="font-weight:700">${esc(notes.get(c.cle) || ETAPE_TXT[c.etape] || '')}${r ? ' · ' + (r.note ? 'à l’agenda ' : 'dans ta liste ') + quand(r.jour) : ''}</div>${r && r.note ? `<div>${esc(r.note)}</div>` : ''}${c.raison ? `<div style="color:var(--panne)">${esc(c.raison)}</div>` : ''}</div>
+    <dl class="meta"><dt>Téléphone</dt><dd class="num" style="font-size:18px;font-weight:600">${esc(c.tel || '—')}</dd><dt>E-mail</dt><dd>${esc(c.email || '—')}</dd></dl>
+    ${c.corps ? `<details class="bloc"><summary style="cursor:pointer;font-weight:700">L’e-mail ${c.etape === 'aenvoyer' ? 'prêt' : 'envoyé'} · ${esc(c.sujet || '')}</summary><div class="lettre" style="margin-top:10px;background:var(--surface)">${esc(c.corps)}</div></details>` : ''}
+    <div><span class="etiq">Historique</span><ul class="histo" style="margin-top:10px">${(c.histo && c.histo.length ? c.histo : [['—', 'Rien encore']]).map(([t, x]) => `<li><time>${esc(t)}</time><span>${esc(x)}</span></li>`).join('')}</ul></div>
+    ${c.seg === 'site' && c.statut === 'a_completer' ? `<div class="bloc"><span class="etiq">Compléter la fiche</span><div style="display:flex;gap:8px;flex-wrap:wrap"><input id="f-numero" type="tel" placeholder="04 50 12 34 56" aria-label="Son numéro, lu dans un annuaire" style="height:34px;border:1px solid var(--bord);border-radius:10px;padding:0 10px;background:var(--surface)"><button class="btn noir petit" type="button" id="f-numero-ok" data-vid="${c.vid}">Enregistrer le numéro</button></div><span class="raison">Le commerce passe ensuite dans ta liste d’appels.</span></div>` : ''}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">${c.slug ? `<a class="btn petit" href="https://cockpit.raime.fr/demo/${esc(c.slug)}" target="_blank" rel="noopener">${ic('ext')}Voir la maquette</a><button class="btn petit" type="button" disabled>Renvoyer la maquette</button>` : ''}
+      <button class="btn petit" type="button" data-nouvelle="Client › ${esc(c.nom)}">${ic('drapeau')}Signaler</button></div>
+    ${c.slug ? '<p class="raison" style="margin:0">« Renvoyer la maquette » n’est pas encore branché : l’envoi d’une maquette à la demande n’existe pas encore.</p>' : ''}`);
+  const ok = $('#f-numero-ok'); if (ok) ok.onclick = async () => { try { await poster('/api/vitrines/' + ok.dataset.vid, { action: 'telephone', numero: $('#f-numero').value }, ok); toast(c.nom + ' : numéro enregistré, il passe dans ta liste d’appels'); fermerTiroir(); await charger(false); } catch (e) { toast(e.message); } };
+}
+function ouvrirDemande(sujet) {
+  const opts = ['Le cockpit en général', ...MENU.flatMap(([g, l]) => l.map(([, n]) => g + ' › ' + n))]; if (sujet && !opts.includes(sujet)) opts.unshift(sujet);
+  $('#f-sujet').innerHTML = opts.map((o) => `<option${o === sujet ? ' selected' : ''}>${esc(o)}</option>`).join(''); $('#f-texte').value = '';
+  $('#fenetre').classList.add('ouverte'); setTimeout(() => $('#f-texte').focus(), 30);
+}
+const fermerDemande = () => $('#fenetre').classList.remove('ouverte');
+$('#f-annuler').onclick = fermerDemande; $('#fenetre').addEventListener('click', (e) => { if (e.target.id === 'fenetre') fermerDemande(); });
+$('#f-demande').addEventListener('submit', async (e) => { e.preventDefault(); const t = $('#f-texte').value.trim(); if (!t) { $('#f-texte').focus(); return; }
+  try { const d = await poster('/api/v6/demande', { sujet: $('#f-sujet').value, texte: t }, $('#f-demande button[type="submit"]')); fermerDemande(); toast(`Demande n° ${d.id} notée pour Claude : tu la suis dans « Mises à jour »`); await charger(false); }
+  catch (err) { toast('Demande non envoyée : ' + err.message); } });
+$('#nouvelle-demande').onclick = () => ouvrirDemande(null);
+
+// ══ RENDU ET NAVIGATION ══
+let vue = 'siteweb';
+const PAGES = { etat, vue3d, majs, factures, siteweb, integration, agenda, clients, clipping: () => pageAgent('clipping'), trading: () => pageAgent('trading'), dropshipping: () => pageAgent('dropshipping'), libre: () => pageAgent('libre'), candidatures: () => pageAgent('candidatures') };
+function rendre() {
+  if (vue !== 'vue3d') demonter3d();
+  document.body.classList.toggle('plein', vue === 'vue3d');
+  $('#titre').textContent = TITRES[vue][0]; $('#sous-titre').textContent = TITRES[vue][1];
+  $('#menu').innerHTML = MENU.map(([g, items]) => `<div class="groupe"><span>${g}</span>${items.map(([k, n, f, rouge]) => { const c = f ? f() : 0;
+    return `<button class="lien" type="button" data-aller="${k}"${k === vue ? ' aria-current="page"' : ''}>${ic(k)}<span>${n}</span>${c ? `<span class="compte num${rouge ? ' rouge' : ''}">${c}</span>` : ''}</button>`; }).join('')}</div>`).join('');
+  if (vue === 'vue3d' && V) return;
+  $('#vue').innerHTML = `<div style="display:flex;flex-direction:column;gap:18px">${PAGES[vue]()}</div>`;
+  if (vue === 'vue3d') requestAnimationFrame(monter3d);
+  brancher();
+}
+function aller(v) { fermerTiroir(); if (v !== vue) { vue = v; ouvertRappel = null; window.scrollTo(0, 0); } rendre(); }
+function brancher() {
+  const v = $('#vue');
+  $$('.ligne-a[data-agent]', v).forEach((b) => b.onclick = () => ficheAgent(AG.find((a) => a.id === b.dataset.agent)));
+  $$('[data-jourl]', v).forEach((b) => b.onclick = () => { jourListe = b.dataset.jourl; ouvertRappel = null; rendre(); });
+  $$('[data-res]', v).forEach((b) => b.onclick = () => { const cle = b.closest('[data-cle]').dataset.cle; if (b.dataset.res === 'rappeler') { ouvertRappel = ouvertRappel === cle ? null : cle; rendre(); const n = $('#r-note'); if (n) n.focus(); } else noterAppel(cle, b.dataset.res); });
+  $$('[data-noter]', v).forEach((b) => b.onclick = () => noterAppel(b.dataset.noter, 'rappeler', $('#r-date').value || DEMAIN, $('#r-note').value.trim()));
+  const rn = $('#r-note'); if (rn) rn.onkeydown = (e) => { if (e.key === 'Enter') $('[data-noter]').click(); };
+  const vn = $('#voir-nouveaux'); if (vn) vn.onclick = () => { voirTousNouveaux = true; rendre(); };
+  const vo = $('#voir-offres'); if (vo) vo.onclick = () => { voirToutesOffres = true; rendre(); };
+  $$('[data-postuler]', v).forEach((b) => b.onclick = () => postuler(b.dataset.postuler, false, b));
+  $$('[data-postule]', v).forEach((b) => b.onclick = () => postuler(b.dataset.postule, true, b));
+  $$('[data-categorie]', v).forEach((b) => b.onclick = () => ouvrirCategorie(b.dataset.categorie));
+  $$('[data-copier]', v).forEach((b) => b.onclick = async () => { try { await navigator.clipboard.writeText(b.dataset.copier); toast('Numéro copié'); } catch (e) { toast('Sélectionne le numéro pour le copier'); } });
+  $$('[data-fiche]', v).forEach((r) => r.onclick = (e) => { e.preventDefault(); e.stopPropagation(); fiche(C.find((c) => c.cle === r.dataset.fiche)); });
+  $$('[data-modele]', v).forEach((b) => b.onclick = () => ouvrirModele(b.dataset.modele));
+  $$('[data-choix]', v).forEach((b) => b.onchange = () => { b.checked ? choisis.add(b.dataset.choix) : choisis.delete(b.dataset.choix); rendre(); });
+  const tc = $('#tout-choisir'); if (tc) tc.onclick = () => { const l = D.brouillons.filter((k) => !envoyes.has(k)); if (choisis.size === l.length) choisis.clear(); else l.forEach((k) => choisis.add(k)); rendre(); };
+  const ec = $('#envoyer-choix'); if (ec) ec.onclick = async () => {
+    ec.disabled = true; let ok = 0; const refus = [];
+    for (const k of [...choisis]) { const c = C.find((x) => x.cle === k); if (!c || !c.outreach) continue; try { await poster('/api/prospection/' + c.outreach, { action: 'valide' }); ok++; choisis.delete(k); } catch (e) { refus.push(c.nom); } }
+    toast(`${ok} e-mail${ok > 1 ? 's' : ''} validé${ok > 1 ? 's' : ''} : l’Expéditeur les envoie à son prochain passage, à 8 h${refus.length ? ' ; refusé : ' + refus.join(', ') : ''}`); await charger(false); };
+  const pr = $('#prec'), su = $('#suiv'); const dec = (s) => { const d = new Date(curseur + 'T12:00:00'); d.setMonth(d.getMonth() + s, 1); curseur = isoDe(d); rendre(); };
+  if (pr) { pr.onclick = () => dec(-1); su.onclick = () => dec(1); }
+  $$('[data-rappel]', v).forEach((b) => b.onclick = () => { const r = RAPPELS.find((x) => x.id === Number(b.dataset.rappel)); const c = r && C.find((x) => x.cle === r.cle); if (c) fiche(c); });
+  $$('[draggable="true"]', v).forEach((p) => p.addEventListener('dragstart', (e) => e.dataTransfer.setData('text/plain', p.dataset.id)));
+  $$('[data-jour]', v).forEach((c) => { c.addEventListener('dragover', (e) => { e.preventDefault(); c.style.outline = '2px dashed var(--encre)'; }); c.addEventListener('dragleave', () => { c.style.outline = ''; });
+    c.addEventListener('drop', async (e) => { e.preventDefault(); c.style.outline = ''; const r = RAPPELS.find((x) => x.id === Number(e.dataTransfer.getData('text/plain'))); if (!r || r.jour === c.dataset.jour) return;
+      try { await poster('/api/agenda/' + r.id, { action: 'reporter', echeance: c.dataset.jour }); toast(`${r.nom} reporté ${quand(c.dataset.jour)}`); await charger(false); } catch (err) { toast(`${r.nom} : ${err.message}`); } }); });
+  $$('[data-segc]', v).forEach((b) => b.onclick = () => { segC = b.dataset.segc; rendre(); });
+  $$('[data-statc]', v).forEach((b) => b.onclick = () => { statC = b.dataset.statc; rendre(); });
+  const cc = $('#cherche-c'); if (cc) cc.oninput = () => { chercheC = cc.value; const p = cc.selectionStart; rendre(); const n = $('#cherche-c'); n.focus(); n.setSelectionRange(p, p); };
+}
+document.addEventListener('click', (e) => {
+  const n = e.target.closest('[data-nouvelle]'); if (n) return ouvrirDemande(n.dataset.nouvelle || null);
+  const a = e.target.closest('[data-aller]'); if (a) return aller(a.dataset.aller);
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { fermerTiroir(); fermerDemande(); if (ouvertRappel) { ouvertRappel = null; rendre(); } } });
+$('#cherche-global').addEventListener('keydown', (e) => { if (e.key === 'Enter') chercherPartout(e.target.value); });
+let ecoute = null;
+function parler(texte) {
+  const t = String(texte || '').replace(/https?:\/\/\S+/g, '').slice(0, 1600); if (!t) return;
+  fetch('/api/voix/parler', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ texte: t }) })
+    .then((r) => { if (!r.ok) throw new Error('voix'); return r.blob(); })
+    .then((b) => { const u = URL.createObjectURL(b), a = new Audio(u); a.onended = () => URL.revokeObjectURL(u); return a.play(); })
+    .catch(() => { if ('speechSynthesis' in window) { const u = new SpeechSynthesisUtterance(t); u.lang = 'fr-FR'; speechSynthesis.cancel(); speechSynthesis.speak(u); } });
+}
+$('#micro').onclick = async () => {
+  if (ecoute) { ecoute.stop(); return; }
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder) { toast('Pas de micro sur ce navigateur'); return; }
+  let flux; try { flux = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }); } catch (e) { toast('Micro refusé'); return; }
+  const rec = new MediaRecorder(flux), morceaux = [], b = $('#micro'); ecoute = rec;
+  b.classList.add('actif'); b.setAttribute('aria-label', 'Arrêter et envoyer à Jarvis'); toast('Je t’écoute : touche le micro quand tu as fini');
+  rec.ondataavailable = (e) => { if (e.data.size) morceaux.push(e.data); };
+  rec.onstop = async () => {
+    flux.getTracks().forEach((t) => t.stop()); ecoute = null; b.classList.remove('actif'); b.setAttribute('aria-label', 'Parler à Jarvis');
+    try {
+      const t = await fetch('/api/voix/transcrire', { method: 'POST', body: new Blob(morceaux, { type: rec.mimeType || 'audio/webm' }) }).then((r) => r.json());
+      const dit = String(t.texte || '').trim(); if (!dit) { toast('Je n’ai rien entendu'); return; }
+      toast('Jarvis réfléchit…');
+      const d = await poster('/api/dire', { message: dit, oral: true });
+      tiroir('Jarvis', '« ' + dit + ' »', 'Sa réponse', `<div class="lettre">${esc(d.reply || '(pas de réponse)')}</div>`); parler(d.reply);
+      if (d.commande) await charger(false);
+    } catch (e) { toast('La voix du serveur ne répond pas'); }
+  };
+  rec.start(250); setTimeout(() => { if (ecoute === rec) rec.stop(); }, 60000);
+};
+$('#theme').onclick = () => { const r = document.documentElement; r.dataset.theme = sombre() ? 'light' : 'dark'; try { localStorage.setItem('cockpit-theme', r.dataset.theme); } catch (e) {} if (vue === 'vue3d') { demonter3d(); rendre(); } };
+// blanc par défaut, comme le reste du site ; le bouton du bas du menu passe en sombre
+{ let t = null; try { t = localStorage.getItem('cockpit-theme'); } catch (e) {} document.documentElement.dataset.theme = t || 'light'; }
+// écrire exige l'en-tête maison (jarvis/serveur.cjs : une autre page ne peut pas l'envoyer)
+const ECRIRE = { 'Content-Type': 'application/json', 'X-Jarvis': '1' };
+async function poster(url, data, bouton) {
+  if (bouton) bouton.disabled = true;
+  try {
+    const r = await fetch(url, { method: 'POST', headers: ECRIRE, body: JSON.stringify(data) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || j.ok === false) throw new Error(j.erreur || (r.status === 403 ? 'refusé par le cockpit' : 'le cockpit ne répond pas (' + r.status + ')'));
+    return j;
+  } finally { if (bouton && bouton.isConnected) bouton.disabled = false; }
+}
+let enLecture = false;
+async function charger(premier) {
+  if (enLecture) return; enLecture = true;
+  try {
+    const r = await fetch('/api/v6', { cache: 'no-store' });
+    if (!r.ok) throw new Error('le cockpit répond ' + r.status);
+    installer(await r.json());
+    rendre();
+  } catch (e) {
+    if (premier) { $('#vue').innerHTML = `<div class="carte vide">Les données n’ont pas pu être lues : ${esc(e.message)}.<br><br><button class="btn petit" type="button" id="relire">Réessayer</button></div>`; $('#relire').onclick = () => charger(true); }
+    else toast('Données non relues : ' + e.message);
+  } finally { enLecture = false; }
+}
+// la relecture régulière n'interrompt jamais un geste en cours (saisie, tiroir, fenêtre, formulaire de rappel)
+const occupe = () => $('#tiroir').classList.contains('ouvert') || $('#fenetre').classList.contains('ouverte') || ouvertRappel || ecoute
+  || ['INPUT', 'TEXTAREA', 'SELECT'].includes((document.activeElement || {}).tagName);
+setInterval(() => { if (document.visibilityState === 'visible' && D && !occupe()) charger(false); }, 120000);
+charger(true);
+</script>
