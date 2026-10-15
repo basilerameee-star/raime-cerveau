@@ -137,9 +137,14 @@ test('livrables : servis en lecture, isolés (sandbox), sans sortie du dossier',
 });
 
 test('l’interface, le coffre (présent ou absent, jamais la valeur), la santé avec la version', async () => {
-  // Depuis le 07/10/2026 : / et /jarvis sont la 3D ; l'ancienne page reste à /jarvis/classique. Les deux gardent la
-  // conversation, la dictée, la saisie et la sphère.
-  const page3d = await (await fetch(base + '/')).text();
+  // Depuis le 15/10/2026 : / et /jarvis sont le cockpit v6 (le « oui » de Basile) ; la 3D reste à /jarvis3d et l'ancienne page à
+  // /jarvis/classique. Les deux gardent la conversation, la dictée, la saisie et la sphère.
+  for (const u of ['/', '/jarvis']) {
+    const v6 = await (await fetch(base + u)).text();
+    assert.match(v6, /<title>Cockpit rAIme<\/title>/, u);
+    assert.match(v6, /fetch\('\/api\/v6'/, u);
+  }
+  const page3d = await (await fetch(base + '/jarvis3d')).text();
   assert.match(page3d, /\/3d\/jarvis\.js/);
   const page = await (await fetch(base + '/jarvis/classique')).text();
   assert.match(page, /J\.A\.R\.V\.I\.S/);

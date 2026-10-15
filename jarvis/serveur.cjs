@@ -276,10 +276,12 @@ async function router(req, res) {
   if (await agenda.router(req, res, { url, m, envoyer, json, autorise, fichierInterface })) return;
   // Le clip farming de KinGKlip : demandes de découpe, clips prêts, liens publiés (jarvis/clips.cjs).
   if (await require('./clips.cjs').router(req, res, { url, m, envoyer, json, fichierInterface })) return;
-  // 15/10/2026 : le cockpit v6, la maquette validée branchée sur les vraies données (à côté de / tant que Basile n'a pas dit oui)
+  // 15/10/2026 : le cockpit v6, la maquette validée branchée sur les vraies données (/v6, /api/v6)
   if (v6 && await v6.router(req, res, { url, m, envoyer, json, autorise })) return;
-  // 07/10/2026 : le tableau de bord EST la 3D (demande de Basile) ; l'ancienne page reste à /jarvis/classique,
-  // liée depuis le menu ··· et proposée quand l'appareil n'a pas WebGL 2. Retour arrière : rétablir ces deux lignes.
+  // 15/10/2026, Basile : « remplace le contenu pour le même lien » : / et /jarvis sont le cockpit v6. La 3D d'avant reste à
+  // /jarvis3d (et revient seule à / si jarvis/v6.cjs manquait). Retour arrière : retirer la ligne suivante.
+  if (m === 'GET' && (url === '/' || url === '/jarvis') && v6) return v6.page(req, res);
+  // 07/10/2026 : le tableau de bord était la 3D (demande de Basile) ; l'ancienne page reste à /jarvis/classique.
   if (m === 'GET' && (url === '/' || url === '/jarvis' || url === '/jarvis3d')) return servir3d(req, res, path.join(TROIS_D, 'index.html'), false);
   if (m === 'GET' && (url === '/jarvis/classique' || url === '/index.html')) return fichierInterface(res, 'index.html');
   // La 3D, à côté de la page actuelle jusqu'à l'accord de Basile (note 20, étapes 7 à 9) : / et /jarvis ne changent pas.

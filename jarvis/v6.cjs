@@ -857,11 +857,13 @@ function envoyerGz(req, res, corps, type) {
     'X-Robots-Tag': 'noindex', 'Content-Length': b.length, ...(gz ? { 'Content-Encoding': 'gzip' } : {}) });
   res.end(b);
 }
+// La page : à /v6, et depuis le 15/10/2026 à / et /jarvis (jarvis/serveur.cjs), sur le « oui » de Basile.
+function page(req, res) {
+  let html; try { html = fs.readFileSync(PAGE); } catch (e) { res.writeHead(404); res.end(); return; }
+  envoyerGz(req, res, html, 'text/html; charset=utf-8');
+}
 async function router(req, res, { url, m, envoyer, json, autorise }) {
-  if (m === 'GET' && (url === '/v6' || url === '/v6/')) {
-    let page; try { page = fs.readFileSync(PAGE); } catch (e) { res.writeHead(404); res.end(); return true; }
-    envoyerGz(req, res, page, 'text/html; charset=utf-8'); return true;
-  }
+  if (m === 'GET' && (url === '/v6' || url === '/v6/')) { page(req, res); return true; }
   if (!url.startsWith('/api/v6')) return false;
   if (m === 'GET' && url === '/api/v6') { envoyerGz(req, res, Buffer.from(JSON.stringify(await assembler())), 'application/json; charset=utf-8'); return true; }
   let r;
@@ -876,4 +878,4 @@ async function router(req, res, { url, m, envoyer, json, autorise }) {
   return false;
 }
 
-module.exports = { router, assembler, noterAppel, demande, preparer, livraisons, etatSource, cibleDe, MESURES, TEXTES };
+module.exports = { router, page, assembler, noterAppel, demande, preparer, livraisons, etatSource, cibleDe, MESURES, TEXTES };
