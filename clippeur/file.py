@@ -135,6 +135,11 @@ def trop_vieux(d, jours=3, maintenant=None):
     return ((maintenant or datetime.datetime.now()) - cree).days >= jours
 
 
+# 16/10/2026, demande de Basile : le montage n'occupe jamais plus de 3 cœurs sur les 8 du serveur. Le 15/10 à 23 h 37,
+# ffmpeg en prenait plus de 5 (charge de 13) et le modèle local d'Hermes tombait à 0,65 mot par seconde.
+COEURS = "3"
+
+
 def main():
     verrou = open(VERROU, "w")
     try:
@@ -195,7 +200,7 @@ def main():
             prevenir("source trop faible : " + d["campagne"], "La vidéo source est en %sp. Il faut %dp au moins pour ne jamais grossir l'image : trouve une version de meilleure qualité (lien du brief, Drive de la marque) et relance." % (h, mini))
             return
     env = dict(os.environ, GEMINI_API_KEY=cle_gemini())
-    cmd = ["docker", "run", "--rm", "-e", "GEMINI_API_KEY", "-v", "%s:/sortie" % CLIPS, "-v", "clippeur-modeles:/root/.cache",
+    cmd = ["docker", "run", "--rm", "--cpus", COEURS, "-e", "GEMINI_API_KEY", "-v", "%s:/sortie" % CLIPS, "-v", "clippeur-modeles:/root/.cache",
            "-v", "/opt/raime/clippeur/campagnes:/campagnes:ro", "-v", "/opt/raime/clippeur/clippeur.py:/app/clippeur.py:ro",
            "raime-clippeur", source, "--campagne", d["campagne"], "--nombre", str(d["nombre"])]
     # le profil de la campagne (tags, hashtags, mots interdits, consignes du brief), s'il existe

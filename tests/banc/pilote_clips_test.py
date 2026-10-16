@@ -222,6 +222,14 @@ class Relais(unittest.TestCase):
         self.assertEqual(f({"plateformes": '["instagram"]'}, jamais), ["instagram"])
         self.assertEqual(f({"plateformes": '["tiktok", "youtube"]'}, lambda pl: pl == "tiktok"), ["youtube"])
 
+    def test_montage_bride_a_trois_coeurs(self):
+        # 16/10 : le montage occupait plus de 5 cœurs sur 8 ; la commande du conteneur porte la limite de docker
+        self.assertEqual(self.file.COEURS, "3")
+        source = (DEPOT / "clippeur" / "file.py").read_text(encoding="utf-8")
+        montage = [l for l in source.splitlines() if '"docker", "run"' in l and "GEMINI_API_KEY" in l]
+        self.assertEqual(len(montage), 1, montage)
+        self.assertIn('"docker", "run", "--rm", "--cpus", COEURS,', montage[0])
+
     def test_hauteur_minimale(self):
         self.assertEqual(self.file.hauteur_minimale("bandes"), 1080)
         self.assertEqual(self.file.hauteur_minimale(None), 1080)
