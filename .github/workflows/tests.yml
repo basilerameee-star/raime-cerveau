@@ -51,3 +51,5 @@ jobs:
       - run: python3 -m unittest tests/banc/cadrage_clips_test.py
       # L'analyste des clips (21/10/2026) : niches, médianes, part des créneaux 70 % donnée / 30 % essai.
       - run: python3 -m unittest tests/banc/analyste_clips_test.py
+      # L'analyste général, module prospection (21/10/2026) : entonnoirs par métier, appels.
+      - run: python3 -m unittest tests/banc/analyste_prospection_test.py
