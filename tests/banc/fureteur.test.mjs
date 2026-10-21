@@ -22,6 +22,10 @@ test('les adresses écrites sur le site, au domaine du site ; la boîte généra
   assert.deepEqual(l, ['jean.naz@naz-associes.notaires.fr', 'accueil@naz-associes.notaires.fr', 'contact@buttondown.email']);
   assert.equal(f.choisirAdresse(l, NAZ, 'https://naz-associes.notaires.fr'), 'accueil@naz-associes.notaires.fr');
   assert.equal(f.choisirAdresse(['webmaster@agence-web.fr', 'no-reply@naz-associes.notaires.fr'], NAZ, 'https://naz-associes.notaires.fr'), null);
+  // 21/10/2026 : « contact@ » en dernier (14 rebonds sur 18) ; seule, elle reste possible
+  const s = 'https://naz-associes.notaires.fr';
+  assert.equal(f.choisirAdresse(['contact@naz-associes.notaires.fr', 'jean.naz@naz-associes.notaires.fr'], NAZ, s), 'jean.naz@naz-associes.notaires.fr');
+  assert.equal(f.choisirAdresse(['contact@naz-associes.notaires.fr'], NAZ, s), 'contact@naz-associes.notaires.fr');
 });
 
 test('les domaines tirés du nom, sans les mots du notariat ; .notaires.fr pour une étude', () => {

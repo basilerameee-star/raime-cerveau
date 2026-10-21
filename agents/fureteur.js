@@ -81,10 +81,12 @@ export function adressesDe(html) {
 }
 
 // Parmi les adresses d'un site PROUVÉ : celles de son domaine (ou portant son nom), jamais une plateforme ni un « no-reply ».
-// On préfère la boîte générale (contact, accueil, cabinet…) à celle d'une personne.
+// On préfère la boîte générale (accueil, cabinet…) à celle d'une personne, et « contact@ » en dernier : du 14 au 21/10/2026,
+// 14 pré-audits sur 18 envoyés à une « contact@ » lue sur le site prouvé ont rebondi (boîte publiée mais morte).
 export function choisirAdresse(liste, p, site) {
   const ok = liste.filter((e) => adresseFiable({ name: p.name, contact_email: e, website: site }));
-  return ok.find((e) => /^(contact|accueil|info|infos|bonjour|hello|cabinet|office|etude|secretariat|secr[eé]tariat|direction|commercial|agence)[@.]/.test(e)) || ok[0] || null;
+  return ok.find((e) => /^(accueil|info|infos|bonjour|hello|cabinet|office|etude|secretariat|secr[eé]tariat|direction|commercial|agence)[@.]/.test(e))
+    || ok.find((e) => !/^contact[@.]/.test(e)) || ok[0] || null;
 }
 
 // Les domaines à essayer d'après le nom : « Naz & Associés » → naz-associes.fr, nazassocies.fr, naz-associes.notaires.fr…

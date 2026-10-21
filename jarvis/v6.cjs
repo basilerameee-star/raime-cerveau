@@ -382,7 +382,7 @@ async function assembler({ maintenant = new Date(), executant = EXECUTANT, fetch
         (array_agg(envoi->>'detail' ORDER BY maj) FILTER (WHERE statut = 'valide'))[1] AS valide_detail
       FROM candidatures`)),
     un(B('candidatures', 'SELECT max(le) AS le FROM candidatures_alertes')).then((r) => (r ? r.le : null)),
-    N('outreach', `SELECT o.id, o.siren, o.prospect_name, o.segment, o.to_email, o.subject, o.status, o.created_at, o.sent_at, o.reply_at,
+    N('outreach', `SELECT o.id, o.siren, o.prospect_name, o.segment, o.to_email, o.subject, o.status, o.created_at, o.sent_at, o.reply_at, o.livraison,
         CASE WHEN o.status = 'brouillon' THEN o.body END AS body
       FROM outreach o WHERE o.siren ~ '^[0-9]{9}$' AND o.status IN ('brouillon', 'valide', 'envoye', 'non_recu') ORDER BY o.created_at`),
     un(N('outreach', `SELECT count(*) FILTER (WHERE status = 'envoye' AND sent_at > now() - interval '24 hours')::int AS envoyes24,
@@ -536,6 +536,8 @@ async function assembler({ maintenant = new Date(), executant = EXECUTANT, fetch
     const parti = os.filter((o) => o.status === 'envoye' && o.sent_at).sort((a, b) => new Date(a.sent_at) - new Date(b.sent_at)).pop() || null;
     const valide = os.find((o) => o.status === 'valide') || null;
     const reponse = os.filter((o) => o.reply_at).sort((a, b) => new Date(a.reply_at) - new Date(b.reply_at)).pop() || null;
+    const rebond = !!parti && ['bounced', 'complained'].includes(parti.livraison);
+    const adresse = rebond || /^contact@/i.test((brouillon && brouillon.to_email) || p.contact_email || '') ? '' : ((brouillon && brouillon.to_email) || p.contact_email || '');
     if (!os.length && !s.ap && !(rappelsPar.get(cle) || []).length && !(p.site_preuve && p.telephone && p.jamais_ecrit)) continue;
     let etape;
     if ((s.ap && s.ap.etat === 'pas_interesse') || res === 'pas_interesse') etape = 'non';
@@ -544,7 +546,8 @@ async function assembler({ maintenant = new Date(), executant = EXECUTANT, fetch
     else if (s.ouvert) etape = 'rappel';
     else if (s.ap && s.ap.etat === 'appele') etape = 'appele';
     else if (reponse) etape = 'repondu';
-    else if (parti) etape = 'attente';
+    // 21/10/2026 : un e-mail qui a rebondi, ou une « contact@ » (jamais envoyée), ne compte pas : le cabinet est à appeler
+    else if (parti && !rebond) etape = 'attente';
     else if (valide) etape = 'valide';
     else if (brouillon) etape = 'aenvoyer';
     else if (os.some((o) => o.status === 'non_recu')) etape = 'nonrecu';
@@ -561,7 +564,7 @@ async function assembler({ maintenant = new Date(), executant = EXECUTANT, fetch
     const nom = (brouillon || parti || os[0] || {}).prospect_name || agenda.joli(p.name) || p.siren;
     const client = { cle, seg: 'ia', siren: p.siren, nom, metier: appels.activite(p.naf, p.name, p.sector), ville: agenda.joli(p.city) || '', tel: tel(p.telephone),
       audit: require('./preaudits.cjs').preaudit(p.sector),
-      email: (brouillon && brouillon.to_email) || p.contact_email || '', histo: trier(histo), etape, envoye, rappel: s.ouvert ? s.ouvert.jour : null,
+      email: adresse, histo: trier(histo), etape, envoye, rappel: s.ouvert ? s.ouvert.jour : null,
       dernier: dernierTexte(s, envoye ? `E-mail envoyé le ${court(envoye)}` : null, brouillon ? 'E-mail prêt, pas encore validé' : valide ? 'E-mail validé, pas encore parti' : 'Jamais contacté'),
       ...(etape === 'completer' ? { raison: 'Numéro de téléphone inconnu' } : {}),
       ...(brouillon ? { outreach: Number(brouillon.id), sujet: brouillon.subject || '', corps: brouillon.body || '' } : parti ? { sujet: parti.subject || '' } : {}) };

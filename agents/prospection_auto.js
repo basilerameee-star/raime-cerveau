@@ -145,6 +145,8 @@ export async function preparer({ n8n, brain, combien = 14 } = {}) {
     WHERE p.status = 'nouveau' AND coalesce(p.contact_email, '') LIKE '%@%'
       -- 07/10/2026 : seulement une adresse LUE sur le site prouvé de l'entreprise (Fureteur) ; l'ancien en devinait (contact@domaine)
       AND p.site_preuve IS NOT NULL AND p.furete_note LIKE 'adresse sur le site%'
+      -- 21/10/2026 : jamais une « contact@ » (14 rebonds sur 18) : le cabinet passe dans la liste d'appels
+      AND p.contact_email NOT ILIKE 'contact@%'
       AND (p.sector = ANY($1::text[]) OR p.name ~* 'notaire|notarial')
       -- à but lucratif seulement (Basile, 07/10) : ni associations (AGC, Cerfrance…), ni ordres, chambres ou syndicats
       AND p.name !~* $4
