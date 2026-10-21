@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>rAIme · Cockpit</title>
+<!-- Le cockpit v7 (22/10/2026, demande de Basile) : au centre, l'agence en 3D, vivante, avec les vraies données ;
+     autour, des panneaux qui changent selon ce qu'on clique. Les données : /api/v6 (agents, plan, flux) et
+     /api/v7/analyses (analystes et gouverneurs). Aucune donnée inventée : ce qui manque s'affiche « non relevé ». -->
+<style>
+@font-face { font-family: Inter; src: url(/3d/polices/InterVariable.woff2) format("woff2"); font-weight: 100 900; font-display: swap; }
+:root {
+  --fond: #0b0f17; --carte: #121826; --carte2: #171f30; --trait: #222c40; --encre: #e8edf6; --gris: #8a96ab; --pale: #5b6780;
+  --bleu: #3b82f6; --ok: #22c55e; --vide: #f59e0b; --panne: #ef4444; --froid: #64748b; --cyan: #38bdf8;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--fond); color: var(--encre); font: 14px/1.45 Inter, system-ui, sans-serif; }
+body { display: grid; grid-template-rows: 56px 1fr 52px; height: 100vh; overflow: hidden; }
+button { font: inherit; color: inherit; cursor: pointer; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* ── la barre du haut ── */
+header { display: flex; align-items: center; gap: 22px; padding: 0 20px; border-bottom: 1px solid var(--trait); }
+.logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 16px; white-space: nowrap; }
+.logo i { width: 26px; height: 26px; border-radius: 8px; background: linear-gradient(135deg, #3b82f6, #22d3ee); display: inline-block; box-shadow: 0 0 18px #3b82f655; }
+nav { display: flex; gap: 4px; margin: 0 auto; overflow-x: auto; scrollbar-width: none; }
+nav button { background: none; border: 0; padding: 8px 14px; border-radius: 9px; color: var(--gris); font-weight: 600; white-space: nowrap; }
+nav button[aria-pressed="true"] { color: var(--encre); background: var(--carte2); box-shadow: inset 0 -2px 0 var(--bleu); }
+nav button:hover { color: var(--encre); }
+.haut-droite { display: flex; align-items: center; gap: 14px; color: var(--gris); font-size: 13px; white-space: nowrap; }
+.pastille { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 99px; background: var(--carte); border: 1px solid var(--trait); }
+.pastille b { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+.pastille.alerte b { background: var(--panne); box-shadow: 0 0 8px var(--panne); }
+
+/* ── le corps : trois colonnes ── */
+main { display: grid; grid-template-columns: 300px 1fr 340px; gap: 14px; padding: 14px; min-height: 0; }
+aside { display: flex; flex-direction: column; gap: 12px; overflow-y: auto; min-height: 0; scrollbar-width: thin; scrollbar-color: var(--trait) transparent; }
+.carte { background: var(--carte); border: 1px solid var(--trait); border-radius: 14px; padding: 14px 16px; }
+.carte h2 { margin: 0 0 10px; font-size: 13px; font-weight: 600; color: var(--gris); display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.carte h2 small { color: var(--pale); font-weight: 500; }
+.grand { font-size: 34px; font-weight: 700; letter-spacing: -.02em; line-height: 1.05; }
+.grand small { font-size: 15px; color: var(--gris); font-weight: 500; }
+.barre { display: flex; height: 8px; border-radius: 99px; overflow: hidden; background: var(--trait); margin-top: 10px; }
+.barre span { height: 100%; }
+.legende { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 10px; font-size: 12px; color: var(--gris); }
+.legende i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: 1px; }
+.lignes { display: flex; flex-direction: column; gap: 7px; font-size: 13px; }
+.lignes div { display: flex; justify-content: space-between; gap: 10px; }
+.lignes span:first-child { color: var(--gris); }
+.objectif { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; padding: 5px 0; border-bottom: 1px solid #ffffff08; }
+.objectif:last-child { border: 0; }
+.objectif b { flex: none; width: 18px; height: 18px; border-radius: 6px; display: grid; place-items: center; font-size: 11px; }
+.objectif small { display: block; color: var(--pale); }
+.vide-txt { color: var(--pale); font-size: 12.5px; }
+
+/* ── le centre : la scène ── */
+.scene { position: relative; background: radial-gradient(1200px 600px at 50% 45%, #121a2b, var(--fond)); border: 1px solid var(--trait); border-radius: 16px; overflow: hidden; min-height: 0; }
+.scene canvas { display: block; width: 100%; height: 100%; }
+.bulle { position: absolute; pointer-events: none; transform: translate(-50%, -120%); background: #0e1422ee; border: 1px solid var(--trait); border-radius: 10px; padding: 8px 11px; font-size: 12.5px; max-width: 260px; display: none; backdrop-filter: blur(6px); }
+.bulle b { display: block; margin-bottom: 2px; }
+.bulle small { color: var(--gris); }
+.etiquettes { position: absolute; inset: 0; pointer-events: none; }
+.etiquette { position: absolute; transform: translate(-50%, -50%); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #ffffffb0; text-shadow: 0 1px 6px #000; white-space: nowrap; }
+.etiquette small { display: block; font-size: 10.5px; font-weight: 600; letter-spacing: 0; text-transform: none; color: #ffffff80; text-align: center; }
+.coin { position: absolute; left: 14px; top: 12px; font-size: 12px; color: var(--gris); }
+.coin b { color: var(--encre); }
+.attente { position: absolute; inset: 0; display: grid; place-items: center; color: var(--gris); }
+
+/* ── le panneau de droite ── */
+.titre-panneau { display: flex; align-items: center; gap: 10px; }
+.titre-panneau i { width: 12px; height: 12px; border-radius: 4px; flex: none; }
+.titre-panneau h3 { margin: 0; font-size: 17px; }
+.badge { display: inline-block; padding: 2px 9px; border-radius: 99px; font-size: 12px; font-weight: 600; }
+.texte { font-size: 13px; color: #c9d2e3; margin: 8px 0 0; }
+.texte b { color: var(--encre); }
+.etiq { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--pale); margin: 12px 0 3px; }
+.outils { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.outils span { font-size: 11.5px; padding: 3px 8px; border-radius: 7px; background: var(--carte2); border: 1px solid var(--trait); color: var(--gris); }
+.agent-ligne { display: flex; align-items: center; gap: 9px; width: 100%; padding: 7px 8px; margin: 0 -8px; border: 0; background: none; border-radius: 9px; text-align: left; }
+.agent-ligne:hover { background: var(--carte2); }
+.agent-ligne i { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.agent-ligne span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agent-ligne small { color: var(--pale); }
+.retour { background: none; border: 0; color: var(--gris); padding: 0; font-size: 12.5px; margin-bottom: 8px; }
+.retour:hover { color: var(--encre); }
+
+/* ── la barre du bas ── */
+footer { display: flex; align-items: center; gap: 16px; padding: 0 20px; border-top: 1px solid var(--trait); color: var(--gris); font-size: 12.5px; overflow-x: auto; }
+.couches { display: flex; gap: 6px; }
+.couches button { background: var(--carte); border: 1px solid var(--trait); border-radius: 8px; padding: 5px 11px; color: var(--gris); font-size: 12.5px; white-space: nowrap; }
+.couches button[aria-pressed="true"] { color: var(--encre); border-color: #3b82f688; background: #1a2540; }
+.fil { flex: 1; min-width: 200px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.fil b { color: var(--encre); font-weight: 600; }
+input[type=range] { accent-color: var(--bleu); width: 110px; }
+
+@media (max-width: 1100px) { main { grid-template-columns: 260px 1fr 300px; } }
+@media (max-width: 900px) {
+  body { display: block; height: auto; overflow: auto; }
+  header { position: sticky; top: 0; z-index: 3; background: var(--fond); flex-wrap: wrap; height: auto; padding: 10px 14px; gap: 8px; }
+  nav { order: 3; width: 100%; margin: 0; }
+  main { grid-template-columns: 1fr; padding: 10px; }
+  .scene { height: 58vh; order: -1; }
+  footer { flex-wrap: wrap; padding: 12px 14px; gap: 10px; }
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><i></i>rAIme <span style="color:var(--gris);font-weight:500">· l'agence</span></div>
+  <nav id="onglets" aria-label="Zones"></nav>
+  <div class="haut-droite"><span id="heure" class="num"></span><span id="etat-direct" class="pastille"><b></b><span>En direct</span></span></div>
+</header>
+<main>
+  <aside id="gauche" aria-label="Indicateurs"></aside>
+  <section class="scene" id="scene" aria-label="Plan 3D de l'agence">
+    <div class="attente" id="attente">Chargement de l'agence…</div>
+    <div class="etiquettes" id="etiquettes"></div>
+    <div class="coin" id="coin"></div>
+    <div class="bulle" id="bulle"></div>
+  </section>
+  <aside id="droite" aria-label="Détail"></aside>
+</main>
+<footer>
+  <div class="couches" id="couches" aria-label="Couches">
+    <button type="button" data-couche="etats" aria-pressed="true">États</button>
+    <button type="button" data-couche="flux" aria-pressed="true">Flux</button>
+    <button type="button" data-couche="noms" aria-pressed="true">Noms</button>
+  </div>
+  <div class="fil" id="fil"></div>
+  <label style="display:flex;align-items:center;gap:8px;white-space:nowrap">Zoom <input id="zoom" type="range" min="60" max="180" value="100" aria-label="Zoom"></label>
+</footer>
+<script type="importmap">{"imports":{"three":"/3d/vendor/three.module.js"}}</script>
+<script type="module" src="/3d/v7.js"></script>
+</body>
+</html>

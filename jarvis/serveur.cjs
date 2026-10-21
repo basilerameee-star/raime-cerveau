@@ -88,6 +88,13 @@ function fichierInterface(res, nom) {
 // changer de version de Three.js, c'est changer de dossier. La police Inter est celle de interface/polices/ (même
 // empreinte que chez Codex), servie sous /3d/polices/.
 const TROIS_D = path.join(INTERFACE, '3d');
+// Les bilans des analystes et des gouverneurs (22/10/2026), écrits chaque matin par l'hôte dans /travail : chacun peut
+// manquer (null), jamais une erreur ; le cockpit v7 dit alors « non relevé ».
+function analysesV7() {
+  const lire = (...p) => { try { return JSON.parse(fs.readFileSync(path.join(relais.LIVRABLES, ...p), 'utf8')); } catch (e) { return null; } };
+  return { matin: lire('analyse', 'matin.json'), agents: lire('analyse', 'agents.json'), prospection: lire('analyse', 'prospection.json'),
+    clips: lire('clips', 'analyse.json') };
+}
 const FICHIER_3D = /^\/3d\/[\w./-]+\.(js|css|json|woff2|txt)$/;
 const COMPRESSIBLE = /\.(html|js|css|json|txt)$/;
 const memoire3d = new Map();   // chemin → { cle (date et taille), etag, brut, gz }
@@ -287,7 +294,10 @@ async function router(req, res) {
   if (await agenda.router(req, res, { url, m, envoyer, json, autorise, fichierInterface })) return;
   // Le clip farming de KinGKlip : demandes de découpe, clips prêts, liens publiés (jarvis/clips.cjs).
   if (await require('./clips.cjs').router(req, res, { url, m, envoyer, json, fichierInterface })) return;
-  // 15/10/2026 : le cockpit v6, la maquette validée branchée sur les vraies données (/v6, /api/v6)
+  // 22/10/2026 : le cockpit v7 à l'essai (l'agence en 3D au centre, demande de Basile) : /v7, à côté de / jusqu'à son accord ;
+  // /api/v7/analyses = les bilans des analystes et des gouverneurs (<travail>/analyse/*.json et clips/analyse.json)
+  if (m === 'GET' && url === '/v7') return servir3d(req, res, path.join(TROIS_D, 'v7.html'), false);
+  if (m === 'GET' && url === '/api/v7/analyses') return envoyer(res, 200, analysesV7());
   if (v6 && await v6.router(req, res, { url, m, envoyer, json, autorise })) return;
   // 15/10/2026, Basile : « remplace le contenu pour le même lien » : / et /jarvis sont le cockpit v6. La 3D d'avant reste à
   // /jarvis3d (et revient seule à / si jarvis/v6.cjs manquait). Retour arrière : retirer la ligne suivante.
