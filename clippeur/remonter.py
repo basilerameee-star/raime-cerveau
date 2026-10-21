@@ -11,7 +11,7 @@ Conteneur :    python remonter.py --un <campagne> <clip-NN.mp4>   (lancé par l'
 """
 import json, os, pathlib, re, subprocess, sys, time
 
-MARQUE = ".cadrage-2026-10-21b"     # b : fond flou au lieu du noir, fin « FOLLOW FOR MORE »
+MARQUE = ".cadrage-2026-10-21c"     # b : fond flou, fin « FOLLOW FOR MORE » ; c : titres courts (titres-courts.json)
 CLIPS = "/opt/raime/harness/travail/clips"
 
 
@@ -57,6 +57,12 @@ def un(campagne, nom):
     debut, fin = float(c["debut"]), float(c["fin"])
     garde = C.sans_blancs(mots, debut, fin) if profil.get("sans_blancs", True) else [(debut, fin)]
     titre = (textes(ass, "Titre") or [""])[0]
+    # titres courts et percutants (Basile, 21/10/2026) : <clips>/titres-courts.json, « campagne/clip » → titre ; il remplace
+    # le titre à l'image, dans clips.json et en tête des légendes (le reste de la légende ne change pas)
+    f = C.SORTIE / "titres-courts.json"
+    court = json.loads(f.read_text(encoding="utf-8")).get("%s/%s" % (campagne, nom)) if f.is_file() else None
+    if court:
+        titre = court
     cadre = C.cadre_sujet(source, debut, fin, profil.get("cadrage", "visage"))
     neuf_ass, neuf_mp4 = dossier / (nom + ".neuf.ass"), dossier / (nom + ".neuf.mp4")
     if len(garde) > 1:
@@ -64,7 +70,7 @@ def un(campagne, nom):
         C.sous_titres(mots_c, 0, d, titre, neuf_ass, profil.get("sous_titres", True), fmt, cadre[1], profil.get("fin_abonnement", True))
     else:
         C.sous_titres(mots, debut, fin, titre, neuf_ass, profil.get("sous_titres", True), fmt, cadre[1], profil.get("fin_abonnement", True))
-    if textes(neuf_ass, "Mot") != textes(ass, "Mot") or textes(neuf_ass, "Titre") != textes(ass, "Titre"):
+    if textes(neuf_ass, "Mot") != textes(ass, "Mot") or (not court and textes(neuf_ass, "Titre") != textes(ass, "Titre")):
         neuf_ass.unlink()
         sys.exit("ÉCART : les sous-titres ne sortent pas comme avant, ancien montage gardé")
     C.monter(source, debut, fin, neuf_ass, neuf_mp4, profil.get("cadrage", "visage"), garde, fmt, cadre)
@@ -83,7 +89,23 @@ def un(campagne, nom):
             os.replace(vieux, dossier / "avant-cadrage" / vieux.name)
     os.replace(neuf_mp4, mp4)                                  # même nom : Buffer prendra le nouveau au moment de programmer
     os.replace(neuf_ass, ass)
-    (dossier / (nom + MARQUE)).write_text("visage 4:3" if abs(cadre[1] - 4 / 3) < .01 else "image entière")
+    if court:
+        ancien = c.get("titre", "")
+        for leg in (dossier / nom.replace(".mp4", ".txt"), dossier / nom.replace(".mp4", ".json")):
+            if ancien and leg.is_file():
+                txt = leg.read_text(encoding="utf-8")
+                if leg.suffix == ".json":
+                    par = json.loads(txt)
+                    par = {k: (court + v[len(ancien):]) if v.startswith(ancien) else v for k, v in par.items()}
+                    leg.write_text(json.dumps(par, ensure_ascii=False, indent=1), encoding="utf-8")
+                elif txt.startswith(ancien):
+                    leg.write_text(court + txt[len(ancien):], encoding="utf-8")
+        info = json.loads((dossier / "clips.json").read_text(encoding="utf-8"))   # relu : un autre clip a pu l'écrire
+        for x in info["clips"]:
+            if x["clip"] == nom:
+                x["accroche"], x["titre"] = court, court
+        (dossier / "clips.json").write_text(json.dumps(info, ensure_ascii=False, indent=1), encoding="utf-8")
+    (dossier / (nom + MARQUE)).write_text(("visage 4:3" if abs(cadre[1] - 4 / 3) < .01 else "image entière") + (", titre « %s »" % court if court else ""))
     print("remonté : %s" % (dossier / (nom + MARQUE)).read_text())
 
 

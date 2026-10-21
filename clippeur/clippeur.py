@@ -153,8 +153,11 @@ def choisir(mots, langue, n, mini, maxi, consignes, cle):
         "toujours. %s\n"
         "Réponds en JSON : [{\"debut\": s, \"fin\": s, \"moment\": \"la réplique forte, citée\", \"premiere_phrase\": \"la 1re phrase du clip, citée\", "
         "\"pourquoi\": \"en 1 phrase, pourquoi on regarde jusqu'au bout\", \"note\": 1 à 10, "
-        "\"accroche\": \"le titre affiché au-dessus de la vidéo pendant tout le clip, 4 à 9 mots, dans la langue de la vidéo : une question ou une promesse qui donne envie de rester jusqu'au bout (ex. « How does an AI startup actually make money? »), toujours vraie, jamais une citation, jamais un juron, sans emoji\", "
-        "\"titre\": \"titre de publication, 60 caractères au plus, fidèle à la scène\", "
+        # titres courts et percutants (Basile, 21/10/2026) : « 15k/month at 22 » plutôt que « How a 22-year-old makes 15k a month »
+        "\"accroche\": \"le titre affiché au-dessus de la vidéo pendant tout le clip, dans la langue de la vidéo : COURT ET PERCUTANT, 2 à 5 mots, 28 caractères au plus, "
+        "le fait choc seul, chiffres en chiffres et abrégés (15k, $2M, /month), aucun mot inutile (ni « how », « why », « when », « the moment », ni article superflu) ; "
+        "ex. « 15k/month at 22 », « Fired on day one », « $2M in 8 months » ; toujours vrai, jamais une citation, jamais un juron, sans emoji\", "
+        "\"titre\": \"titre de publication, même règle : court et percutant, 40 caractères au plus, le fait choc d'abord, fidèle à la scène\", "
         "\"question\": \"une question courte, dans la langue de la vidéo, sur ce moment précis, qui donne envie de commenter (jamais de juron, jamais trompeuse)\", "
         "\"hashtags\": [\"3 à 5\"]}]\n\n%s"
         % (langue, mini, maxi, n, ("Consignes de la campagne : " + consignes) if consignes else "", texte))
@@ -209,6 +212,11 @@ def censurer(texte, mots_en_plus=()):
     for w in list(CENSURE) + list(mots_en_plus):
         texte = re.sub(r"(?i)\b%s\b" % re.escape(w), un, texte)
     return texte
+
+
+def trop_long(titre):
+    """Un titre à l'écran doit rester court et percutant (21/10/2026) : 5 mots et 28 caractères au plus."""
+    return len(titre.split()) > 5 or len(titre) > 28
 
 
 def ass_temps(s):
@@ -466,6 +474,8 @@ def main():
         for faux, juste in profil.get("orthographe", {}).items():
             c["titre"] = re.sub(r"(?i)\b%s\b" % re.escape(faux), juste, c.get("titre", ""))
             c["accroche"] = re.sub(r"(?i)\b%s\b" % re.escape(faux), juste, c.get("accroche", ""))
+        if trop_long(c.get("accroche", "")) and c.get("titre") and len(c["titre"]) < len(c.get("accroche", "")):
+            c["accroche"] = c["titre"]                    # le modèle a fait long : le plus court des deux s'affiche
         if censurer(c.get("accroche", "")) != c.get("accroche", ""):      # un juron dans l'accroche : on prend le titre, sinon on le masque
             c["accroche"] = c.get("titre", "") if censurer(c.get("titre", "")) == c.get("titre", "") else c.get("accroche", "")
         c["titre"], c["accroche"] = censurer(c.get("titre", "")), censurer(c.get("accroche", ""))

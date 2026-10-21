@@ -115,6 +115,23 @@ class Montage(unittest.TestCase):
         self.assertFalse(any(",Fin," in l for l in sans))
 
 
+class Titres(unittest.TestCase):
+    def test_titre_court_et_percutant(self):
+        # Basile (21/10/2026) : « 15k/month at 22 » plutôt que « How a 22-year-old makes 15k a month »
+        self.assertFalse(C.trop_long("15k/month at 22"))
+        self.assertFalse(C.trop_long("$2M in 8 months"))
+        self.assertTrue(C.trop_long("How a 22-year-old makes 15k a month"))
+        self.assertTrue(C.trop_long("The most shocking accusation dropped during a group hug"))
+        court = json_court()
+        self.assertFalse([t for t in court.values() if C.trop_long(t)])   # les titres posés sur la réserve tiennent la règle
+
+
+def json_court():
+    import json
+    f = DEPOT / "clippeur" / "titres-courts.json"
+    return json.loads(f.read_text(encoding="utf-8")) if f.is_file() else {}
+
+
 class Remontee(unittest.TestCase):
     def test_compare_le_texte_sans_les_couleurs(self):
         with tempfile.TemporaryDirectory() as d:
