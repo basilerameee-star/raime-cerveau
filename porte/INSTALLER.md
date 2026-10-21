@@ -115,6 +115,6 @@ Essai : lancer un cycle de l'architecte ; s'il constate un manque mesuré, une i
 ## 6. Le moteur de recherche du cerveau (SearXNG)
 
 Pour que `rechercher_solution` lise aussi les documentations et les forums, sans clé ni abonnement :
-un conteneur `searxng/searxng` sur le réseau `raime_default`, **sans** bloc Caddy (il reste interne),
+un conteneur `searxng/searxng:2026.9.23-3cd69d30e` (version fixée le 21/10/2026, jamais « latest ») sur le réseau `raime_default`, **sans** bloc Caddy (il reste interne),
 avec le format JSON activé (`search.formats: [html, json]` dans `settings.yml`). Puis, dans le `.env` du cerveau :
 `RECHERCHE_URL=http://searxng:8080`. Sans lui, la recherche passe par la bibliothèque, GitHub, Hacker News et arXiv.

@@ -1,6 +1,6 @@
 {
  "_": "Textes fixes du cockpit v6 (jarvis/v6.cjs les assemble avec les données en direct). Fabriqué par cockpit-maquette/v6_textes.js.",
- "date": "2026-10-14",
+ "date": "2026-10-21",
  "plan": {
   "quartiers": [
    {
@@ -647,26 +647,26 @@
   {
    "outils": [
     [
-     "Whop (lecture sans connexion)",
+     "Content Rewards (liste publique)",
      "0 jeton",
      "code"
     ]
    ],
    "id": "chercheur_camp",
    "secteur": "clipping",
-   "nom": "Chercheur de campagnes",
-   "rythme": "chaque jour à 8 h",
+   "nom": "Pilote des campagnes",
+   "rythme": "3 fois par jour",
    "src": {
     "hote": [
      "chercheur"
     ],
-    "toutes_h": 24,
-    "retard_h": 26
+    "toutes_h": 8,
+    "retard_h": 10
    },
    "mesure": "chercheur",
-   "maintenant": "Lit chaque matin les campagnes Whop et garde celles qui passent ta grille.",
-   "bloque": "Aucune des campagnes proposées n’a été lancée depuis le 04/10 (constat du 14/10).",
-   "ensuite": "Choisir seul dès qu’une campagne passe la grille (ta délégation du 08/10)."
+   "maintenant": "Lit les 700 campagnes de Content Rewards, rejoint celles qui passent ta grille et lance la découpe quand la réserve de clips baisse.",
+   "bloque": "Rien : la réserve couvre 14 jours, il ne relance qu’en dessous de 5.",
+   "ensuite": "Suivre la part des créneaux donnée par l’analyste des clips (21/10)."
   },
   {
    "outils": [
@@ -751,21 +751,25 @@
   {
    "outils": [
     [
-     "Navigateur du serveur",
+     "Navigateur du serveur, ta session",
      "0 jeton",
      "code"
     ]
    ],
    "id": "soumission",
    "secteur": "clipping",
-   "nom": "Soumission Whop",
-   "rythme": "",
-   "etat": "afaire",
-   "depuis": "2026-10-02",
-   "duree": "attend une session Whop",
-   "maintenant": "N’existe pas : aucun clip déclaré, donc 0 € gagné.",
-   "bloque": "La session Whop ne tient pas sur le serveur.",
-   "ensuite": "Déclarer chaque clip publié dans sa campagne (point 52)."
+   "nom": "Déclaration Content Rewards",
+   "rythme": "toutes les 3 min",
+   "maintenant": "Déclare chaque clip publié dans sa campagne, moins de 30 min après la publication, puis vérifie qu’il apparaît dans tes déclarations.",
+   "bloque": "Une campagne fermée aux nouveaux clips : ses clips en attente sont écartés (21/10).",
+   "ensuite": "Aucune déclaration n’est payée sous 3 000 à 4 000 vues par clip.",
+   "src": {
+    "hote": [
+     "declarer"
+    ],
+    "toutes_h": 12,
+    "retard_h": 26
+   }
   },
   {
    "outils": [
@@ -1149,29 +1153,6 @@
   {
    "outils": [
     [
-     "JEV (TypeSafe), par le goût",
-     "compté à part",
-     "ia"
-    ]
-   ],
-   "id": "anciens",
-   "secteur": "direction",
-   "nom": "Architecte, superviseur, réflexif",
-   "rythme": "remplacés par le Directeur",
-   "etat": "arret",
-   "depuis": "2026-10-08T08:10:00Z",
-   "maintenant": "Remplacés par le Directeur le 08/10.",
-   "bloque": "—",
-   "ensuite": "Rien.",
-   "outils_runs": [
-    "architecte",
-    "superviseur",
-    "reflexif"
-   ]
-  },
-  {
-   "outils": [
-    [
      "Gmail (lecture seule)",
      "0 jeton",
      "code"
@@ -1337,34 +1318,6 @@
    "maintenant": "Le serveur Hetzner qui fait tourner tous les conteneurs.",
    "bloque": "Rien ne la bloque.",
    "ensuite": "Régler la facture s’il y en a une en retard (voir Facturations)."
-  },
-  {
-   "outils": [
-    [
-     "n8n",
-     "0 jeton",
-     "code"
-    ],
-    [
-     "Metabase",
-     "0 jeton",
-     "code"
-    ]
-   ],
-   "id": "inutiles",
-   "secteur": "serveur",
-   "nom": "Metabase, allumé pour rien",
-   "rythme": "allumé en continu",
-   "etat": "arret",
-   "src": {
-    "hote": [
-     "conteneurs"
-    ]
-   },
-   "mesure": "inutiles",
-   "maintenant": "Metabase tourne sans que personne ne l’ouvre ; le Portier est retiré du service depuis le 14/10.",
-   "bloque": "Ton accord pour éteindre Metabase.",
-   "ensuite": "L’éteindre : de la mémoire en plus pour le reste."
   }
  ],
  "vies": {

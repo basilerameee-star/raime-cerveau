@@ -192,7 +192,6 @@ test('v6 : le relevé du serveur fait vivre sauvegardes et livraisons ; trop vie
   assert.equal(D.majs.livrees[0].porte, 35);
   assert.equal(D.majs.livrees[1].ok, false);
   assert.equal(D.majs.stats.n, 2);
-  assert.equal(agentDe(D, 'inutiles').etat, 'arret', 'Metabase allumé pour rien');
   await b.cerveau.query(`UPDATE releve_hote SET le = now() - interval '2 hours'`);
   D = await lireV6();
   for (const id of ['sauvegardes', 'livraison', 'chercheur_camp']) {

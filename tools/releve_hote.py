@@ -28,7 +28,8 @@ JOURNAUX = {
     "postuler_email": "/opt/raime/backups/postuler_email.log",
     "workflows": "/opt/raime/backups/workflows-git.log",
     "inventaire": "/opt/raime/backups/inventaire.log",
-    "chercheur": "/opt/raime/clippeur/chercheur.log",
+    "chercheur": "/opt/raime/clippeur/pilote.log",      # 21/10/2026 : le pilote a remplacé le chercheur (même fiche au cockpit)
+    "declarer": "/opt/raime/clippeur/declarer.log",
     "buffer": "/opt/raime/clippeur/buffer.log",
     "file": "/opt/raime/clippeur/file.log",
     "reponses": "/opt/raime/clippeur/reponses.log",
