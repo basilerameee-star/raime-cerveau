@@ -132,6 +132,28 @@ def json_court():
     return json.loads(f.read_text(encoding="utf-8")) if f.is_file() else {}
 
 
+class Essais(unittest.TestCase):
+    def test_variantes_tirees_a_parts_egales_et_stables(self):
+        v = [C.variante("camp", "clip-%02d.mp4" % i) for i in range(400)]
+        for cle in ("barre", "fin"):
+            part = sum(x[cle] for x in v) / len(v)
+            self.assertTrue(.4 < part < .6, (cle, part))
+        self.assertEqual(C.variante("camp", "clip-07.mp4"), C.variante("camp", "clip-07.mp4"), "toujours la même variante")
+        self.assertEqual(C.variante("camp", "clip-07.mp4", essais=False), {"barre": False, "fin": True}, "essais coupés : le style validé")
+
+    def test_barre_de_progression(self):
+        vus = []
+        C.lancer, avant = vus.append, C.lancer
+        try:
+            C.monter("s.mp4", 0, 20, Path("c.ass"), Path("c.mp4"), "visage", None, "bandes", (.5, 16 / 9), barre=True)
+            C.monter("s.mp4", 0, 20, Path("c.ass"), Path("c.mp4"), "visage", None, "bandes", (.5, 16 / 9), barre=False)
+        finally:
+            C.lancer = avant
+        avec, sans = [x[x.index("-filter_complex") + 1] for x in vus]
+        self.assertIn("overlay=x='-w+w*t/20.00':y=main_h-10:eval=frame", avec)
+        self.assertNotIn("0xFFE600", sans)
+
+
 class Remontee(unittest.TestCase):
     def test_compare_le_texte_sans_les_couleurs(self):
         with tempfile.TemporaryDirectory() as d:

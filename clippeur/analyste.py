@@ -54,6 +54,26 @@ def tranche_heure(h):
     return {2: "2 h", 15: "15 h", 19: "19 h", 23: "23 h"}.get(h, "%d h" % h)
 
 
+def tranches_creatif(f):
+    """Les caractéristiques créatives d'un clip (caracteristiques.py) rangées en classes lisibles ; « inconnue » si non mesurée."""
+    f = f or {}
+    def classe(v, bas, haut, noms):
+        return "inconnue" if v is None else noms[0] if v < bas else noms[2] if v > haut else noms[1]
+    var = f.get("variantes") or {}
+    return {"luminosite": classe(f.get("luminosite"), .3, .55, ("sombre", "moyenne", "claire")),
+            "saturation": classe(f.get("saturation"), .3, .5, ("terne", "moyenne", "vive")),
+            "couleurs": classe(f.get("chaud"), .3, .6, ("froides", "mêlées", "chaudes")),
+            "rythme": classe(f.get("coupes_10s"), 1, 3, ("plan fixe", "quelques coupes", "coupes rapides")),
+            "mouvement": classe(f.get("mouvement"), .03, .08, ("calme", "moyen", "agité")),
+            "visage_debut": "inconnue" if f.get("visage_debut") is None else "visage dès 1,5 s" if f["visage_debut"] else "sans visage au début",
+            "parole_debut": classe(f.get("parole_debut_s"), .5, 1.5, ("parole immédiate", "parole sous 1,5 s", "parole tardive")),
+            "essai_barre": "pas d'essai" if "barre" not in var else "avec barre" if var["barre"] else "sans barre",
+            "essai_fin": "pas d'essai" if "fin" not in var else "avec « follow »" if var["fin"] else "sans fin (boucle)"}
+
+
+CREATIF = ("luminosite", "saturation", "couleurs", "rythme", "mouvement", "visage_debut", "parole_debut", "essai_barre", "essai_fin")
+
+
 def code_ig(lien):
     m = re.search(r"/(?:reel|reels|p)/([\w-]+)", lien or "")
     return m.group(1) if m else None
@@ -104,8 +124,8 @@ def bilan(lignes):
     # les croisements se font sur Instagram seul : c'est là que la donnée existe (vues, part regardée) ; YouTube montre à
     # peine nos Shorts (21/10/2026 : 3 vues en médiane) et noierait toute différence entre niches, durées ou heures
     ig = [l for l in murs if l["plateforme"] == "instagram"]
-    for cle in ("niche", "duree", "cadrage", "heure", "titre"):
-        b["par_" + cle] = agreger(ig, cle)
+    for cle in ("niche", "duree", "cadrage", "heure", "titre") + CREATIF:
+        b["par_" + cle] = agreger([l for l in ig if l.get(cle, "inconnue") != "inconnue"] if cle in CREATIF else ig, cle)
     b["meilleurs"] = sorted(murs, key=lambda l: -(l["vues"] or 0))[:5]
     b["repartition"] = repartition(b["par_niche"])
     return b
@@ -117,7 +137,10 @@ def texte(b):
         return "  %-14s %3d clip(s) · vues médianes %s · meilleur %s%s" % (g["valeur"], g["clips"], int(g["vues_mediane"] or 0), g["meilleur"], r)
     out = ["Analyste des clips, %s : %d clips suivis, %d de plus de 48 h" % (b["le"], b["clips_suivis"], b["clips_murs"])]
     for cle, nom in (("plateforme", "Par plateforme"), ("niche", "Instagram, par niche"), ("duree", "Instagram, par durée"),
-                     ("cadrage", "Instagram, par cadrage"), ("heure", "Instagram, par heure"), ("titre", "Instagram, par titre")):
+                     ("cadrage", "Instagram, par cadrage"), ("heure", "Instagram, par heure"), ("titre", "Instagram, par titre"),
+                     ("luminosite", "Image : luminosité"), ("saturation", "Image : saturation"), ("couleurs", "Image : couleurs"),
+                     ("rythme", "Image : rythme des coupes"), ("mouvement", "Image : mouvement"), ("visage_debut", "Ouverture : visage"),
+                     ("parole_debut", "Ouverture : parole"), ("essai_barre", "Essai : barre de progression"), ("essai_fin", "Essai : fin du clip")):
         out.append(nom + " :")
         out += [ligne(g) for g in b["par_" + cle]]
     out.append("Meilleurs : " + " ; ".join("%s (%s, %s vues)" % (l.get("titre_texte", l["titre"])[:40], l["plateforme"], l["vues"]) for l in b["meilleurs"]))
@@ -178,6 +201,38 @@ def fiche(clips_dir, campagne, clip):
     return c, marques
 
 
+def creatif(sql, CLIPS, publies):
+    """Les caractéristiques créatives des clips publiés, mesurées une fois par clip dans le conteneur du clippeur
+    (caracteristiques.py) et gardées dans clips_creatif."""
+    import subprocess
+    sql("""CREATE TABLE IF NOT EXISTS clips_creatif (campagne text NOT NULL, clip text NOT NULL, mesures jsonb NOT NULL,
+           mesure_le timestamptz NOT NULL DEFAULT now(), PRIMARY KEY (campagne, clip));""")
+    r = sql("SELECT coalesce(json_object_agg(campagne || '/' || clip, mesures), '{}') FROM clips_creatif;")
+    connus = json.loads(r[r.index("{"):] if "{" in r else "{}")
+    manquants = sorted({"%s/%s" % (p["campagne"], p["clip"]) for p in publies} - set(connus))
+    manquants = [m for m in manquants if os.path.isfile(os.path.join(CLIPS, m))]
+    for i in range(0, len(manquants), 20):                  # par lots : un conteneur pour 20 clips
+        lot = manquants[i:i + 20]
+        out = subprocess.run(["docker", "run", "--rm", "--cpus", "2", "-v", "%s:/sortie:ro" % CLIPS,
+                              "-v", "%s:/app/caracteristiques.py:ro" % os.path.join(ICI, "caracteristiques.py"),
+                              "--entrypoint", "python", "raime-clippeur", "/app/caracteristiques.py"] + ["/sortie/" + m for m in lot],
+                             capture_output=True, text=True, timeout=1800).stdout
+        for ligne in out.splitlines():
+            try:
+                m = json.loads(ligne)
+            except ValueError:
+                continue
+            if m.get("erreur"):
+                continue
+            cle = m.pop("chemin").replace("/sortie/", "", 1)
+            campagne, clip = cle.split("/", 1)
+            sql("""INSERT INTO clips_creatif (campagne, clip, mesures) VALUES (:'p0', :'p1', :'p2'::jsonb)
+                   ON CONFLICT (campagne, clip) DO UPDATE SET mesures = EXCLUDED.mesures, mesure_le = now();""",
+                campagne, clip, json.dumps(m))
+            connus[cle] = m
+    return connus
+
+
 def main():
     sys.path.insert(0, ICI)
     from file import sql, CLIPS
@@ -190,6 +245,7 @@ def main():
     publies = json.loads(r[r.index("["):] if "[" in r else "[]")
     jeton = jeton_meta()
     ig = reels(jeton) if jeton else {}
+    crea = creatif(sql, CLIPS, publies)
     lignes, echecs = [], 0
     for p in publies:
         try:
@@ -224,7 +280,8 @@ def main():
                        "niche": niche(p["campagne"]), "duree": tranche_duree(duree) if duree else "inconnue",
                        "cadrage": "nouveau (fond flou)" if any(x.endswith(("21b", "21c")) for x in marques) else "ancien (carré)",
                        "heure": tranche_heure(p["heure"]), "titre": "court (≤ 5 mots)" if len(titre.split()) <= 5 else "long",
-                       "note_gemini": c.get("note"), "titre_texte": titre})
+                       "note_gemini": c.get("note"), "titre_texte": titre,
+                       **tranches_creatif(crea.get("%s/%s" % (p["campagne"], p["clip"])))})
     b = bilan(lignes)
     b["echecs"] = echecs
     json.dump(b, open(os.path.join(CLIPS, "analyse.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1, default=str)

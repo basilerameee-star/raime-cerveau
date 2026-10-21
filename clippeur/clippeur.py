@@ -360,7 +360,16 @@ def recaler(mots, garde):
     return out, t0
 
 
-def monter(source, debut, fin, ass, sortie, cadrage="visage", garde=None, format_="plein", cadre=None):
+def variante(campagne, clip, essais=True):
+    """Les variantes d'essai d'un clip (21/10/2026, analyste des clips) : chacune à 50 %, tirée du nom du clip (le même clip
+    retombe toujours sur la même variante), jamais choisie à la main. Le style validé par Basile (sous-titres, couleurs) ne
+    change pas : on essaie une barre de progression et la fin « FOLLOW FOR MORE » (sans elle, le clip boucle mieux)."""
+    import hashlib
+    tirage = lambda nom: int(hashlib.sha1(("%s/%s/%s" % (campagne, clip, nom)).encode()).hexdigest(), 16) % 2 == 0
+    return {"barre": tirage("barre"), "fin": tirage("fin")} if essais else {"barre": False, "fin": True}
+
+
+def monter(source, debut, fin, ass, sortie, cadrage="visage", garde=None, format_="plein", cadre=None, barre=False):
     if garde and len(garde) > 1:
         sel = "+".join("between(t,%.2f,%.2f)" % (a, b) for a, b in garde)
         coupe = "[0:v]select='%s',setpts=N/FRAME_RATE/TB[vc];[0:a]aselect='%s',asetpts=N/SR/TB[ac]" % (sel, sel)
@@ -378,8 +387,13 @@ def monter(source, debut, fin, ass, sortie, cadrage="visage", garde=None, format
         filtre = ("[0:v]split[a][b];[a]scale=270:480:force_original_aspect_ratio=increase,crop=270:480,boxblur=6:1,"
                   "eq=brightness=-0.14:saturation=1.2,scale=1080:1920,setsar=1[fond];"
                   "[b]crop='min(iw,trunc(ih*%.4f/2)*2)':ih:'max(0,min(iw-ow,%.4f*iw-ow/2))':0,scale=%d:%d:flags=lanczos,"
-                  "unsharp=3:3:0.3:3:3:0.0,setsar=1[net];[fond][net]overlay=%d:%d,subtitles=%s:fontsdir=/usr/share/fonts[v]"
-                  % (rapport, c, l, h, (1080 - l) // 2, haut, str(ass).replace(":", "\\:")))
+                  "unsharp=3:3:0.3:3:3:0.0,setsar=1%s[net];[fond][net]overlay=%d:%d,subtitles=%s:fontsdir=/usr/share/fonts[v]"
+                  % (rapport, c, l, h,
+                     # essai « barre » : une barre jaune qui se remplit au bas de l'image, du début à la fin du clip (un calque qui
+                     # glisse, recalculé à chaque image : drawbox ne calcule sa largeur qu'une fois, vérifié le 21/10/2026)
+                     ("[net0];color=c=0xFFE600:s=%dx10:r=30[bj];[net0][bj]overlay=x='-w+w*t/%.2f':y=main_h-10:eval=frame:shortest=1"
+                      % (l, max(fin - debut, 1)) if barre else ""),
+                     (1080 - l) // 2, haut, str(ass).replace(":", "\\:")))
         lancer(["ffmpeg", "-y", "-ss", "%.2f" % debut, "-to", "%.2f" % fin, "-i", str(source), "-filter_complex", filtre,
                 "-map", "[v]", "-map", "0:a?", "-r", "30", "-c:v", "libx264", "-preset", "slow", "-crf", "16", "-pix_fmt", "yuv420p",
                 "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", str(sortie)])
@@ -458,15 +472,23 @@ def main():
                 c["fin"] = round(suite[0]["f"] + .1, 2)
         garde = sans_blancs(mots, c["debut"], c["fin"]) if profil.get("sans_blancs", True) else [(c["debut"], c["fin"])]
         fmt = profil.get("format", "bandes")
+        v = variante(nom, mp4.name, profil.get("essais", True))     # l'essai en cours, inscrit à côté des clips
+        essais = {}
+        try:
+            essais = json.load(open(dossier / "variantes.json", encoding="utf-8"))
+        except (OSError, ValueError):
+            pass
+        essais[mp4.name] = v
+        (dossier / "variantes.json").write_text(json.dumps(essais, ensure_ascii=False, indent=1), encoding="utf-8")
         cadre = cadre_sujet(source, c["debut"], c["fin"], profil.get("cadrage", "visage")) if fmt == "bandes" else None
         if cadre:
             print("cadre %d : %s, centre %.2f" % (k, "visage 4:3" if abs(cadre[1] - 4 / 3) < .01 else "image entière", cadre[0]), flush=True)
         if len(garde) > 1:
             mots_c, duree = recaler(mots, garde)
-            sous_titres(mots_c, 0, duree, c.get("accroche", ""), ass, profil.get("sous_titres", True), fmt, cadre[1] if cadre else 1.0, profil.get("fin_abonnement", True))
+            sous_titres(mots_c, 0, duree, c.get("accroche", ""), ass, profil.get("sous_titres", True), fmt, cadre[1] if cadre else 1.0, profil.get("fin_abonnement", True) and v["fin"])
         else:
-            sous_titres(mots, c["debut"], c["fin"], c.get("accroche", ""), ass, profil.get("sous_titres", True), fmt, cadre[1] if cadre else 1.0, profil.get("fin_abonnement", True))
-        monter(source, c["debut"], c["fin"], ass, mp4, profil.get("cadrage", "visage"), garde, fmt, cadre)
+            sous_titres(mots, c["debut"], c["fin"], c.get("accroche", ""), ass, profil.get("sous_titres", True), fmt, cadre[1] if cadre else 1.0, profil.get("fin_abonnement", True) and v["fin"])
+        monter(source, c["debut"], c["fin"], ass, mp4, profil.get("cadrage", "visage"), garde, fmt, cadre, v["barre"])
         try:
             os.remove(str(mp4) + ".coupe.mp4")
         except OSError:

@@ -56,6 +56,21 @@ class Bilan(unittest.TestCase):
         r = A.repartition(A.agreger([clip("streamer", 300), clip("podcast", 100)], "niche"))
         self.assertEqual(r, {"streamer": .5, "podcast": .5})
 
+    def test_classes_creatives(self):
+        c = A.tranches_creatif({"luminosite": .15, "saturation": .65, "chaud": .94, "coupes_10s": 4.6, "mouvement": .01,
+                                "visage_debut": True, "parole_debut_s": .04, "variantes": {"barre": True, "fin": False}})
+        self.assertEqual((c["luminosite"], c["saturation"], c["couleurs"], c["rythme"], c["mouvement"]),
+                         ("sombre", "vive", "chaudes", "coupes rapides", "calme"))
+        self.assertEqual((c["visage_debut"], c["parole_debut"], c["essai_barre"], c["essai_fin"]),
+                         ("visage dès 1,5 s", "parole immédiate", "avec barre", "sans fin (boucle)"))
+        vide = A.tranches_creatif(None)
+        self.assertEqual(vide["luminosite"], "inconnue")
+        self.assertEqual(vide["essai_barre"], "pas d'essai")
+
+    def test_un_clip_non_mesure_ne_compte_pas_dans_un_croisement_creatif(self):
+        b = A.bilan([clip(vues=900, luminosite="claire")] * 3 + [clip(vues=100, luminosite="inconnue")] * 3)
+        self.assertEqual([g["valeur"] for g in b["par_luminosite"]], ["claire"])
+
     def test_texte_lisible(self):
         t = A.texte(A.bilan([clip("streamer", 1700, regarde=.6)] * 3))
         self.assertIn("streamer", t)
