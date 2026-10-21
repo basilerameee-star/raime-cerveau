@@ -155,7 +155,7 @@ function emailApresAppel(v) {
   return { a: v.email || '', lien, sujet: `${v.nom} : la maquette de votre site`,
     corps: `Bonjour,
 
-Je suis Basile Ramé, de rAIme. J'ai vu que ${v.nom} n'a pas de site web : je vous en ai préparé un, le voici :
+Je suis Basile Ramé, de rAIme. J'ai vu ${/^[aeiouyhàâäéèêëîïôöûüœ]/i.test(v.nom) ? "qu'" : 'que '}${v.nom} n'a pas de site web : je vous en ai préparé un, le voici :
 ${lien}
 
 `
