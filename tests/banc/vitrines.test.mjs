@@ -275,7 +275,7 @@ test('01/10/2026 : un nom court (« RNP ») retrouve son site par la recherche ;
   const f = async (id) => (await brain.query('SELECT statut, site, site_etat, corps FROM vitrines WHERE id = $1', [id])).rows[0];
   const rnp = await f(960);
   assert.equal(rnp.site, 'https://www.garage-rnp.fr/'); assert.equal(rnp.site_etat, 'ancien');
-  assert.match(rnp.corps, /votre site existe, mais il date un peu/); assert.ok(!/aucun site/.test(rnp.corps));
+  assert.match(rnp.corps, /le site de .+ existe, mais il date un peu/); assert.ok(!/aucun site/.test(rnp.corps));
   const af = await f(961);
   assert.equal(af.statut, 'ecarte', 'l’ancien site est mort, mais le nouveau est récent : rien à vendre'); assert.equal(af.site, 'https://www.auto-form-annecy.fr/');
 });
@@ -326,10 +326,10 @@ test('08/10/2026 : moteur muet : le second contrôle (adresses tirées du nom) ;
   const fiche = async (id) => (await brain.query('SELECT statut, site, site_etat, site_signaux, motif, corps FROM vitrines WHERE id = $1', [id])).rows[0];
   const tardy = await fiche(1001);
   assert.equal(tardy.site, 'https://fournil-tardy.fr/', 'son site, trouvé par son nom et prouvé par sa page');
-  assert.equal(tardy.site_etat, 'ancien'); assert.match(tardy.corps, /votre site existe, mais il date un peu/);
+  assert.equal(tardy.site_etat, 'ancien'); assert.match(tardy.corps, /le site de .+ existe, mais il date un peu/);
   const gavard = await fiche(1002);
   assert.equal(gavard.statut, 'brouillon'); assert.equal(gavard.site_etat, 'aucun');
-  assert.match(gavard.corps, /je n'ai pas trouvé de site à votre nom/, 'la phrase ne dit que ce qui a été vérifié');
+  assert.match(gavard.corps, /ne semble pas avoir de site web/, 'la phrase ne dit que ce qui a été vérifié');
   assert.ok(gavard.site_signaux.some((s) => /moteur de recherche muet/.test(s)));
   const mouchet = await fiche(1003);
   assert.equal(mouchet.statut, 'nouveau', 'une adresse à son nom existe mais ne se lit pas : rien n’est conclu');
@@ -403,7 +403,7 @@ test('01/10/2026 : un annuaire ou la page d’un réseau n’est pas le site du 
   assert.equal(siteASonNom('https://www.maison-chevallier.fr/', v('Boulangerie Chevallier')), true);
   assert.equal(siteASonNom('https://www.boulangeriedelagare.fr/', v('Boulangerie de la Gare')), true, 'que des mots du métier : rien n’est affirmé');
   const b = brouillon({ nom: 'Garage C.L. AUTO', metier: 'garage automobile', ville: 'Annecy', source: 'google', site: 'https://www.idgarages.com/', site_etat: 'aucun' }, 'https://x/demo/y');
-  assert.match(b.corps, /sur Google, votre fiche renvoie vers idgarages\.com, pas vers un site à votre nom/);
+  assert.match(b.corps, /sur Google, la fiche de .+ renvoie vers idgarages\.com, pas vers un site à son nom/);
 });
 
 test('01/10/2026 : une fiche sans téléphone ni e-mail cherche son numéro sur le web ; sans rien, elle sort de la file', async () => {
