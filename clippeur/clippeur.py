@@ -216,22 +216,30 @@ def ass_temps(s):
     return "%d:%02d:%05.2f" % (s // 3600, (s % 3600) // 60, s % 60)
 
 
-def sous_titres(mots, debut, fin, accroche, chemin, avec_mots=True, format_="plein"):
+def sous_titres(mots, debut, fin, accroche, chemin, avec_mots=True, format_="plein", rapport=1.0, abonnement=True):
     """Sous-titres ASS : groupes de 3 mots, le mot prononcé en plein blanc, les autres en blanc atténué ;
-    l'accroche en haut pendant 2,5 s. Aucune animation clignotante."""
-    bandes = format_ == "bandes"                         # format « bandes noires » : titre en haut, vidéo carrée au centre
+    l'accroche en haut pendant 2,5 s. Aucune animation clignotante. Format « bandes » : les 2 dernières secondes, le titre
+    laisse place à « FOLLOW FOR MORE » sur un bandeau jaune qui apparaît en grandissant (demande de Basile, 21/10/2026)."""
+    bandes = format_ == "bandes"                         # format « bandes noires » : titre en haut, image nette au centre
+    _, h, haut = disposition(rapport)                    # le titre juste au-dessus de l'image, les mots juste en dessous
     tete = ("[Script Info]\nScriptType: v4.00+\nPlayResX: 1080\nPlayResY: 1920\nWrapStyle: 0\n\n"
             "[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, "
             "Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n"
-            + ("Style: Mot,Inter,92,&H00F5F5F5,&H00F5F5F5,&H00000000,&H64000000,1,0,0,0,100,100,0,0,1,6,3,2,70,70,590,1\n"
-               "Style: Titre,Inter,66,&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,1,0,0,0,100,100,0,0,1,0,0,2,90,90,1530,1\n"
+            + ("Style: Mot,Inter,92,&H00F5F5F5,&H00F5F5F5,&H00000000,&H64000000,1,0,0,0,100,100,0,0,1,6,3,2,70,70,%d,1\n"
+               "Style: Titre,Inter,66,&H00FFFFFF,&H00FFFFFF,&H00000000,&H64000000,1,0,0,0,100,100,0,0,1,4,2,2,90,90,%d,1\n"
+               "Style: Fin,Inter,64,&H00000000,&H00000000,&H0000E6FF,&H0000E6FF,1,0,0,0,100,100,0,0,3,18,0,2,90,90,%d,1\n"
+               % (1920 - (haut + h + 150), 1920 - (haut - 30), 1920 - (haut - 40))
                if bandes else
                "Style: Mot,Inter,100,&H00F5F5F5,&H00F5F5F5,&H00000000,&H64000000,1,0,0,0,100,100,0,0,1,6,3,2,70,70,600,1\n")
             + "Style: Accroche,Inter,76,&H00111111,&H00111111,&H00FFFFFF,&H00FFFFFF,1,0,0,0,100,100,0,0,3,22,0,8,70,70,250,1\n\n"
             "[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n")
     ev = []
-    if accroche and bandes:                              # le titre vit dans la bande noire du haut : il ne cache rien
-        ev.append("Dialogue: 1,%s,%s,Titre,,0,0,0,,%s" % (ass_temps(0), ass_temps(fin - debut), censurer(accroche.replace(chr(10), " "))))
+    fin_titre = fin - debut - 2 if bandes and abonnement and fin - debut > 8 else fin - debut
+    if accroche and bandes:                              # le titre vit dans la bande du haut : il ne cache rien
+        ev.append("Dialogue: 1,%s,%s,Titre,,0,0,0,,%s" % (ass_temps(0), ass_temps(fin_titre), censurer(accroche.replace(chr(10), " "))))
+    if fin_titre < fin - debut:
+        ev.append("Dialogue: 2,%s,%s,Fin,,0,0,0,,{\\fscx70\\fscy70\\t(0,220,\\fscx100\\fscy100)}FOLLOW FOR MORE"
+                  % (ass_temps(fin_titre), ass_temps(fin - debut)))
     elif accroche:
         pass  # bandeau de titre sur l'image retiré le 02/10/2026 (jugé laid) ; l'accroche reste dans les légendes
         # ev.append("Dialogue: 1,%s,%s,Accroche,,0,0,0,,%s" % (ass_temps(0), ass_temps(fin - debut), censurer(accroche.replace("\n", " ")).upper()))
@@ -256,12 +264,12 @@ def sous_titres(mots, debut, fin, accroche, chemin, avec_mots=True, format_="ple
     chemin.write_text(tete + "\n".join(ev) + "\n", encoding="utf-8")
 
 
-def centre_visage(source, debut, fin):
-    """Le centre horizontal (0 à 1) du visage qui parle, médiane sur une dizaine d'images du passage ; None sans visage."""
+def visages(source, debut, fin):
+    """Les visages vus sur une douzaine d'images du passage : (largeur, hauteur de la source, une liste de boîtes par image)."""
     import cv2
     cap = cv2.VideoCapture(str(source))
     det = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
-    xs = []
+    iw, ih, vues = cap.get(cv2.CAP_PROP_FRAME_WIDTH), cap.get(cv2.CAP_PROP_FRAME_HEIGHT), []
     for k in range(12):
         cap.set(cv2.CAP_PROP_POS_MSEC, (debut + (fin - debut) * (k + .5) / 12) * 1000)
         ok, im = cap.read()
@@ -269,14 +277,53 @@ def centre_visage(source, debut, fin):
             continue
         g = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
         f = det.detectMultiScale(g, 1.1, 6, minSize=(int(g.shape[0] * .08),) * 2)
-        if len(f):
-            x, y, w, h = max(f, key=lambda r: r[2] * r[3])                # le plus grand visage : celui qui parle
-            xs.append((x + w / 2) / g.shape[1])
+        vues.append([tuple(int(v) for v in r) for r in f])
     cap.release()
+    return iw, ih, vues
+
+
+def centre_visage(source, debut, fin):
+    """Le centre horizontal (0 à 1) du visage qui parle, médiane sur une dizaine d'images du passage ; None sans visage."""
+    iw, ih, vues = visages(source, debut, fin)
+    xs = sorted((x + w / 2) / iw for f in vues if f for x, y, w, h in [max(f, key=lambda r: r[2] * r[3])])
     if len(xs) < 4:
         return None
-    xs.sort()
     return xs[len(xs) // 2]
+
+
+def cadre_sujet(source, debut, fin, cadrage="visage"):
+    """Ce que le format « bandes » garde de l'image : (centre horizontal de 0 à 1, rapport largeur/hauteur de la fenêtre).
+    Basile (16/10/2026) : le carré était trop zoomé, la carte ou le jeu ne se voyait pas en entier. Donc un seul visage
+    qui parle = une fenêtre 4:3 centrée sur lui ; aucun visage, plusieurs, ou un visage qui se déplace = l'image entière."""
+    iw, ih, vues = visages(source, debut, fin)
+    entiere = iw / ih if ih else 16 / 9
+    if cadrage != "visage" or not ih:
+        return .5, entiere
+    xs, a_deux = [], 0
+    for f in vues:
+        if not f:
+            continue
+        x, y, w, h = max(f, key=lambda r: r[2] * r[3])                    # le plus grand visage : celui qui parle
+        xs.append((x + w / 2) / iw)
+        autres = [r for r in f if r[2] * r[3] >= .35 * w * h and abs((r[0] + r[2] / 2) / iw - xs[-1]) > .15]
+        a_deux += bool(autres)                                             # un second visage de taille voisine, ailleurs
+    if len(xs) < 4 or a_deux >= 3:
+        return .5, entiere
+    rapport = min(4 / 3, entiere)
+    xs.sort()
+    bas, haut = xs[len(xs) // 10], xs[-1 - len(xs) // 10]
+    if haut - bas > .5 * rapport / entiere:                               # il sort de la fenêtre : on garde tout
+        return .5, entiere
+    return xs[len(xs) // 2], rapport
+
+
+def disposition(rapport):
+    """L'image nette dans le 1080×1920 : (largeur, hauteur, haut), un peu au-dessus du milieu (le bas de l'écran porte
+    les boutons et la légende des plateformes) ; jamais plus de 1 300 px de haut (source verticale)."""
+    l, h = 1080, int(round(1080 / rapport / 2)) * 2
+    if h > 1300:
+        l, h = int(round(1300 * rapport / 2)) * 2, 1300
+    return l, h, 940 - h // 2
 
 
 def sans_blancs(mots, debut, fin, seuil=.45, marge=.12):
@@ -305,7 +352,7 @@ def recaler(mots, garde):
     return out, t0
 
 
-def monter(source, debut, fin, ass, sortie, cadrage="visage", garde=None, format_="plein"):
+def monter(source, debut, fin, ass, sortie, cadrage="visage", garde=None, format_="plein", cadre=None):
     if garde and len(garde) > 1:
         sel = "+".join("between(t,%.2f,%.2f)" % (a, b) for a, b in garde)
         coupe = "[0:v]select='%s',setpts=N/FRAME_RATE/TB[vc];[0:a]aselect='%s',asetpts=N/SR/TB[ac]" % (sel, sel)
@@ -313,19 +360,25 @@ def monter(source, debut, fin, ass, sortie, cadrage="visage", garde=None, format
         lancer(["ffmpeg", "-y", "-i", str(source), "-filter_complex", coupe, "-map", "[vc]", "-map", "[ac]",
                 "-c:v", "libx264", "-preset", "veryfast", "-crf", "14", "-c:a", "aac", "-b:a", "192k", tmp])
         source, debut, fin = tmp, 0.0, sum(b - a for a, b in garde)
-    cx = centre_visage(source, debut, fin) if cadrage == "visage" else None
-    if cx is None and cadrage == "centre":
-        cx = .5                                          # plein écran au centre : les sous-titres incrustés de la source restent lisibles
     if format_ == "bandes":
-        # bandes noires : un carré net pris dans la hauteur de la source (jamais grossi : 1440p ou plus donne 1080 px),
-        # centré sur le visage, posé entre une bande haute (titre) et une bande basse ; les sous-titres en bas de l'image
-        c = .5 if cx is None else cx
-        filtre = ("[0:v]crop=ih:ih:'max(0,min(iw-ih,%.4f*iw-ih/2))':0,scale=1080:1080:flags=lanczos,unsharp=3:3:0.3:3:3:0.0,"
-                  "pad=1080:1920:0:420:black,subtitles=%s:fontsdir=/usr/share/fonts[v]" % (c, str(ass).replace(":", "\\:")))
+        # l'image entière, ou une fenêtre 4:3 sur un visage seul (cadre_sujet), réduite à 1 080 px de large (jamais grossie),
+        # posée entre le titre au-dessus et les sous-titres en dessous : rien ne cache le sujet. Autour, plus de noir
+        # (Basile, 21/10/2026 : « trop de noir ») : la même image, floutée et assombrie, couvre tout l'écran. Le flou se
+        # calcule en petit (270×480) puis s'agrandit : quelques % de calcul en plus seulement.
+        c, rapport = cadre or (.5, 16 / 9)
+        l, h, haut = disposition(rapport)
+        filtre = ("[0:v]split[a][b];[a]scale=270:480:force_original_aspect_ratio=increase,crop=270:480,boxblur=6:1,"
+                  "eq=brightness=-0.14:saturation=1.2,scale=1080:1920,setsar=1[fond];"
+                  "[b]crop='min(iw,trunc(ih*%.4f/2)*2)':ih:'max(0,min(iw-ow,%.4f*iw-ow/2))':0,scale=%d:%d:flags=lanczos,"
+                  "unsharp=3:3:0.3:3:3:0.0,setsar=1[net];[fond][net]overlay=%d:%d,subtitles=%s:fontsdir=/usr/share/fonts[v]"
+                  % (rapport, c, l, h, (1080 - l) // 2, haut, str(ass).replace(":", "\\:")))
         lancer(["ffmpeg", "-y", "-ss", "%.2f" % debut, "-to", "%.2f" % fin, "-i", str(source), "-filter_complex", filtre,
                 "-map", "[v]", "-map", "0:a?", "-r", "30", "-c:v", "libx264", "-preset", "slow", "-crf", "16", "-pix_fmt", "yuv420p",
                 "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", str(sortie)])
         return
+    cx = centre_visage(source, debut, fin) if cadrage == "visage" else None
+    if cx is None and cadrage == "centre":
+        cx = .5                                          # plein écran au centre : les sous-titres incrustés de la source restent lisibles
     if cx is not None:
         # recadrage plein écran sur le visage : une fenêtre 9:16 dans la hauteur de la source, centrée sur lui
         filtre = ("[0:v]crop='min(iw,ih*9/16)':ih:'max(0,min(iw-ih*9/16,%.4f*iw-ih*9/32))':0,scale='if(gt(ih,1920),1080,trunc(ih*9/32)*2)':'if(gt(ih,1920),1920,ih)':flags=lanczos,unsharp=3:3:0.4:3:3:0.0,"
@@ -396,12 +449,16 @@ def main():
             if suite:
                 c["fin"] = round(suite[0]["f"] + .1, 2)
         garde = sans_blancs(mots, c["debut"], c["fin"]) if profil.get("sans_blancs", True) else [(c["debut"], c["fin"])]
+        fmt = profil.get("format", "bandes")
+        cadre = cadre_sujet(source, c["debut"], c["fin"], profil.get("cadrage", "visage")) if fmt == "bandes" else None
+        if cadre:
+            print("cadre %d : %s, centre %.2f" % (k, "visage 4:3" if abs(cadre[1] - 4 / 3) < .01 else "image entière", cadre[0]), flush=True)
         if len(garde) > 1:
             mots_c, duree = recaler(mots, garde)
-            sous_titres(mots_c, 0, duree, c.get("accroche", ""), ass, profil.get("sous_titres", True), profil.get("format", "bandes"))
+            sous_titres(mots_c, 0, duree, c.get("accroche", ""), ass, profil.get("sous_titres", True), fmt, cadre[1] if cadre else 1.0, profil.get("fin_abonnement", True))
         else:
-            sous_titres(mots, c["debut"], c["fin"], c.get("accroche", ""), ass, profil.get("sous_titres", True), profil.get("format", "bandes"))
-        monter(source, c["debut"], c["fin"], ass, mp4, profil.get("cadrage", "visage"), garde, profil.get("format", "bandes"))
+            sous_titres(mots, c["debut"], c["fin"], c.get("accroche", ""), ass, profil.get("sous_titres", True), fmt, cadre[1] if cadre else 1.0, profil.get("fin_abonnement", True))
+        monter(source, c["debut"], c["fin"], ass, mp4, profil.get("cadrage", "visage"), garde, fmt, cadre)
         try:
             os.remove(str(mp4) + ".coupe.mp4")
         except OSError:

@@ -347,6 +347,19 @@ class Agent(unittest.TestCase):
         self.assertEqual(self.declarer.noter(sql, c, {"ok": True, "verifie": True}), (True, False))
         self.assertEqual(self.declarer.noter(sql, c, {"ok": False, "bloque": True}), (False, False))
 
+    def test_campagne_fermee_aux_clips_ses_clips_en_attente_ecartes(self):
+        # 21/10 : « This campaign isn't taking new clips right now » ; pas d'alerte, plus de nouvel essai, file libérée
+        vus = []
+        sql = lambda q, *p: vus.append((" ".join(q.split()), p)) or ""
+        c = {"campagne": "k", "clip": "1", "plateforme": "youtube", "lien": "https://y/1", "declare_essais": 0}
+        self.assertEqual(self.declarer.noter(sql, c, {"ok": False, "ferme": True, "raison": "fermée"}), (False, False))
+        self.assertTrue(any("declare_essais = %d" % self.declarer.ESSAIS_MAX in q for q, p in vus))
+        ecarte = [(q, p) for q, p in vus if q.startswith("UPDATE clips_buffer")]
+        self.assertEqual(len(ecarte), 1)
+        self.assertIn("campagne_close", ecarte[0][0])
+        self.assertIn("etat = 'a_faire'", ecarte[0][0])
+        self.assertEqual(ecarte[0][1], ("k", "youtube"))
+
     def test_une_seule_alerte_par_blocage(self):
         import tempfile
         d = Path(tempfile.mkdtemp())

@@ -280,7 +280,7 @@ def lancer(sql, e, s, campagnes_dir):
     nom = slug(e["nom"])
     profil = os.path.join(campagnes_dir, nom + ".json")
     if s.get("verifie") and not os.path.isfile(profil):
-        p = {"nom": e["nom"], "min": int(s.get("min") or 12), "max": int(s.get("max") or 35),
+        p = {"nom": e["nom"], "min": int(s.get("min") or 30), "max": int(s.get("max") or 60),
              "tags": s.get("tags") or {pl: "" for pl in e["plateformes"]}, "hashtags": s.get("hashtags", []),
              "interdits": s.get("interdits", []), "consignes": (s.get("consignes", "") + " " + e.get("description", "")).strip(),
              "remuneration": {"type": "CPM", "detail": pourquoi(e)}, "sources_autorisees": s["url"],

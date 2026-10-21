@@ -38,6 +38,15 @@ def noter(sql, c, r):
         return True, False
     if r.get("bloque"):                                     # captcha, session : rien n'est compté, l'alerte part une fois
         return False, False
+    if r.get("ferme"):
+        # « This campaign isn't taking new clips right now » (relevé le 21/10/2026, HardScope Ep 2) : inutile d'insister ni
+        # de publier encore ses clips sur cette plateforme ; leurs créneaux reviennent aux campagnes ouvertes
+        sql("""UPDATE clips_publies SET declare_essais = %d, declare_note = :'p3'
+               WHERE campagne = :'p0' AND clip = :'p1' AND plateforme = :'p2';""" % ESSAIS_MAX,
+            c["campagne"], c["clip"], c["plateforme"], r.get("raison", "")[:300])
+        sql("""UPDATE clips_buffer SET etat = 'campagne_close', message = 'Content Rewards n''accepte plus de clips', maj = now()
+               WHERE campagne = :'p0' AND plateforme = :'p1' AND etat = 'a_faire';""", c["campagne"], c["plateforme"])
+        return False, False
     sql("""UPDATE clips_publies SET declare_essais = declare_essais + 1, declare_note = :'p3'
            WHERE campagne = :'p0' AND clip = :'p1' AND plateforme = :'p2';""",
         c["campagne"], c["clip"], c["plateforme"], (r.get("raison") or "réponse vide de l'agent")[:300])

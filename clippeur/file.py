@@ -100,8 +100,9 @@ Brief :
 """ + texte[:12000], cle_gemini())
     p.update({"_source": "Brief collé sur /clips (demande n°%s), extrait par Gemini." % d["id"], "brief_brut": texte[:12000],
               "sous_titres": True, "cadrage": "visage", "publication_auto": True})
-    p["min"] = max(int(p.get("min") or 12), 12)      # la durée suit le moment (décision du 02/10/2026)
-    p["max"] = max(int(p.get("max") or 35), p["min"] + 8)
+    # la durée suit le moment (02/10/2026) ; sans durée dans le brief, des clips plus longs : 30 à 60 s (Basile, 21/10/2026)
+    p["min"] = max(int(p.get("min") or 30), 12)
+    p["max"] = max(int(p.get("max") or 60), p["min"] + 8)
     return p
 
 

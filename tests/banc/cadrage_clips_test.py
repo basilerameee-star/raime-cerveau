@@ -1,0 +1,131 @@
+# Le cadrage des clips (21/10/2026). Basile (16/10) : les clips étaient trop zoomés, la carte ou le jeu ne se voyait pas
+# en entier (le format « bandes » coupait un carré dans le 16:9). Ce banc tient : un visage seul et stable = fenêtre 4:3
+# centrée sur lui ; aucun visage, deux visages ou un visage qui se déplace = l'image entière ; une source verticale ne
+# déborde pas ; le titre est au-dessus de l'image et les mots en dessous ; le montage garde toute la largeur demandée ;
+# la remontée de la réserve compare les sous-titres sans les balises de couleur. Aucune vidéo, aucun ffmpeg.
+# Lancé par la CI : python3 -m unittest tests/banc/cadrage_clips_test.py
+import re
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+DEPOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(DEPOT / "clippeur"))
+import clippeur as C  # noqa: E402
+import remonter  # noqa: E402
+
+LARGE, HAUT = 1920, 1080
+
+
+def vu(*boites, fois=12):
+    """La réponse de visages() : la même image vue `fois` fois (boîtes x, y, largeur, hauteur)."""
+    return lambda source, debut, fin: (LARGE, HAUT, [list(boites) for _ in range(fois)])
+
+
+class Cadre(unittest.TestCase):
+    def tearDown(self):
+        C.visages = VRAI
+
+    def test_sans_visage_l_image_entiere(self):
+        C.visages = vu()
+        self.assertEqual(C.cadre_sujet("s", 0, 10), (.5, 16 / 9))
+
+    def test_un_visage_seul_une_fenetre_4_3_centree_sur_lui(self):
+        C.visages = vu((1100, 300, 200, 200))
+        cx, rapport = C.cadre_sujet("s", 0, 10)
+        self.assertAlmostEqual(rapport, 4 / 3)
+        self.assertAlmostEqual(cx, 1200 / LARGE)
+
+    def test_deux_personnes_l_image_entiere(self):
+        # le procès : la témoin à gauche, l'avocat à droite, de taille voisine
+        C.visages = vu((300, 300, 200, 200), (1300, 320, 180, 180))
+        self.assertEqual(C.cadre_sujet("s", 0, 10)[1], 16 / 9)
+
+    def test_un_petit_visage_au_fond_ne_compte_pas(self):
+        C.visages = vu((900, 300, 260, 260), (1600, 200, 100, 100))
+        self.assertAlmostEqual(C.cadre_sujet("s", 0, 10)[1], 4 / 3)
+
+    def test_un_visage_qui_traverse_l_image(self):
+        C.visages = lambda s, d, f: (LARGE, HAUT, [[(100 + 140 * k, 300, 200, 200)] for k in range(12)])
+        self.assertEqual(C.cadre_sujet("s", 0, 10)[1], 16 / 9)
+
+    def test_visage_vu_trop_rarement(self):
+        C.visages = lambda s, d, f: (LARGE, HAUT, [[(900, 300, 200, 200)]] * 3 + [[]] * 9)
+        self.assertEqual(C.cadre_sujet("s", 0, 10)[1], 16 / 9)
+
+    def test_cadrage_centre_l_image_entiere(self):
+        C.visages = vu((1100, 300, 200, 200))
+        self.assertEqual(C.cadre_sujet("s", 0, 10, "centre"), (.5, 16 / 9))
+
+    def test_source_verticale(self):
+        C.visages = lambda s, d, f: (1080, 1920, [[] for _ in range(12)])
+        self.assertAlmostEqual(C.cadre_sujet("s", 0, 10)[1], 1080 / 1920)
+
+
+class Disposition(unittest.TestCase):
+    def test_tailles(self):
+        self.assertEqual(C.disposition(16 / 9), (1080, 608, 636))
+        self.assertEqual(C.disposition(4 / 3), (1080, 810, 535))
+        l, h, haut = C.disposition(9 / 16)                     # verticale : jamais plus de 1 300 px de haut
+        self.assertEqual(h, 1300)
+        self.assertLessEqual(l, 1080)
+
+    def test_titre_au_dessus_et_mots_en_dessous(self):
+        for rapport in (16 / 9, 4 / 3):
+            l, h, haut = C.disposition(rapport)
+            with tempfile.TemporaryDirectory() as d:
+                ass = Path(d) / "c.ass"
+                mots = [{"d": 0.0, "f": .4, "m": "Bonjour"}, {"d": .5, "f": .9, "m": "tout"}, {"d": 1.0, "f": 1.4, "m": "le monde."}]
+                C.sous_titres(mots, 0, 2, "Le titre", ass, True, "bandes", rapport)
+                styles = {l.split(",")[0][7:]: int(l.split(",")[21]) for l in ass.read_text(encoding="utf-8").splitlines()
+                          if l.startswith("Style:")}
+            self.assertLess(1920 - styles["Titre"], haut)       # la ligne du titre finit au-dessus de l'image
+            self.assertGreater(1920 - styles["Mot"] - 92, haut + h)   # les mots commencent sous l'image
+
+
+class Montage(unittest.TestCase):
+    def test_bandes_garde_toute_la_largeur_demandee(self):
+        vus = []
+        C.lancer, avant = vus.append, C.lancer
+        try:
+            C.monter("s.mp4", 0, 10, Path("c.ass"), Path("c.mp4"), "visage", None, "bandes", (.5, 16 / 9))
+        finally:
+            C.lancer = avant
+        filtre = vus[0][vus[0].index("-filter_complex") + 1]
+        self.assertIn("crop='min(iw,trunc(ih*1.7778/2)*2)'", filtre)
+        self.assertIn("scale=1080:608", filtre)
+        self.assertIn("overlay=0:636", filtre)
+        self.assertNotIn("crop=ih:ih", filtre)                 # l'ancien carré
+        self.assertNotIn("black", filtre)                      # plus de noir (21/10) : le fond est la même image, floutée
+        self.assertIn("boxblur", filtre)
+
+    def test_fin_follow_for_more_sur_les_2_dernieres_secondes(self):
+        with tempfile.TemporaryDirectory() as d:
+            ass = Path(d) / "c.ass"
+            C.sous_titres([], 0, 20, "Le titre", ass, True, "bandes", 16 / 9)
+            lignes = [l for l in ass.read_text(encoding="utf-8").splitlines() if l.startswith("Dialogue:")]
+            C.sous_titres([], 0, 20, "Le titre", ass, True, "bandes", 16 / 9, abonnement=False)
+            sans = [l for l in ass.read_text(encoding="utf-8").splitlines() if l.startswith("Dialogue:")]
+        titre = next(l for l in lignes if ",Titre," in l)
+        fin = next(l for l in lignes if ",Fin," in l)
+        self.assertIn("0:00:18.00", titre)                     # le titre s'efface 2 s avant la fin
+        self.assertIn("0:00:18.00,0:00:20.00", fin)
+        self.assertIn("FOLLOW FOR MORE", fin)
+        self.assertFalse(any(",Fin," in l for l in sans))
+
+
+class Remontee(unittest.TestCase):
+    def test_compare_le_texte_sans_les_couleurs(self):
+        with tempfile.TemporaryDirectory() as d:
+            ass = Path(d) / "c.ass"
+            ass.write_text("Dialogue: 0,0:00:00.00,0:00:01.00,Mot,,0,0,0,,{\\c&H0000E6FF&}Bonjour {\\c&H00FFFFFF&}tout\n"
+                           "Dialogue: 1,0:00:00.00,0:00:05.00,Titre,,0,0,0,,Un titre, avec virgule\n", encoding="utf-8")
+            self.assertEqual(remonter.textes(ass, "Mot"), ["Bonjour tout"])
+            self.assertEqual(remonter.textes(ass, "Titre"), ["Un titre, avec virgule"])
+
+
+VRAI = C.visages
+
+if __name__ == "__main__":
+    unittest.main()

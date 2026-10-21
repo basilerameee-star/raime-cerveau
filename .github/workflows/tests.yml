@@ -47,3 +47,5 @@ jobs:
       - run: python3 -m unittest tests/banc/verificateur_clips_test.py
       # Le pilote des clips KinGKlip (15/10/2026) : grille des campagnes, réserve, alternance et quota de Buffer.
       - run: python3 -m unittest tests/banc/pilote_clips_test.py
+      # Le cadrage des clips (21/10/2026) : visage seul en 4:3, sinon l'image entière ; titre au-dessus, mots en dessous.
+      - run: python3 -m unittest tests/banc/cadrage_clips_test.py

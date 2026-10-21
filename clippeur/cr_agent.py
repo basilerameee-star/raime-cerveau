@@ -208,11 +208,19 @@ def soumettre(ctx, pg, cr_id, lien, essai=False):
     o = obstacle(pg)
     if o:
         return bloquer(o)
+    # une fenêtre d'annonce ouverte au chargement (fond « fixed inset-0 bg-black/45 », 21/10/2026) prenait le clic : Échap
+    pg.keyboard.press("Escape")
+    pg.wait_for_timeout(600)
     b = bouton(pg, r"submit clip")
     if not b:
         releve(pg, "soumettre-" + cr_id)
         return {"ok": False, "raison": "bouton « Submit clip » absent (campagne pas rejointe ?) ; relevé dans " + RELEVES}
-    b.click(timeout=15000)
+    try:
+        b.click(timeout=15000)
+    except Exception:
+        pg.keyboard.press("Escape")
+        pg.wait_for_timeout(800)
+        b.click(timeout=15000)
     pg.wait_for_timeout(3000)
     champ = pg.locator("input[placeholder*='http' i]:visible")
     if not champ.count():
@@ -228,6 +236,10 @@ def soumettre(ctx, pg, cr_id, lien, essai=False):
     accord.last.click(timeout=10000, force=True)
     pg.wait_for_timeout(1500)
     envoyer = pg.locator("button:visible").filter(has_text=re.compile(r"^\s*submit clip\s*$", re.I)).last
+    fenetre = pg.locator("[role=dialog]").first.inner_text()[:600] if pg.locator("[role=dialog]").count() else ""
+    if re.search(r"isn.t taking new clips|not accepting (new )?(clips|submissions)", fenetre, re.I):
+        releve(pg, "fermee-" + cr_id)
+        return {"ok": False, "ferme": True, "raison": "Content Rewards : la campagne n'accepte plus de clips pour l'instant"}
     if not envoyer.count() or not envoyer.is_enabled():
         infos = releve(pg, "refus-" + cr_id)
         refus = pg.locator("[role=dialog]").first.inner_text()[:600] if pg.locator("[role=dialog]").count() else ""
@@ -235,14 +247,21 @@ def soumettre(ctx, pg, cr_id, lien, essai=False):
     if essai:                                               # essai à blanc : tout est rempli, rien n'est envoyé
         return {"ok": True, "verifie": False, "essai": True, "releve": releve(pg, "essai-" + cr_id)}
     envoyer.click(timeout=15000)
-    pg.wait_for_timeout(6000)
+    pg.wait_for_timeout(2500)
+    # ce que Content Rewards répond au clic (fenêtre, bandeau d'erreur ou de succès), lu AVANT de quitter la page : sans
+    # lui, un refus ne laissait aucune trace (« lien envoyé mais absent », 21/10/2026)
+    reponse = " | ".join(t.strip() for t in pg.locator("[role=dialog], [role=alert], [role=status], [data-sonner-toast]")
+                         .all_inner_texts() if t.strip())[:400]
+    releve(pg, "apres-envoi-" + cr_id)
+    pg.wait_for_timeout(3500)
     o = obstacle(pg)
     if o:
         return bloquer(o)
     ok = deja_declare(ctx, cr_id, lien, pg)
     if not ok:
         releve(pg, "verif-" + cr_id)
-    return {"ok": ok, "verifie": ok, "raison": "" if ok else "lien envoyé mais absent des déclarations du compte ; relevé dans " + RELEVES}
+    return {"ok": ok, "verifie": ok, "reponse": reponse,
+            "raison": "" if ok else "lien envoyé mais absent des déclarations du compte (réponse : %s) ; relevé dans %s" % (reponse or "aucune", RELEVES)}
 
 
 def main(args):
