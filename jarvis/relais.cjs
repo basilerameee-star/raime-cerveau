@@ -106,6 +106,9 @@ async function relayer({ fetch = globalThis.fetch } = {}) {
   occupe = true;
   try {
     if (fs.existsSync(path.join(LIVRABLES, '.maintenance'))) return;
+    // 21/10/2026 : le gouverneur des jetons (hôte, scripts/hermes_gouverneur.py) pose ce fichier quand les ordres ont
+    // dépassé leur plafond du jour ; ils attendent minuit UTC, rien n'est perdu (61 M jetons en 7 jours avant lui)
+    if (fs.existsSync(path.join(LIVRABLES, 'gouverneur', 'ordres-en-pause'))) return;
     const sante = await fetch(EXECUTANT + '/sante', { signal: AbortSignal.timeout(5000) }).then((r) => r.json()).catch(() => null);
     if (!sante) return;
     for (const e of await lire(`SELECT id, verification FROM commandes WHERE etat = 'en_cours' AND pour = 'harness'`)) {
@@ -135,17 +138,19 @@ async function relayer({ fetch = globalThis.fetch } = {}) {
   } finally { occupe = false; }
 }
 
-// L'APPRENTISSAGE (voulu par Basile le 25/09/2026) : la nuit (1 h-6 h, Paris), une séance par jour au plus,
-// quand la file est vide. Hermes améliore ses compétences à partir de ses échecs et des meilleures sources.
+// L'APPRENTISSAGE (voulu par Basile le 25/09/2026) : la nuit (1 h-6 h, Paris), quand la file est vide. Hermes améliore ses
+// compétences à partir de ses échecs et des meilleures sources. 21/10/2026 (gouverneur des jetons) : une séance par SEMAINE
+// au plus, bornée (jusqu'à 15 M jetons en une nuit le 20/10, pour une application de démonstration).
 const APPRENTISSAGE = "Apprentissage (séance automatique de la nuit) : 1) relis tes compétences et le journal des ordres des derniers jours (ce qui a échoué, ce qui a été lent, ce qui a déplu) ; "
   + "2) cherche sur GitHub et dans les documentations officielles les meilleures méthodes pour ce que rAIme livre : sites et applications premium, vidéo courte, réseaux sociaux, rédaction en français, et ce qui rapproche de 2 000 € par mois ; "
   + "dépôts reconnus seulement (licence libre, mis à jour récemment) ; 3) améliore au plus trois de tes compétences, ou crée celle qui manque, en y écrivant la source ; du texte seulement, jamais de script ni de secret ; "
-  + "4) écris apprentissage.md : ce que tu as appris, ce que tu as changé, pourquoi";
+  + "4) écris apprentissage.md : ce que tu as appris, ce que tu as changé, pourquoi. "
+  + "SOBRIÉTÉ : 20 étapes au plus, aucune application ni démonstration à construire, lis seulement ce qui sert ; tu t'arrêtes dès que les 4 points sont faits";
 async function apprendre() {
   const h = +new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Paris', hour: 'numeric', hourCycle: 'h23' }).format(new Date());
   if (h < 1 || h >= 6) return;
   const r = (await lire(`SELECT (SELECT count(*) FROM commandes WHERE etat IN ('a_faire', 'en_cours') AND pour = 'harness')::int AS file,
-    (SELECT count(*) FROM commandes WHERE texte LIKE 'Apprentissage (séance%' AND cree_le > now() - interval '20 hours')::int AS recente`))[0];
+    (SELECT count(*) FROM commandes WHERE texte LIKE 'Apprentissage (séance%' AND cree_le > now() - interval '6 days 20 hours')::int AS recente`))[0];
   if (!r || r.file || r.recente) return;
   await lire(`INSERT INTO commandes (texte, pour) VALUES ($1, 'harness')`, [APPRENTISSAGE]);
 }
