@@ -373,7 +373,7 @@ test('l’e-mail après l’appel : Basile voit le texte et le lien, puis il par
   const apercu = await v.apresAppel(4101, { etape: 'apercu' });
   assert.equal(apercu.ok, true); assert.equal(apercu.a, '');
   assert.equal(apercu.lien, 'https://cockpit.raime.fr/demo/chez-paul-4101');
-  assert.match(apercu.corps, /Suite à notre appel/); assert.ok(apercu.corps.includes(apercu.lien));
+  assert.match(apercu.corps, /Je suis Basile Ramé, de rAIme\. J'ai vu que/); assert.ok(!/notre appel|comme convenu/i.test(apercu.corps + apercu.sujet)); assert.ok(apercu.corps.includes(apercu.lien));
   assert.match(apercu.corps, /500 €/); assert.match(apercu.corps, /votre adresse et votre numéro/);
   const appels = [];
   const fauxN8n = (statut) => async (url, o) => { appels.push(JSON.parse(o.body).id);

@@ -97,7 +97,7 @@ export function brouillon(p) {
   return {
     segment: cle,
     sujet: `${nom} : j'ai préparé votre pré-audit`,
-    corps: `Bonjour,\n\nEn regardant les ${m.pluriel}${ville ? ` à ${ville}` : ''}, je suis tombé sur ${nom}.\n\n`
+    corps: `Bonjour,\n\nJe suis Basile Ramé, de rAIme. En regardant les ${m.pluriel}${ville ? ` à ${ville}` : ''}, j'ai vu ${nom}.\n\n`
       + `Dans un${['étude', 'agence'].includes(m.structure) ? 'e' : ''} ${m.structure}, une bonne part de la semaine part dans des tâches qui reviennent : `
       + `${m.taches[0]}, ${m.taches[1]}, ${m.taches[2]}. Une partie peut aujourd'hui être prise par des outils d'IA, avec vos logiciels actuels.\n\n`
       + `Alors je vous ai préparé un pré-audit pour votre métier : les tâches concernées, le temps qu'elles prennent, ce qu'un outil peut en prendre. Le voici :\n${lien(m)}\n\n`

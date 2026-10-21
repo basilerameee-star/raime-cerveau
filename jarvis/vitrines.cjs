@@ -151,10 +151,11 @@ function emailApresAppel(v) {
   const lien = `https://cockpit.raime.fr/demo/${v.slug}`;
   const donnees = [v.adresse && 'votre adresse', v.horaires && 'vos horaires', v.telephone && 'votre numéro'].filter(Boolean);
   const avec = donnees.length ? `, avec ${donnees.length > 1 ? `${donnees.slice(0, -1).join(', ')} et ${donnees[donnees.length - 1]}` : donnees[0]}` : '';
-  return { a: v.email || '', lien, sujet: `${v.nom} : la maquette de votre site, comme convenu`,
+  // 21/10/2026 (Basile) : jamais « suite à notre appel » ; on se présente, puis ce qu'on a vu
+  return { a: v.email || '', lien, sujet: `${v.nom} : la maquette de votre site`,
     corps: `Bonjour,
 
-Suite à notre appel, voici la maquette du site de ${v.nom}, préparée pour vous :
+Je suis Basile Ramé, de rAIme. J'ai vu que ${v.nom} n'a pas de site web : je vous en ai préparé un, le voici :
 ${lien}
 
 `
@@ -364,10 +365,10 @@ Vitrines, envoi ${mode} : ${e.en_file} en file, ${e.envoyes_aujourdhui} parti(s)
 // LE PRÉ-AUDIT APRÈS L'APPEL (15/10/2026) : même geste pour une entreprise (Intégration IA) : son pré-audit de secteur,
 // avec l'e-mail « suite à notre conversation » ; vitrine_id = 0 dans vitrines_apres_appel.
 function emailAudit(nom, lien, email) {
-  return { a: email || '', lien, sujet: `${nom} : votre pré-audit, comme convenu`,
+  return { a: email || '', lien, sujet: `${nom} : votre pré-audit`,
     corps: `Bonjour,
 
-Suite à notre conversation téléphonique, je vous fais parvenir le pré-audit comme convenu :
+Je suis Basile Ramé, de rAIme. J'ai préparé le pré-audit de ${nom} :
 ${lien}
 
 Il chiffre, sur une page, ce que l’IA peut faire pour votre métier : les heures libérées chaque mois, ce qu’elles valent, et les sources. Tout élément est modifiable et personnalisable à votre guise : l’audit de vos postes remplace ces estimations par vos chiffres réels.

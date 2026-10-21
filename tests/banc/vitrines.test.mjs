@@ -142,14 +142,15 @@ test('01/10/2026 : une page supprimée d’un site vivant n’est pas « aucun s
   assert.equal(b.statut, 'a_appeler'); assert.equal(b.email, null, 'l’adresse d’une autre maison est refusée');
   const c = await fiche(903);
   assert.equal(c.statut, 'brouillon');
-  assert.match(c.corps, /En cherchant une boulangerie à Annecy/);
-  assert.match(c.corps, /je n'ai trouvé aucun site à votre nom/, 'une fiche OSM ne parle pas de Google');
+  assert.match(c.corps, /Je suis Basile Ramé, de rAIme\. En cherchant une boulangerie à Annecy, j'ai vu que/);
+  assert.match(c.corps, /n'a pas de site web\./, 'une fiche OSM ne parle pas de Google');
+  assert.ok(!/appel/i.test(c.corps.split('Le voici')[0]), 'jamais « suite à notre appel » (21/10/2026)');
   assert.ok(!/Google/.test(c.corps));
   const d = await fiche(904);
   assert.equal(d.statut, 'ecarte'); assert.equal(d.motif, 'même e-mail que la vitrine n°903');
   const e = await fiche(905);
   assert.equal(e.statut, 'brouillon', 'une page Facebook n’est pas un site : c’est la cible');
-  assert.match(e.corps, /je n'ai trouvé qu'une page Facebook, et aucun site à votre nom/);
+  assert.match(e.corps, /n'a qu'une page Facebook, et pas de site web/);
   assert.equal((await fiche(906)).site_etat, 'recent', 'une adresse sans https:// se lit quand même');
   assert.equal(emailPlausible('boulangerie@gmail.com', { nom: 'Boulangerie du Lac', ville: 'Annecy' }, null, 'recherche web'), false, 'un mot du métier ne suffit pas');
 });

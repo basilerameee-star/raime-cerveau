@@ -567,19 +567,20 @@ export function maquette(v) {
 
 // ── 5. LE BROUILLON (texte de Basile, 30/09/2026) ─────────────────────────────
 export function brouillon(v, url) {
-  // Le constat dit seulement ce qui a été vérifié : « sur Google » quand la fiche vient de Google.
-  const constat = v.site_etat === 'ancien' ? `votre site existe, mais il date un peu et s'affiche mal sur téléphone`
-    : v.site_etat === 'mort' ? `votre site ne s'ouvre plus`
-    : v.site && !plateformeDe(v.site) && hoteDe(v.site) ? `${v.source === 'google' ? 'sur Google, votre fiche' : 'votre fiche en ligne'} renvoie vers ${hoteDe(v.site)}, pas vers un site à votre nom`
-    : plateformeDe(v.site) ? (v.source === 'google' ? `sur Google, votre fiche renvoie vers ${plateformeDe(v.site)}, pas vers un site`
-      : `je n'ai trouvé qu'${plateformeDe(v.site)}, et aucun site à votre nom`)
-    : v.source === 'google' ? `sur Google, aucun site n'y est relié`
+  // Le constat dit seulement ce qui a été vérifié : « sur Google » quand la fiche vient de Google. Il suit « j'ai vu que »
+  // et parle du commerce (Basile, 21/10/2026 : se présenter, puis « j'ai vu que <le commerce> n'a pas de site web »).
+  const constat = v.site_etat === 'ancien' ? `le site de ${v.nom} existe, mais il date un peu et s'affiche mal sur téléphone`
+    : v.site_etat === 'mort' ? `le site de ${v.nom} ne s'ouvre plus`
+    : v.site && !plateformeDe(v.site) && hoteDe(v.site) ? `${v.source === 'google' ? `sur Google, la fiche de ${v.nom}` : `la fiche en ligne de ${v.nom}`} renvoie vers ${hoteDe(v.site)}, pas vers un site à son nom`
+    : plateformeDe(v.site) ? (v.source === 'google' ? `sur Google, la fiche de ${v.nom} renvoie vers ${plateformeDe(v.site)}, pas vers un site`
+      : `${v.nom} n'a qu'${plateformeDe(v.site)}, et pas de site web`)
+    : v.source === 'google' ? `${v.nom} n'a pas de site web relié à sa fiche Google`
     // 08/10/2026 : moteur muet, seules les adresses tirées du nom vérifiées : la phrase n'affirme que cela
-    : v.verif === 'domaines' ? `je n'ai pas trouvé de site à votre nom`
-    : `je n'ai trouvé aucun site à votre nom`;
+    : v.verif === 'domaines' ? `${v.nom} ne semble pas avoir de site web`
+    : `${v.nom} n'a pas de site web`;
   return {
     sujet: `${v.nom} : j'ai préparé votre site`,
-    corps: `Bonjour,\n\nEn cherchant ${/(ie|ia)$/.test(v.metier || '') ? 'une' : 'un'} ${v.metier || 'commerce'} à ${v.ville}, je suis tombé sur ${v.nom} : ${constat}.\n\n`
+    corps: `Bonjour,\n\nJe suis Basile Ramé, de rAIme. En cherchant ${/(ie|ia)$/.test(v.metier || '') ? 'une' : 'un'} ${v.metier || 'commerce'} à ${v.ville}, j'ai vu que ${constat}.\n\n`
       + `Aujourd'hui, la plupart des clients regardent sur leur téléphone avant de se déplacer : sans site clair, ils choisissent souvent le commerce d'à côté.\n\n` // validée par Basile le 01/10/2026
       + `Alors je vous en ai préparé un. Le voici :\n${url}\n\n`
       + `S'il vous plaît, il est à ${PRIX} €. C'est une démo : on prend un appel pour le terminer ensemble, avec vos photos et vos textes. `
