@@ -38,6 +38,18 @@ COMPTES_DEDIES = re.compile(r"dedicated|new (page|account)s?\b|fresh (page|accou
 PUBLIC_EXIGE = re.compile(r"tier[- ]?1|\d+\s?%\s?\+?\s?(us|usa|uk|u\.s\.)\b|\b(us|usa|uk|american|united states) "
                           r"(audience|viewers)|audience (in|from) (the )?(us|usa|uk)", re.I)
 # la niche du pôle KinGKlip (décision du 02/10/2026) : les streamers et leurs shows
+# 22/10/2026 (Basile) : « si on se concentre uniquement sur les streamers […] autant ne sélectionner que ces campagnes-là ».
+# Les campagnes déjà lancées hors niche gardent leurs clips en file (elles ne sont pas « fermées ») ; None = toutes les niches.
+FOCUS = "streamer"
+STREAMER = re.compile(r"streamer|\bstream(?:s|ing|er)?\b|twitch|kick\.com|\bkick\b|\birl\b|\be-?sports?\b|n3on|kai cenat|ishowspeed|adin ross|"
+                      r"sneako|jynxzi|\bxqc\b|plaqueboymax|fanum|duke dennis|agent ?00|yourrage|\blacy\b|\bclix\b|stable ronaldo", re.I)
+
+
+def est_streamer(texte, categories=()):
+    """Une campagne de streamer ou de jeu vidéo en direct : nom, description ou catégorie Content Rewards."""
+    return bool(STREAMER.search(texte or "")) or bool(set(categories) & {"streamer", "gaming"})
+
+
 NICHE = re.compile(r"n3on|kai cenat|ishowspeed|adin ross|sneako|yourrage|jynxzi|hardscope|streamer|livestream", re.I)
 # des images de jeu sans parole : le clippeur choisit par la voix (selection.json, « adéquation »)
 JEU = re.compile(r"gameplay|trailer|\bdemo\b|steam|wishlist|switch 2|\bps5\b|xbox|roblox|fortnite|call of duty|warfare|"
@@ -128,6 +140,8 @@ def evaluer(c, d=None):
         e["exclusion"] = "langue ou public non anglais"
     elif vues_min > 50000:
         e["exclusion"] = "minimum de %d vues par clip" % vues_min
+    elif FOCUS == "streamer" and not est_streamer(texte, categories):
+        e["exclusion"] = "hors niche : streamers seulement (Basile, 22/10/2026)"
     if e["exclusion"]:
         return e
     prix = sum(v[0] for v in nos.values()) / len(NOS_PLATEFORMES)          # une plateforme non payée compte pour 0

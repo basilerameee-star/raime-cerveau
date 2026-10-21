@@ -83,8 +83,15 @@ def telecharger(url, dossier):
             sys.exit("Aucune vidéo dans le lien Drive du brief")
         return videos[0]
     # la meilleure qualité disponible (1440p minimum, contrôlé ensuite) ; jamais d'agrandissement
+    extrait = []
+    if "twitch.tv/videos/" in url:
+        # 22/10/2026 : une vidéo de stream dure souvent des heures ; au-delà de 40 min, une heure seulement (de la 10e à la
+        # 70e minute, après l'installation du direct) : la transcription reste courte et les moments forts y sont
+        d = subprocess.run(["yt-dlp", "--print", "duration", "--no-playlist", url], capture_output=True, text=True).stdout.strip()
+        if d.replace(".", "", 1).isdigit() and float(d) > 2400:
+            extrait = ["--download-sections", "*600-4200"]
     lancer(["yt-dlp", "-f", "bv*+ba/b", "-S", "res,br", "--merge-output-format", "mp4",
-            "-o", str(dossier / "source.%(ext)s"), "--no-playlist", url])
+            "-o", str(dossier / "source.%(ext)s"), "--no-playlist"] + extrait + [url])
     return next(dossier.glob("source.*"))
 
 

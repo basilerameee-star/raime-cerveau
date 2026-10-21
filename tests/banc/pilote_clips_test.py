@@ -28,6 +28,31 @@ def campagne(**k):
 
 
 class Grille(unittest.TestCase):
+    # la grille elle-même, toutes niches confondues ; le filtre « streamers seulement » (22/10/2026) a son propre essai
+    def setUp(self):
+        self.focus, cr.FOCUS = cr.FOCUS, None
+
+    def tearDown(self):
+        cr.FOCUS = self.focus
+
+    def test_streamers_seulement(self):
+        cr.FOCUS = "streamer"
+        self.assertTrue(cr.evaluer(campagne())["exclusion"].startswith("hors niche"), "HardScope n'est pas un streamer")
+        s = cr.evaluer(campagne(name="Jay Guapo X Mypip Streamer Clips", description="Clip Jay's Twitch streams."))
+        self.assertEqual(s["exclusion"], "")
+        jeu = cr.evaluer(campagne(name="FlyQuest PTL", description="League highlights.", categories=[{"id": "gaming"}]))
+        self.assertEqual(jeu["exclusion"], "", "la catégorie « gaming » suffit")
+
+    def test_source_twitch_de_la_chaine(self):
+        brief = {"requirements": {"text": "Clip only from https://www.twitch.tv/irubyana streams."}}
+        vus = []
+        s = pilote.source_du_brief(note("x"), brief, lambda ch: vus.append(ch) or "https://www.twitch.tv/videos/2901902468")
+        self.assertEqual(vus, ["irubyana"])
+        self.assertEqual(s["url"], "https://www.twitch.tv/videos/2901902468")
+        self.assertIsNone(pilote.source_du_brief(note("x"), brief)["url"], "sans résolveur : la chaîne entière reste refusée")
+        self.assertEqual(pilote.derniere_video_twitch("x", lancer=lambda c: "v1234567|300.0\nv2901902468|3944.0\n"),
+                         "https://www.twitch.tv/videos/2901902468", "moins de 15 min : écartée")
+
     def test_hardscope_retenue_avec_le_lien_pour_rejoindre(self):
         e = cr.evaluer(campagne())
         self.assertEqual(e["exclusion"], "")
@@ -107,6 +132,17 @@ class Pilote(unittest.TestCase):
     def test_reserve_pleine_ne_lance_rien(self):
         reserve = {"instagram": {"pret": 56, "attendu": 0}, "youtube": {"pret": 60, "attendu": 0}}
         self.assertEqual(pilote.choisir([note("a")], self.SOURCES, reserve, []), [])
+
+    def test_reserve_pleine_mais_sans_streamers(self):
+        # 22/10/2026 : 14 jours de clips d'avant, aucun de la niche : une source part quand même, une seule par passage
+        reserve = {"instagram": {"pret": 56, "attendu": 0}, "youtube": {"pret": 60, "attendu": 0}}
+        focus, cr.FOCUS = cr.FOCUS, "streamer"
+        try:
+            self.assertEqual(len(pilote.choisir([note(c) for c in "abc"], self.SOURCES, reserve, [], {"instagram": 0, "youtube": 2})), 1)
+            self.assertEqual(pilote.choisir([note("a")], self.SOURCES, reserve, [], {"instagram": 20, "youtube": 20}), [],
+                             "5 jours de streamers en file : rien ne presse")
+        finally:
+            cr.FOCUS = focus
 
     def test_la_decoupe_en_cours_compte(self):
         reserve = {"instagram": {"pret": 12, "attendu": 8}, "youtube": {"pret": 12, "attendu": 8}}

@@ -76,13 +76,40 @@ def une_video(u):
     return True
 
 
-def source_du_brief(e, brief):
+def chaine_twitch(u):
+    """Le nom de la chaîne d'un lien Twitch qui désigne une chaîne entière (twitch.tv/irubyana), sinon None."""
+    m = re.match(r"https?://(?:www\.|m\.)?twitch\.tv/([A-Za-z0-9_]{3,25})/?(?:videos?/?)?(?:[?#].*)?$", u or "")
+    return m.group(1) if m and m.group(1).lower() not in ("videos", "directory", "p", "downloads", "jobs") else None
+
+
+def derniere_video_twitch(chaine, lancer=None):
+    """La dernière vidéo enregistrée d'une chaîne Twitch d'au moins 15 min (22/10/2026 : les campagnes de streamers
+    donnent une chaîne, pas une vidéo). La liste se lit depuis le serveur (yt-dlp, conteneur du clippeur) ; Kick ne
+    donne que le direct, il reste de côté."""
+    import subprocess
+    lancer = lancer or (lambda cmd: subprocess.run(cmd, capture_output=True, text=True, timeout=120).stdout)
+    sortie = lancer(["docker", "run", "--rm", "--entrypoint", "yt-dlp", "raime-clippeur", "--flat-playlist", "-I", "1:6",
+                     "--print", "%(id)s|%(duration)s", "https://www.twitch.tv/%s/videos?filter=archives&sort=time" % chaine])
+    for ligne in (sortie or "").splitlines():
+        ident, _, duree = ligne.strip().partition("|")
+        if re.fullmatch(r"v?\d{6,}", ident) and duree.replace(".", "", 1).isdigit() and float(duree) >= 900:
+            return "https://www.twitch.tv/videos/%s" % ident.lstrip("v")
+    return None
+
+
+def source_du_brief(e, brief, resoudre=None):
     """Ce que le pilote lit d'un brief rejoint (fonction pure) : la vidéo source (fichiers de la marque, Drive d'abord :
     YouTube bloque le serveur), les mentions, les mots-dièse et les consignes. url None : aucune vidéo dans le brief."""
     import cr_agent
     morceaux = cr_agent.textes(brief.get("requirements")) if isinstance(brief, dict) else []
     texte = "\n".join(dict.fromkeys(morceaux))
     liens = sorted([u for u in dict.fromkeys(cr.liens_video(texte)) if une_video(u)], key=lambda u: (not any(v in u for v in ("drive.google", "dropbox")), u))
+    if not liens and resoudre:                     # une chaîne Twitch : sa dernière vidéo enregistrée (22/10/2026)
+        for chaine in dict.fromkeys(filter(None, map(chaine_twitch, cr.liens_video(texte) + (e.get("sources") or [])))):
+            v = resoudre(chaine)
+            if v:
+                liens = [v]
+                break
     tags = sorted(set(re.findall(r"(?<![\w@])@[A-Za-z0-9_.]{2,30}", texte)))
     return {"nom": e["nom"], "url": liens[0] if liens else None, "autres": liens[1:6], "nombre": 20,
             "tags": {pl: " ".join(tags[:2]) for pl in e["plateformes"]},
@@ -121,7 +148,7 @@ def rejoindre_et_lire(notes, reserve, prevenir, lanceur=None, sql=None):
     for r in lanceur.lancer("rejoindre", *par_id):
         e = par_id.get(r.get("cr_id"))
         if e and r.get("ok"):
-            auto["campagnes"][e["cr_id"]] = source_du_brief(e, r.get("brief") or {})
+            auto["campagnes"][e["cr_id"]] = source_du_brief(e, r.get("brief") or {}, derniere_video_twitch)
             n += 1
             if sql:                                         # le compte des campagnes rejointes (rapport du matin)
                 sql("""CREATE TABLE IF NOT EXISTS cr_adhesions (cr_id text PRIMARY KEY, nom text, source text, le timestamptz NOT NULL DEFAULT now());
@@ -150,15 +177,19 @@ def jours(pret, attendu=0):
     return (pret + attendu) / float(CADENCE)
 
 
-def choisir(notes, sources, reserve, deja):
+def choisir(notes, sources, reserve, deja, reserve_niche=None):
     """Les campagnes à lancer maintenant (fonction pure) : tant que la réserve la plus faible des chaînes actives, découpes
     en cours comprises, reste sous RESERVE_CIBLE jours. Jamais une campagne exclue, sur candidature, à comptes dédiés,
     déjà lancée, ni une source déjà utilisée."""
     if not reserve:
         return []
     attendu = min(r["pret"] + r["attendu"] for r in reserve.values())
-    if jours(attendu) >= LANCER_SOUS:                       # 2 semaines d'avance : rien ne part ; sinon, on remonte à 14
+    # 22/10/2026 (focus streamers) : moins de 2 jours de clips de la niche en file = une source de la niche part, même si la
+    # réserve totale (encore pleine de clips d'avant) dépasse 2 semaines ; une seule par passage
+    focus_bas = bool(cr.FOCUS) and reserve_niche is not None and jours(min(reserve_niche.values() or [0])) < 2
+    if jours(attendu) >= LANCER_SOUS and not focus_bas:     # 2 semaines d'avance : rien ne part ; sinon, on remonte à 14
         return []
+    plafond = LANCEMENTS_MAX if jours(attendu) < LANCER_SOUS else 1
     lancer, urls = [], {d.get("url") for d in deja}
     lancees = {d.get("cr_id") for d in deja}
     # Basile, 15/10/2026 22 h 50 : les sources que le serveur télécharge seul (Drive, lien direct) passent avant YouTube,
@@ -167,7 +198,7 @@ def choisir(notes, sources, reserve, deja):
         s = source_de(e, sources)
         return bool(s) and any(h in s["url"] for h in ("youtube.com", "youtu.be"))
     for e in sorted(notes, key=youtube):
-        if len(lancer) >= LANCEMENTS_MAX or jours(attendu) >= RESERVE_CIBLE:
+        if len(lancer) >= plafond or (jours(attendu) >= RESERVE_CIBLE and not focus_bas):
             break
         s = source_de(e, sources)
         if (e["exclusion"] or e["candidature"] or e["dedies"] or e["note"] < NOTE_MINI or not s
@@ -211,6 +242,16 @@ def mesurer(sql, actives):
         en_cours = int(sql("""SELECT count(*) FROM clips_demandes WHERE etat IN ('a_faire', 'en_cours')
                               AND (plateformes IS NULL OR plateformes LIKE '%%' || :'p0' || '%%');""", pl) or 0)
         out[pl] = {"pret": pret, "attendu": en_cours * ATTENDU}
+    return out
+
+
+def mesurer_niche(sql, actives):
+    """{plateforme: clips prêts de la niche visée (cr.FOCUS)}, la niche lue dans le nom de la campagne (analyste.niche)."""
+    from analyste import niche
+    out = {}
+    for pl in actives:
+        r = sql("SELECT coalesce(json_agg(campagne), '[]') FROM clips_buffer WHERE plateforme = :'p0' AND etat IN ('a_faire', 'programme');", pl)
+        out[pl] = sum(niche(c) == cr.FOCUS for c in json.loads(r[r.index("["):] if "[" in r else "[]"))
     return out
 
 
@@ -326,7 +367,7 @@ def main():
     except Exception as err:                                # l'agent ne bloque jamais le reste du pilote
         rejointes = 0
         print("agent Content Rewards :", str(err)[:200], flush=True)
-    a_lancer = choisir(notes, sources_connues(), reserve, deja)
+    a_lancer = choisir(notes, sources_connues(), reserve, deja, mesurer_niche(sql, actives) if cr.FOCUS else None)
     noter_jour(sql, notes, a_lancer)
     blocs = []
     for e, s in a_lancer:
