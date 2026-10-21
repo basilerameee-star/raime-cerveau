@@ -382,7 +382,7 @@ async function assembler({ maintenant = new Date(), executant = EXECUTANT, fetch
         (array_agg(envoi->>'detail' ORDER BY maj) FILTER (WHERE statut = 'valide'))[1] AS valide_detail
       FROM candidatures`)),
     un(B('candidatures', 'SELECT max(le) AS le FROM candidatures_alertes')).then((r) => (r ? r.le : null)),
-    N('outreach', `SELECT o.id, o.siren, o.prospect_name, o.segment, o.to_email, o.subject, o.status, o.created_at, o.sent_at, o.reply_at, o.livraison,
+    N('outreach', `SELECT o.id, o.siren, o.prospect_name, o.segment, o.to_email, o.subject, o.status, o.created_at, o.sent_at, o.reply_at, to_jsonb(o) ->> 'livraison' AS livraison,
         CASE WHEN o.status = 'brouillon' THEN o.body END AS body
       FROM outreach o WHERE o.siren ~ '^[0-9]{9}$' AND o.status IN ('brouillon', 'valide', 'envoye', 'non_recu') ORDER BY o.created_at`),
     un(N('outreach', `SELECT count(*) FILTER (WHERE status = 'envoye' AND sent_at > now() - interval '24 hours')::int AS envoyes24,

@@ -96,7 +96,7 @@ test('les brouillons : seulement une entreprise à but lucratif, site prouvé, a
   const { bases } = await import('./outils.mjs');
   const { preparer } = await import('../../agents/prospection_auto.js');
   const db = await bases();
-  const S = ['934000001', '934000002', '934000003', '934000004', '934000005', '934000006', '934000007'];
+  const S = ['934000001', '934000002', '934000003', '934000004', '934000005', '934000006', '934000007', '934000008'];
   const avant = (await db.n8n.query('SELECT coalesce(max(id), 0) AS m FROM outreach')).rows[0].m;
   try {
     await db.n8n.query('ALTER TABLE prospects ADD COLUMN IF NOT EXISTS site_preuve text, ADD COLUMN IF NOT EXISTS furete_note text');
@@ -107,16 +107,17 @@ test('les brouillons : seulement une entreprise à but lucratif, site prouvé, a
       `INSERT INTO prospects (siren, name, naf, sector, city, status, contact_email, website, site_preuve, furete_note, score, found_at)
        VALUES ($1, $2, $3, 'Cabinets comptables', 'ANNECY', 'nouveau', $4, $5, $6, $7, 100000, now())`,
       [siren, name, naf, email, 'https://' + email.split('@')[1], preuve, note]);
-    await fiche(S[0], 'CABINET DUPRAZBANC', 'contact@duprazbanc.fr');                                    // la seule qui part
+    await fiche(S[0], 'CABINET DUPRAZBANC', 'accueil@duprazbanc.fr');                                    // la seule qui part
     await fiche(S[1], 'CABINET MOLLARBANC', 'contact@mollarbanc.fr', { preuve: null });                  // site jamais prouvé
     await fiche(S[2], 'ASSOCIATION DE GESTION SAVOBANC', 'contact@savobanc.fr');                       // but non lucratif
     await fiche(S[3], 'CABINET FAVREBANC', 'contact@favrebanc.fr', { naf: '85.59A' });                 // code NAF exclu (formation)
     await fiche(S[4], 'CABINET GIRODBANC', 'contact@buttondown.email');                                // adresse d'une plateforme
     await fiche(S[5], 'CABINET PERRBANC', 'contact@perrbanc.fr', { note: 'adresse devinee' });         // adresse pas lue sur le site
     await fiche(S[6], 'CABINET STOPBANC', 'contact@stopbanc.fr');                                     // a répondu « stop »
+    await fiche(S[7], 'CABINET CONTABANC', 'contact@contabanc.fr');                                   // « contact@ » : 14 rebonds sur 18 (21/10)
     await preparer({ n8n: db.n8n, brain: db.brain, combien: 50 });
     const { rows } = await db.n8n.query(`SELECT siren, status, to_email FROM outreach WHERE siren = ANY($1::text[]) ORDER BY siren`, [S]);
-    assert.deepEqual(rows.map((r) => [r.siren, r.status, r.to_email]), [[S[0], 'brouillon', 'contact@duprazbanc.fr']]);
+    assert.deepEqual(rows.map((r) => [r.siren, r.status, r.to_email]), [[S[0], 'brouillon', 'accueil@duprazbanc.fr']]);
   } finally {
     await db.n8n.query('DELETE FROM outreach WHERE siren = ANY($1::text[]) OR id > $2', [S, avant]).catch(() => {});
     await db.n8n.query('DELETE FROM prospects WHERE siren = ANY($1::text[])', [S]).catch(() => {});
