@@ -47,7 +47,8 @@ STREAMER = re.compile(r"streamer|\bstream(?:s|ing|er)?\b|twitch|kick\.com|\bkick
 
 def est_streamer(texte, categories=()):
     """Une campagne de streamer ou de jeu vidéo en direct : nom, description ou catégorie Content Rewards."""
-    return bool(STREAMER.search(texte or "")) or bool(set(categories) & {"streamer", "gaming"})
+    # « gaming » seul ne suffit pas (22/10/2026 : Animal Valley, Decentraland = des pubs de jeux, sans streamer qui parle)
+    return bool(STREAMER.search(texte or "")) or "streamer" in set(categories)
 
 
 NICHE = re.compile(r"n3on|kai cenat|ishowspeed|adin ross|sneako|yourrage|jynxzi|hardscope|streamer|livestream", re.I)

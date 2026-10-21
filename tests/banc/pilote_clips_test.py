@@ -40,8 +40,10 @@ class Grille(unittest.TestCase):
         self.assertTrue(cr.evaluer(campagne())["exclusion"].startswith("hors niche"), "HardScope n'est pas un streamer")
         s = cr.evaluer(campagne(name="Jay Guapo X Mypip Streamer Clips", description="Clip Jay's Twitch streams."))
         self.assertEqual(s["exclusion"], "")
-        jeu = cr.evaluer(campagne(name="FlyQuest PTL", description="League highlights.", categories=[{"id": "gaming"}]))
-        self.assertEqual(jeu["exclusion"], "", "la catégorie « gaming » suffit")
+        esport = cr.evaluer(campagne(name="FlyQuest PTL", description="Esports highlights.", categories=[{"id": "gaming"}]))
+        self.assertEqual(esport["exclusion"], "")
+        pub = cr.evaluer(campagne(name="Animal Valley: Idle Merge Game", description="Gameplay trailer.", categories=[{"id": "gaming"}]))
+        self.assertTrue(pub["exclusion"].startswith("hors niche"), "« gaming » seul : une pub de jeu, pas un streamer")
 
     def test_source_twitch_de_la_chaine(self):
         brief = {"requirements": {"text": "Clip only from https://www.twitch.tv/irubyana streams."}}
