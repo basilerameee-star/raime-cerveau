@@ -49,3 +49,5 @@ jobs:
       - run: python3 -m unittest tests/banc/pilote_clips_test.py
       # Le cadrage des clips (21/10/2026) : visage seul en 4:3, sinon l'image entière ; titre au-dessus, mots en dessous.
       - run: python3 -m unittest tests/banc/cadrage_clips_test.py
+      # L'analyste des clips (21/10/2026) : niches, médianes, part des créneaux 70 % donnée / 30 % essai.
+      - run: python3 -m unittest tests/banc/analyste_clips_test.py

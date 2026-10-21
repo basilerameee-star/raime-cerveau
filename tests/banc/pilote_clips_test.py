@@ -175,6 +175,14 @@ class Relais(unittest.TestCase):
         self.assertEqual(self.buffer.prochains(lignes, "A", 1)[0]["campagne"], "B")
         self.assertEqual([b["campagne"] for b in self.buffer.prochains(lignes[:2], "A", 2)], ["A", "A"])
 
+    def test_parts_de_l_analyste(self):
+        # 21/10/2026 : streamer 60 %, podcast 40 % ; sur 5 créneaux : 3 streamers, 2 podcasts, jamais la même campagne de suite
+        lignes = [{"id": i, "campagne": c} for i, c in enumerate(["n3on-a"] * 4 + ["kai-stream-b"] * 4 + ["demi-lovato-podcast"] * 4, 1)]
+        ordre = [b["campagne"] for b in self.buffer.prochains(lignes, None, 5, {"streamer": .6, "podcast": .4})]
+        from analyste import niche
+        self.assertEqual(sorted(niche(c) for c in ordre), ["podcast", "podcast", "streamer", "streamer", "streamer"])
+        self.assertTrue(all(x != y for x, y in zip(ordre, ordre[1:])), ordre)
+
     def test_creneaux_aux_memes_heures_de_paris(self):
         from datetime import datetime
         from zoneinfo import ZoneInfo

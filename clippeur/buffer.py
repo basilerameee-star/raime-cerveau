@@ -140,24 +140,41 @@ def en_pause(pl):
     return os.path.exists(os.path.join(ICI, "pause-" + pl))
 
 
+def parts_analyste():
+    """La part des créneaux par niche proposée par l'analyste (<clips>/analyse.json) ; rien si le bilan manque ou date de
+    plus de 3 jours : on revient alors à la simple alternance."""
+    try:
+        f = os.path.join(CLIPS, "analyse.json")
+        if time.time() - os.path.getmtime(f) > 3 * 86400:
+            return None
+        return json.load(open(f, encoding="utf-8")).get("repartition") or None
+    except (OSError, ValueError):
+        return None
+
+
 def rangs(requete, *params):
     r = sql(requete, *params)
     return json.loads(r[r.index("["):] if "[" in r else "[]")      # json_agg s'étale sur plusieurs lignes
 
 
-def prochains(lignes, dernier=None, n=1):
+def prochains(lignes, dernier=None, n=1, parts=None):
     """Les n clips à programmer sur une chaîne, pris dans ses lignes « a_faire » (ordre de création) : jamais la même
-    campagne deux fois de suite quand une autre attend ; la campagne qui a le plus de clips en attente passe d'abord."""
+    campagne deux fois de suite quand une autre attend ; la campagne qui a le plus de clips en attente passe d'abord.
+    parts (analyste.py, 21/10/2026) : la part des créneaux visée par niche ; la niche la plus en retard sur sa part passe
+    d'abord (30 % de la part reste toujours à l'essai : aucune niche n'est jamais coupée)."""
+    from analyste import niche
     par = {}
     for b in lignes:
         par.setdefault(b["campagne"], []).append(b)
-    choisis = []
+    choisis, faits = [], {}
     for _ in range(n):
         restes = [c for c in par if par[c]]
         if not restes:
             break
         autres = [c for c in restes if c != dernier] or restes
-        camp = max(autres, key=lambda c: (len(par[c]), -par[c][0]["id"]))
+        retard = (lambda c: parts.get(niche(c), min(parts.values())) * (len(choisis) + 1) - faits.get(niche(c), 0)) if parts else (lambda c: 0)
+        camp = max(autres, key=lambda c: (retard(c), len(par[c]), -par[c][0]["id"]))
+        faits[niche(camp)] = faits.get(niche(camp), 0) + 1
         choisis.append(par[camp].pop(0))
         dernier = camp
     return choisis
@@ -199,7 +216,7 @@ def creneaux_apres(t, n):
     return out
 
 
-def repartir(lignes, actives, dernier, creneaux):
+def repartir(lignes, actives, dernier, creneaux, parts=None):
     """[(créneau, [lignes du clip, une par chaîne])] : un clip par créneau, le même sur toutes les chaînes actives qui
     l'attendent ; le clip suit l'alternance de prochains() (fonction pure)."""
     clips, par = [], {}
@@ -211,7 +228,7 @@ def repartir(lignes, actives, dernier, creneaux):
             par[cle] = []
             clips.append({"id": b["id"], "campagne": b["campagne"], "clip": b["clip"]})
         par[cle].append(b)
-    return [(s, par[(c["campagne"], c["clip"])]) for s, c in zip(creneaux, prochains(clips, dernier, len(creneaux)))]
+    return [(s, par[(c["campagne"], c["clip"])]) for s, c in zip(creneaux, prochains(clips, dernier, len(creneaux), parts))]
 
 
 class FileBufferPleine(Exception):
@@ -320,7 +337,7 @@ def main():
         dernier = sql("""SELECT campagne FROM clips_buffer WHERE etat IN ('programme', 'publie')
                          ORDER BY coalesce(prevu, maj) DESC LIMIT 1;""") or None
         depart = max([time.time() + 900] + [float(x) for x in futurs])
-        for quand, clip in repartir(lignes, actives, dernier, creneaux_apres(depart, manque)):
+        for quand, clip in repartir(lignes, actives, dernier, creneaux_apres(depart, manque), parts_analyste()):
             for b in clip:
                 try:
                     programmer(b, ids, quand)
