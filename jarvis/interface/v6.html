@@ -446,7 +446,7 @@ const titres = () => ({
   clipping: ['Clipping', 'KinGKlip : découper, publier, déclarer sur Whop'], trading: ['Trading', 'Sept agents en simulation, et la bourse'],
   dropshipping: ['Dropshipping', 'Trouver un produit, vérifier le fournisseur, puis seulement tester'], libre: ['Agent libre', 'Gagner chaque jour, ou mourir et renaître plus sage'],
   candidatures: ['Candidatures', 'En un clic quand c’est possible ; sinon l’annonce s’ouvre, la lettre est prête'],
-  siteweb: ['Site web', 'Sites vitrines à 500 € · ta liste d’appels et tes relances'], integration: ['Intégration IA', 'Entreprises et pré-audits · ta liste d’appels et tes e-mails'],
+  siteweb: ['Site web', 'Sites vitrines à 500 € · ta liste d’appels (sans e-mail)'], integration: ['Intégration IA', 'Entreprises et pré-audits · ta liste d’appels et tes e-mails'],
   agenda: ['Agenda', 'Seulement les rappels importants : ceux qui ont une note'], clients: ['Clients', 'Seulement ceux qui sont intéressés, séparés par activité'],
 });
 // la lecture installée : dates, raccourcis, titres ; le jour de la liste d'appels et le mois de l'agenda gardent le choix de Basile
@@ -728,7 +728,9 @@ async function postuler(cle, moi, bouton) {
 }
 
 // ══ COMMERCE ══
-// La liste d'un jour : 1. les rendez-vous de l'agenda (rappels avec une note) ; 2. « à rappeler » sans note ; 3. les relances à 7 jours ; 4. les nouveaux.
+// La liste d'un jour : 1. les rendez-vous de l'agenda (rappels avec une note) ; 2. « à rappeler » sans note ; 3. les nouveaux SANS e-mail.
+// 21/10/2026 (Basile) : un commerce ou un cabinet qui a un e-mail reçoit maquette ou pré-audit par e-mail, tout seul ; la liste d'appels
+// ne remonte que ceux qui n'en ont pas, avec leur numéro (plus de relance téléphonique à 7 jours).
 let jourListe = HEURE_P >= 19 ? DEMAIN : AUJ, ouvertRappel = null, ouvertRenvoi = null;
 function corpsCategorie(k) { return D.modeles.site.corps.replace('Ce que je propose', k.phrase + '\n\nCe que je propose'); }
 function ouvrirCategorie(nom) {
@@ -752,9 +754,8 @@ function listeDuJour(seg, jour) {
   const rdv = r.filter(({ x }) => x.note).map(({ c, x }) => ({ c, type: 'rdv', note: x.note, jour: x.jour }));
   const arap = r.filter(({ x }) => !x.note).map(({ c, x }) => ({ c, type: 'rappel', jour: x.jour, motif: x.motif }));
   const avecRappel = new Set(RAPPELS.map((x) => x.cle));
-  const rel = C.filter((c) => segDe(c) === seg && c.etape === 'attente' && c.envoye && plus(c.envoye, 7) <= jour && !avecRappel.has(c.cle) && !dejaNote(c) && c.tel).map((c) => ({ c, type: 'relance' }));
-  const nouv = C.filter((c) => segDe(c) === seg && c.etape === 'aappeler' && c.tel && !avecRappel.has(c.cle) && !dejaNote(c)).map((c) => ({ c, type: 'nouveau' }));
-  return [...rdv, ...arap, ...rel, ...nouv];
+  const nouv = C.filter((c) => segDe(c) === seg && c.etape === 'aappeler' && c.tel && !c.email && !avecRappel.has(c.cle) && !dejaNote(c)).map((c) => ({ c, type: 'nouveau' }));
+  return [...rdv, ...arap, ...nouv];
 }
 let voirTousNouveaux = false;
 function carteAppel({ c, type, note, jour, motif }) {
@@ -771,7 +772,7 @@ function carteAppel({ c, type, note, jour, motif }) {
 }
 function sectionsAppels(seg) {
   const l = listeDuJour(seg, jourListe), g = (t) => l.filter((x) => x.type === t);
-  const S = [['rdv', 'Rendez-vous de l’agenda', 'avec ta note'], ['rappel', 'À rappeler', 'notés sans note : ils reviennent ici'], ['relance', 'Relances à 7 jours', 'e-mail sans réponse : ils remontent seuls'], ['nouveau', 'Nouveaux à appeler', '']];
+  const S = [['rdv', 'Rendez-vous de l’agenda', 'avec ta note'], ['rappel', 'À rappeler', 'notés sans note : ils reviennent ici'], ['nouveau', 'À appeler : sans e-mail', 'ils ne reçoivent rien par e-mail, seul un appel les touche']];
   return S.map(([t, n, s]) => { let x = g(t); if (!x.length) return ''; const tout = x.length; if (t === 'nouveau' && !voirTousNouveaux) x = x.slice(0, 12);
     return `<div class="section-appels"><h3>${n} <span class="num">${tout}</span>${s ? `<small>· ${s}</small>` : ''}</h3><div class="appels">${x.map(carteAppel).join('')}</div>
       ${t === 'nouveau' && tout > x.length ? `<button class="btn" style="margin-top:10px" type="button" id="voir-nouveaux">Voir les ${tout - x.length} autres</button>` : ''}</div>`; }).join('') || '<div class="carte vide">Personne à appeler ce jour-là.</div>';
@@ -803,11 +804,9 @@ function carteEnvoyes(seg) {
     <ul class="mini-liste">${l.slice(0, 12).map((e) => `<li style="align-items:flex-start"><span style="min-width:0"><b style="font-weight:600">${esc(e.a)}</b><br><small class="note">${esc(e.quand)} · ${esc(e.sujet)}</small>${e.erreur ? `<br><small style="color:var(--panne)">${esc(e.erreur)}</small>` : ''}</span><span class="${e.statut === 'envoye' ? '' : 'raison'}">${etat(e)}</span></li>`).join('') || '<li><span>Aucun pour l’instant</span><span></span></li>'}</ul></div>`;
 }
 function siteweb() {
-  const rel = Object.entries(D.relances), bloq = C.filter((c) => c.seg === 'site' && c.etape === 'completer');
+  const bloq = C.filter((c) => c.seg === 'site' && c.etape === 'completer');
   return `${bandeauJour('site')}<div class="deux"><div style="display:flex;flex-direction:column;gap:18px;min-width:0">${sectionsAppels('site')}</div>
     <aside class="cote">
-      <div class="carte"><div class="carte-tete"><h2>Relances automatiques</h2></div><p class="note" style="padding:0 20px 8px">Une maquette sans réponse au bout de 7 jours remonte seule dans ta liste, ce jour-là.</p>
-        <ul class="mini-liste">${D.relancesRetard ? `<li><span>En retard, déjà dans ta liste</span><span class="num">${D.relancesRetard}</span></li>` : ''}${rel.map(([j, n]) => `<li><span>${dateFr(j, { weekday: 'long', day: 'numeric' })}</span><span class="num">${n}</span></li>`).join('') || (D.relancesRetard ? '' : '<li><span>Aucune à venir</span><span></span></li>')}</ul></div>
       <div class="carte"><div class="carte-tete"><h2>Bloquées</h2><span class="puce panne plus">${bloq.length}</span></div><p class="note" style="padding:0 20px 10px">Sans numéro de téléphone : validées sans pouvoir partir, ou numéro à lire dans un annuaire.</p>
         <div class="coches">${bloq.map((c) => `<button class="coche" type="button" data-fiche="${c.cle}" style="border-left:0;border-right:0;border-bottom:0;background:none;text-align:left;grid-template-columns:minmax(0,1fr) auto"><span style="min-width:0"><b>${esc(c.nom)}</b><small>${esc(c.metier)} · ${esc(c.ville)}</small></span><span class="note">Compléter</span></button>`).join('') || '<div class="vide">Aucune.</div>'}</div></div>
       ${carteEnvoyes('site')}${carteCategories()}</aside></div>`;
@@ -823,9 +822,7 @@ function integration() {
           <button class="btn noir petit" type="button" id="envoyer-choix"${choisis.size ? '' : ' disabled'}>Valider la sélection (${choisis.size})</button><span class="note" style="margin-left:auto">L’Expéditeur les envoie chaque matin à 8 h, chacun avec le pré-audit de son métier</span></div>
         <div class="coches">${b.map((c) => `<label class="coche"><input type="checkbox" data-choix="${c.cle}"${choisis.has(c.cle) ? ' checked' : ''}><span style="min-width:0"><b>${esc(c.nom)}</b><small>${esc(c.metier)} · ${esc(c.ville)} · ${esc(c.email || '')}</small></span><button class="btn petit discret" type="button" data-fiche="${c.cle}">Lire</button></label>`).join('') || '<div class="vide">Tout est parti.</div>'}</div></div>
       </div>
-    <aside class="cote"><div class="carte"><div class="carte-tete"><h2>Relances automatiques</h2></div><p class="note" style="padding:0 20px 8px">Un pré-audit sans réponse au bout de 7 jours remonte seul dans ta liste, ce jour-là.</p>
-      <ul class="mini-liste">${D.relancesIaRetard ? `<li><span>En retard, déjà dans ta liste</span><span class="num">${D.relancesIaRetard}</span></li>` : ''}${Object.entries(D.relancesIa || {}).map(([j, n]) => `<li><span>${dateFr(j, { weekday: 'long', day: 'numeric' })}</span><span class="num">${n}</span></li>`).join('') || (D.relancesIaRetard ? '' : '<li><span>Aucune à venir</span><span></span></li>')}</ul></div>
-      ${carteEnvoyes('ia')}${carteModele('ia')}</aside></div>`;
+    <aside class="cote">${carteEnvoyes('ia')}${carteModele('ia')}</aside></div>`;
 }
 // Agenda : seulement les rappels avec une note
 let curseur = AUJ;

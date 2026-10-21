@@ -156,7 +156,7 @@ const MESURES = {
   liste_app(L, A) {
     if (!A.liste) return null;
     const l = A.liste, n = (t) => l.filter((x) => x.type === t).length;
-    return { texte: `Aujourd’hui : ${pluriel(n('rdv'), 'rendez-vous', 'rendez-vous')}, ${pluriel(n('rappel'), 'rappel', 'rappels')}, ${pluriel(n('relance'), 'relance', 'relances')} à 7 jours ; ${pluriel(n('nouveau'), 'nouveau numéro', 'nouveaux numéros')} en réserve.`,
+    return { texte: `Aujourd’hui : ${pluriel(n('rdv'), 'rendez-vous', 'rendez-vous')}, ${pluriel(n('rappel'), 'rappel', 'rappels')} ; ${pluriel(n('nouveau'), 'numéro sans e-mail', 'numéros sans e-mail')} à appeler.`,
       dernier: A.maintenant };
   },
   agenda(L, A) {
@@ -584,15 +584,14 @@ async function assembler({ maintenant = new Date(), executant = EXECUTANT, fetch
     return { jours: Object.fromEntries(Object.entries(futur).sort()), retard };
   };
   const relSite = relancesDe('site'), relIa = relancesDe('ia');
-  // la même liste que la page (rendez-vous avec note, rappels, relances à 7 jours, nouveaux), pour la phrase de l'agent
+  // la même liste que la page (rendez-vous avec note, rappels, nouveaux sans e-mail), pour la phrase de l'agent
   const liste = [];
   for (const seg of ['site', 'ia']) {
     const avec = new Set(rappelsOuverts.map((r) => r.cle));
     for (const r of rappelsOuverts) { const c = clients.find((x) => x.cle === r.cle); if (c && c.seg === seg && c.tel && r.jour <= auj && c.etape !== 'non') liste.push({ type: r.note ? 'rdv' : 'rappel' }); }
     for (const c of clients) {
       if (c.seg !== seg || !c.tel || avec.has(c.cle)) continue;
-      if (c.etape === 'attente' && c.envoye && plus(c.envoye, appels.DELAI_JOURS) <= auj) liste.push({ type: 'relance' });
-      else if (c.etape === 'aappeler') liste.push({ type: 'nouveau' });
+      if (c.etape === 'aappeler' && !c.email) liste.push({ type: 'nouveau' });   // 21/10/2026 : seulement ceux sans e-mail
     }
   }
 
