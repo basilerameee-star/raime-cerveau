@@ -55,3 +55,5 @@ jobs:
       - run: python3 -m unittest tests/banc/analyste_prospection_test.py
       # Le gouverneur des agents (22/10/2026) : pannes, agents à vide, arrêt proposé au-delà de 7 jours.
       - run: python3 -m unittest tests/banc/gouverneur_agents_test.py
+      # Le gouverneur du matin (22/10/2026) : objectifs de la veille tenus ou manqués.
+      - run: python3 -m unittest tests/banc/gouverneur_matin_test.py

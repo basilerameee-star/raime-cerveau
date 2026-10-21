@@ -125,6 +125,8 @@ def lire_analyses(dossier="/opt/raime/harness/travail/analyse", clips="/opt/raim
         return os.path.exists(f) and _t.time() - os.path.getmtime(f) < 26 * 3600
     out = []
     try:
+        if frais(dossier + "/matin.json"):
+            out.append(json.load(open(dossier + "/matin.json", encoding="utf-8"))["ligne"])
         if frais(dossier + "/agents.json"):
             out.append(json.load(open(dossier + "/agents.json", encoding="utf-8"))["ligne"])
         if frais(clips):
