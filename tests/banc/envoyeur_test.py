@@ -51,3 +51,19 @@ class OuiNon(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PauseOubliee(unittest.TestCase):
+    # 22/10/2026 : un essai interrompu à 11 h 43 a laissé /data/pause ; plus rien ne partait du serveur pendant des heures
+    def test_seule_une_pause_de_geste_vieille_de_2_h_est_levee(self):
+        import tempfile
+        import time
+        import serveur
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d) / "pause"
+            p.write_text("geste en cours (essai)")
+            self.assertFalse(serveur.pause_oubliee(p, time.time() + 3600), "une heure : le geste peut encore tourner")
+            self.assertTrue(serveur.pause_oubliee(p, time.time() + 3 * 3600))
+            p.write_text("")
+            self.assertFalse(serveur.pause_oubliee(p, time.time() + 30 * 3600), "la pause voulue par Basile reste")
+            self.assertFalse(serveur.pause_oubliee(Path(d) / "absente", time.time()))

@@ -275,6 +275,18 @@ def collecte():
     dire(f"collecte : {len(lot)} offres pertinentes, {ajout} nouvelles pour Jarvis")
 
 
+GESTE = "geste en cours"
+
+
+def pause_oubliee(pause, maintenant=None):
+    """Une pause posée par un geste (connexion 30 min, essai quelques minutes) et vieille de plus de 2 h : le geste a été
+    interrompu sans la retirer (22/10/2026, essai de 11 h 43 : plus rien ne partait). Une pause vide, voulue par Basile, reste."""
+    try:
+        return pause.read_text().startswith(GESTE) and (maintenant or time.time()) - pause.stat().st_mtime > 2 * 3600
+    except OSError:
+        return False
+
+
 @contextmanager
 def en_pause():
     """La boucle attend le temps d'un geste à part (connexion, essai) : le profil du navigateur ne s'ouvre qu'une fois.
@@ -283,7 +295,7 @@ def en_pause():
     posee = not pause.exists()
     if posee:
         DONNEES.mkdir(parents=True, exist_ok=True)
-        pause.touch()
+        pause.write_text(GESTE + " (pid %d, %s)" % (os.getpid(), time.strftime("%Y-%m-%d %H:%M")))
     try:
         yield
     finally:
@@ -377,6 +389,9 @@ def essai(oid="", canal=""):
 def boucle():
     dernier_jour = None
     while True:
+        if pause_oubliee(DONNEES / "pause"):
+            (DONNEES / "pause").unlink(missing_ok=True)
+            dire("pause oubliée par un geste interrompu : levée, la boucle reprend")
         if (DONNEES / "pause").exists():
             time.sleep(60)
             continue
