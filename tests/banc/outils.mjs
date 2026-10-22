@@ -42,6 +42,7 @@ globalThis.fetch = async (adresse, options = {}) => {
     text: async () => (typeof corps === 'string' ? corps : JSON.stringify(corps)),
   };
 };
+globalThis.fetch.banc = true;   // le faux fetch du banc : hermes/executant.js le préfère alors à son appel long
 export function prevoir(motif, corps) { reponsesPrevues.push({ motif, corps }); }
 
 // ── Les bases ───────────────────────────────────────────────────────────────

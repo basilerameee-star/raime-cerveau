@@ -25,6 +25,29 @@ const HERMES = process.env.HERMES_URL || 'http://raime-hermes:8642';
 const CLE = process.env.API_SERVER_KEY || '';
 const TRAVAIL = process.env.TRAVAIL_DIR || '/travail';
 const DUREE_MAX_MS = Number(process.env.EXECUTANT_DUREE_MAX_MS || 45 * 60_000);
+// 22/10/2026 : le fetch de Node coupe une réponse dont les en-têtes tardent plus de 5 minutes (« fetch failed ») : toute tâche
+// longue d'Hermes (séance d'apprentissage, correctif du Médecin) échouait ainsi depuis le 16/10. Cet appel-ci n'a que la
+// limite voulue (DUREE_MAX_MS, par le signal) ; il rend le même objet que fetch pour ce qu'en lit demander().
+const appelHermes = (u, o) => (globalThis.fetch && globalThis.fetch.banc ? globalThis.fetch(u, o) : fetchLong(u, o));
+export function fetchLong(url, { method = 'GET', headers = {}, body, signal } = {}) {
+  return new Promise((resoudre, rejeter) => {
+    const u = new URL(url);
+    const req = http.request({ hostname: u.hostname, port: u.port || 80, path: u.pathname + u.search, method, headers,
+      signal }, (res) => {
+      const morceaux = [];
+      res.on('data', (c) => morceaux.push(c));
+      res.on('end', () => {
+        const texte = Buffer.concat(morceaux).toString('utf8');
+        resoudre({ ok: res.statusCode >= 200 && res.statusCode < 300, status: res.statusCode,
+          headers: { get: (k) => res.headers[String(k).toLowerCase()] ?? null }, text: async () => texte, json: async () => JSON.parse(texte) });
+      });
+      res.on('error', rejeter);
+    });
+    req.on('error', rejeter);
+    if (body) req.write(body);
+    req.end();
+  });
+}
 // Le relais peut demander explicitement le gratuit (Gemini) ; sinon Hermes suit sa configuration :
 // Gemini gratuit, puis le modèle local du serveur (hermes/config.yaml). Plus jamais OpenRouter.
 const MODELE_GRATUIT = { provider: 'gemini', model: process.env.HERMES_MODELE_GRATUIT || 'gemini-3.8-flash' };
@@ -84,7 +107,7 @@ async function demander(f, tache, route, verification) {
   return sortie ? { sortie } : { echec: 'Hermes a rendu une réponse vide' };
 }
 
-export async function executer({ tache, id, gratuit = false, verification = null }, { fetch: f = fetch, travail = TRAVAIL } = {}) {
+export async function executer({ tache, id, gratuit = false, verification = null }, { fetch: f = appelHermes, travail = TRAVAIL } = {}) {
   const t0 = Date.now();
   const duree = () => Math.round((Date.now() - t0) / 1000);
   // Les routes, dans l'ordre : gratuit demandé → Gemini puis le local ; sinon le modèle habituel
