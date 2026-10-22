@@ -89,7 +89,7 @@ function fichierInterface(res, nom) {
 // empreinte que chez Codex), servie sous /3d/polices/.
 const TROIS_D = path.join(INTERFACE, '3d');
 // Les bilans des analystes et des gouverneurs (22/10/2026), écrits chaque matin par l'hôte dans /travail : chacun peut
-// manquer (null), jamais une erreur ; le cockpit v7 dit alors « non relevé ».
+// manquer (null), jamais une erreur ; le cockpit dit alors « non relevé ».
 function analysesV7() {
   const lire = (...p) => { try { return JSON.parse(fs.readFileSync(path.join(relais.LIVRABLES, ...p), 'utf8')); } catch (e) { return null; } };
   return { matin: lire('analyse', 'matin.json'), agents: lire('analyse', 'agents.json'), prospection: lire('analyse', 'prospection.json'),
@@ -294,15 +294,14 @@ async function router(req, res) {
   if (await agenda.router(req, res, { url, m, envoyer, json, autorise, fichierInterface })) return;
   // Le clip farming de KinGKlip : demandes de découpe, clips prêts, liens publiés (jarvis/clips.cjs).
   if (await require('./clips.cjs').router(req, res, { url, m, envoyer, json, fichierInterface })) return;
-  // 22/10/2026 : le cockpit v7 à l'essai (l'agence en 3D au centre, demande de Basile) : /v7, à côté de / jusqu'à son accord ;
-  // /api/v7/analyses = les bilans des analystes et des gouverneurs (<travail>/analyse/*.json et clips/analyse.json)
-  if (m === 'GET' && url === '/v7') return servir3d(req, res, path.join(TROIS_D, 'v7.html'), false);
-  // 22/10/2026 : le cockpit v8 à l'essai (le style des captures de Basile, tout le cockpit v6 rassemblé, l'agence en 3D qu'on visite)
-  if (m === 'GET' && url === '/v8') return servir3d(req, res, path.join(TROIS_D, 'v8.html'), false);
+  // /api/v7/analyses = les bilans des analystes et des gouverneurs (<travail>/analyse/*.json et clips/analyse.json), lus par la v8
   if (m === 'GET' && url === '/api/v7/analyses') return envoyer(res, 200, analysesV7());
+  // 22/10/2026, Basile : « elle me va : fais-en le cockpit principal sur / et /jarvis (garde la v6 en secours) ». / et /jarvis
+  // sont le cockpit v8 (le style de ses captures, tout le cockpit rassemblé, l'agence en 3D qu'on visite) ; /v8 aussi.
+  // La v6 reste en secours à /v6 (jarvis/v6.cjs) ; elle revient seule à / si la page v8 manquait. Retour arrière : retirer la ligne suivante.
+  if (m === 'GET' && (url === '/' || url === '/jarvis' || url === '/v8') && fs.existsSync(path.join(TROIS_D, 'v8.html'))) return servir3d(req, res, path.join(TROIS_D, 'v8.html'), false);
   if (v6 && await v6.router(req, res, { url, m, envoyer, json, autorise })) return;
-  // 15/10/2026, Basile : « remplace le contenu pour le même lien » : / et /jarvis sont le cockpit v6. La 3D d'avant reste à
-  // /jarvis3d (et revient seule à / si jarvis/v6.cjs manquait). Retour arrière : retirer la ligne suivante.
+  // 15/10/2026 → 22/10/2026 : / et /jarvis étaient le cockpit v6 ; il les reprend si la v8 manque. La 3D d'avant reste à /jarvis3d.
   if (m === 'GET' && (url === '/' || url === '/jarvis') && v6) return v6.page(req, res);
   // 07/10/2026 : le tableau de bord était la 3D (demande de Basile) ; l'ancienne page reste à /jarvis/classique.
   if (m === 'GET' && (url === '/' || url === '/jarvis' || url === '/jarvis3d')) return servir3d(req, res, path.join(TROIS_D, 'index.html'), false);

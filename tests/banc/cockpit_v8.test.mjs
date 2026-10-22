@@ -1,6 +1,6 @@
 // Le cockpit v8 à l'essai (22/10/2026) : chaque $('#id') de son script existe dans la page, il n'appelle que des routes
 // qui existent dans Jarvis, ses modules sont du JavaScript valide qui n'importe que des fichiers servis sous /3d/, et
-// le serveur sert bien /v8 (la page) sans toucher à / et /jarvis (la v6 jusqu'à l'accord de Basile).
+// le serveur sert la v8 à /, /jarvis et /v8 depuis le oui de Basile (22/10), la v6 restant en secours à /v6.
 import './outils.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -49,10 +49,12 @@ test('v8 : la page n’appelle que des routes qui existent dans Jarvis', () => {
   assert.ok(/headers: ECRIRE/.test(app) && /'X-Jarvis': '1'/.test(app), 'écrire passe par l’en-tête maison');
 });
 
-test('v8 : /v8 sert la page ; / et /jarvis restent la v6', () => {
+test('v8 : / , /jarvis et /v8 servent la v8 ; la v6 reste en secours à /v6 et revient seule si la v8 manque', () => {
   const serveur = lire(path.join(RACINE, 'jarvis/serveur.cjs'));
-  assert.match(serveur, /url === '\/v8'\) return servir3d\(req, res, path\.join\(TROIS_D, 'v8\.html'\)/);
-  assert.match(serveur, /\(url === '\/' \|\| url === '\/jarvis'\) && v6\) return v6\.page\(req, res\)/);
+  const i8 = serveur.indexOf("url === '/' || url === '/jarvis' || url === '/v8') && fs.existsSync(path.join(TROIS_D, 'v8.html'))) return servir3d(req, res, path.join(TROIS_D, 'v8.html')");
+  const i6 = serveur.indexOf("(url === '/' || url === '/jarvis') && v6) return v6.page(req, res)");
+  assert.ok(i8 > 0 && i6 > i8, 'la v8 d’abord, la v6 derrière en secours');
+  assert.match(lire(path.join(RACINE, 'jarvis/v6.cjs')), /url === '\/v6'/);
   const fichier3d = /^\/3d\/[\w./-]+\.(js|css|json|woff2|txt)$/;
   for (const f of ['/3d/v8-app.js', '/3d/v8-agence.js', '/3d/ontologie-studio.js']) assert.match(f, fichier3d);
 });
