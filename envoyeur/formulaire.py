@@ -334,7 +334,14 @@ def etapes(pg, f, p, cv, lettre_pdf, envoyer, dire, photo, photos, oid, exiger_c
             if not envoyer:
                 return {"verifie": True, "url": pg.url, "etapes": tour + 1, "reponses": " | ".join(recap)[:1500],
                         "captures": photos, "lettre": bool((f.get("lettre") or "").strip()), "bouton": envoi["texte"]}
-            cadre.locator('[data-raime-bouton="%s"]' % envoi["n"]).first.click()
+            bouton = cadre.locator('[data-raime-bouton="%s"]' % envoi["n"]).first
+            try:
+                bouton.click(timeout=10000)
+            except Exception:
+                # 22/10/2026 (Adecco) : bouton « fakeDisabled » sous une barre fixe ; le clic forcé montre au moins ce que
+                # le site reproche (lu par attendre_confirmation), jamais un double envoi : le premier clic n'a pas eu lieu
+                bouton.scroll_into_view_if_needed(timeout=5000)
+                bouton.click(timeout=10000, force=True)
             return attendre_confirmation(pg, recap)
         suivant = next((b for b in boutons if b["role"] == "suivant"), None)
         if not suivant:
