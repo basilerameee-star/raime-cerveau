@@ -42,7 +42,7 @@ CONSENTEMENT = re.compile(r"confidentialit|privacy|donnees personnelles|personal
 # 22/10/2026 (JUST) : la case de confidentialité sans étoile bloquait l'envoi ; cochée seulement si elle parle de la
 # protection des données d'une candidature, jamais si elle parle de publicité ou d'alertes
 CONFIDENTIALITE = re.compile(r"confidentialit|privacy|donnees personnelles|personal data|protection des donnees|datenschutz")
-PUBLICITE = re.compile(r"newsletter|offres|marketing|recevoir|communications?|alerte|alert|promotion|partenaires|partners|sms")
+PUBLICITE = re.compile(r"newsletter|offres|marketing|recevoir|communications?\b|alerte|alert|promotion|partenaires|partners|sms")
 GENRES = {"femme", "homme", "divers", "autre", "female", "male", "other", "frau", "mann", "monsieur", "madame", "mr", "mrs", "ms",
           "herr", "masculin", "feminin"}
 OUI, NON = {"oui", "yes", "ja"}, {"non", "no", "nein"}
@@ -297,6 +297,25 @@ def decider(champs, p, f, fait=None, garder=True):
                 agir(c, "decocher", False, "décoché (facultatif) : " + libelle[:80])
             continue
         if c["tag"] == "select":
+            lib_s = simple(libelle)
+            # 22/10/2026 (Adecco) : l'accord de confidentialité en liste « J'accepte / Je ne suis pas d'accord » ; jamais
+            # celui des alertes ou de la communauté de talents
+            if CONFIDENTIALITE.search(lib_s) and not PUBLICITE.search(lib_s):
+                oui = next((v for v, t in c.get("options") or [] if re.match(r"(j.accepte|i accept|accepter|oui|yes|d.accord)", simple(t))
+                            and not re.search(r"\bpas\b|\bnot\b|\bne\b", simple(t))), None)
+                if oui is not None:
+                    if str(oui) != actuel:
+                        agir(c, "choisir", str(oui), "accepté (protection des données) : " + libelle[:60])
+                    continue
+            # « Code Pays » puis le numéro : l'indicatif du téléphone du profil, et le numéro national dans le champ suivant
+            if cle == "telephone":
+                m = re.match(r"\s*\+(\d{1,3})", str(p.get("telephone") or ""))
+                code = next((v for v, t in c.get("options") or [] if m and re.search(r"\+\s?%s\b|\(%s\)" % (m.group(1), m.group(1)), t or "")), None)
+                if code is not None:
+                    fait.add("indicatif")
+                    if str(code) != actuel:
+                        agir(c, "choisir", str(code), "indicatif : " + next(t for v, t in c["options"] if v == code))
+                    continue
             val = valeur(cle, p, libelle) if cle and cle != "lettre" else None
             choix = choisir_option(c.get("options") or [], val, cle) if val else None
             if choix is not None:
@@ -327,6 +346,8 @@ def decider(champs, p, f, fait=None, garder=True):
             agir(c, "remplir", texte, f"{libelle[:40]} : lettre ({len(texte)} signes)")
             continue
         val = valeur(cle, p, libelle) if cle and cle != "lettre" else None
+        if val and cle == "telephone" and "indicatif" in fait:
+            val = re.sub(r"^\s*\+\d{1,3}\s*", "0", val)          # l'indicatif est déjà choisi dans la liste
         if val:
             if (cle == "email" and actuel) or simple(actuel) == simple(val):
                 notes.append(f"{libelle[:50]} : {actuel}")

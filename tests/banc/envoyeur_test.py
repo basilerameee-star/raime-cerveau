@@ -100,3 +100,30 @@ class FormulairesReels(unittest.TestCase):
 
     def test_langue_de_communication(self):
         self.assertEqual(mp.valeur("langue", self.P, "Langue de communication préférée du candidat"), "Français")
+
+
+class FormulaireAdecco(unittest.TestCase):
+    # 22/10/2026, essai Adecco : « Code Pays » en liste puis le numéro ; l'accord de confidentialité est une liste
+    P = {"telephone": "+33 6 07 65 61 70", "civilite": "Monsieur"}
+
+    def champ(self, n, **k):
+        c = {"n": n, "tag": "input", "type": "text", "name": "", "id": "", "label": "", "question": "", "placeholder": "",
+             "required": False, "value": "", "checked": False, "maxlength": 0, "options": []}
+        c.update(k)
+        return c
+
+    def test_indicatif_puis_numero_national(self):
+        code = self.champ(0, tag="select", type="select", label="Téléphone (Portable)", required=True,
+                          options=[["", "Code Pays"], ["CH", "Suisse (+41)"], ["FR", "France (+33)"]])
+        num = self.champ(1, label="Téléphone (Portable)", required=True)
+        actions, _ = mp.decider([code, num], self.P, {}, set())
+        self.assertEqual([(a["n"], a["valeur"]) for a in actions], [(0, "FR"), (1, "06 07 65 61 70")])
+
+    def test_accord_de_confidentialite_jamais_les_alertes(self):
+        opts = [["", "Veuillez indiquer votre accord."], ["1", "J'accepte"], ["0", "Je ne suis pas d'accord"]]
+        prive = self.champ(0, tag="select", type="select", required=True, options=opts,
+                           label="Chez Adecco Group, nous prenons votre vie privée au sérieux. Notre déclaration de confidentialité définit le traitement de vos informations personnelles.")
+        alertes = self.champ(1, tag="select", type="select", options=opts,
+                             label="Envie de rejoindre notre communauté mondiale de talents ? vous acceptez de recevoir des communications et des alertes d'emploi")
+        actions, _ = mp.decider([prive, alertes], self.P, {}, set())
+        self.assertEqual([(a["n"], a["valeur"]) for a in actions], [(0, "1")])
