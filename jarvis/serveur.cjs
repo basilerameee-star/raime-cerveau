@@ -297,6 +297,8 @@ async function router(req, res) {
   // 22/10/2026 : le cockpit v7 à l'essai (l'agence en 3D au centre, demande de Basile) : /v7, à côté de / jusqu'à son accord ;
   // /api/v7/analyses = les bilans des analystes et des gouverneurs (<travail>/analyse/*.json et clips/analyse.json)
   if (m === 'GET' && url === '/v7') return servir3d(req, res, path.join(TROIS_D, 'v7.html'), false);
+  // 22/10/2026 : le cockpit v8 à l'essai (le style des captures de Basile, tout le cockpit v6 rassemblé, l'agence en 3D qu'on visite)
+  if (m === 'GET' && url === '/v8') return servir3d(req, res, path.join(TROIS_D, 'v8.html'), false);
   if (m === 'GET' && url === '/api/v7/analyses') return envoyer(res, 200, analysesV7());
   if (v6 && await v6.router(req, res, { url, m, envoyer, json, autorise })) return;
   // 15/10/2026, Basile : « remplace le contenu pour le même lien » : / et /jarvis sont le cockpit v6. La 3D d'avant reste à
