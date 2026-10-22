@@ -653,7 +653,8 @@
    "il_faut": "La clé API DeepSeek déposée par Basile dans le coffre du cockpit, et un plafond mensuel.",
    "fini_quand": "Hermes répond et exécute ses ordres sur deepseek-flash ; coût réel noté par l'économe ; repli gratuit gardé.",
    "etat": "attend_basile",
-   "rang": 63
+   "rang": 63,
+   "avance": "22/10 : pas nécessaire pour l'instant (Basile n'a pas besoin de parler au modèle ; tout tourne sur des modèles gratuits). Utile seulement pour qu'Hermes applique seul ses correctifs."
   },
   {
    "n": 64,
@@ -674,8 +675,9 @@
    "depend_de": [
     24
    ],
-   "etat": "a_faire",
-   "rang": 65
+   "etat": "en_cours",
+   "rang": 65,
+   "avance": "22/10 : feu vert de Basile. Prérequis relevés : l'affiliation TikTok Shop France exige 500 abonnés sur le compte (politique du 03/09/2026, à confirmer dans l'application) ; le nouveau compte TikTok KinGKlip (relié le 22/10) part de zéro et publie 1 clip par jour. Higgsfield : 10 crédits sur l'offre gratuite ; le coût d'une vidéo produit (Marketing Studio, 12-15 s) est à vérifier avant toute dépense."
   },
   {
    "n": 66,
