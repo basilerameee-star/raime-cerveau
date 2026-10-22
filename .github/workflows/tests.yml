@@ -57,3 +57,4 @@ jobs:
       - run: python3 -m unittest tests/banc/gouverneur_agents_test.py
       # Le gouverneur du matin (22/10/2026) : objectifs de la veille tenus ou manqués.
       - run: python3 -m unittest tests/banc/gouverneur_matin_test.py
+      - run: python3 -m unittest tests/banc/medecin_test.py

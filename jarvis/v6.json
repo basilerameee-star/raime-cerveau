@@ -1075,6 +1075,31 @@
    "ensuite": "Ajouter les objectifs de vente et de candidatures."
   },
   {
+   "secteur": "gouvernance",
+   "id": "medecin",
+   "nom": "Médecin du système",
+   "rythme": "chaque matin, 6 h 35 UTC",
+   "src": {
+    "mesure": true
+   },
+   "mesure": "medecin",
+   "outils": [
+    [
+     "Journaux des tâches",
+     "0 jeton",
+     "code"
+    ],
+    [
+     "Hermes (correctifs)",
+     "jetons justifiés",
+     "ia"
+    ]
+   ],
+   "maintenant": "Chaque matin : relève les agents qui ne vont pas, les erreurs des journaux, les pertes sur la chaîne de l’argent (clips non déclarés, candidatures en échec) et l’état de la machine ; relance seul un conteneur arrêté ; confie chaque nouvelle panne à Hermes, qui propose un correctif testé.",
+   "bloque": "Les correctifs d’Hermes attendent encore une relecture avant la livraison ; Hermes passera sur DeepSeek dès que la clé sera déposée.",
+   "ensuite": "Livrer seul un correctif dont le banc d’essai est vert et que le Gardien accepte."
+  },
+  {
    "outils": [],
    "id": "penseur",
    "secteur": "direction",

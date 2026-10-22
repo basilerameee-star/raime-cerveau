@@ -167,6 +167,10 @@ const MESURES = {
     const s = sortieDe('analyse/agents.json'), f = fraicheur([s], 30, A), j = lireJson(s);
     return { ...f, texte: j ? `${pluriel((j.suivis || []).length, 'agent suivi', 'agents suivis')} sur ${j.fiches || '?'} ; ses propositions sont dans « État des agents ».` : 'Bilan illisible.' };
   },
+  medecin(L, A) {
+    const s = sortieDe('sante/aujourdhui.json'), f = fraicheur([s], 30, A), j = lireJson(s);
+    return { ...f, texte: j ? `${(j.lignes || [])[0] || ''}${(j.confiees || []).length ? ` ${pluriel(j.confiees.length, 'panne confiée', 'pannes confiées')} à Hermes.` : ''}` : 'Bilan illisible.' };
+  },
   gouv_matin(L, A) {
     const s = sortieDe('analyse/matin.json'), f = fraicheur([s], 30, A), j = lireJson(s);
     const n = j && j.jugement ? j.jugement.filter((o) => o.tenu).length : null;
