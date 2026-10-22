@@ -20,10 +20,12 @@ import pathlib
 import re
 import subprocess
 import sys
+import time
 import urllib.request
 
 SORTIE = pathlib.Path(os.environ.get("SORTIE", "/sortie"))
 MODELES = ["gemini-flash-latest", "gemini-2.5-flash", "gemini-flash-lite-latest"]
+ATTENTE_GEMINI = 120                                   # secondes entre deux tours des modèles saturés
 
 
 def lancer(cmd):
@@ -116,14 +118,17 @@ def gemini(prompt, cle):
     corps = json.dumps({"contents": [{"parts": [{"text": prompt}]}],
                         "generationConfig": {"responseMimeType": "application/json", "temperature": 0.4}}).encode()
     derniere = None
-    for modele in MODELES:
-        try:
-            req = urllib.request.Request("https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s" % (modele, cle),
-                                         data=corps, headers={"Content-Type": "application/json"})
-            d = json.load(urllib.request.urlopen(req, timeout=120))
-            return json.loads(d["candidates"][0]["content"]["parts"][0]["text"])
-        except Exception as e:                       # modèle saturé ou absent : le suivant
-            derniere = e
+    for tour in range(3):                            # 22/10/2026 : les trois modèles en 503 à la fois ; ça passe en quelques minutes
+        if tour:
+            time.sleep(ATTENTE_GEMINI)
+        for modele in MODELES:
+            try:
+                req = urllib.request.Request("https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s" % (modele, cle),
+                                             data=corps, headers={"Content-Type": "application/json"})
+                d = json.load(urllib.request.urlopen(req, timeout=120))
+                return json.loads(d["candidates"][0]["content"]["parts"][0]["text"])
+            except Exception as e:                   # modèle saturé ou absent : le suivant
+                derniere = e
     raise RuntimeError("Gemini indisponible : %s" % derniere)
 
 

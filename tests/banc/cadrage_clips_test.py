@@ -186,3 +186,24 @@ class ChoixVide(unittest.TestCase):
             self.assertEqual([(c["debut"], c["fin"]) for c in C.choisir(mots, "en", 5, 30, 60, "", "cle")], [(10.0, 45.0)])
         finally:
             C.gemini = vrai
+
+
+class GeminiSature(unittest.TestCase):
+    # 22/10/2026 : Jay Guapo en échec sur « HTTP Error 503 » des trois modèles ; une saturation passe en quelques minutes
+    def test_trois_tours_avant_d_abandonner(self):
+        import io
+        import json as js
+        appels = []
+
+        def ouvrir(req, timeout=0):
+            appels.append(req.full_url)
+            if len(appels) <= len(C.MODELES):
+                raise OSError("HTTP Error 503: Service Unavailable")
+            return io.StringIO(js.dumps({"candidates": [{"content": {"parts": [{"text": "[1]"}]}}]}))
+        vrai, attente = C.urllib.request.urlopen, C.ATTENTE_GEMINI
+        C.urllib.request.urlopen, C.ATTENTE_GEMINI = ouvrir, 0
+        try:
+            self.assertEqual(C.gemini("p", "cle"), [1])
+            self.assertEqual(len(appels), len(C.MODELES) + 1)
+        finally:
+            C.urllib.request.urlopen, C.ATTENTE_GEMINI = vrai, attente
