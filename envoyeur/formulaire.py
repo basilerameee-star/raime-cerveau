@@ -57,7 +57,7 @@ ETAT = r"""() => {
   for (const el of utiles(racine)) {
     const type = (el.tagName === 'INPUT' ? (el.getAttribute('type') || 'text') : el.tagName).toLowerCase();
     const bloc = el.closest('.form-group, .form-item, .field, .form-field, label, div') || el.parentElement;
-    const visible = ['select', 'file', 'checkbox', 'radio'].includes(type) ? (vis(el) || vis(bloc)) : vis(el);
+    const visible = type === 'file' ? true : ['select', 'checkbox', 'radio'].includes(type) ? (vis(el) || vis(bloc)) : vis(el);
     if (!visible) continue;
     el.setAttribute('data-raime', String(n));
     const label = libelle(el);
@@ -77,11 +77,12 @@ ETAT = r"""() => {
   const boutons = [];
   let b = 0;
   const vus = new Set();
-  for (const el of [...racine.querySelectorAll('button, input[type="submit"], input[type="button"], a[role="button"]'), ...document.querySelectorAll('button[type="submit"], input[type="submit"]')]) {
+  for (const el of [...racine.querySelectorAll('button, input[type="submit"], input[type="button"], a[role="button"]'),
+                    ...document.querySelectorAll('button, input[type="submit"], input[type="button"], a[role="button"], a.button, a.btn')]) {
     if (vus.has(el) || !vis(el) || el.disabled) continue;
     vus.add(el);
     el.setAttribute('data-raime-bouton', String(b));
-    boutons.push({ n: b++, texte: (el.tagName === 'INPUT' ? (el.value || '') : txt(el)).slice(0, 80) });
+    boutons.push({ n: b++, texte: (el.tagName === 'INPUT' ? (el.value || '') : (txt(el) || el.getAttribute('aria-label') || el.getAttribute('title') || '')).slice(0, 80) });
   }
   const mdp = [...document.querySelectorAll('input[type="password"]')].some(vis);
   return { champs, boutons, etape: '', mot_de_passe: mdp,
@@ -92,7 +93,9 @@ ETAT = r"""() => {
 LIENS_POSTULER = r"""() => {
   const vis = (e) => !!e && !!(e.offsetWidth || e.offsetHeight || e.getClientRects().length);
   const l = [];
-  document.querySelectorAll('a, button').forEach((e, i) => { if (vis(e)) { e.setAttribute('data-raime-lien', String(i)); l.push([String(i), (e.innerText || e.value || '').trim().slice(0, 80)]); } });
+  const nom = (e) => ((e.innerText || e.value || '').trim() || e.getAttribute('aria-label') || e.getAttribute('title')
+    || ((e.querySelector('img') || {}).alt) || '').trim();
+  document.querySelectorAll('a, button, input[type="button"], input[type="submit"]').forEach((e, i) => { if (vis(e)) { e.setAttribute('data-raime-lien', String(i)); l.push([String(i), nom(e).slice(0, 80)]); } });
   return l;
 }"""
 
