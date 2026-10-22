@@ -103,6 +103,19 @@ class Grille(unittest.TestCase):
         self.assertEqual(public["exclusion"], "")
         self.assertTrue(cr.evaluer(campagne(requiresApplication=True))["candidature"])
 
+    def test_payee_a_notre_portee_d_abord(self):
+        # 22/10/2026 : nos clips font 150 vues de médiane (record 1 716) ; un clip n'est payé qu'au-dessus du minimum
+        def seuil(cents):
+            return [{"platform": p, "rateCents": 100, "minPayoutCents": cents, "maxPayoutCents": 35000, "payoutType": "cpm"}
+                    for p in ("instagram", "youtube")]
+        mille, quatre, dix = (cr.evaluer(campagne(payouts=seuil(c))) for c in (100, 400, 1000))
+        self.assertEqual(mille["vues_min"], 1000)
+        self.assertGreater(mille["note"], quatre["note"] + 10)
+        self.assertGreater(quatre["note"], dix["note"])
+        self.assertEqual(dix["exclusion"], "")
+        self.assertIn("minimum de 12000 vues", cr.evaluer(campagne(payouts=seuil(1200)))["exclusion"])
+        self.assertIn("payé dès 1000 vues", pilote.pourquoi(mille))
+
     def test_liens_video_de_la_description(self):
         e = cr.evaluer(campagne(description="Footage: https://drive.google.com/drive/folders/abc and https://youtu.be/xyz."))
         self.assertEqual(e["sources"], ["https://drive.google.com/drive/folders/abc", "https://youtu.be/xyz"])

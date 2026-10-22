@@ -267,6 +267,7 @@ def ecrire_reserve(sql, reserve):
 
 def pourquoi(e):
     bouts = ["note %s/100" % e["note"], "Instagram %g $ et YouTube %g $ les 1 000 vues" % (e["ig"], e["yt"]),
+             "payé dès %d vues par clip" % e.get("vues_min", 0),
              "%d $ restants sur %d $" % (e["restant"], e["total"]), "%d créateurs" % e["createurs"]]
     if e["public"]:
         bouts.append("public exigé (anglais, heures américaines)")

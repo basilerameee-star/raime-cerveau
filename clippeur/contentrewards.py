@@ -20,7 +20,10 @@ FICHE = "https://contentrewards.com/c/campaigns/"          # la page publique : 
 AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0 Safari/537.36"
 NOS_PLATEFORMES = ("instagram", "youtube")                  # KinGKlip ; TikTok en pause (compte banni le 04/10/2026)
 PRIX_MINI = 1.0                                             # 1 $ les 1 000 vues au moins (grille du 02/10/2026)
-PRIX_ABERRANT = 20.0                                        # au-delà, une donnée fausse (15/10 : « Coworker » à 1 000 $)
+PRIX_ABERRANT = 20.0
+# 22/10/2026 : un clip n'est payé qu'au-dessus du minimum de la campagne ; les nôtres font 150 vues de médiane (record
+# 1 716). Une campagne payée dès 1 000 vues est à notre portée, une à 4 000 (Demi Lovato) ne l'a jamais été.
+PAYABLE_BAS, PAYABLE_HAUT, PAYABLE_MAXI = 1000, 5000, 10000                                        # au-delà, une donnée fausse (15/10 : « Coworker » à 1 000 $)
 VIDEO = ("youtu", "drive.google", "dropbox", "vimeo", "twitch.tv", "kick.com", "streamable", "frame.io", "wetransfer", "mega.nz")
 
 # exclusions (selection.json) : jeux d'argent, contenu adulte, politique ; pas de clipping ; autre langue que l'anglais
@@ -123,6 +126,7 @@ def evaluer(c, d=None):
          "candidature": candidature, "dedies": bool(COMPTES_DEDIES.search(texte)), "public": bool(PUBLIC_EXIGE.search(texte)),
          "sources": liens_video(texte), "exclusion": "", "note": 0}
     vues_min = max([v[1] / v[0] * 1000 for v in nos.values()] or [0])
+    e["vues_min"] = round(vues_min)
     if c.get("status", "active") != "active":
         e["exclusion"] = "campagne fermée"
     elif (c.get("payoutType") or d.get("type") or "cpm") != "cpm":
@@ -139,7 +143,7 @@ def evaluer(c, d=None):
         e["exclusion"] = "pas du clipping (UGC, son, tutoriel ou reprise)"
     elif AUTRE_LANGUE.search(texte):
         e["exclusion"] = "langue ou public non anglais"
-    elif vues_min > 50000:
+    elif vues_min > PAYABLE_MAXI:
         e["exclusion"] = "minimum de %d vues par clip" % vues_min
     elif FOCUS == "streamer" and not est_streamer(texte, categories):
         e["exclusion"] = "hors niche : streamers seulement (Basile, 22/10/2026)"
@@ -151,7 +155,8 @@ def evaluer(c, d=None):
     note = (30 * _entre(prix, .2, 3) + 20 * min(1.0, restant / 10000) + 20 * _entre(restant / max(approuves, 1), 5, 50)
             + 20 * adequation + 10 * (1.0 if maxi == 0 or maxi >= 300 else _entre(maxi, 20, 300)))
     note += 10 if NICHE.search(texte) else 0
-    note -= (30 if candidature else 0) + (40 if e["dedies"] else 0) + (15 if e["public"] else 0) + (10 if vues_min > 5000 else 0)
+    note += 20 * (1 - _entre(vues_min, PAYABLE_BAS, PAYABLE_HAUT)) - (15 if vues_min > PAYABLE_HAUT else 0)
+    note -= (30 if candidature else 0) + (40 if e["dedies"] else 0) + (15 if e["public"] else 0)
     e["note"] = round(max(0.0, min(100.0, note)), 1)
     return e
 
