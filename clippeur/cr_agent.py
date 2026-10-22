@@ -168,7 +168,7 @@ def releve(pg, nom):
         pg.screenshot(path=base + ".png", full_page=True)
     except Exception:
         pass
-    infos = {"url": pg.url, "boutons": [t.strip() for t in pg.locator("button").all_inner_texts() if t.strip()][:80],
+    infos = {"url": pg.url, "boutons": [(t or "").strip() for t in pg.locator("button").all_inner_texts() if (t or "").strip()][:80],
              "champs": [(e.get_attribute("name") or e.get_attribute("placeholder") or "") for e in pg.locator("input, textarea").all()][:40]}
     with open(base + ".json", "w", encoding="utf-8") as f:
         json.dump(infos, f, ensure_ascii=False, indent=1)
@@ -250,8 +250,8 @@ def soumettre(ctx, pg, cr_id, lien, essai=False):
     pg.wait_for_timeout(2500)
     # ce que Content Rewards répond au clic (fenêtre, bandeau d'erreur ou de succès), lu AVANT de quitter la page : sans
     # lui, un refus ne laissait aucune trace (« lien envoyé mais absent », 21/10/2026)
-    reponse = " | ".join(t.strip() for t in pg.locator("[role=dialog], [role=alert], [role=status], [data-sonner-toast]")
-                         .all_inner_texts() if t.strip())[:400]
+    reponse = " | ".join((t or "").strip() for t in pg.locator("[role=dialog], [role=alert], [role=status], [data-sonner-toast]")
+                         .all_inner_texts() if (t or "").strip())[:400]
     releve(pg, "apres-envoi-" + cr_id)
     pg.wait_for_timeout(3500)
     o = obstacle(pg)
