@@ -8,6 +8,6 @@ jeton.txt (= ENVOYEUR_JETON du coffre), profil_candidat.json, cv/*.pdf, offres.j
 - Ce qui ne peut pas partir honnêtement (question inconnue sur un fait, annonce expirée, formulaire inattendu)
   est abandonné et rangé dans Jarvis, jamais renvoyé à Basile.
 - Connexion de Basile (une fois) : `touch /opt/raime/envoyeur-data/pause`, puis
-  `docker exec raime-envoyeur python /app/serveur.py connexion`, Basile ouvre https://cockpit.raime.fr/navigateur/vnc.html,
+  `docker exec raime-envoyeur python /app/serveur.py connexion`, Basile ouvre https://cockpit.raime.fr/navigateur/vnc.html?path=navigateur/websockify&autoconnect=true&resize=scale (sans « path », l’écran reste vide),
   se connecte, puis `rm /opt/raime/envoyeur-data/pause`.
 - Lancement : voir installer.sh.
