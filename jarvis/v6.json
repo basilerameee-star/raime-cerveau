@@ -603,9 +603,9 @@
     "mesure": true
    },
    "mesure": "envoyeur",
-   "maintenant": "Postule seul aux offres que tu valides, par le formulaire du site ou par e-mail, avec ta lettre et ton CV suisse.",
-   "bloque": "Les offres « à toi » renvoient au site de l’employeur : il ne sait pas y postuler.",
-   "ensuite": "Un agent de formulaires (Workday, Zoho, SuccessFactors)."
+   "maintenant": "Postule seul aux offres que tu valides : jobup et jobs.ch depuis ton PC ; formulaires des sites d’employeurs sans compte depuis le serveur ; avec ta lettre et ton CV suisse.",
+   "bloque": "Michael Page et LinkedIn attendent ta reconnexion dans le navigateur du serveur ; les sites qui exigent un compte (Workday, SuccessFactors…) restent pour toi.",
+   "ensuite": "Apprendre les champs qui arrêtent encore des formulaires (chaque arrêt est noté avec sa capture)."
   },
   {
    "outils": [
@@ -623,8 +623,8 @@
    "depuis": "2026-10-08",
    "duree": "attend ton accord",
    "maintenant": "Essai à blanc réussi le 08/10 : formulaire rempli, rien envoyé.",
-   "bloque": "Ton accord pour l’envoi réel.",
-   "ensuite": "Envoi automatique, comme jobup."
+   "bloque": "Ta connexion Michael Page a expiré : reconnecte-toi une fois dans le navigateur du serveur, puis l’essai à blanc se refait.",
+   "ensuite": "Après ton accord sur l’essai à blanc : envoi automatique de ses offres."
   },
   {
    "outils": [
@@ -791,8 +791,9 @@
     "seconde"
    ],
    "maintenant": "Achète et vend du bitcoin et de l’ether à la seconde, en simulation, avec 1 000 € fictifs.",
-   "bloque": "Les frais (0,12 % par opération) dépassent ce qu’il gagne.",
-   "ensuite": "Le laboratoire le coupera ou changera sa règle."
+   "bloque": "Arrêté le 22/10 : les frais (0,12 % par opération) mangeaient tous ses gains.",
+   "ensuite": "Rien : il reste arrêté ; ses données servent au laboratoire des règles.",
+   "arrete_le": "2026-10-22"
   },
   {
    "outils": [
@@ -814,8 +815,9 @@
     "minute"
    ],
    "maintenant": "Achète et vend à la minute, en simulation, avec 1 000 € fictifs.",
-   "bloque": "Rien ne le bloque.",
-   "ensuite": "Ses règles muteront selon ses résultats."
+   "bloque": "Arrêté le 22/10 : les frais (0,12 % par opération) mangeaient tous ses gains.",
+   "ensuite": "Rien : il reste arrêté ; ses données servent au laboratoire des règles.",
+   "arrete_le": "2026-10-22"
   },
   {
    "outils": [

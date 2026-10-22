@@ -292,6 +292,7 @@ const MESURES = {
     if (!flux || A.maintenant - new Date(flux) > 15 * 60e3) {
       return { texte, dernier: flux, etat: 'panne', depuis: flux, derniere_panne: { le: flux, texte: flux ? `le flux des cours ne bouge plus depuis ${quand(flux, A.auj)}` : 'aucun cours reçu' } };
     }
+    if (a && a.arrete_le) return { texte: `${texte} Arrêté le ${court(a.arrete_le)} : plus aucune opération, sa valeur reste suivie.`, dernier: flux, etat: 'arret', depuis: a.arrete_le };
     const perdant = l.find((t) => t.perf <= -50);
     if (perdant) return { texte, dernier: flux, etat: 'panne', depuis: perdant.depuis, derniere_panne: { le: null, texte: `${pourcent(perdant.perf)} depuis le ${court(jourDe(perdant.depuis))} : les frais mangent ses gains` } };
     return { texte, dernier: flux };

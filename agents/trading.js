@@ -107,7 +107,11 @@ export async function service({ brain, f = globalThis.fetch, journal = (t) => co
   for (const s of SYMBOLES) series[`${s}:trimestre`] = trimestres(mensuelles[s] || []).map((b) => b.c);
   journal(`démarré : ${Object.keys(ECHELLES).length} agents × ${SYMBOLES.length} actifs, historique chargé`);
 
+  // 22/10/2026 : arrêtés sur la proposition du gouverneur des agents (−99,8 % et −94 % depuis le 08/10, les frais mangent tout) :
+  // plus aucune opération ; leur valeur reste suivie et toute leur donnée gardée. TRADING_ARRETES="" les relance.
+  const ARRETES = new Set((process.env.TRADING_ARRETES ?? 'seconde,minute').split(',').map((x) => x.trim()).filter(Boolean));
   const pas = async (agent, symbole, prix, le) => {
+    if (ARRETES.has(agent)) return;
     const cle = `${agent}:${symbole}`, p = portefeuilles[cle];
     const d = decision(ECHELLES[agent].regle, series[`${symbole}:${agent}`], p.quantite > 0, ECHELLES[agent].n);
     if (!d) return;
