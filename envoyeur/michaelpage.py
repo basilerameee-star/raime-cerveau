@@ -56,15 +56,17 @@ CHAMPS = [
     ("email", r"\be ?mail\b|courriel"),
     ("telephone", r"telephone|phone|mobile|portable|\btel\b"),
     ("code_postal", r"code postal|post ?code|postal code|\bzip\b|\bnpa\b"),
-    ("ville", r"\bville\b|\bcity\b|localite|\btown\b|lieu de residence"),
+    ("ville", r"\bville\b|\bcity\b|localite|\btown\b|lieu de residence|^lieu\W*$|^ort\W*$"),
+    ("genre", r"^genre\W*$|\bgender\b|\bsexe\b|geschlecht"),
+    ("etat_civil", r"etat civil|marital|zivilstand|situation familiale"),
     ("adresse", r"adresse|address|\brue\b|street"),
     ("nationalite", r"nationalit"),
     ("pays", r"\bpays\b|country"),
-    ("civilite", r"civilite|salutation|(?<!job )(?<!position )\btitle\b"),
+    ("civilite", r"civilite|salutation|formule d.appel|\banrede\b|(?<!job )(?<!position )\btitle\b"),
     ("linkedin", r"linkedin"),
     ("preavis", r"preavis|notice"),
     ("disponibilite", r"disponib|availab|date de debut|start date|entree en fonction"),
-    ("permis", r"permis de travail|work permit|autorisation de travail|permis de sejour|statut de residence"),
+    ("permis", r"permis de travail|work permit|autorisation de travail|permis de sejour|statut de residence|statut du permis|aufenthaltsbewilligung"),
     ("contrat", r"type de (poste|contrat|job|emploi)|job type|contract type|type d.emploi"),
     ("salaire", r"salaire|salary|remuneration|pretention|pay ?rate"),
     ("taux", r"taux d.activite|\btaux\b|workload|pensum"),
@@ -87,6 +89,7 @@ SYNONYMES = {"monsieur": ["monsieur", "m.", "m", "mr", "mr.", "homme", "male", "
              "aucun": ["aucun", "aucune", "pas de preavis", "none", "immediatement", "immediate"],
              "francaise": ["francaise", "france", "french"],
              "cdi": ["permanent", "cdi", "fixe", "contrat a duree indeterminee"],
+             "masculin": ["masculin", "homme", "male", "man", "mannlich", "m"],
              "langue maternelle": ["langue maternelle", "maternelle", "native", "natif", "langue natale"]}
 SYNONYMES_CLE = {"source": ["site michael page", "michaelpage.ch", "michaelpage ch", "site internet", "site web", "website",
                             "internet", "michael page"],
@@ -173,6 +176,10 @@ def valeur(cle, p, libelle=""):
         return emploi_actuel(p).get("entreprise") or None
     if cle == "poste":
         return emploi_actuel(p).get("poste") or None
+    if cle == "genre":
+        return "masculin" if simple(p.get("civilite")) in ("monsieur", "m", "mr") else None
+    if cle == "langue" and re.search(r"maternelle|mother tongue|muttersprache|native language", s):
+        return next((k for k, v in (p.get("langues") or {}).items() if "maternelle" in simple(v)), None)
     if cle == "langue":
         langues = {simple(k): v for k, v in (p.get("langues") or {}).items()}
         for nom, motif in LANGUES.items():
@@ -218,7 +225,7 @@ def ajuster(texte, maximum):
     return "\n\n".join(garde) or texte[:maximum]
 
 
-def decider(champs, p, f, fait=None):
+def decider(champs, p, f, fait=None, garder=True):
     """Ce qu'il faut saisir dans les champs visibles. Rend (actions, notes) ; lève AToi si un champ ne peut pas être
     rempli honnêtement. Fonction pure : testée sans navigateur (tests/banc/michaelpage.test.mjs)."""
     fait = set() if fait is None else fait
@@ -283,8 +290,14 @@ def decider(champs, p, f, fait=None):
                 if str(choix) != actuel:
                     texte_choix = next((t for v, t in c.get("options") or [] if str(v) == str(choix)), choix)
                     agir(c, "choisir", str(choix), f"{libelle[:50]} : {texte_choix}")
-            elif actuel and actuel not in ("_none",):
+            elif actuel and actuel not in ("_none",) and garder:
                 notes.append(f"{libelle[:50]} : gardé tel quel")
+            elif actuel and actuel not in ("_none",) and not c.get("required"):
+                vide = next((v for v, t in c.get("options") or [] if str(v) in ("", "_none") or simple(t) in VIDES), None)
+                if vide is not None and str(vide) != actuel:
+                    agir(c, "choisir", str(vide), f"{libelle[:50]} : vidé (valeur proposée par le site)")
+            elif actuel and actuel not in ("_none",) and c.get("required"):
+                raise AToi("question" if question else "formulaire", "valeur proposée par le site, réponse vraie inconnue : " + libelle[:140])
             elif c.get("required"):
                 if val:
                     raise AToi("formulaire", f"{libelle[:80]} : aucune option pour « {val} »")
@@ -306,9 +319,9 @@ def decider(champs, p, f, fait=None):
                 notes.append(f"{libelle[:50]} : {actuel}")
             else:
                 agir(c, "remplir", val, f"{libelle[:50]} : {val}")
-        elif actuel:
+        elif actuel and (garder or not c.get("required")):
             notes.append(f"{libelle[:50]} : gardé tel quel")
-        elif c.get("required"):
+        elif actuel or c.get("required"):
             raise AToi("question" if question else "formulaire", "champ obligatoire inconnu : " + libelle[:160])
 
     for nom, groupe in radios.items():
@@ -343,7 +356,7 @@ def decider(champs, p, f, fait=None):
             cible = next(c for c in groupe if str(c["n"]) == choix)
             if not cible.get("checked"):
                 agir(cible, "cocher", True, f"{question[:60]} : {cible.get('label')}")
-        elif any(c.get("checked") for c in groupe):
+        elif any(c.get("checked") for c in groupe) and (garder or not requis):
             notes.append(f"{question[:60]} : gardé tel quel")
         elif requis:
             raise AToi("question" if "?" in question or not val else "formulaire", question[:200])

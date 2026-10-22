@@ -234,6 +234,20 @@ def postuler(page, f, dos, p, envoyer=True, journal=None, captures=None):
     if AVEC_COMPTE.search(pg.url):
         raise AToi("compte", "ce site exige un compte candidat : " + pg.url[:80])
 
+    return etapes(pg, f, p, cv, lettre_pdf, envoyer, dire, photo, photos, oid)
+
+
+# Les boutons d'étape : « Vérifier » / « Review » (LinkedIn) mènent à l'étape suivante, jamais à l'envoi
+VERIFIER = re.compile(r"^\s*(v[ée]rifier|review|revoir|continuer|continue|weiter|suivant|next)\b", re.I)
+
+
+def role(texte):
+    r = mp.role(texte)
+    return "suivant" if r == "autre" and VERIFIER.search(texte or "") else r
+
+
+def etapes(pg, f, p, cv, lettre_pdf, envoyer, dire, photo, photos, oid, exiger_cv=True, nom="formulaire", garder=False):
+    """Les étapes du formulaire, jusqu'au bouton d'envoi (cliqué seulement si envoyer=True)."""
     fait, recap = set(), []
     for tour in range(6):
         captcha(pg)
@@ -243,7 +257,7 @@ def postuler(page, f, dos, p, envoyer=True, journal=None, captures=None):
         if e["mot_de_passe"]:
             raise AToi("compte", "le formulaire demande un mot de passe (création de compte)")
         for _ in range(3):                                 # un choix peut faire apparaître d'autres champs
-            actions, notes = mp.decider(e["champs"], p, f, fait)
+            actions, notes = mp.decider(e["champs"], p, f, fait, garder=garder)
             recap += notes
             if not actions:
                 break
@@ -253,13 +267,13 @@ def postuler(page, f, dos, p, envoyer=True, journal=None, captures=None):
             cadre, e = meilleur(pg)
             if e is None:
                 raise AToi("formulaire", "formulaire disparu")
-        if not any(c["type"] == "file" and c.get("value") for c in e["champs"]) and not any("CV" in n for n in recap):
-            raise AToi("formulaire", "aucun champ pour joindre le CV")
-        dire("  formulaire %s : étape %d remplie (%d champs)" % (oid, tour + 1, len(e["champs"])))
+        dire("  " + nom + " %s : étape %d remplie (%d champs)" % (oid, tour + 1, len(e["champs"])))
         photo(pg, "etape-%d" % (tour + 1))
-        boutons = [dict(b, role=mp.role(b["texte"])) for b in e["boutons"]]
+        boutons = [dict(b, role=role(b["texte"])) for b in e["boutons"]]
         envoi = next((b for b in boutons if b["role"] == "envoi"), None)
         if envoi:
+            if exiger_cv and not any(c["type"] == "file" and c.get("value") for c in e["champs"]) and not any("CV" in n for n in recap):
+                raise AToi("formulaire", "aucun champ pour joindre le CV")
             if not envoyer:
                 return {"verifie": True, "url": pg.url, "etapes": tour + 1, "reponses": " | ".join(recap)[:1500],
                         "captures": photos, "lettre": bool((f.get("lettre") or "").strip()), "bouton": envoi["texte"]}

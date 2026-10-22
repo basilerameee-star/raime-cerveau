@@ -28,6 +28,7 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright
 
 import formulaire
+import linkedin
 import michaelpage
 from jobcloud import AToi, postuler
 
@@ -38,8 +39,8 @@ CV = {"Vente": "CV_Suisse_Vente", "Commercial": "CV_Suisse_Commercial", "Sales E
       "Vente + IA": "CV_Suisse_Vente_IA", "Commercial (France)": "CV_Basile_Rame_Commercial"}
 PAR_PASSAGE = int(os.environ.get("PAR_PASSAGE", "15"))
 # 08/10/2026 : Michael Page en premier (canal en préparation) ; les sites français sont retirés (France abandonnée le 06/10)
-SITES_CONNEXION = ["https://www.michaelpage.ch/fr/mypage", "https://www.jobup.ch/fr/login/", "https://www.jobs.ch/fr/login/",
-                   "https://secure.indeed.com/auth"]
+SITES_CONNEXION = ["https://www.michaelpage.ch/fr/mypage", "https://www.linkedin.com/login/fr", "https://www.jobup.ch/fr/login/",
+                   "https://www.jobs.ch/fr/login/"]
 
 
 def dire(t):
@@ -125,10 +126,14 @@ def formulaire_employeur(page, f, dos, p, envoyer=True):
     return formulaire.postuler(page, f, dos, p, envoyer=envoyer, journal=dire)
 
 
-POSTULER = {"jobcloud": jobcloud, "michaelpage": michael_page, "formulaire": formulaire_employeur}
+def linkedin_simplifiee(page, f, dos, p, envoyer=True):
+    return linkedin.postuler(page, f, dos, p, envoyer=envoyer, journal=dire)
+
+
+POSTULER = {"jobcloud": jobcloud, "michaelpage": michael_page, "formulaire": formulaire_employeur, "linkedin": linkedin_simplifiee}
 # 22/10/2026 : jobup / jobs.ch sont postulés par l'Envoyeur du PC de Basile (ses connexions marchent) ; celui du serveur prend
 # les autres canaux. Jamais deux envoyeurs sur le même canal : une candidature ne part jamais deux fois.
-CANAUX_ICI = [c.strip() for c in os.environ.get("CANAUX_SERVEUR", "michaelpage,formulaire").split(",") if c.strip()]
+CANAUX_ICI = [c.strip() for c in os.environ.get("CANAUX_SERVEUR", "michaelpage,formulaire,linkedin").split(",") if c.strip()]
 
 
 def canal_de(o):
@@ -209,7 +214,8 @@ def passage():
             if r["statut"] in ("reconnexion", "captcha"):
                 bloques.add(canal)
                 continue
-            time.sleep(90)                                 # 20 s ne suffisaient pas : « Trop de requêtes » au 4e envoi
+            # 20 s ne suffisaient pas : « Trop de requêtes » au 4e envoi ; LinkedIn : 3 à 6 minutes, comme un humain
+            time.sleep(180 + (hash(f["id"]) % 180) if canal == "linkedin" else 90)
         ctx.close()
 
 
