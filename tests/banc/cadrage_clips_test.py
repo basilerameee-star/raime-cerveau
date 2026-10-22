@@ -207,3 +207,24 @@ class GeminiSature(unittest.TestCase):
             self.assertEqual(len(appels), len(C.MODELES) + 1)
         finally:
             C.urllib.request.urlopen, C.ATTENTE_GEMINI = vrai, attente
+
+
+class MomentsCourts(unittest.TestCase):
+    # 22/10/2026 : Jay Guapo, 14 moments notés 7-9 mais de 8 à 20 s pour une campagne de 30 à 60 s : tous jetés, 0 clip
+    def test_un_moment_trop_court_est_elargi_autour_de_lui(self):
+        mots = [{"d": float(i), "f": i + .9, "m": "word."} for i in range(300)]
+        vrai = C.gemini
+        C.gemini = lambda prompt, cle: [{"debut": 100, "fin": 112, "note": 9}, {"debut": 2, "fin": 6, "note": 8},
+                                        {"debut": 280, "fin": 295, "note": 8}]
+        try:
+            r = C.choisir(mots, "en", 5, 30, 60, "", "cle")
+        finally:
+            C.gemini = vrai
+        self.assertEqual(len(r), 3)
+        for c in r:
+            self.assertGreaterEqual(c["fin"] - c["debut"], 30)
+            self.assertGreaterEqual(c["debut"], 0)
+            self.assertLessEqual(c["fin"], 299.9)
+        milieu = next(c for c in r if c["debut"] < 112 < c["fin"])
+        self.assertLessEqual(milieu["debut"], 100)
+        self.assertGreaterEqual(milieu["fin"], 112)

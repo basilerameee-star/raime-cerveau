@@ -191,6 +191,7 @@ def choisir(mots, langue, n, mini, maxi, consignes, cle):
                    "avec juste son contexte et sa réaction ; aucun autre passage sauf s'il est aussi fort :\n" + "\n".join("- %.0f s, note %s : %s" % (float(m.get("t") or 0), m.get("note"), m.get("citation", ""))
                                                    for m in moments))
     bons = []
+    fin_video = max((w["f"] for w in mots), default=0.0)
     # 22/10/2026 : une réponse vide de Gemini (Jay Guapo, 66 min) donnait 0 clip ; rejouée, 7 moments notés 8-9 : un 2e essai
     for _ in range(2):
         choix = gemini(prompt, cle)
@@ -198,8 +199,17 @@ def choisir(mots, langue, n, mini, maxi, consignes, cle):
             if not isinstance(c, dict):
                 continue
             d, f = float(c.get("debut", 0)), float(c.get("fin", 0))
+            if 2 <= f - d < mini - 3:
+                # 22/10/2026 (Jay Guapo : 14 moments notés 7-9, tous de 8 à 20 s, jetés) : le moment fort est gardé et
+                # élargi jusqu'à la durée minimale, 40 % de contexte avant, 60 % de réaction après, dans la vidéo
+                manque = mini - (f - d)
+                d, f = d - .4 * manque, f + .6 * manque
+                if d < 0:
+                    d, f = 0.0, f - d
+                if f > fin_video:
+                    d, f = max(0.0, d - (f - fin_video)), fin_video
             if mini - 3 <= f - d <= maxi + 5:
-                bons.append(dict(c, debut=d, fin=f))
+                bons.append(dict(c, debut=round(d, 2), fin=round(f, 2)))
         if bons:
             break
     # la qualité avant le volume (décision de Basile, 02/10/2026) : un clip sous 3 000 vues ne paie rien ; on ne garde que
