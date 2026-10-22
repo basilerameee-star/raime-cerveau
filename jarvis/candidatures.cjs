@@ -21,7 +21,9 @@ const CV = ['Vente', 'Commercial', 'Sales EN', 'Vente + IA'];
 // et seulement comptée. Un canal ajouté ici fait revenir ses offres (reclasser).
 // 08/10/2026 : « michaelpage » (envoyeur/michaelpage.py) existe, mais n'entre dans cette liste qu'après un essai à blanc
 // réussi et validé par Basile (python serveur.py essai <id>) : d'ici là ses offres restent « hors_auto ».
-const CANAUX_AUTO = (process.env.CANAUX_AUTO || 'jobcloud,email').split(',').map((s) => s.trim()).filter(Boolean);
+// 22/10/2026 : « formulaire » (sites d'employeurs sans compte) entre, sur l'accord de Basile ; michaelpage et linkedin entreront
+// quand il se sera reconnecté dans le navigateur du serveur (sinon chaque envoi échouerait en « reconnexion »).
+const CANAUX_AUTO = (process.env.CANAUX_AUTO || 'jobcloud,email,formulaire').split(',').map((s) => s.trim()).filter(Boolean);
 function canal(o) {
   o = o || {};
   if ((o.source === 'jobup' || o.source === 'jobs.ch') && String(o.methode || '').endsWith('FORMULAR')) return 'jobcloud';

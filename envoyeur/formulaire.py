@@ -54,7 +54,10 @@ ETAT = r"""() => {
   };
   const champs = [];
   let n = 0;
-  for (const el of utiles(racine)) {
+  // le champ du CV peut vivre dans un autre <form> de la page (zone de dépôt à part) : il est lu aussi
+  const liste = utiles(racine);
+  if (!liste.some((el) => el.type === 'file')) liste.push(...[...document.querySelectorAll('input[type="file"]')].filter((el) => !el.disabled));
+  for (const el of liste) {
     const type = (el.tagName === 'INPUT' ? (el.getAttribute('type') || 'text') : el.tagName).toLowerCase();
     const bloc = el.closest('.form-group, .form-item, .field, .form-field, label, div') || el.parentElement;
     const visible = type === 'file' ? true : ['select', 'checkbox', 'radio'].includes(type) ? (vis(el) || vis(bloc)) : vis(el);

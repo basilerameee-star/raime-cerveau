@@ -58,6 +58,7 @@ CHAMPS = [
     ("code_postal", r"code postal|post ?code|postal code|\bzip\b|\bnpa\b"),
     ("ville", r"\bville\b|\bcity\b|localite|\btown\b|lieu de residence|^lieu\W*$|^ort\W*$"),
     ("genre", r"^genre\W*$|\bgender\b|\bsexe\b|geschlecht"),
+    ("region", r"\bcanton\b|\bstate\b|province|departement|region de residence|\bkanton\b"),
     ("etat_civil", r"etat civil|marital|zivilstand|situation familiale"),
     ("adresse", r"adresse|address|\brue\b|street"),
     ("nationalite", r"nationalit"),
@@ -176,6 +177,8 @@ def valeur(cle, p, libelle=""):
         return emploi_actuel(p).get("entreprise") or None
     if cle == "poste":
         return emploi_actuel(p).get("poste") or None
+    if cle == "region":                        # Ville-la-Grand (74100) : la Haute-Savoie, seulement si le code postal le dit
+        return "Haute-Savoie" if str(p.get("code_postal") or "").startswith("74") else None
     if cle == "genre":
         return "masculin" if simple(p.get("civilite")) in ("monsieur", "m", "mr") else None
     if cle == "langue" and re.search(r"maternelle|mother tongue|muttersprache|native language", s):

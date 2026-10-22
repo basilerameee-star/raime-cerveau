@@ -380,7 +380,8 @@ def boucle():
         if (DONNEES / "pause").exists():
             time.sleep(60)
             continue
-        if time.localtime().tm_hour >= 7 and dernier_jour != time.strftime("%Y-%m-%d"):
+        # 22/10/2026 : la collecte tourne sur le PC de Basile ; ici seulement si /data/collecte_ici existe (pas deux collectes)
+        if (DONNEES / "collecte_ici").exists() and time.localtime().tm_hour >= 7 and dernier_jour != time.strftime("%Y-%m-%d"):
             try:
                 collecte()
             except Exception as e:
