@@ -44,6 +44,8 @@ FUSEAU = ZoneInfo("Europe/Paris")
 GARDE_QUOTA = 60                                           # appels laissés de côté sur les 30 jours (essais, autres agents)
 PLAFOND_15MIN = 80                                         # sur 100 permis par Buffer
 SUIVI_MIN = 10                                             # minutes entre deux lectures groupées
+FENETRE_CR = 25                                            # minutes après l'heure où l'on relit souvent (Content Rewards : 30 min)
+SUIVI_FENETRE = 3                                          # minutes entre deux lectures dans cette fenêtre
 
 
 def cle():
@@ -326,12 +328,17 @@ def noter_partie(b, p):
 
 def lecture_due(programmees, derniere, maintenant):
     """Lire Buffer seulement quand une publication programmée vient de passer son heure (puis, si elle n'est toujours pas
-    partie, toutes les 2 heures ; sans heure connue, toutes les 3 heures), et jamais plus d'une fois en SUIVI_MIN minutes."""
-    if maintenant - derniere < SUIVI_MIN * 60:
-        return False
+    partie, toutes les 2 heures ; sans heure connue, toutes les 3 heures), et jamais plus d'une fois en SUIVI_MIN minutes.
+    Dans les FENETRE_CR minutes après l'heure, toutes les SUIVI_FENETRE minutes : Content Rewards refuse un clip déclaré
+    plus de 30 minutes après sa publication (22/10/2026 : relus 2 h après, tous refusés en HTTP 409)."""
+    ecart = maintenant - derniere
 
     def due(b):
         prevu, maj = b.get("prevu_s") or 0, b.get("maj_s") or 0
+        if prevu and maintenant - 120 > prevu > maintenant - FENETRE_CR * 60:
+            return ecart >= SUIVI_FENETRE * 60
+        if ecart < SUIVI_MIN * 60:
+            return False
         if prevu:
             return prevu < maintenant - 120 and (maj < prevu + 120 or maj < maintenant - 7200)
         return maj < maintenant - 3 * 3600

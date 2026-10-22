@@ -270,7 +270,12 @@ class Relais(unittest.TestCase):
         self.assertFalse(self.buffer.lecture_due(avant, 0, t))
         passe = [{"prevu_s": t - 300, "maj_s": t - 3600}]
         self.assertTrue(self.buffer.lecture_due(passe, 0, t))
-        self.assertFalse(self.buffer.lecture_due(passe, t - 300, t))         # 10 minutes entre deux lectures
+        self.assertFalse(self.buffer.lecture_due(passe, t - 120, t))         # 3 minutes entre deux lectures, après l'heure
+        # 22/10/2026 : Buffer publie quelques minutes après l'heure ; relue 2 h plus tard, la fenêtre de 30 minutes de
+        # Content Rewards était fermée (HTTP 409) : dans les 25 minutes, on relit toutes les 3 minutes
+        pas_partie = [{"prevu_s": t - 600, "maj_s": t - 450}]
+        self.assertTrue(self.buffer.lecture_due(pas_partie, t - 200, t))
+        self.assertFalse(self.buffer.lecture_due([{"prevu_s": t - 3000, "maj_s": t - 450}], t - 300, t), "hors fenêtre : 10 minutes")
         relue = [{"prevu_s": t - 3600, "maj_s": t - 1800}]                   # lue après l'heure, pas encore partie
         self.assertFalse(self.buffer.lecture_due(relue, 0, t))
         self.assertTrue(self.buffer.lecture_due([{"prevu_s": t - 9000, "maj_s": t - 7300}], 0, t))
