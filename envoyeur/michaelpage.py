@@ -48,6 +48,9 @@ CHAMPS = [
     ("employeur", r"employeur actuel|entreprise actuelle|societe actuelle|dernier employeur|current (employer|company)"),
     ("poste", r"poste actuel|dernier poste|fonction actuelle|current (job|role|position)"),
     ("nom_complet", r"nom complet|full name|\bmp name\b|nom et prenom|prenom et nom"),
+    # 22/10/2026 : le secteur restait celui du compte (« Energy & Natural Resources / Electricity »), faux pour Basile
+    ("sous_secteur", r"sub ?industry|sous.secteur"),
+    ("secteur", r"what industry|industry do you|secteur d.activite|\bindustrie\b|\bbranche\b"),
     ("prenom", r"prenom|first ?name|given name"),
     ("nom", r"\bnom\b|last ?name|surname|family name"),
     ("email", r"\be ?mail\b|courriel"),
@@ -87,6 +90,9 @@ SYNONYMES = {"monsieur": ["monsieur", "m.", "m", "mr", "mr.", "homme", "male", "
              "langue maternelle": ["langue maternelle", "maternelle", "native", "natif", "langue natale"]}
 SYNONYMES_CLE = {"source": ["site michael page", "michaelpage.ch", "michaelpage ch", "site internet", "site web", "website",
                             "internet", "michael page"],
+                 # son métier : la vente en magasin et le luxe ; les offres visées sont dans la vente
+                 "secteur": ["retail", "consumer", "commerce de detail", "vente au detail", "luxury", "fmcg"],
+                 "sous_secteur": ["retail", "luxury", "fashion", "apparel", "consumer goods", "general"],
                  # Basile est citoyen de l'UE, frontalier ; il n'a PAS encore de permis G (l'employeur le demande)
                  "permis": ["citoyen de l ue", "citoyen ue", "ue/aele", "ue aele", "eu/efta", "eu efta", "ressortissant ue",
                             "union europeenne", "frontalier"]}
@@ -158,6 +164,8 @@ def valeur(cle, p, libelle=""):
         return (p.get("formation") or {}).get("diplome") or None
     if cle == "permis":
         return p.get("permis_travail_suisse") or None
+    if cle in ("secteur", "sous_secteur"):
+        return "retail"
     if cle == "contrat":
         contrats = p.get("contrats") or []
         return "CDI" if "CDI" in contrats else (contrats[0] if contrats else None)
