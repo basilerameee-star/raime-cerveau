@@ -74,3 +74,29 @@ class PauseOubliee(unittest.TestCase):
             p.write_text("")
             self.assertFalse(serveur.pause_oubliee(p, time.time() + 30 * 3600), "la pause voulue par Basile reste")
             self.assertFalse(serveur.pause_oubliee(Path(d) / "absente", time.time()))
+
+
+class FormulairesReels(unittest.TestCase):
+    # 22/10/2026, essais à blanc JUST (CVdropper) et Adecco : ce qui manquait pour un envoi réel
+    P = {"civilite": "Monsieur", "prenom": "Basile", "nom": "Rame",
+         "langues": {"Français": "Langue maternelle", "Anglais": "C2 (bilingue)"}}
+
+    def champ(self, n, **k):
+        c = {"n": n, "tag": "input", "type": "text", "name": "", "id": "", "label": "", "question": "", "placeholder": "",
+             "required": False, "value": "", "checked": False, "maxlength": 0, "options": []}
+        c.update(k)
+        return c
+
+    def test_genre_par_les_seules_etiquettes(self):
+        champs = [self.champ(i, type="radio", name="g", label=l) for i, l in enumerate(("femme", "homme", "divers"))]
+        actions, _ = mp.decider(champs, self.P, {}, set())
+        self.assertEqual([(a["n"], a["faire"]) for a in actions], [(1, "cocher")])
+
+    def test_confidentialite_cochee_meme_sans_etoile_jamais_la_publicite(self):
+        prive = self.champ(0, type="checkbox", label="J’ai lu et j’accepte la politique de confidentialité.")
+        pub = self.champ(1, type="checkbox", label="J'accepte de recevoir des offres et la newsletter")
+        actions, _ = mp.decider([prive, pub], self.P, {}, set())
+        self.assertEqual([a["n"] for a in actions], [0])
+
+    def test_langue_de_communication(self):
+        self.assertEqual(mp.valeur("langue", self.P, "Langue de communication préférée du candidat"), "Français")

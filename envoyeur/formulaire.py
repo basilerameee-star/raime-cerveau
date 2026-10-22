@@ -26,6 +26,12 @@ COMPTE = re.compile(r"cr[ée]e[rz]? (un|votre) compte|create (an|your) account|s
 BOUTON_POSTULER = re.compile(r"^\s*(postuler|candidater|apply|apply now|apply for this job|bewerben|jetzt bewerben|"
                              r"postuler maintenant|postuler en ligne|je postule|d[ée]poser (ma|une) candidature|"
                              r"envoyer (ma|une) candidature|candidature en ligne|online bewerben)\b", re.I)
+# 22/10/2026 (Adecco) : le formulaire d'inscription « Talent Community » / alertes d'emploi de la page de l'annonce était pris
+# pour la candidature ; sur une telle page, on suit d'abord le bouton « Apply for Role »
+COMMUNAUTE = re.compile(r"talent community|join our .{0,20}community|job alerts?|alertes? (emploi|e-?mail|d.offres)|newsletter", re.I)
+# 22/10/2026 (JUST, CVdropper) : la zone de dépôt crée son champ de fichier au clic seulement
+ZONE_DEPOT = re.compile(r"d[ée]poser|glisse[rz]|drag|drop|parcourir|browse|s[ée]lectionner (des|un|vos|tes) fichiers?|"
+                        r"upload|t[ée]l[ée]charger (votre|ton|le|un) (cv|dossier)|joindre (votre|ton|le) (cv|dossier)|hochladen", re.I)
 REFUS_COOKIES = re.compile(r"^\s*(tout refuser|refuser|refuser tout|reject all|reject|decline|nur notwendige|"
                            r"nur essenzielle|essentiels uniquement|cookies essentiels|uniquement les cookies (n[ée]cessaires|essentiels)|"
                            r"necessary only|only necessary|only essential|continuer sans accepter)\b", re.I)
@@ -168,6 +174,30 @@ POSTULER_LARGE = re.compile(r"postul|apply|bewerb|candidat", re.I)
 PAS_CELUI_LA = re.compile(r"linkedin|xing|indeed|google|facebook|alerte|alert|abonn|partager|share|spontan", re.I)
 
 
+def deposer_cv(pg, cv):
+    """La zone de dépôt qui n'ouvre son sélecteur de fichier qu'au clic : on clique, on donne le CV au sélecteur, puis on
+    vérifie que le nom du fichier apparaît sur la page. Rien de trouvé ou de visible : False (la candidature reste à Basile)."""
+    for cadre in pg.frames:
+        try:
+            zones = cadre.locator("div, label, span, p, button").filter(has_text=ZONE_DEPOT)
+            for i in range(min(zones.count(), 6)):
+                z = zones.nth(i)
+                if not z.is_visible() or len((z.inner_text() or "")) > 300:
+                    continue
+                try:
+                    with pg.expect_file_chooser(timeout=4000) as choix:
+                        z.click(timeout=4000)
+                    choix.value.set_files(str(cv))
+                except Exception:
+                    continue
+                pg.wait_for_timeout(3000)
+                if re.search(re.escape(Path(cv).stem), corps(cadre), re.I) or re.search(r"CV_Basile", corps(pg.main_frame)):
+                    return True
+        except Exception:
+            continue
+    return False
+
+
 def suivre_postuler(page):
     """Sur la page de l'annonce, le bouton « Postuler » qui ouvre le formulaire (même onglet ou nouvel onglet), cadres compris."""
     candidats = []
@@ -233,7 +263,8 @@ def postuler(page, f, dos, p, envoyer=True, journal=None, captures=None):
         return {"deja": True, "url": page.url}
     pg = page
     cadre, e = meilleur(pg)
-    if e is None or e["_poids"] < 3:                    # la page de l'annonce : on ouvre le formulaire
+    communaute = e is not None and not any(c["type"] == "file" for c in e["champs"]) and COMMUNAUTE.search(texte)
+    if e is None or e["_poids"] < 3 or communaute:      # la page de l'annonce : on ouvre le formulaire
         for _ in range(2):
             pg = suivre_postuler(pg)
             refuser_cookies(pg)
@@ -288,7 +319,9 @@ def etapes(pg, f, p, cv, lettre_pdf, envoyer, dire, photo, photos, oid, exiger_c
         envoi = next((b for b in boutons if b["role"] == "envoi"), None)
         if envoi:
             if exiger_cv and not any(c["type"] == "file" and c.get("value") for c in e["champs"]) and not any("CV" in n for n in recap):
-                raise AToi("formulaire", "aucun champ pour joindre le CV")
+                if not deposer_cv(pg, cv):
+                    raise AToi("formulaire", "aucun champ pour joindre le CV")
+                recap.append("CV : CV_Basile_Rame.pdf (zone de dépôt)")
             if not envoyer:
                 return {"verifie": True, "url": pg.url, "etapes": tour + 1, "reponses": " | ".join(recap)[:1500],
                         "captures": photos, "lettre": bool((f.get("lettre") or "").strip()), "bouton": envoi["texte"]}

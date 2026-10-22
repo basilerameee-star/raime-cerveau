@@ -39,6 +39,12 @@ RECULER = re.compile(r"pr[ée]c[ée]dent|retour|back|previous|modifier", re.I)
 # cases obligatoires acceptées (politique de confidentialité, conditions) ; jamais une case facultative
 CONSENTEMENT = re.compile(r"confidentialit|privacy|donnees personnelles|personal data|conditions|terms|j.accepte|i agree|"
                           r"consent|politique|protection des donnees")
+# 22/10/2026 (JUST) : la case de confidentialité sans étoile bloquait l'envoi ; cochée seulement si elle parle de la
+# protection des données d'une candidature, jamais si elle parle de publicité ou d'alertes
+CONFIDENTIALITE = re.compile(r"confidentialit|privacy|donnees personnelles|personal data|protection des donnees|datenschutz")
+PUBLICITE = re.compile(r"newsletter|offres|marketing|recevoir|communications?|alerte|alert|promotion|partenaires|partners|sms")
+GENRES = {"femme", "homme", "divers", "autre", "female", "male", "other", "frau", "mann", "monsieur", "madame", "mr", "mrs", "ms",
+          "herr", "masculin", "feminin"}
 OUI, NON = {"oui", "yes", "ja"}, {"non", "no", "nein"}
 
 # Champ du formulaire -> donnée du profil : le premier motif qui correspond gagne (texte sans accents, en minuscules).
@@ -181,7 +187,8 @@ def valeur(cle, p, libelle=""):
         return "Haute-Savoie" if str(p.get("code_postal") or "").startswith("74") else None
     if cle == "genre":
         return "masculin" if simple(p.get("civilite")) in ("monsieur", "m", "mr") else None
-    if cle == "langue" and re.search(r"maternelle|mother tongue|muttersprache|native language", s):
+    if cle == "langue" and re.search(r"maternelle|mother tongue|muttersprache|native language|communication|correspondance|"
+                                     r"pr[e]fer|preferred|korrespondenz", s):
         return next((k for k, v in (p.get("langues") or {}).items() if "maternelle" in simple(v)), None)
     if cle == "langue":
         langues = {simple(k): v for k, v in (p.get("langues") or {}).items()}
@@ -283,6 +290,9 @@ def decider(champs, p, f, fait=None, garder=True):
                     raise AToi("question", libelle[:200])
                 if not c.get("checked"):
                     agir(c, "cocher", True, libelle[:60] + " : Oui")
+            elif CONFIDENTIALITE.search(lib) and not PUBLICITE.search(lib):
+                if not c.get("checked"):
+                    agir(c, "cocher", True, "accepté (protection des données) : " + libelle[:80])
             elif c.get("checked"):
                 agir(c, "decocher", False, "décoché (facultatif) : " + libelle[:80])
             continue
@@ -353,6 +363,8 @@ def decider(champs, p, f, fait=None, garder=True):
                 agir(nouveau, "cocher", True, "CV : nouveau fichier")
             continue
         cle = cle_profil(question + " " + nom)
+        if not cle and etiquettes and all(e in GENRES for _, e in etiquettes):
+            cle = "genre"                                  # « femme / homme / divers » sans question (JUST, 22/10/2026)
         val = valeur(cle, p, question) if cle and cle != "lettre" else None
         choix = choisir_option([(str(c["n"]), c.get("label")) for c in groupe], val, cle) if val else None
         if choix is not None:
