@@ -541,7 +541,7 @@
    "etat": "en_cours",
    "fini_quand": "Dans le navigateur du serveur (Basile connecté une fois à Whop), l'agent soumet chaque lien publié (YouTube, TikTok, Instagram) à la seule campagne pour laquelle le clip a été fait, coche la case des conditions, vérifie l'acceptation ; captcha ou page changée = arrêt et e-mail à Basile, jamais de contournement. Accord de Basile du 02/10/2026. À construire après la recharge des crédits (mercredi).",
    "rang": 52,
-   "avance": "22/10 : declarer.py soumet chaque lien à sa campagne (Content Rewards) ; 4 déclarés sur 24 du 19 au 22/10 : la fenêtre est de 30 min après la publication, l'agent plantait en lisant la réponse (corrigé, 1e8a468) ; restent les campagnes non rejointes et les liens « absents des déclarations »."
+   "avance": "22/10 soir : la vraie cause des refus est lue (API d'envoi) : HTTP 409 « plus de 30 minutes après la publication », le relais relisait Buffer 2 h après le créneau. Relecture toutes les 3 min dans les 25 min (7f39997) ; reste à voir un clip accepté au prochain créneau."
   },
   {
    "n": 53,
@@ -631,8 +631,9 @@
    "moteur": "Direction",
    "titre": "Boucle des objectifs : chaque objectif manqué déclenche une action",
    "fini_quand": "Un objectif du gouverneur du matin manqué (ex. clips déclarés 1 sur 8, Hermes à 16 M jetons) donne le même jour une cause, une action appliquée et sa mesure le lendemain ; sinon il remonte à Basile avec la décision à prendre.",
-   "etat": "a_faire",
-   "rang": 61
+   "etat": "en_cours",
+   "rang": 61,
+   "avance": "22/10 : tools/boucle_objectifs.py en service (6 h 40 UTC) : cause relevée, action appliquée seule ou confiée à Hermes, escalade à Basile après 3 jours ; résultats suivis : clips au-dessus de 1 000 et 4 000 vues, approuvés, candidatures, euros."
   },
   {
    "n": 62,
@@ -681,8 +682,8 @@
    "moteur": "Moteur 3 : clip farming (KinGKlip)",
    "titre": "VOD Kick téléchargeables (streamers)",
    "fini_quand": "yt-dlp télécharge les VOD Kick (module d'usurpation de navigateur installé) ; un clip Kick publié.",
-   "etat": "a_faire",
-   "avance": "22/10 : trouvé par le Médecin (« impersonation » absente dans yt-dlp).",
+   "etat": "en_cours",
+   "avance": "22/10 : yt-dlp avec curl_cffi dans l'image du clippeur (65fcf50) ; la VOD Kick de Jay Guapo se lit (66 min). Reste : un clip Kick publié.",
    "rang": 66
   }
  ]
