@@ -292,8 +292,23 @@ def soumettre(ctx, pg, cr_id, lien, essai=False):
         return {"ok": False, "raison": "Content Rewards refuse le lien (contrôles non validés) : " + refus.replace("\n", " | "), "releve": infos}
     if essai:                                               # essai à blanc : tout est rempli, rien n'est envoyé
         return {"ok": True, "verifie": False, "essai": True, "releve": releve(pg, "essai-" + cr_id)}
+    # 22/10/2026 : on quittait la page pendant « Submitting… » (les contrôles de Content Rewards prennent plus de 6 s) :
+    # le clip n'arrivait jamais. On garde la réponse de l'API d'envoi et on attend la fin de l'envoi (90 s au plus).
+    api = []
+    pg.on("response", lambda r: api.append(r) if "/api/submission" in r.url and r.request.method == "POST" else None)
     envoyer.click(timeout=15000)
-    pg.wait_for_timeout(2500)
+    for _ in range(45):
+        pg.wait_for_timeout(2000)
+        if not pg.get_by_text(re.compile(r"submitting", re.I)).count():
+            break
+    for r in api[-1:]:
+        try:
+            corps = r.text()[:300]
+        except Exception:
+            corps = ""
+        if not r.ok:
+            releve(pg, "api-refus-" + cr_id)
+            return {"ok": False, "raison": "Content Rewards refuse l'envoi (HTTP %d) : %s" % (r.status, corps)}
     # ce que Content Rewards répond au clic (fenêtre, bandeau d'erreur ou de succès), lu AVANT de quitter la page : sans
     # lui, un refus ne laissait aucune trace (« lien envoyé mais absent », 21/10/2026)
     reponse = " | ".join((t or "").strip() for t in pg.locator("[role=dialog], [role=alert], [role=status], [data-sonner-toast]")
