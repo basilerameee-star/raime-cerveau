@@ -30,6 +30,42 @@ def a_declarer(sql):
     return json.loads(r[r.index("["):] if "[" in r else "[]")
 
 
+RATTRAPAGE = "/tmp/clippeur-declarer-rattrapage"
+
+
+def rattraper(sql, lanceur):
+    """Une fois par heure : la liste RÉELLE des déclarations (API de Content Rewards) corrige la base. Un clip noté
+    « absent » ou « en échec » mais bien déclaré passe à déclaré ; les vues et le statut (en attente, approuvé, refusé)
+    comptés par Content Rewards sont gardés dans cr_declarations (lus par l'analyste et le gouverneur du matin)."""
+    try:
+        if time.time() - os.path.getmtime(RATTRAPAGE) < 3600:
+            return 0
+    except OSError:
+        pass
+    open(RATTRAPAGE, "w").close()
+    liste = []
+    for r in lanceur.lancer("declarations", delai=240) or []:
+        if isinstance(r, list):
+            liste = r
+    if not liste:
+        return 0
+    sql("""CREATE TABLE IF NOT EXISTS cr_declarations (post_id text PRIMARY KEY, plateforme text, lien text, campagne_cr text,
+           campagne_nom text, statut text, revue text, vues bigint, declare_le timestamptz, maj timestamptz NOT NULL DEFAULT now());""")
+    n = 0
+    for d in liste:
+        sql("""INSERT INTO cr_declarations (post_id, plateforme, lien, campagne_cr, campagne_nom, statut, revue, vues, declare_le, maj)
+               VALUES (:'p0', :'p1', :'p2', :'p3', :'p4', :'p5', :'p6', :'p7'::bigint, nullif(:'p8','')::timestamptz, now())
+               ON CONFLICT (post_id) DO UPDATE SET statut = EXCLUDED.statut, revue = EXCLUDED.revue, vues = EXCLUDED.vues, maj = now();""",
+            d["post_id"], d.get("plateforme") or "", d.get("lien") or "", d.get("campagne_cr") or "", d.get("campagne_nom") or "",
+            d.get("statut") or "", d.get("revue") or "", str(d.get("vues") or 0), d.get("le") or "")
+        sql("""UPDATE clips_publies SET declare_whop = true, declare_le = coalesce(declare_le, now()),
+               declare_note = 'relu dans les déclarations du compte (API)'
+               WHERE NOT coalesce(declare_whop, false) AND position(:'p0' in lien) > 0;""", d["post_id"])
+        n += 1
+    print(time.strftime("%Y-%m-%d %H:%M"), "rattrapage :", n, "déclarations relues", flush=True)
+    return n
+
+
 def noter(sql, c, r):
     """Le résultat d'une déclaration ; (fait ?, abandon ?)."""
     if r.get("ok") and r.get("verifie"):
@@ -66,6 +102,10 @@ def main(sql=None, prevenir=None, lanceur=cr_lanceur):
     if not lanceur.pret():
         lanceur.alerter_si_bloque(prevenir)
         return
+    try:
+        rattraper(sql, lanceur)
+    except Exception as e:                                   # le rattrapage n'empêche jamais une déclaration
+        print(time.strftime("%Y-%m-%d %H:%M"), "rattrapage en échec :", str(e)[:200], flush=True)
     for c in a_declarer(sql):
         r = (lanceur.lancer("soumettre", c["cr_id"], c["lien"], delai=300) or [{}])[0]
         fait, abandon = noter(sql, c, r)

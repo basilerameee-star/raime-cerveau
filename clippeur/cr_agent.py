@@ -11,6 +11,7 @@ une nouvelle connexion de Basile.
     python cr_agent.py relever <cr_id>               # capture et relevé de la page (diagnostic)
     python cr_agent.py rejoindre <cr_id> [...]       # une ligne JSON par campagne : {"cr_id", "ok", "brief"|"raison"}
     python cr_agent.py soumettre <cr_id> <lien>      # {"ok", "verifie", "raison"}
+    python cr_agent.py declarations                  # la liste réelle des déclarations du compte (API), avec vues et statut
 """
 import json
 import os
@@ -182,9 +183,42 @@ def identifiant(lien):
     return m.group(1) if m else lien.rstrip("/").split("/")[-1].split("?")[0]
 
 
+SOUMISSIONS = SITE + "/api/submission/submissions?limit=50&creatorView=true&retainer=false&status=%s"
+
+
+def declarations(ctx):
+    """Toutes les déclarations du compte, lues par l'API que la page « Your submissions » appelle elle-même (22/10/2026 :
+    la page n'affiche que des « View details », sans les liens : 14 clips déclarés passaient pour « absents »).
+    Une ligne par clip : identifiant de la vidéo, plateforme, campagne, statut, vues comptées par Content Rewards."""
+    out = []
+    for statut in ("pending", "approved", "rejected"):
+        curseur = None
+        for _ in range(20):
+            url = SOUMISSIONS % statut + ("&cursor=" + curseur if curseur else "")
+            r = ctx.request.get(url, timeout=30000)
+            if not r.ok:
+                break
+            d = r.json()
+            for x in d.get("data") or []:
+                post = x.get("socialMediaPost") or {}
+                out.append({"post_id": str(post.get("postId") or identifiant(post.get("postUrl") or "")), "plateforme": post.get("platform"),
+                            "lien": post.get("postUrl"), "campagne_cr": x.get("campaignId"), "campagne_nom": x.get("campaignName"),
+                            "statut": x.get("status") or statut, "revue": x.get("reviewStatus"), "vues": int(post.get("views") or 0),
+                            "le": x.get("createdAt")})
+            curseur = (d.get("pagination") or {}).get("nextCursor")
+            if not curseur:
+                break
+    return out
+
+
 def deja_declare(ctx, cr_id, lien, pg=None):
-    """Le lien figure-t-il dans « Your submissions » (/c/submissions, relevé le 15/10/2026) ? On compare l'identifiant
-    de la vidéo aux liens « Open on … » de la page."""
+    """Le lien figure-t-il parmi les déclarations du compte ? D'abord par l'API (sûr), sinon par les liens « Open on … »
+    de la page /c/submissions (relevé le 15/10/2026)."""
+    try:
+        if identifiant(lien) in {d["post_id"] for d in declarations(ctx)}:
+            return True
+    except Exception:
+        pass
     pg = pg or ctx.new_page()
     try:
         pg.goto(SITE + "/c/submissions", wait_until="domcontentloaded", timeout=60000)
@@ -213,8 +247,20 @@ def soumettre(ctx, pg, cr_id, lien, essai=False):
     pg.wait_for_timeout(600)
     b = bouton(pg, r"submit clip")
     if not b:
+        # 22/10/2026 : 14 clips perdus sur des campagnes non rejointes : on la rejoint maintenant, puis on réessaie une fois
+        j = rejoindre(ctx, pg, cr_id)
+        if j.get("bloque"):
+            return j
+        pg.goto(FICHE + cr_id, wait_until="domcontentloaded", timeout=60000)
+        pg.wait_for_timeout(5000)
+        refuser_cookies(pg)
+        pg.keyboard.press("Escape")
+        pg.wait_for_timeout(600)
+        b = bouton(pg, r"submit clip")
+    if not b:
         releve(pg, "soumettre-" + cr_id)
-        return {"ok": False, "raison": "bouton « Submit clip » absent (campagne pas rejointe ?) ; relevé dans " + RELEVES}
+        return {"ok": False, "raison": "bouton « Submit clip » absent même après « Join » (%s) ; relevé dans %s"
+                % (j.get("raison") or "adhésion refusée", RELEVES)}
     try:
         b.click(timeout=15000)
     except Exception:
@@ -292,6 +338,8 @@ def main(args):
                     print(json.dumps(r, ensure_ascii=False), flush=True)
                     if r.get("bloque"):
                         break
+            elif args[0] == "declarations":
+                print(json.dumps(declarations(ctx), ensure_ascii=False), flush=True)
             elif args[0] == "soumettre":
                 print(json.dumps(soumettre(ctx, pg, args[1], args[2], essai="--essai" in args), ensure_ascii=False), flush=True)
         finally:
