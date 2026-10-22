@@ -45,6 +45,7 @@ CONFIDENTIALITE = re.compile(r"confidentialit|privacy|donnees personnelles|perso
 PUBLICITE = re.compile(r"newsletter|offres|marketing|recevoir|communications?\b|alerte|alert|promotion|partenaires|partners|sms")
 GENRES = {"femme", "homme", "divers", "autre", "female", "male", "other", "frau", "mann", "monsieur", "madame", "mr", "mrs", "ms",
           "herr", "masculin", "feminin"}
+CANTON = r"\bcanton\b|\bkanton\b|\bstate\b"
 OUI, NON = {"oui", "yes", "ja"}, {"non", "no", "nein"}
 
 # Champ du formulaire -> donnée du profil : le premier motif qui correspond gagne (texte sans accents, en minuscules).
@@ -183,6 +184,8 @@ def valeur(cle, p, libelle=""):
         return emploi_actuel(p).get("entreprise") or None
     if cle == "poste":
         return emploi_actuel(p).get("poste") or None
+    if cle == "region" and p.get("canton"):
+        return p["canton"]
     if cle == "region":                        # Ville-la-Grand (74100) : la Haute-Savoie, seulement si le code postal le dit
         return "Haute-Savoie" if str(p.get("code_postal") or "").startswith("74") else None
     if cle == "genre":
@@ -235,11 +238,23 @@ def ajuster(texte, maximum):
     return "\n\n".join(garde) or texte[:maximum]
 
 
+def canton_exige(c):
+    """Un champ « Canton / State / Kanton » dont les choix ne contiennent pas la Haute-Savoie (un formulaire suisse)."""
+    t = simple(" ".join(str(c.get(k) or "") for k in ("label", "name", "id", "placeholder")))
+    if not re.search(CANTON, t):
+        return False
+    return not any("haute savoie" in simple(x) for _, x in c.get("options") or [])
+
+
 def decider(champs, p, f, fait=None, garder=True):
     """Ce qu'il faut saisir dans les champs visibles. Rend (actions, notes) ; lève AToi si un champ ne peut pas être
     rempli honnêtement. Fonction pure : testée sans navigateur (tests/banc/michaelpage.test.mjs)."""
     fait = set() if fait is None else fait
     actions, notes, radios = [], [], {}
+    # Basile, 22/10/2026 : quand un canton est exigé et que Ville-la-Grand n'en a pas, code postal 1201, ville Genève,
+    # canton Genève, pays France ; la rue ne change pas
+    if any(canton_exige(c) for c in champs):
+        p = dict(p, code_postal="1201", ville="Genève", canton="Genève")
     lettre = (f.get("lettre") or "").strip()
 
     def agir(c, faire, val, note):

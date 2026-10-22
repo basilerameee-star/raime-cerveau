@@ -127,3 +127,29 @@ class FormulaireAdecco(unittest.TestCase):
                              label="Envie de rejoindre notre communauté mondiale de talents ? vous acceptez de recevoir des communications et des alertes d'emploi")
         actions, _ = mp.decider([prive, alertes], self.P, {}, set())
         self.assertEqual([(a["n"], a["valeur"]) for a in actions], [(0, "1")])
+
+
+class CantonExige(unittest.TestCase):
+    # Basile, 22/10/2026 : un canton est exigé et Ville-la-Grand n'en a pas → code postal 1201, ville Genève, pays France,
+    # canton Genève ; la rue ne change pas. Sans champ de canton, l'adresse reste celle du profil.
+    P = {"code_postal": "74100", "ville": "Ville-la-Grand", "pays": "FRANCE", "adresse": "2 rue des Voirons"}
+
+    def champ(self, n, **k):
+        c = {"n": n, "tag": "input", "type": "text", "name": "", "id": "", "label": "", "question": "", "placeholder": "",
+             "required": True, "value": "", "checked": False, "maxlength": 0, "options": []}
+        c.update(k)
+        return c
+
+    def adresse(self, canton):
+        champs = [self.champ(0, label="Code postal"), self.champ(1, label="Ville"), self.champ(2, label="Rue")]
+        if canton:
+            champs.append(self.champ(3, tag="select", type="select", label="Canton/State",
+                                     options=[["", "--"], ["VD", "Vaud"], ["GE", "Genève"], ["VS", "Valais"]]))
+        actions, _ = mp.decider(champs, self.P, {}, set())
+        return {a["n"]: a["valeur"] for a in actions}
+
+    def test_canton_exige(self):
+        self.assertEqual(self.adresse(True), {0: "1201", 1: "Genève", 2: "2 rue des Voirons", 3: "GE"})
+
+    def test_sans_canton_rien_ne_change(self):
+        self.assertEqual(self.adresse(False), {0: "74100", 1: "Ville-la-Grand", 2: "2 rue des Voirons"})
