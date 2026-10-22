@@ -293,10 +293,10 @@ const MESURES = {
     if (!l.length) return { texte: 'Pas encore de portefeuille.' };
     const flux = L.bougie;
     const texte = l.map((t) => `${l.length > 1 ? t.libelle.replace(/^à (la |l’)?/, '') + ' : ' : ''}${euros(t.valeur)} (${pourcent(t.perf)}) · ${pluriel(t.operations, 'opération', 'opérations')} · ${euros(t.frais)} de frais`).join(' ; ') + '.';
+    if (a && a.arrete_le) return { texte: `${texte} Arrêté le ${court(a.arrete_le)} : plus aucune opération, gelé par Basile.`, dernier: flux, etat: 'arret', depuis: a.arrete_le };
     if (!flux || A.maintenant - new Date(flux) > 15 * 60e3) {
       return { texte, dernier: flux, etat: 'panne', depuis: flux, derniere_panne: { le: flux, texte: flux ? `le flux des cours ne bouge plus depuis ${quand(flux, A.auj)}` : 'aucun cours reçu' } };
     }
-    if (a && a.arrete_le) return { texte: `${texte} Arrêté le ${court(a.arrete_le)} : plus aucune opération, sa valeur reste suivie.`, dernier: flux, etat: 'arret', depuis: a.arrete_le };
     const perdant = l.find((t) => t.perf <= -50);
     if (perdant) return { texte, dernier: flux, etat: 'panne', depuis: perdant.depuis, derniere_panne: { le: null, texte: `${pourcent(perdant.perf)} depuis le ${court(jourDe(perdant.depuis))} : les frais mangent ses gains` } };
     return { texte, dernier: flux };

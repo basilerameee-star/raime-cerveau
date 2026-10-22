@@ -791,8 +791,8 @@
     "seconde"
    ],
    "maintenant": "Achète et vend du bitcoin et de l’ether à la seconde, en simulation, avec 1 000 € fictifs.",
-   "bloque": "Arrêté le 22/10 : les frais (0,12 % par opération) mangeaient tous ses gains.",
-   "ensuite": "Rien : il reste arrêté ; ses données servent au laboratoire des règles.",
+   "bloque": "Gelé le 22/10 par Basile : ne rapporte pas aujourd’hui. Reprise quand le clipping et le dropshipping rapportent chaque mois.",
+   "ensuite": "Rien tant que le gel dure (note Obsidian « Projets gelés »).",
    "arrete_le": "2026-10-22"
   },
   {
@@ -815,8 +815,8 @@
     "minute"
    ],
    "maintenant": "Achète et vend à la minute, en simulation, avec 1 000 € fictifs.",
-   "bloque": "Arrêté le 22/10 : les frais (0,12 % par opération) mangeaient tous ses gains.",
-   "ensuite": "Rien : il reste arrêté ; ses données servent au laboratoire des règles.",
+   "bloque": "Gelé le 22/10 par Basile : ne rapporte pas aujourd’hui. Reprise quand le clipping et le dropshipping rapportent chaque mois.",
+   "ensuite": "Rien tant que le gel dure (note Obsidian « Projets gelés »).",
    "arrete_le": "2026-10-22"
   },
   {
@@ -839,8 +839,9 @@
     "heure"
    ],
    "maintenant": "Achète et vend à l’heure, en simulation, avec 1 000 € fictifs.",
-   "bloque": "Rien ne le bloque.",
-   "ensuite": "Rien de prévu."
+   "bloque": "Gelé le 22/10 par Basile : ne rapporte pas aujourd’hui. Reprise quand le clipping et le dropshipping rapportent chaque mois.",
+   "ensuite": "Rien tant que le gel dure (note Obsidian « Projets gelés »).",
+   "arrete_le": "2026-10-22"
   },
   {
    "outils": [
@@ -865,8 +866,9 @@
     "trimestre"
    ],
    "maintenant": "Quatre agents lents, en simulation, avec 1 000 € fictifs chacun.",
-   "bloque": "Rien ne les bloque.",
-   "ensuite": "Rien de prévu."
+   "bloque": "Gelé le 22/10 par Basile : ne rapporte pas aujourd’hui. Reprise quand le clipping et le dropshipping rapportent chaque mois.",
+   "ensuite": "Rien tant que le gel dure (note Obsidian « Projets gelés »).",
+   "arrete_le": "2026-10-22"
   },
   {
    "outils": [
@@ -880,12 +882,12 @@
    "secteur": "trading",
    "nom": "Laboratoire des règles",
    "rythme": "",
-   "etat": "construction",
-   "depuis": "2026-10-08",
+   "etat": "arret",
+   "depuis": "2026-10-22",
    "duree": "commencé le 08/10, rien de livré",
    "maintenant": "En construction (branche labo-trading) : rien en service.",
-   "bloque": "À finir et à passer au banc d’essai.",
-   "ensuite": "Chaque nuit, les règles mutent et sont testées sur une période jamais vue, frais compris."
+   "bloque": "Gelé le 22/10 par Basile : ne rapporte pas aujourd’hui. Reprise quand le clipping et le dropshipping rapportent chaque mois.",
+   "ensuite": "Rien tant que le gel dure (note Obsidian « Projets gelés »)."
   },
   {
    "outils": [
@@ -909,17 +911,11 @@
    "secteur": "bourse",
    "nom": "Portefeuilles boursiers",
    "rythme": "chaque soir, 22 h – minuit",
-   "src": {
-    "boucle": [
-     "bourse"
-    ],
-    "toutes_h": 24,
-    "retard_h": 30
-   },
-   "mesure": "bourse",
    "maintenant": "Suit cinq portefeuilles fictifs de 1 000 € : en réel depuis le 08/10, et en rétro-test sur 12 mois.",
-   "bloque": "Rien ne le bloque.",
-   "ensuite": "Rien de prévu."
+   "bloque": "Gelé le 22/10 par Basile : ne rapporte pas aujourd’hui. Reprise quand le clipping et le dropshipping rapportent chaque mois.",
+   "ensuite": "Rien tant que le gel dure (note Obsidian « Projets gelés »).",
+   "etat": "arret",
+   "depuis": "2026-10-22"
   },
   {
    "outils": [],
@@ -940,12 +936,12 @@
    "secteur": "libre",
    "nom": "Agent libre",
    "rythme": "",
-   "etat": "afaire",
-   "depuis": "2026-10-01",
+   "etat": "arret",
+   "depuis": "2026-10-22",
    "duree": "≈ 1 jour de travail (estimé)",
    "maintenant": "N’existe pas (point 42 de la feuille de route).",
-   "bloque": "Ton adresse de réception (portefeuille) et ton accord sur ses règles.",
-   "ensuite": "Un parent qui garde la mémoire ; des enfants qui meurent s’ils ne gagnent rien."
+   "bloque": "Gelé le 22/10 par Basile : ne rapporte pas aujourd’hui. Reprise quand le clipping et le dropshipping rapportent chaque mois.",
+   "ensuite": "Rien tant que le gel dure (note Obsidian « Projets gelés »)."
   },
   {
    "outils": [
@@ -1315,12 +1311,12 @@
    "secteur": "jarvis",
    "nom": "Voix de Jarvis",
    "rythme": "à la demande",
-   "etat": "attente",
-   "depuis": "2026-09-25T09:34:56Z",
+   "etat": "arret",
+   "depuis": "2026-10-22",
    "duree": "non mesuré",
    "maintenant": "Transcrit ce que tu dis et te répond à voix haute (voix Gemini, puis celle du serveur).",
-   "bloque": "Son usage n’est pas mesuré.",
-   "ensuite": "Te répondre à l’oral quand tu parles à l’oral (ordre n° 16)."
+   "bloque": "Gelé le 22/10 par Basile : ne rapporte pas aujourd’hui. Reprise quand le clipping et le dropshipping rapportent chaque mois.",
+   "ensuite": "Rien tant que le gel dure (note Obsidian « Projets gelés »)."
   },
   {
    "outils": [

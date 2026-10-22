@@ -40,5 +40,13 @@ class Medecin(unittest.TestCase):
         self.assertIn("Ne livre rien toi-même", ordres[0])
 
 
+class Degel(unittest.TestCase):
+    def test_seuil_de_revenus_propose_le_degel(self):
+        medecin.geles = lambda: {"raime-trading"}
+        m = {"conteneurs_arretes": [], "disque_pct": 50}
+        self.assertTrue(any("dégeler" in l for l in medecin.bilan([], [], [], m, [], [], 1200)))
+        self.assertFalse(any("dégeler" in l for l in medecin.bilan([], [], [], m, [], [], 300)))
+
+
 if __name__ == "__main__":
     unittest.main()

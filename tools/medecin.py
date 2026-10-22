@@ -106,7 +106,7 @@ def machine():
     m = {"conteneurs_arretes": [], "redemarrages": []}
     for ligne in sh(["docker", "ps", "-a", "--format", "{{.Names}}\t{{.Status}}"]).splitlines():
         nom, _, etat = ligne.partition("\t")
-        if etat.startswith("Exited") or etat.startswith("Dead"):
+        if (etat.startswith("Exited") or etat.startswith("Dead")) and nom not in geles():
             m["conteneurs_arretes"].append({"nom": nom, "etat": etat})
         if "Restarting" in etat:
             m["redemarrages"].append({"nom": nom, "etat": etat})
@@ -120,11 +120,19 @@ def machine():
     return m
 
 
+def geles():
+    """Les services gelés par Basile (22/10/2026 : trading, voix) : jamais relancés, jamais signalés comme pannes."""
+    try:
+        return set(json.load(open(os.path.join(SANTE, "geles.json"), encoding="utf-8")).get("conteneurs", []))
+    except (OSError, ValueError):
+        return set()
+
+
 def soigner(m, deja):
-    """Les remèdes sûrs : relancer un conteneur raime-* arrêté (une fois par jour au plus)."""
+    """Les remèdes sûrs : relancer un conteneur raime-* arrêté (une fois par jour au plus), sauf s'il est gelé."""
     faits = []
     for c in m["conteneurs_arretes"]:
-        if not c["nom"].startswith("raime-") or c["nom"] in deja:
+        if not c["nom"].startswith("raime-") or c["nom"] in deja or c["nom"] in geles():
             continue
         sh(["docker", "start", c["nom"]])
         faits.append("conteneur relancé : " + c["nom"])
@@ -158,8 +166,21 @@ def confier(pannes, vus, maintenant):
     return confiees
 
 
-def bilan(agents, erreurs, pertes, m, remedes, confiees):
+SEUIL_DEGEL = 1000   # € encaissés sur 30 jours (note Obsidian « Projets gelés (22-10-2026) »)
+
+
+def revenus_30j():
+    l = psql("raime_brain", "SELECT coalesce(sum(montant_eur), 0) FROM revenus WHERE le > now() - interval '30 days'").strip()
+    try:
+        return float(l.splitlines()[0])
+    except (ValueError, IndexError):
+        return None
+
+
+def bilan(agents, erreurs, pertes, m, remedes, confiees, revenus=None):
     lignes = []
+    if revenus is not None and revenus >= SEUIL_DEGEL and geles():
+        lignes.append("Revenus suffisants (%d € sur 30 jours) : proposer à Basile de dégeler les projets gelés (trading, voix…)." % revenus)
     mal = [a for a in agents if a.get("etat") in ("panne", "vide")]
     lignes.append("%d agents ne vont pas, %d erreurs différentes dans les journaux, %d pertes sur la chaîne de l'argent."
                   % (len(mal), len(erreurs), len(pertes)))
@@ -202,7 +223,8 @@ def main():
     json.dump(vus, open(chemin_vus, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
     sortie = {"le": time.strftime("%Y-%m-%d %H:%M", time.gmtime(maintenant)), "agents": agents, "erreurs": erreurs[:30],
               "pertes": pertes, "machine": m, "remedes": remedes, "confiees": confiees,
-              "lignes": bilan(agents, erreurs, pertes, m, remedes, confiees)}
+              "revenus_30j": revenus_30j(), "lignes": None}
+    sortie["lignes"] = bilan(agents, erreurs, pertes, m, remedes, confiees, sortie["revenus_30j"])
     for x in sortie["erreurs"]:
         x.pop("exemple", None)
     json.dump(sortie, open(os.path.join(SANTE, "aujourdhui.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1)
