@@ -74,7 +74,7 @@ def r_jetons(objectif, detail):
         g = {}
     return {"cause": "consommation d'Hermes : " + detail, "qui": "seul",
             "action": "plafonds du gouverneur des jetons en place (jour %s, ordres %s) : la veille s'arrête au plafond"
-                      % (g.get("plafond_jour", "?"), g.get("plafond_ordres_jour", "?"))}
+                      % (g.get("plafond_jetons_jour", "?"), g.get("plafond_ordres_jour", "?"))}
 
 
 def r_rebonds(objectif, detail):
