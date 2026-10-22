@@ -33,8 +33,7 @@
     "secteurs": [
      "trading",
      "bourse",
-     "dropshipping",
-     "libre"
+     "dropshipping"
     ]
    },
    {
@@ -86,10 +85,6 @@
    {
     "cle": "dropshipping",
     "nom": "Dropshipping"
-   },
-   {
-    "cle": "libre",
-    "nom": "Agent libre"
    },
    {
     "cle": "gouvernance",
@@ -166,7 +161,7 @@
     "verif_pub"
    ],
    [
-    "t_minute",
+    "t_heure",
     "labo_trading"
    ],
    [
@@ -774,54 +769,6 @@
   {
    "outils": [
     [
-     "Flux Binance (BTC, ETH)",
-     "0 jeton",
-     "code"
-    ]
-   ],
-   "id": "t_seconde",
-   "secteur": "trading",
-   "nom": "Agent à la seconde",
-   "rythme": "chaque seconde",
-   "src": {
-    "mesure": true
-   },
-   "mesure": "trading",
-   "echelles": [
-    "seconde"
-   ],
-   "maintenant": "Achète et vend du bitcoin et de l’ether à la seconde, en simulation, avec 1 000 € fictifs.",
-   "bloque": "Gelé le 22/10 par Basile : ne rapporte pas aujourd’hui. Reprise quand le clipping et le dropshipping rapportent chaque mois.",
-   "ensuite": "Rien tant que le gel dure (note Obsidian « Projets gelés »).",
-   "arrete_le": "2026-10-22"
-  },
-  {
-   "outils": [
-    [
-     "Flux Binance",
-     "0 jeton",
-     "code"
-    ]
-   ],
-   "id": "t_minute",
-   "secteur": "trading",
-   "nom": "Agent à la minute",
-   "rythme": "chaque minute",
-   "src": {
-    "mesure": true
-   },
-   "mesure": "trading",
-   "echelles": [
-    "minute"
-   ],
-   "maintenant": "Achète et vend à la minute, en simulation, avec 1 000 € fictifs.",
-   "bloque": "Gelé le 22/10 par Basile : ne rapporte pas aujourd’hui. Reprise quand le clipping et le dropshipping rapportent chaque mois.",
-   "ensuite": "Rien tant que le gel dure (note Obsidian « Projets gelés »).",
-   "arrete_le": "2026-10-22"
-  },
-  {
-   "outils": [
-    [
      "Flux Binance",
      "0 jeton",
      "code"
@@ -929,19 +876,6 @@
    "maintenant": "N’existe pas : aucun agent de dropshipping ne tourne.",
    "bloque": "La niche (point 30) et la clé AliExpress (point 20) attendent tes réponses.",
    "ensuite": "3 produits par semaine, avec leur rentabilité."
-  },
-  {
-   "outils": [],
-   "id": "libre",
-   "secteur": "libre",
-   "nom": "Agent libre",
-   "rythme": "",
-   "etat": "arret",
-   "depuis": "2026-10-22",
-   "duree": "≈ 1 jour de travail (estimé)",
-   "maintenant": "N’existe pas (point 42 de la feuille de route).",
-   "bloque": "Gelé le 22/10 par Basile : ne rapporte pas aujourd’hui. Reprise quand le clipping et le dropshipping rapportent chaque mois.",
-   "ensuite": "Rien tant que le gel dure (note Obsidian « Projets gelés »)."
   },
   {
    "outils": [
@@ -2043,65 +1977,6 @@
    "problemes": [
     "Rien ne peut démarrer sans tes trois réponses."
    ],
-   "reussites": [],
-   "solutions": []
-  },
-  "libre": {
-   "etat": "gris",
-   "resume": "N’existe pas encore. Ta règle : gagner chaque jour, sinon mourir ; le suivant renaît avec la mémoire de tous les essais.",
-   "outils": [],
-   "passe": [
-    [
-     "01/10",
-     "Ta demande : un agent libre de gagner de l’argent sur Internet, légalement."
-    ],
-    [
-     "01/10",
-     "Tes règles : budget zéro, un gain chaque jour dès le jour 1 ; à partir du jour 14, 5 € nets par jour en moyenne sur 7 jours."
-    ],
-    [
-     "08/10",
-     "Ton schéma : un parent garde la mémoire et crée un enfant qui meurt s’il ne gagne rien."
-    ]
-   ],
-   "present": [
-    [
-     "En production",
-     "Rien."
-    ],
-    [
-     "Attend toi",
-     "Les adresses de RÉCEPTION de ta Ledger (Bitcoin, Cardano, XRP, USDC sur Base). Jamais la phrase de 24 mots."
-    ]
-   ],
-   "avenir": [
-    [
-     "Après tes adresses",
-     "Construction du parent et du premier enfant : ≈ 1 jour de travail (estimé)."
-    ]
-   ],
-   "schema": [
-    [
-     "Parent · la mémoire",
-     "Garde chaque essai : l’idée, ce qu’elle a coûté, ce qu’elle a rapporté, pourquoi elle est morte. Il ne gagne rien lui-même."
-    ],
-    [
-     "Enfant · un essai",
-     "Une seule idée à la fois (service aux particuliers, aux entreprises, à d’autres IA). Il a une journée pour encaisser."
-    ],
-    [
-     "Le soir",
-     "Un gain : il continue. Zéro : il meurt, le parent écrit la leçon et crée un enfant différent."
-    ]
-   ],
-   "garde_fous": [
-    "Il encaisse seulement : toi seul retires, échanges ou places.",
-    "Ses dépenses passent par un portefeuille plafonné que tu alimentes ; au-delà, il demande.",
-    "Le nombre d’enfants est borné ; un coupe-circuit les arrête tous.",
-    "Des activités légales uniquement."
-   ],
-   "sous": [],
-   "problemes": [],
    "reussites": [],
    "solutions": []
   },

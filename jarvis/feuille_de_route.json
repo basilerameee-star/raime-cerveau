@@ -27,10 +27,11 @@
    "rang": 1,
    "groupe": "basile",
    "moteur": "Moteur 4 : agents de revenus",
-   "titre": "Agent de revenus : gagner chaque jour, sinon il s’éteint (priorité de Basile du 01/10/2026)",
+   "titre": "Agent de revenus : gagner chaque jour, sinon il s’éteint (priorité de Basile du 01/10/2026) — SUPPRIMÉ",
    "il_faut": "Ses 4 adresses de RÉCEPTION depuis sa Ledger (Ledger Live) : Bitcoin, Cardano (ADA), XRP et USDC sur le réseau Base ; jamais la phrase de 24 mots ni l’accès aux fonds. Règles confirmées : budget zéro, un gain chaque jour dès le jour 1, et à partir du jour 14, 5 € nets par jour en moyenne sur 7 jours glissants. Monero écarté ; aucun trading.",
    "fini_quand": "Un agent cherche seul des façons légales de gagner (services aux particuliers, aux entreprises, aux autres IA, dont le paiement entre agents x402 en USDC), vend et encaisse sur l’adresse de Basile ; un registre tient ses gains jour par jour ; un coupe-circuit (webhook) éteint l’agent qui n’a rien gagné dans la journée, et ses agents enfants qui ne gagnent pas ; un superviseur redéploie une nouvelle stratégie ; il ne dépense, ne retire, n’échange ni ne place jamais d’argent.",
-   "etat": "attend_basile"
+   "etat": "fait",
+   "preuve": "22/10/2026 : supprimé sur décision de Basile (jamais démarré, il attendait des adresses Ledger) ; sa fiche est retirée du cockpit."
   },
   {
    "n": 12,
@@ -583,7 +584,7 @@
    "fini_quand": "Une stratégie simulée sur données réelles, avec frais et pertes comptés, mesurée plusieurs semaines ; décision de Basile ensuite.",
    "etat": "en_cours",
    "rang": 56,
-   "avance": "22/10 : agents à la seconde et à la minute ARRÊTÉS (−99,8 % et −94 % : les frais mangeaient tout), sur la proposition du gouverneur ; valeur suivie, données gardées."
+   "avance": "22/10 : gelé ; agents à la seconde et à la minute SUPPRIMÉS par Basile (frais trop lourds), 384 Mo de bougies effacés. À reconstruire plus tard sur une vraie stratégie mathématique (façon Jim Simons), quand l'argent rentre."
   },
   {
    "n": 57,

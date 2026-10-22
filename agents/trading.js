@@ -21,7 +21,6 @@ import { moyenne, rsi } from './bourse.js';
 import { CAPITAL, SYMBOLES, ECHELLES, resumeTrading } from '../jarvis/simulations.mjs';
 export { CAPITAL, SYMBOLES, ECHELLES };
 export const FRAIS = 0.001 + 0.0002;
-const GARDER_SECONDES_JOURS = 14;
 
 // ── Les règles (pures, testées au banc) ───────────────────────────────────────────────────────
 // Rend 'acheter', 'vendre' ou null, d'après les cours de clôture (le dernier = la bougie qui vient de se fermer).
@@ -101,15 +100,14 @@ export async function service({ brain, f = globalThis.fetch, journal = (t) => co
       const fermees = h.slice(0, -1);              // la dernière bougie n'est pas encore fermée
       series[`${s}:${e}`] = fermees.map((b) => b.c);
       if (e === 'mois') mensuelles[s] = fermees;
-      if (e !== 'seconde') await garder(brain, s, e, fermees.slice(-300));
+      await garder(brain, s, e, fermees.slice(-300));
     } catch (err) { journal(`historique ${s} ${e} illisible : ${err.message}`); series[`${s}:${e}`] = []; }
   }
   for (const s of SYMBOLES) series[`${s}:trimestre`] = trimestres(mensuelles[s] || []).map((b) => b.c);
   journal(`démarré : ${Object.keys(ECHELLES).length} agents × ${SYMBOLES.length} actifs, historique chargé`);
 
-  // 22/10/2026 : arrêtés sur la proposition du gouverneur des agents (−99,8 % et −94 % depuis le 08/10, les frais mangent tout) :
-  // plus aucune opération ; leur valeur reste suivie et toute leur donnée gardée. TRADING_ARRETES="" les relance.
-  const ARRETES = new Set((process.env.TRADING_ARRETES ?? 'seconde,minute').split(',').map((x) => x.trim()).filter(Boolean));
+  // TRADING_ARRETES : les échelles qui ne passent plus d'ordre (leur valeur reste suivie)
+  const ARRETES = new Set((process.env.TRADING_ARRETES ?? '').split(',').map((x) => x.trim()).filter(Boolean));
   const pas = async (agent, symbole, prix, le) => {
     if (ARRETES.has(agent)) return;
     const cle = `${agent}:${symbole}`, p = portefeuilles[cle];
@@ -125,7 +123,7 @@ export async function service({ brain, f = globalThis.fetch, journal = (t) => co
   // au démarrage, chaque agent applique sa règle à la dernière bougie fermée : la semaine, le mois et le trimestre
   // n'attendent pas leur prochaine clôture (lundi, le 1er du mois, la fin du trimestre) pour prendre position
   for (const s of SYMBOLES) {
-    const m = series[`${s}:minute`] || [];
+    const m = series[`${s}:heure`] || [];
     if (m.length) dernierPrix[s] = m[m.length - 1];
   }
   const maintenant = new Date().toISOString();
@@ -151,12 +149,10 @@ export async function service({ brain, f = globalThis.fetch, journal = (t) => co
       series[`${b.symbole}:trimestre`].push(b.c);
       await pas('trimestre', b.symbole, b.c, b.debut);
     }
-    // la valeur : chaque minute pour les agents rapides, à chaque bougie pour les autres
-    if (b.echelle === 'minute') for (const a of ['seconde', 'minute']) await valoriser(a, b.debut);
-    else if (b.echelle !== 'seconde') await valoriser(b.echelle, b.debut);
+    await valoriser(b.echelle, b.debut);              // la valeur, à chaque bougie de son échelle
   };
 
-  // Le flux public de Binance (bougies 1s à 1M), reconnecté seul ; la seconde est purgée au-delà de 14 jours.
+  // Le flux public de Binance (bougies 1h à 1M), reconnecté seul.
   const flux = SYMBOLES.flatMap((s) => Object.values(ECHELLES).filter((d) => d.binance).map((d) => `${s.toLowerCase()}@kline_${d.binance}`)).join('/');
   let attente = 1000;
   const ouvrir = () => {
@@ -168,7 +164,6 @@ export async function service({ brain, f = globalThis.fetch, journal = (t) => co
     ws.onerror = () => {};
   };
   ouvrir();
-  setInterval(() => { brain.query(`DELETE FROM trading_bougies WHERE echelle = 'seconde' AND debut < now() - interval '${GARDER_SECONDES_JOURS} days'`).catch(() => {}); }, 3600e3);
 }
 
 async function garder(brain, symbole, echelle, bougies) {

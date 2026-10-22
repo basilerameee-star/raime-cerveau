@@ -6,8 +6,7 @@ export const CAPITAL = 1000;
 export const SYMBOLES = ['BTCEUR', 'ETHEUR'];
 // échelle → intervalle Binance, règle, nom
 export const ECHELLES = {
-  seconde: { binance: '1s', regle: 'retour', libelle: 'à la seconde' },
-  minute: { binance: '1m', regle: 'retour', libelle: 'à la minute' },
+  // 22/10/2026 : la seconde et la minute supprimées par Basile (les frais mangeaient tout : −99,8 % et −94 %)
   heure: { binance: '1h', regle: 'retour', libelle: 'à l’heure' },
   jour: { binance: '1d', regle: 'retour', libelle: 'à la journée' },
   semaine: { binance: '1w', regle: 'tendance', n: 20, libelle: 'à la semaine' },

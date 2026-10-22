@@ -4,8 +4,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { decision, executer, trimestres, lireBougie, ECHELLES, FRAIS } from '../../agents/trading.js';
 
-test('sept agents, un par échelle : de la seconde au trimestre', () => {
-  assert.deepEqual(Object.keys(ECHELLES), ['seconde', 'minute', 'heure', 'jour', 'semaine', 'mois', 'trimestre']);
+test('cinq agents, un par échelle : de l’heure au trimestre (la seconde et la minute supprimées le 22/10/2026)', () => {
+  assert.deepEqual(Object.keys(ECHELLES), ['heure', 'jour', 'semaine', 'mois', 'trimestre']);
 });
 
 test('retour à la moyenne : achat sur deux bougies de baisse dans une tendance haussière ; revente au rebond', () => {
@@ -39,8 +39,9 @@ test('une opération : tout acheter puis tout revendre coûte deux fois les frai
 test('les trimestres sont les clôtures de mars, juin, septembre et décembre ; une bougie du flux Binance se lit', () => {
   const mois = Array.from({ length: 12 }, (_, m) => ({ debut: new Date(Date.UTC(2025, m, 1)).toISOString(), c: m }));
   assert.deepEqual(trimestres(mois).map((b) => b.c), [2, 5, 8, 11]);
-  const b = lireBougie({ data: { k: { i: '1m', s: 'BTCEUR', t: 1791452280000, o: '1', h: '2', l: '0.5', c: '1.5', v: '3', x: true } } });
-  assert.deepEqual([b.echelle, b.symbole, b.c, b.fermee], ['minute', 'BTCEUR', 1.5, true]);
+  const b = lireBougie({ data: { k: { i: '1h', s: 'BTCEUR', t: 1791452280000, o: '1', h: '2', l: '0.5', c: '1.5', v: '3', x: true } } });
+  assert.deepEqual([b.echelle, b.symbole, b.c, b.fermee], ['heure', 'BTCEUR', 1.5, true]);
+  assert.equal(lireBougie({ data: { k: { i: '1m', s: 'BTCEUR', t: 1, o: '1', h: '1', l: '1', c: '1', v: '1', x: true } } }), null, 'plus de minute');
   assert.equal(lireBougie({ data: {} }), null);
 });
 

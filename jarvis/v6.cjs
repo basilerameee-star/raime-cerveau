@@ -811,7 +811,7 @@ async function assembler({ maintenant = new Date(), executant = EXECUTANT, fetch
     v.problemes = [`${pluriel(c.sans_canal, 'offre', 'offres')} sans canal automatique.`, ...(c.envois_jour ? [] : ['Aucune candidature envoyée aujourd’hui.']),
       ...(c.derniere && maintenant - new Date(c.derniere) > 30 * H ? [`Aucune nouvelle offre depuis le ${court(jourDe(c.derniere))} : la collecte de ton PC ne tourne plus.`] : [])];
   }
-  const etatVie = { clipping: ['chercheur_camp', 'publication'], trading: ['t_seconde', 't_minute', 't_heure', 't_longs'], candidatures: ['collecte', 'envoyeur'] };
+  const etatVie = { clipping: ['chercheur_camp', 'publication'], trading: ['t_heure', 't_longs'], candidatures: ['collecte', 'envoyeur'] };
   for (const [k, ids] of Object.entries(etatVie)) {
     const l = agentsD.filter((x) => ids.includes(x.id));
     if (l.length && vies[k]) vies[k].etat = l.some((x) => x.etat === 'panne') ? 'panne' : l.some((x) => ['vide', 'arret', 'alerte'].includes(x.etat)) ? 'alerte' : 'ok';
