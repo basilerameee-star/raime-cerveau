@@ -1,616 +1,689 @@
 {
-  "titre": "Feuille de route du cerveau rAIme",
-  "mise_a_jour": "2026-10-08",
-  "source": "Décidée avec Basile le 30/09/2026. Cette liste fait foi : chaque session (Claude, routines, Codex) la reprend là où elle en est, jusqu'à ce que tout soit fait.",
-  "regles": [
-    "Un point n'est « fait » que quand sa condition « fini quand » est prouvée en production (la preuve est écrite).",
-    "Un moteur de revenus à la fois (Basile, 30/09/2026) : les sites à 500 € d'abord, puis la niche (marque média et produits : une audience pour deux revenus ; l'objectif de 6 000 € ne compte que la monétisation), puis rAIme avec une preuve avant le prix ; le suivant démarre quand le précédent tourne seul.",
-    "Chaque moteur est mesuré chaque semaine ; s'il ne rapporte rien après 6 semaines de fonctionnement complet, on le revoit avec Basile.",
-    "La preuve avant le prix, partout : une maquette, un pré-audit chiffré, une démonstration.",
-    "Clip farming : jamais la vidéo d'un autre sans son autorisation ; des sous-titres ne suffisent pas en France.",
-    "Groupe « seul » : Claude le fait sans attendre. Groupe « basile » : il faut un compte, une clé ou un accord de Basile ; on le fait avec lui, étape par étape.",
-    "L'argent en dernier : Basile finance la création de contenu et la publicité une fois tout le reste vérifié ; chaque dépense avec son accord.",
-    "L'interface 3D finale est celle de Codex (plus tard) : ici, on fournit les données et les gestes.",
-    "Les points marqués « routine » peuvent être faits par la routine Claude « Ingénierie » (sans accès au serveur) ; un point « en cours » n'est pris par personne d'autre."
-  ],
-  "deja_fait_le_30_09": [
-    "Hermes et les agents de réflexion réparés (repli gratuit, clé Gemini de la boucle)",
-    "Le cap et le goût (JEV) en tête de toutes les consignes ; questions à Basile triées",
-    "Ancien modèle retiré ; requêtes automatiques vers 1 848 API publiques",
-    "Routines Claude : ingénierie (2 fois par jour) et moteur de contenu (lundi)",
-    "Appels de relance à J+7 ; agent des vitrines (maquettes publiques, brouillons, fiches)",
-    "Jarvis : réponses brèves jamais transformées en ordres ; relance par numéro ; voix seule"
-  ],
-  "points": [
-    {
-      "n": 42,
-      "rang": 1,
-      "groupe": "basile",
-      "moteur": "Moteur 4 : agents de revenus",
-      "titre": "Agent de revenus : gagner chaque jour, sinon il s’éteint (priorité de Basile du 01/10/2026)",
-      "il_faut": "Ses 4 adresses de RÉCEPTION depuis sa Ledger (Ledger Live) : Bitcoin, Cardano (ADA), XRP et USDC sur le réseau Base ; jamais la phrase de 24 mots ni l’accès aux fonds. Règles confirmées : budget zéro, un gain chaque jour dès le jour 1, et à partir du jour 14, 5 € nets par jour en moyenne sur 7 jours glissants. Monero écarté ; aucun trading.",
-      "fini_quand": "Un agent cherche seul des façons légales de gagner (services aux particuliers, aux entreprises, aux autres IA, dont le paiement entre agents x402 en USDC), vend et encaisse sur l’adresse de Basile ; un registre tient ses gains jour par jour ; un coupe-circuit (webhook) éteint l’agent qui n’a rien gagné dans la journée, et ses agents enfants qui ne gagnent pas ; un superviseur redéploie une nouvelle stratégie ; il ne dépense, ne retire, n’échange ni ne place jamais d’argent.",
-      "etat": "attend_basile"
-    },
-    {
-      "n": 12,
-      "rang": 2,
-      "groupe": "seul",
-      "moteur": "Moteur 1 : sites à 500 €",
-      "titre": "Canal d'envoi des e-mails des vitrines",
-      "fini_quand": "Un e-mail validé part depuis raime.fr par le flux n8n dédié, plafonné par jour, avec désinscription ; une réponse passe la vitrine à « répondu ».",
-      "etat": "fait",
-      "preuve": "01/10/2026 : workflow n8n « Vitrines · Envoi » (vitrinesEnvoi01) actif ; le vrai brouillon n°106 (Techni Nails) est parti de contact@raime.fr par Resend en mode essai, arrivé dans la boîte de réception de Basile, marqué « teste » ; plafond du jour, désinscription, réponse → « répondu » et « stop » prouvés au banc (tests/banc/vitrines_envoi.test.mjs)."
-    },
-    {
-      "n": 14,
-      "rang": 3,
-      "groupe": "seul",
-      "moteur": "Moteur 1 : sites à 500 €",
-      "titre": "Découverte des commerces sans Google, à 0 €",
-      "il_faut": "Rien de Basile : il refuse de mettre une carte chez Google pour Places (08/10/2026). OpenStreetMap (Overpass, par commune) et le registre des entreprises ; la clé reste possible au coffre, jamais demandée.",
-      "fini_quand": "Un passage de l'agent trouve des commerces avec téléphone, sans aucune dépense.",
-      "etat": "fait",
-      "preuve": "Overpass par contour de commune (08/10/2026) : 49 commerces à Cluses, 114 à Carouge ; registre des entreprises pour les cabinets sans site (agents/sans_site.js)."
-    },
-    {
-      "n": 13,
-      "rang": 4,
-      "groupe": "basile",
-      "moteur": "Moteur 1 : sites à 500 €",
-      "titre": "Envoi automatique des vitrines",
-      "il_faut": "Lire l'essai reçu le 01/10/2026 (« [ESSAI] Techni Nails : j'ai préparé votre site ») ; si le texte convient : dans Jarvis, tiroir VITRINES, valider les brouillons, puis choisir « Réel » (10 e-mails par jour au plus, en semaine à 9 h).",
-      "depend_de": [
-        12
-      ],
-      "fini_quand": "Les brouillons validés partent seuls, au plafond du jour, et Jarvis dit combien sont partis.",
-      "etat": "attend_basile"
-    },
-    {
-      "n": 18,
-      "rang": 5,
-      "groupe": "seul",
-      "moteur": "Moteur 1 : sites à 500 €",
-      "titre": "Écarter les chaînes et franchises",
-      "fini_quand": "Aucune enseigne nationale (Paul, Brioche Dorée…) n'arrive en brouillon ; test à l'appui.",
-      "etat": "fait",
-      "routine": true,
-      "preuve": "01/10/2026 : liste d'enseignes nationales dans agents/vitrines.js (découverte, qualification, et réexamen à chaque passage) ; en production, aucune enseigne en brouillon ni dans les appels (Carrefour fleurs, Paul, Brioche Dorée, Marie Blachère écartées) ; test « point 18 » au banc (« Boulangerie Paul Martin » reste, « Boulangerie Paul » sort)."
-    },
-    {
-      "n": 17,
-      "rang": 6,
-      "groupe": "basile",
-      "moteur": "Moteur 1 : sites à 500 €",
-      "titre": "Parcours de vente des sites à 500 €",
-      "il_faut": "Lien Stripe à 500 € créé par Basile le 01/10/2026 (dans la fiche de chaque commerçant). Reste : le bon de commande DocuSeal (signature.raime.fr), selon ses règles : livraison 7 jours, 100 % à la commande, 2 séries de retouches, hébergement inclus, nom de domaine inclus s'il existe déjà sinon au prix coûtant, pas de suivi mensuel.",
-      "fini_quand": "Oui → rendez-vous → lien de paiement → site du client en ligne ; un premier site vendu.",
-      "etat": "en_cours"
-    },
-    {
-      "n": 16,
-      "rang": 7,
-      "groupe": "seul",
-      "moteur": "Moteur 1 : sites à 500 €",
-      "titre": "Maquettes premium pour ceux qui répondent",
-      "fini_quand": "Une vitrine « répondu » reçoit une maquette soignée par Hermes (site-premium) ; la vidéo au défilement vient avec le point 26.",
-      "etat": "a_faire"
-    },
-    {
-      "n": 15,
-      "rang": 8,
-      "groupe": "basile",
-      "moteur": "Moteur 1 : sites à 500 €",
-      "titre": "Adresse demo.raime.fr (option)",
-      "il_faut": "Un enregistrement DNS chez Cloudflare.",
-      "fini_quand": "Les maquettes s'ouvrent sur demo.raime.fr.",
-      "etat": "attend_basile"
-    },
-    {
-      "n": 30,
-      "rang": 9,
-      "groupe": "basile",
-      "moteur": "Moteur 2 : la niche (contenus et produits)",
-      "titre": "Le personnage influenceur et sa niche (marque média et produits)",
-      "il_faut": "Nom « Obito AF » (01/10/2026). Niche pressentie : accessoires street-luxe (montres sans marque, bijoux acier, coques, pistolets de massage…) mis en scène par le personnage ; à peaufiner. Boutique : site à part obitoaf.fr (fond blanc, premium, une page par produit), nom de domaine à acheter par Basile.",
-      "fini_quand": "Le nom, la niche et la fiche du personnage sont écrits en tête de contenus/POSITIONNEMENT.md ; le personnage 3D existe ; le plan de la semaine et la recherche de produits les suivent.",
-      "etat": "attend_basile"
-    },
-    {
-      "n": 19,
-      "rang": 10,
-      "groupe": "seul",
-      "moteur": "Moteur 2 : la niche (contenus et produits)",
-      "titre": "Agent de recherche de produits dans la niche retenue",
-      "fini_quand": "Chaque semaine, 3 produits proposés dans Jarvis : saison, tendance sourcée, conformité UE, prix de vente visé, note du goût.",
-      "etat": "a_faire"
-    },
-    {
-      "n": 21,
-      "rang": 11,
-      "groupe": "seul",
-      "moteur": "Moteur 2 : la niche (contenus et produits)",
-      "titre": "Calcul de rentabilité d'un produit",
-      "fini_quand": "Pour chaque produit proposé : prix d'achat, livraison, frais de paiement, pub par vente, marge nette ; estimation signalée tant qu'AliExpress n'est pas branché.",
-      "etat": "a_faire",
-      "routine": true
-    },
-    {
-      "n": 11,
-      "rang": 12,
-      "groupe": "seul",
-      "moteur": "Moteur 2 : la niche (contenus et produits)",
-      "titre": "Lire une page web (y compris JavaScript) pour tous les agents",
-      "fini_quand": "Un outil commun rend le texte d'une page, même construite en JavaScript ; utilisé par la recherche de produits.",
-      "etat": "a_faire"
-    },
-    {
-      "n": 20,
-      "rang": 13,
-      "groupe": "basile",
-      "moteur": "Moteur 2 : la niche (contenus et produits)",
-      "titre": "Fournisseurs AliExpress",
-      "il_faut": "Compte AliExpress Open Platform (clé d'application).",
-      "fini_quand": "Pour un produit : fournisseurs réels, stock, délai vers la France, entrepôt UE, note ; prix d'achat réel dans la rentabilité.",
-      "etat": "attend_basile"
-    },
-    {
-      "n": 25,
-      "rang": 14,
-      "groupe": "seul",
-      "moteur": "Moteur 2 : la niche (contenus et produits)",
-      "titre": "Réalisateur publicitaire UGC (produits et contenus de la niche)",
-      "fini_quand": "D'un produit : script, images clés, prompts d'animation, montage FFmpeg, sous-titres, mention « Image virtuelle » ; chaîne prouvée à blanc, vraie vidéo au point 26.",
-      "etat": "a_faire"
-    },
-    {
-      "n": 6,
-      "rang": 15,
-      "groupe": "basile",
-      "moteur": "Moteur 2 : la niche (contenus et produits)",
-      "titre": "Publier sur Facebook et Instagram",
-      "il_faut": "Fait le 01/10/2026 : Page Obito AF, Instagram @obitoooaf (Créateur, relié), partagés à Bahet ; clé META_SYSTEM_TOKEN au coffre, vérifiée. Reste : l'accord de Basile pour une première publication.",
-      "fini_quand": "Une publication (image puis Reel) part par l'API officielle et ses statistiques se lisent.",
-      "etat": "en_cours"
-    },
-    {
-      "n": 10,
-      "rang": 16,
-      "groupe": "basile",
-      "moteur": "Moteur 2 : la niche (contenus et produits)",
-      "titre": "Règle d'autonomie des publications",
-      "il_faut": "L'accord écrit de Basile, inscrit dans la Constitution et le cap.",
-      "fini_quand": "Les publications organiques partent seules après le contrôle du goût ; l'argent reste à l'accord de Basile.",
-      "etat": "attend_basile"
-    },
-    {
-      "n": 28,
-      "rang": 17,
-      "groupe": "seul",
-      "moteur": "Moteur 2 : la niche (contenus et produits)",
-      "titre": "Calendrier de publication des 6 comptes",
-      "fini_quand": "Un calendrier de la semaine (2 marques × 3 plateformes) tenu en base et visible dans Jarvis ; publication dès que les comptes sont branchés.",
-      "etat": "a_faire"
-    },
-    {
-      "n": 29,
-      "rang": 18,
-      "groupe": "seul",
-      "moteur": "Moteur 2 : la niche (contenus et produits)",
-      "titre": "Stratégie de campagne",
-      "fini_quand": "Pour un produit ou une offre : publics, questions de ciblage, variantes A/B, règle d'arrêt des perdants, rapport ; prête à lancer.",
-      "etat": "a_faire",
-      "routine": true
-    },
-    {
-      "n": 22,
-      "rang": 19,
-      "groupe": "basile",
-      "moteur": "Moteur 2 : la niche (contenus et produits)",
-      "titre": "Page produit avec paiement",
-      "il_faut": "Activité de vente à distance déclarée ; lien ou compte Stripe.",
-      "depend_de": [
-        19,
-        21
-      ],
-      "fini_quand": "Une page produit légère en ligne, paiement Stripe, CGV, rétractation 14 jours, mentions ; un achat test réussi.",
-      "etat": "attend_basile"
-    },
-    {
-      "n": 24,
-      "rang": 20,
-      "groupe": "seul",
-      "moteur": "Moteur 2 : la niche (contenus et produits)",
-      "titre": "Décision boutique (page et Stripe, puis TikTok Shop et Instagram Shop)",
-      "fini_quand": "Recommandation écrite et sourcée (conditions de TikTok Shop en France, délais de livraison exigés).",
-      "etat": "a_faire",
-      "routine": true
-    },
-    {
-      "n": 7,
-      "rang": 21,
-      "groupe": "basile",
-      "moteur": "Moteur 2 : la niche (contenus et produits)",
-      "titre": "Campagnes Meta Ads gérées par le cerveau",
-      "il_faut": "Compte publicitaire Obito AF Ads créé le 01/10/2026 et confié au cerveau. Reste : le moyen de paiement (le jour de la première campagne) et l'accord de Basile par campagne.",
-      "depend_de": [
-        6,
-        29
-      ],
-      "fini_quand": "Une campagne créée par l'API, plafonnée (300 €/mois au plus), suivie et arrêtée seule si elle perd.",
-      "etat": "attend_basile"
-    },
-    {
-      "n": 26,
-      "rang": 22,
-      "groupe": "basile",
-      "moteur": "Moteur 2 : la niche (contenus et produits)",
-      "titre": "Vidéos Higgsfield réelles",
-      "il_faut": "Recharge du solde de l'API Higgsfield (50 € au plus, sans recharge automatique), en dernier, une fois tout vérifié.",
-      "depend_de": [
-        25
-      ],
-      "fini_quand": "Une vidéo UGC finale livrée à Basile pour validation, coût réel noté.",
-      "etat": "attend_basile"
-    },
-    {
-      "n": 23,
-      "rang": 23,
-      "groupe": "basile",
-      "moteur": "Moteur 2 : la niche (contenus et produits)",
-      "titre": "Commandes aux fournisseurs et service client",
-      "il_faut": "Accord de Basile pour chaque paiement fournisseur, au début.",
-      "depend_de": [
-        20,
-        22
-      ],
-      "fini_quand": "Une commande client suivie de bout en bout : paiement, commande fournisseur, suivi, message au client.",
-      "etat": "attend_basile"
-    },
-    {
-      "n": 8,
-      "rang": 24,
-      "groupe": "basile",
-      "moteur": "Moteur 2 : la niche (contenus et produits)",
-      "titre": "Publier sur TikTok",
-      "il_faut": "Application TikTok « rAIme » soumise le 01/10/2026 (en examen) ; en attendant, clés Sandbox au coffre et envoi en brouillons par cockpit.raime.fr/tiktok (testé). Reste : la validation de TikTok, puis les clés Production au coffre.",
-      "fini_quand": "Une vidéo publiée sur TikTok par le cerveau, statistiques lues.",
-      "etat": "en_cours"
-    },
-    {
-      "n": 9,
-      "rang": 25,
-      "groupe": "basile",
-      "moteur": "Moteur 2 : la niche (contenus et produits)",
-      "titre": "Publier sur YouTube Shorts",
-      "il_faut": "Compte YouTube et autorisation de l'application.",
-      "fini_quand": "Un Short publié par le cerveau, statistiques lues.",
-      "etat": "attend_basile"
-    },
-    {
-      "n": 31,
-      "rang": 26,
-      "groupe": "seul",
-      "moteur": "Moteur 2 : la niche (contenus et produits)",
-      "titre": "Statistiques des plateformes",
-      "depend_de": [
-        6,
-        8,
-        9
-      ],
-      "fini_quand": "Vues, abonnés, clics, ventes et coût par vente relevés chaque jour en base.",
-      "etat": "a_faire"
-    },
-    {
-      "n": 35,
-      "rang": 27,
-      "groupe": "basile",
-      "moteur": "Moteur 3 : rAIme",
-      "titre": "Prospection des cabinets comptables avec une preuve avant le prix",
-      "il_faut": "La validation par Basile du texte et du pré-audit chiffré joint (métier des cabinets comptables).",
-      "fini_quand": "Chaque e-mail aux cabinets comptables porte un pré-audit chiffré de leur métier ; taux de réponse mesuré avant / après.",
-      "etat": "attend_basile"
-    },
-    {
-      "n": 1,
-      "rang": 28,
-      "groupe": "seul",
-      "moteur": "Jarvis",
-      "titre": "Réponse vocale plus rapide",
-      "fini_quand": "Jarvis commence à parler avant d'avoir fini d'écrire ; délai mesuré avant/après.",
-      "etat": "a_faire"
-    },
-    {
-      "n": 2,
-      "rang": 29,
-      "groupe": "seul",
-      "moteur": "Jarvis",
-      "titre": "Fil « ce qui se passe derrière »",
-      "fini_quand": "À la demande, Jarvis raconte l'activité réelle des agents des dernières heures, et un résumé du jour.",
-      "etat": "a_faire"
-    },
-    {
-      "n": 4,
-      "rang": 30,
-      "groupe": "seul",
-      "moteur": "Jarvis",
-      "titre": "Gestes à la voix",
-      "fini_quand": "« valide le produit 3 », « écarte », « publie », « lance la campagne » exécutés par du code, avec confirmation.",
-      "etat": "a_faire"
-    },
-    {
-      "n": 3,
-      "rang": 31,
-      "groupe": "seul",
-      "moteur": "Jarvis",
-      "titre": "Données pour l'interface 3D",
-      "fini_quand": "Produits, appels, vitrines, vidéos, campagnes, dépenses et feuille de route disponibles par l'API pour l'interface de Codex.",
-      "etat": "a_faire"
-    },
-    {
-      "n": 32,
-      "rang": 32,
-      "groupe": "seul",
-      "moteur": "Mesure",
-      "titre": "Apprentissage sur les résultats",
-      "fini_quand": "Chaque semaine, ce qui a marché (accroches, formats, heures) nourrit le plan suivant, par écrit.",
-      "etat": "a_faire"
-    },
-    {
-      "n": 33,
-      "rang": 33,
-      "groupe": "seul",
-      "moteur": "Mesure",
-      "titre": "Suivi des revenus : 2 000 € par mois sur chacune de TikTok, YouTube et Instagram",
-      "fini_quand": "Jarvis donne, chaque mois, la monétisation de TikTok, YouTube et Instagram face à 2 000 € chacune (6 000 € au total), et à part les ventes de produits et de rAIme.",
-      "etat": "a_faire"
-    },
-    {
-      "n": 34,
-      "rang": 34,
-      "groupe": "seul",
-      "moteur": "Mesure",
-      "titre": "Réglage du goût sur les résultats réels",
-      "fini_quand": "Les seuils du goût sont ajustés à partir des suites notées des jugements ; changement tracé.",
-      "etat": "a_faire"
-    },
-    {
-      "n": 39,
-      "rang": 35,
-      "groupe": "seul",
-      "moteur": "Mesure",
-      "titre": "L'économe compte toutes les dépenses réelles",
-      "fini_quand": "JEV, Higgsfield, Google et publicité comptés ; alerte avant tout dépassement.",
-      "etat": "a_faire"
-    },
-    {
-      "n": 36,
-      "rang": 36,
-      "groupe": "seul",
-      "moteur": "Fiabilité",
-      "titre": "Configuration d'Hermes posée à chaque livraison",
-      "fini_quand": "Une livraison qui change hermes/config.yaml la pose sur le serveur et redémarre Hermes quand il est libre.",
-      "etat": "a_faire"
-    },
-    {
-      "n": 37,
-      "rang": 37,
-      "groupe": "seul",
-      "moteur": "Fiabilité",
-      "titre": "Page de confidentialité : retirer Oracle Cloud",
-      "fini_quand": "raime.fr ne cite plus de prestataire retiré (Oracle : vérifié absent le 01/10/2026) et décrit juste l'hébergement (Hetzner en Finlande, pas en Allemagne).",
-      "etat": "en_cours"
-    },
-    {
-      "n": 38,
-      "rang": 38,
-      "groupe": "seul",
-      "moteur": "Fiabilité",
-      "titre": "Anciens ordres échoués (14 à 21)",
-      "fini_quand": "Chacun relancé ou clos avec son motif.",
-      "etat": "a_faire"
-    },
-    {
-      "n": 40,
-      "rang": 39,
-      "groupe": "seul",
-      "moteur": "Fiabilité",
-      "titre": "Suivi de chaque tâche de bout en bout",
-      "fini_quand": "Une demande se suit de Jarvis à l'agent, à l'outil et au résultat, avec son coût.",
-      "etat": "a_faire"
-    },
-    {
-      "n": 41,
-      "rang": 40,
-      "groupe": "seul",
-      "moteur": "Fiabilité",
-      "titre": "Un seul flux de réflexion",
-      "fini_quand": "Architecte, réflexif, penseur et prospective regroupés ; un seul flux d'idées jugées par le goût.",
-      "etat": "fait",
-      "preuve": "Livré le 08/10/2026 (agents/directeur.js, commits du 08/10, en service 06f1ed0) : architecte, superviseur, réflexif, prospective et penseur retirés de la boucle ; le Directeur passe une fois par jour (5 h-7 h), lit l'état réel des agents et la production en base, appelle le penseur et fait juger ses idées par le goût, écrit un seul bilan (table direction) lu par l'e-mail de 7 h 30, /api/etat, /api/direction et Jarvis. Premier bilan en production le 08/10 : 7 candidatures, 26 commerces, 89 adresses, 27 appels en 24 h. Banc : 357 tests, 0 échec."
-    },
-    {
-      "n": 5,
-      "rang": 41,
-      "groupe": "seul",
-      "moteur": "Accès",
-      "titre": "Chantiers GitHub ouverts par le cerveau",
-      "fini_quand": "Le jeton GITHUB_CHANTIER_TOKEN (au coffre, vérifié le 02/10/2026 : il voit le dépôt et ses tickets) est donné aux agents ; le cerveau ouvre un chantier, la routine d’ingénierie le traite en pull request.",
-      "etat": "a_faire"
-    },
-    {
-      "n": 27,
-      "rang": 42,
-      "groupe": "basile",
-      "moteur": "Contenu",
-      "titre": "Clip farming",
-      "il_faut": "Décidé le 01/10/2026 : comptes séparés (TikTok, Instagram, YouTube, Page) ; sources = uniquement les créateurs qui lancent une campagne de clipping officielle et rémunérée (Whop « Content Rewards » et équivalents), jamais leurs vidéos sans accord. Reste : les comptes du clip farming.",
-      "fini_quand": "D'une vidéo autorisée : moments forts repérés, clips verticaux sous-titrés, source et autorisation notées, en file de publication.",
-      "etat": "attend_basile"
-    },
-    {
-      "n": 43,
-      "groupe": "seul",
-      "moteur": "Jarvis",
-      "titre": "Raccord Jarvis → Claude (« demande à Claude de… »)",
-      "etat": "en_cours",
-      "fini_quand": "Une demande adressée à Claude dans Jarvis ouvre un ticket « chantier » ; la routine Ingénierie la traite à son passage (7 h 07, 19 h 07) ; le compte rendu jarvis/ordres/<n°>.md clôt l’ordre ; cinq par jour au plus. Code écrit le 02/10/2026 (jarvis/prestataire.cjs), banc et mise en service à faire.",
-      "rang": 43
-    },
-    {
-      "n": 44,
-      "groupe": "basile",
-      "moteur": "Moteur 3 : rAIme",
-      "titre": "Refonte de raime.fr d’après les références de Basile",
-      "etat": "attend_basile",
-      "il_faut": "Ses captures ou vidéos de référence (motion design clair, épuré). Trois pistes générées refusées le 02/10/2026 (espace 3D v1 et v2, jetons) : on part de ses références, hero d’abord, restriction Sam Crawford.",
-      "fini_quand": "Un hero validé par Basile, puis chaque section validée une à une ; mise en ligne sur raime.fr avec son accord ; version anglaise et mode jour repris.",
-      "rang": 44
-    },
-    {
-      "n": 45,
-      "groupe": "seul",
-      "moteur": "Moteur 3 : rAIme",
-      "titre": "Prospection des automatisations",
-      "etat": "en_cours",
-      "fini_quand": "Sur le modèle des vitrines : l’agent repère des entreprises dont une tâche répétitive se voit (prise de rendez-vous, devis, relances, réponses), prépare une démonstration et un brouillon d’e-mail ; Basile valide avant tout envoi.",
-      "rang": 45,
-      "avance": "08/10/2026 : e-mail des vitrines + pré-audit du métier (9 pré-audits en ligne, dont immobilier, recrutement, courtage) ; Fureteur réécrit (site prouvé par SIREN ou nom et ville, adresse lue sur le site, 94 sites prouvés et 87 adresses au 08/10) ; sourcing Sherlock recentré sur les niches à but lucratif ; entreprises sans site gardées (fiches vitrines « à appeler » ou « à compléter »). Reste : un moteur de recherche qui réponde au serveur pour conclure « sans site » (clé Google Places ou Brave, décision de Basile)."
-    },
-    {
-      "n": 46,
-      "groupe": "seul",
-      "moteur": "Moteur 1 : sites à 500 €",
-      "titre": "Juge visuel des sites (laid ou ancien, même récent techniquement)",
-      "etat": "a_faire",
-      "fini_quand": "Chaque site trouvé est capturé (navigateur d’Hermes) et noté par un modèle de vision gratuit ; un site récent mais laid ou illisible sur téléphone devient une cible, avec la raison écrite dans la fiche.",
-      "rang": 46
-    },
-    {
-      "n": 47,
-      "groupe": "seul",
-      "moteur": "Moteur 1 : sites à 500 €",
-      "titre": "Vitrines : toute la France, triée par région",
-      "etat": "a_faire",
-      "fini_quand": "La découverte passe des 5 départements de départ (74, GE, 01, 73, 38) à toute la France, région par région, en gardant l’ordre de priorité ; le tiroir VITRINES filtre par région.",
-      "rang": 47,
-      "avance": "08/10/2026 : découverte réparée (plusieurs serveurs Overpass, une requête par ville et par contour de commune, homonymes repris) : 49 commerces à Cluses, 114 à Carouge au premier essai."
-    },
-    {
-      "n": 48,
-      "groupe": "seul",
-      "moteur": "Moteur 3 : clip farming (KinGKlip)",
-      "titre": "Pôles de clip farming : 1 pôle = 1 niche = 3 chaînes (YouTube, TikTok, Instagram)",
-      "etat": "en_cours",
-      "fini_quand": "Chaque pôle a son réglage (niche, campagnes, 3 chaînes Buffer) et tourne avec le même programme, sans Claude ; le brief de chaque campagne est obligatoire (pas de brief = pas de découpe) ; clips de 18 à 20 s en moyenne ; pôle 1 = KinGKlip, en service le 02/10/2026 ; le pôle suivant s'ouvre quand le premier rapporte.",
-      "rang": 48
-    },
-    {
-      "n": 49,
-      "groupe": "seul",
-      "moteur": "Moteur 3 : clip farming (KinGKlip)",
-      "titre": "Superviseur des pôles : surveille, coupe ce qui n'avance pas, prévient Basile",
-      "etat": "a_faire",
-      "fini_quand": "Il suit découpes, publications Buffer, échecs et vues par pôle ; dépense plafonnée à 0 € tant que tout est gratuit ; il prévient Basile sur Jarvis et par e-mail (Resend), relance après le délai fixé ; SMS ou appel seulement avec l'accord de Basile (payant).",
-      "rang": 49
-    },
-    {
-      "n": 50,
-      "groupe": "seul",
-      "moteur": "Moteur 2 : la niche (contenus et produits)",
-      "titre": "Influenceur IA : étudier Pinokio + Wan2GP (« One2GP ») + modèle MiniMax cité par Basile",
-      "etat": "a_faire",
-      "fini_quand": "Nom exact, licence (usage commercial), coût et faisabilité sur le PC de Basile vérifiés ; une vidéo test de 15 s produite en local ; note Obsidian 16.",
-      "rang": 50
-    },
-    {
-      "n": 51,
-      "groupe": "seul",
-      "moteur": "Moteur 3 : clip farming (KinGKlip)",
-      "titre": "Chercheur de campagnes Whop + récupération des sources YouTube depuis le PC",
-      "etat": "en_cours",
-      "fini_quand": "Chaque jour, l'agent lit les campagnes Content Rewards dans le navigateur du serveur (Basile s'y connecte une fois à Whop), les note avec clippeur/selection.json et propose les 3 meilleures sur Jarvis ; une tâche planifiée du PC télécharge les vidéos YouTube attendues par le serveur et les dépose, sans Claude.",
-      "rang": 51
-    },
-    {
-      "n": 52,
-      "groupe": "seul",
-      "moteur": "Moteur 3 : clip farming (KinGKlip)",
-      "titre": "Agent de soumission Whop : chaque lien publié est soumis dans « Submit clip » de SA campagne en moins de 25 minutes",
-      "etat": "a_faire",
-      "fini_quand": "Dans le navigateur du serveur (Basile connecté une fois à Whop), l'agent soumet chaque lien publié (YouTube, TikTok, Instagram) à la seule campagne pour laquelle le clip a été fait, coche la case des conditions, vérifie l'acceptation ; captcha ou page changée = arrêt et e-mail à Basile, jamais de contournement. Accord de Basile du 02/10/2026. À construire après la recharge des crédits (mercredi).",
-      "rang": 52
-    },
-    {
-      "n": 53,
-      "groupe": "seul",
-      "moteur": "Moteur 3 : clip farming (KinGKlip)",
-      "titre": "Agent Analytics : vues, rétention, likes, partages par clip (YouTube, TikTok, Instagram) pour savoir ce qui marche",
-      "etat": "a_faire",
-      "fini_quand": "Chaque jour, les statistiques de chaque clip publié (via Buffer, qui les fournit, puis les API des plateformes) sont rangées par campagne ; un retour hebdomadaire par e-mail dit quels sujets, durées, accroches et heures font le plus de vues payées ; le clippeur et la sélection des campagnes en tiennent compte. Demande de Basile du 02/10/2026.",
-      "rang": 53
-    },
-    {
-      "n": 54,
-      "groupe": "seul",
-      "moteur": "Socle",
-      "titre": "Le veilleur GitHub se met à jour : il fouille GitHub, essaie et propose les outils et agents utiles",
-      "fini_quand": "Le veilleur (qui lit déjà GitHub, Hacker News, Hugging Face, arXiv) passe à l’acte : pour chaque outil ou agent open source utile à un point de cette feuille, il l’essaie sur le banc, écrit ce qu’il apporte, et ouvre un chantier ; l’installation se fait après accord. Demande de Basile du 07/10/2026.",
-      "etat": "en_cours",
-      "rang": 54,
-      "avance": "08/10/2026 : pôle de recherche par agent (agents/veilleur.js, veillerPoles) : chaque jour, GitHub, Hacker News et arXiv pour trading, bourse, prospection, vitrines, clipping, dropshipping, revenus et agents IA, rangés au nom de chacun (veille_poles), comptés par le Directeur ; 51 trouvailles au premier passage. Reste : l'essai sur le banc (en bac à sable) et le chantier ouvert, après accord."
-    },
-    {
-      "n": 55,
-      "groupe": "basile",
-      "moteur": "Moteur 4 : agents de revenus",
-      "titre": "Agent bourse : analyse et portefeuille simulé d’abord",
-      "il_faut": "Demande de Basile du 07/10/2026 (elle remplace « aucun trading » du point 42 pour ce point). Claude ne passe jamais d’ordre ni ne déplace d’argent et ne donne pas de conseil en investissement : l’agent tourne d’abord en portefeuille simulé, mesuré ; le compte de courtage, l’argent et l’activation réelle restent à Basile.",
-      "fini_quand": "Un portefeuille simulé tenu chaque jour, avec ses règles écrites et sa performance comparée à un indice, visible dans Jarvis ; décision de Basile ensuite.",
-      "etat": "en_cours",
-      "rang": 55,
-      "avance": "08/10/2026 : réponses de Basile (tous les univers, plusieurs stratégies, 1 000 € fictifs). Agent agents/bourse.js : long terme diversifié, tendance (moyenne 200 jours), momentum grandes actions, et l'indice Monde en référence ; ETF UCITS (achetables en France), frais et change comptés ; simulation tenue chaque soir + rétro-test 12 mois ; /api/bourse et e-mail du matin. Reste : des semaines de mesure."
-    },
-    {
-      "n": 56,
-      "groupe": "basile",
-      "moteur": "Moteur 4 : agents de revenus",
-      "titre": "Agent trading (ajouté après l’agent bourse, même règle)",
-      "il_faut": "Même règle que le point 55 : simulation d’abord, aucun ordre réel passé par Claude ; le compte, l’argent et l’activation restent à Basile.",
-      "fini_quand": "Une stratégie simulée sur données réelles, avec frais et pertes comptés, mesurée plusieurs semaines ; décision de Basile ensuite.",
-      "etat": "en_cours",
-      "rang": 56,
-      "avance": "08/10/2026 (message vocal de Basile) : sept agents de trading simulés, un par échelle (seconde, minute, heure, jour, semaine, mois, trimestre), bitcoin et ether en direct par le flux public de Binance, 1 000 € fictifs chacun, frais comptés, toute la donnée gardée (agents/trading.js, service continu raime-trading) ; plus la stratégie « court terme » de agents/bourse.js. L'entraînement d'abord ; le passage au réel = compte, argent et activation de Basile, jamais un ordre passé par Claude."
-    },
-    {
-      "n": 57,
-      "groupe": "seul",
-      "moteur": "Contenu",
-      "titre": "Comptes Buffer : réparer le suivi en boucle et brancher les comptes",
-      "fini_quand": "Le suivi Buffer ne boucle plus en erreurs (« trop de demandes », « publication introuvable ») ; chaque compte branché publie depuis la file, et ses statistiques remontent au point 53. Demande de Basile du 07/10/2026.",
-      "etat": "a_faire",
-      "rang": 57
-    },
-    {
-      "n": 58,
-      "groupe": "basile",
-      "moteur": "Direction",
-      "titre": "Une seule entité : le système agentique rAIme, avec sa direction",
-      "il_faut": "Demande de Basile du 07/10/2026 : tous les agents (prospection, candidatures, vitrines, revenus, bourse, trading, clipping, Buffer, Instagram, YouTube, dropshipping, veille GitHub) forment une seule entité qui tourne seule ; chaque agent peut créer ses sous-agents pour réussir. Outils à télécharger permis (open source vérifié).",
-      "fini_quand": "Le Directeur (point 41) répartit le travail entre les agents, chacun rend compte au même endroit, et Basile ne reçoit que les décisions qui lui reviennent.",
-      "etat": "attend_basile",
-      "rang": 58,
-      "avance": "08/10/2026 : le Directeur existe (point 41) : un seul bilan, les alertes, et un premier sous-agent (diagnostic confié à Hermes, lecture seule, un par jour). Reste : chaque nouvel agent (revenus, bourse, trading, clipping, dropshipping, veille GitHub) rend compte au Directeur à sa création."
-    },
-    {
-      "n": 59,
-      "rang": 59,
-      "groupe": "seul",
-      "moteur": "Direction",
-      "titre": "Agenda des relances : ce que Basile doit rappeler revient seul le jour J",
-      "fini_quand": "Une page /agenda (en retard, aujourd'hui, demain, semaine, plus tard ; semaine en glisser-déposer), le résumé chiffré et l'alerte dans le cockpit, les relances du jour dans l'e-mail de 7 h 30, le report par boutons, glisser-déposer ou voix, les états fixes après un appel, l'historique de chaque contact. Demande de Basile du 07/10/2026, réponses du 08/10.",
-      "etat": "fait",
-      "preuve": "Livré le 08/10/2026 (commits d8d9374, 041138b, en service 5bdeea7) : GET /agenda 200 et /api/agenda/jour en production, le « plus tard » de Fillon-Billaud repris pour le 10/10 ; banc 341 tests sur 342 (1 sauté), 0 échec."
-    }
-  ]
+ "titre": "Feuille de route du cerveau rAIme",
+ "mise_a_jour": "2026-10-22",
+ "source": "Décidée avec Basile le 30/09/2026. Cette liste fait foi : chaque session (Claude, routines, Codex) la reprend là où elle en est, jusqu'à ce que tout soit fait.",
+ "regles": [
+  "Un point n'est « fait » que quand sa condition « fini quand » est prouvée en production (la preuve est écrite).",
+  "Un moteur de revenus à la fois (Basile, 30/09/2026) : les sites à 500 € d'abord, puis la niche (marque média et produits : une audience pour deux revenus ; l'objectif de 6 000 € ne compte que la monétisation), puis rAIme avec une preuve avant le prix ; le suivant démarre quand le précédent tourne seul.",
+  "Chaque moteur est mesuré chaque semaine ; s'il ne rapporte rien après 6 semaines de fonctionnement complet, on le revoit avec Basile.",
+  "La preuve avant le prix, partout : une maquette, un pré-audit chiffré, une démonstration.",
+  "Clip farming : jamais la vidéo d'un autre sans son autorisation ; des sous-titres ne suffisent pas en France.",
+  "Groupe « seul » : Claude le fait sans attendre. Groupe « basile » : il faut un compte, une clé ou un accord de Basile ; on le fait avec lui, étape par étape.",
+  "L'argent en dernier : Basile finance la création de contenu et la publicité une fois tout le reste vérifié ; chaque dépense avec son accord.",
+  "L'interface 3D finale est celle de Codex (plus tard) : ici, on fournit les données et les gestes.",
+  "Les points marqués « routine » peuvent être faits par la routine Claude « Ingénierie » (sans accès au serveur) ; un point « en cours » n'est pris par personne d'autre."
+ ],
+ "deja_fait_le_30_09": [
+  "Hermes et les agents de réflexion réparés (repli gratuit, clé Gemini de la boucle)",
+  "Le cap et le goût (JEV) en tête de toutes les consignes ; questions à Basile triées",
+  "Ancien modèle retiré ; requêtes automatiques vers 1 848 API publiques",
+  "Routines Claude : ingénierie (2 fois par jour) et moteur de contenu (lundi)",
+  "Appels de relance à J+7 ; agent des vitrines (maquettes publiques, brouillons, fiches)",
+  "Jarvis : réponses brèves jamais transformées en ordres ; relance par numéro ; voix seule"
+ ],
+ "points": [
+  {
+   "n": 42,
+   "rang": 1,
+   "groupe": "basile",
+   "moteur": "Moteur 4 : agents de revenus",
+   "titre": "Agent de revenus : gagner chaque jour, sinon il s’éteint (priorité de Basile du 01/10/2026)",
+   "il_faut": "Ses 4 adresses de RÉCEPTION depuis sa Ledger (Ledger Live) : Bitcoin, Cardano (ADA), XRP et USDC sur le réseau Base ; jamais la phrase de 24 mots ni l’accès aux fonds. Règles confirmées : budget zéro, un gain chaque jour dès le jour 1, et à partir du jour 14, 5 € nets par jour en moyenne sur 7 jours glissants. Monero écarté ; aucun trading.",
+   "fini_quand": "Un agent cherche seul des façons légales de gagner (services aux particuliers, aux entreprises, aux autres IA, dont le paiement entre agents x402 en USDC), vend et encaisse sur l’adresse de Basile ; un registre tient ses gains jour par jour ; un coupe-circuit (webhook) éteint l’agent qui n’a rien gagné dans la journée, et ses agents enfants qui ne gagnent pas ; un superviseur redéploie une nouvelle stratégie ; il ne dépense, ne retire, n’échange ni ne place jamais d’argent.",
+   "etat": "attend_basile"
+  },
+  {
+   "n": 12,
+   "rang": 2,
+   "groupe": "seul",
+   "moteur": "Moteur 1 : sites à 500 €",
+   "titre": "Canal d'envoi des e-mails des vitrines",
+   "fini_quand": "Un e-mail validé part depuis raime.fr par le flux n8n dédié, plafonné par jour, avec désinscription ; une réponse passe la vitrine à « répondu ».",
+   "etat": "fait",
+   "preuve": "01/10/2026 : workflow n8n « Vitrines · Envoi » (vitrinesEnvoi01) actif ; le vrai brouillon n°106 (Techni Nails) est parti de contact@raime.fr par Resend en mode essai, arrivé dans la boîte de réception de Basile, marqué « teste » ; plafond du jour, désinscription, réponse → « répondu » et « stop » prouvés au banc (tests/banc/vitrines_envoi.test.mjs)."
+  },
+  {
+   "n": 14,
+   "rang": 3,
+   "groupe": "seul",
+   "moteur": "Moteur 1 : sites à 500 €",
+   "titre": "Découverte des commerces sans Google, à 0 €",
+   "il_faut": "Rien de Basile : il refuse de mettre une carte chez Google pour Places (08/10/2026). OpenStreetMap (Overpass, par commune) et le registre des entreprises ; la clé reste possible au coffre, jamais demandée.",
+   "fini_quand": "Un passage de l'agent trouve des commerces avec téléphone, sans aucune dépense.",
+   "etat": "fait",
+   "preuve": "Overpass par contour de commune (08/10/2026) : 49 commerces à Cluses, 114 à Carouge ; registre des entreprises pour les cabinets sans site (agents/sans_site.js)."
+  },
+  {
+   "n": 13,
+   "rang": 4,
+   "groupe": "basile",
+   "moteur": "Moteur 1 : sites à 500 €",
+   "titre": "Envoi automatique des vitrines",
+   "il_faut": "Lire l'essai reçu le 01/10/2026 (« [ESSAI] Techni Nails : j'ai préparé votre site ») ; si le texte convient : dans Jarvis, tiroir VITRINES, valider les brouillons, puis choisir « Réel » (10 e-mails par jour au plus, en semaine à 9 h).",
+   "depend_de": [
+    12
+   ],
+   "fini_quand": "Les brouillons validés partent seuls, au plafond du jour, et Jarvis dit combien sont partis.",
+   "etat": "attend_basile"
+  },
+  {
+   "n": 18,
+   "rang": 5,
+   "groupe": "seul",
+   "moteur": "Moteur 1 : sites à 500 €",
+   "titre": "Écarter les chaînes et franchises",
+   "fini_quand": "Aucune enseigne nationale (Paul, Brioche Dorée…) n'arrive en brouillon ; test à l'appui.",
+   "etat": "fait",
+   "routine": true,
+   "preuve": "01/10/2026 : liste d'enseignes nationales dans agents/vitrines.js (découverte, qualification, et réexamen à chaque passage) ; en production, aucune enseigne en brouillon ni dans les appels (Carrefour fleurs, Paul, Brioche Dorée, Marie Blachère écartées) ; test « point 18 » au banc (« Boulangerie Paul Martin » reste, « Boulangerie Paul » sort)."
+  },
+  {
+   "n": 17,
+   "rang": 6,
+   "groupe": "basile",
+   "moteur": "Moteur 1 : sites à 500 €",
+   "titre": "Parcours de vente des sites à 500 €",
+   "il_faut": "Lien Stripe à 500 € créé par Basile le 01/10/2026 (dans la fiche de chaque commerçant). Reste : le bon de commande DocuSeal (signature.raime.fr), selon ses règles : livraison 7 jours, 100 % à la commande, 2 séries de retouches, hébergement inclus, nom de domaine inclus s'il existe déjà sinon au prix coûtant, pas de suivi mensuel.",
+   "fini_quand": "Oui → rendez-vous → lien de paiement → site du client en ligne ; un premier site vendu.",
+   "etat": "en_cours"
+  },
+  {
+   "n": 16,
+   "rang": 7,
+   "groupe": "seul",
+   "moteur": "Moteur 1 : sites à 500 €",
+   "titre": "Maquettes premium pour ceux qui répondent",
+   "fini_quand": "Une vitrine « répondu » reçoit une maquette soignée par Hermes (site-premium) ; la vidéo au défilement vient avec le point 26.",
+   "etat": "a_faire"
+  },
+  {
+   "n": 15,
+   "rang": 8,
+   "groupe": "basile",
+   "moteur": "Moteur 1 : sites à 500 €",
+   "titre": "Adresse demo.raime.fr (option)",
+   "il_faut": "Un enregistrement DNS chez Cloudflare.",
+   "fini_quand": "Les maquettes s'ouvrent sur demo.raime.fr.",
+   "etat": "attend_basile"
+  },
+  {
+   "n": 30,
+   "rang": 9,
+   "groupe": "basile",
+   "moteur": "Moteur 2 : la niche (contenus et produits)",
+   "titre": "Le personnage influenceur et sa niche (marque média et produits)",
+   "il_faut": "Nom « Obito AF » (01/10/2026). Niche pressentie : accessoires street-luxe (montres sans marque, bijoux acier, coques, pistolets de massage…) mis en scène par le personnage ; à peaufiner. Boutique : site à part obitoaf.fr (fond blanc, premium, une page par produit), nom de domaine à acheter par Basile.",
+   "fini_quand": "Le nom, la niche et la fiche du personnage sont écrits en tête de contenus/POSITIONNEMENT.md ; le personnage 3D existe ; le plan de la semaine et la recherche de produits les suivent.",
+   "etat": "attend_basile"
+  },
+  {
+   "n": 19,
+   "rang": 10,
+   "groupe": "seul",
+   "moteur": "Moteur 2 : la niche (contenus et produits)",
+   "titre": "Agent de recherche de produits dans la niche retenue",
+   "fini_quand": "Chaque semaine, 3 produits proposés dans Jarvis : saison, tendance sourcée, conformité UE, prix de vente visé, note du goût.",
+   "etat": "a_faire"
+  },
+  {
+   "n": 21,
+   "rang": 11,
+   "groupe": "seul",
+   "moteur": "Moteur 2 : la niche (contenus et produits)",
+   "titre": "Calcul de rentabilité d'un produit",
+   "fini_quand": "Pour chaque produit proposé : prix d'achat, livraison, frais de paiement, pub par vente, marge nette ; estimation signalée tant qu'AliExpress n'est pas branché.",
+   "etat": "a_faire",
+   "routine": true
+  },
+  {
+   "n": 11,
+   "rang": 12,
+   "groupe": "seul",
+   "moteur": "Moteur 2 : la niche (contenus et produits)",
+   "titre": "Lire une page web (y compris JavaScript) pour tous les agents",
+   "fini_quand": "Un outil commun rend le texte d'une page, même construite en JavaScript ; utilisé par la recherche de produits.",
+   "etat": "a_faire"
+  },
+  {
+   "n": 20,
+   "rang": 13,
+   "groupe": "basile",
+   "moteur": "Moteur 2 : la niche (contenus et produits)",
+   "titre": "Fournisseurs AliExpress",
+   "il_faut": "Compte AliExpress Open Platform (clé d'application).",
+   "fini_quand": "Pour un produit : fournisseurs réels, stock, délai vers la France, entrepôt UE, note ; prix d'achat réel dans la rentabilité.",
+   "etat": "attend_basile"
+  },
+  {
+   "n": 25,
+   "rang": 14,
+   "groupe": "seul",
+   "moteur": "Moteur 2 : la niche (contenus et produits)",
+   "titre": "Réalisateur publicitaire UGC (produits et contenus de la niche)",
+   "fini_quand": "D'un produit : script, images clés, prompts d'animation, montage FFmpeg, sous-titres, mention « Image virtuelle » ; chaîne prouvée à blanc, vraie vidéo au point 26.",
+   "etat": "a_faire"
+  },
+  {
+   "n": 6,
+   "rang": 15,
+   "groupe": "basile",
+   "moteur": "Moteur 2 : la niche (contenus et produits)",
+   "titre": "Publier sur Facebook et Instagram",
+   "il_faut": "Fait le 01/10/2026 : Page Obito AF, Instagram @obitoooaf (Créateur, relié), partagés à Bahet ; clé META_SYSTEM_TOKEN au coffre, vérifiée. Reste : l'accord de Basile pour une première publication.",
+   "fini_quand": "Une publication (image puis Reel) part par l'API officielle et ses statistiques se lisent.",
+   "etat": "en_cours"
+  },
+  {
+   "n": 10,
+   "rang": 16,
+   "groupe": "basile",
+   "moteur": "Moteur 2 : la niche (contenus et produits)",
+   "titre": "Règle d'autonomie des publications",
+   "il_faut": "L'accord écrit de Basile, inscrit dans la Constitution et le cap.",
+   "fini_quand": "Les publications organiques partent seules après le contrôle du goût ; l'argent reste à l'accord de Basile.",
+   "etat": "attend_basile"
+  },
+  {
+   "n": 28,
+   "rang": 17,
+   "groupe": "seul",
+   "moteur": "Moteur 2 : la niche (contenus et produits)",
+   "titre": "Calendrier de publication des 6 comptes",
+   "fini_quand": "Un calendrier de la semaine (2 marques × 3 plateformes) tenu en base et visible dans Jarvis ; publication dès que les comptes sont branchés.",
+   "etat": "a_faire"
+  },
+  {
+   "n": 29,
+   "rang": 18,
+   "groupe": "seul",
+   "moteur": "Moteur 2 : la niche (contenus et produits)",
+   "titre": "Stratégie de campagne",
+   "fini_quand": "Pour un produit ou une offre : publics, questions de ciblage, variantes A/B, règle d'arrêt des perdants, rapport ; prête à lancer.",
+   "etat": "a_faire",
+   "routine": true
+  },
+  {
+   "n": 22,
+   "rang": 19,
+   "groupe": "basile",
+   "moteur": "Moteur 2 : la niche (contenus et produits)",
+   "titre": "Page produit avec paiement",
+   "il_faut": "Activité de vente à distance déclarée ; lien ou compte Stripe.",
+   "depend_de": [
+    19,
+    21
+   ],
+   "fini_quand": "Une page produit légère en ligne, paiement Stripe, CGV, rétractation 14 jours, mentions ; un achat test réussi.",
+   "etat": "attend_basile"
+  },
+  {
+   "n": 24,
+   "rang": 20,
+   "groupe": "seul",
+   "moteur": "Moteur 2 : la niche (contenus et produits)",
+   "titre": "Décision boutique (page et Stripe, puis TikTok Shop et Instagram Shop)",
+   "fini_quand": "Recommandation écrite et sourcée (conditions de TikTok Shop en France, délais de livraison exigés).",
+   "etat": "a_faire",
+   "routine": true
+  },
+  {
+   "n": 7,
+   "rang": 21,
+   "groupe": "basile",
+   "moteur": "Moteur 2 : la niche (contenus et produits)",
+   "titre": "Campagnes Meta Ads gérées par le cerveau",
+   "il_faut": "Compte publicitaire Obito AF Ads créé le 01/10/2026 et confié au cerveau. Reste : le moyen de paiement (le jour de la première campagne) et l'accord de Basile par campagne.",
+   "depend_de": [
+    6,
+    29
+   ],
+   "fini_quand": "Une campagne créée par l'API, plafonnée (300 €/mois au plus), suivie et arrêtée seule si elle perd.",
+   "etat": "attend_basile"
+  },
+  {
+   "n": 26,
+   "rang": 22,
+   "groupe": "basile",
+   "moteur": "Moteur 2 : la niche (contenus et produits)",
+   "titre": "Vidéos Higgsfield réelles",
+   "il_faut": "Recharge du solde de l'API Higgsfield (50 € au plus, sans recharge automatique), en dernier, une fois tout vérifié.",
+   "depend_de": [
+    25
+   ],
+   "fini_quand": "Une vidéo UGC finale livrée à Basile pour validation, coût réel noté.",
+   "etat": "attend_basile"
+  },
+  {
+   "n": 23,
+   "rang": 23,
+   "groupe": "basile",
+   "moteur": "Moteur 2 : la niche (contenus et produits)",
+   "titre": "Commandes aux fournisseurs et service client",
+   "il_faut": "Accord de Basile pour chaque paiement fournisseur, au début.",
+   "depend_de": [
+    20,
+    22
+   ],
+   "fini_quand": "Une commande client suivie de bout en bout : paiement, commande fournisseur, suivi, message au client.",
+   "etat": "attend_basile"
+  },
+  {
+   "n": 8,
+   "rang": 24,
+   "groupe": "basile",
+   "moteur": "Moteur 2 : la niche (contenus et produits)",
+   "titre": "Publier sur TikTok",
+   "il_faut": "Application TikTok « rAIme » soumise le 01/10/2026 (en examen) ; en attendant, clés Sandbox au coffre et envoi en brouillons par cockpit.raime.fr/tiktok (testé). Reste : la validation de TikTok, puis les clés Production au coffre.",
+   "fini_quand": "Une vidéo publiée sur TikTok par le cerveau, statistiques lues.",
+   "etat": "en_cours"
+  },
+  {
+   "n": 9,
+   "rang": 25,
+   "groupe": "basile",
+   "moteur": "Moteur 2 : la niche (contenus et produits)",
+   "titre": "Publier sur YouTube Shorts",
+   "il_faut": "Compte YouTube et autorisation de l'application.",
+   "fini_quand": "Un Short publié par le cerveau, statistiques lues.",
+   "etat": "attend_basile"
+  },
+  {
+   "n": 31,
+   "rang": 26,
+   "groupe": "seul",
+   "moteur": "Moteur 2 : la niche (contenus et produits)",
+   "titre": "Statistiques des plateformes",
+   "depend_de": [
+    6,
+    8,
+    9
+   ],
+   "fini_quand": "Vues, abonnés, clics, ventes et coût par vente relevés chaque jour en base.",
+   "etat": "a_faire"
+  },
+  {
+   "n": 35,
+   "rang": 27,
+   "groupe": "basile",
+   "moteur": "Moteur 3 : rAIme",
+   "titre": "Prospection des cabinets comptables avec une preuve avant le prix",
+   "il_faut": "La validation par Basile du texte et du pré-audit chiffré joint (métier des cabinets comptables).",
+   "fini_quand": "Chaque e-mail aux cabinets comptables porte un pré-audit chiffré de leur métier ; taux de réponse mesuré avant / après.",
+   "etat": "attend_basile"
+  },
+  {
+   "n": 1,
+   "rang": 28,
+   "groupe": "seul",
+   "moteur": "Jarvis",
+   "titre": "Réponse vocale plus rapide",
+   "fini_quand": "Jarvis commence à parler avant d'avoir fini d'écrire ; délai mesuré avant/après.",
+   "etat": "a_faire"
+  },
+  {
+   "n": 2,
+   "rang": 29,
+   "groupe": "seul",
+   "moteur": "Jarvis",
+   "titre": "Fil « ce qui se passe derrière »",
+   "fini_quand": "À la demande, Jarvis raconte l'activité réelle des agents des dernières heures, et un résumé du jour.",
+   "etat": "a_faire"
+  },
+  {
+   "n": 4,
+   "rang": 30,
+   "groupe": "seul",
+   "moteur": "Jarvis",
+   "titre": "Gestes à la voix",
+   "fini_quand": "« valide le produit 3 », « écarte », « publie », « lance la campagne » exécutés par du code, avec confirmation.",
+   "etat": "a_faire"
+  },
+  {
+   "n": 3,
+   "rang": 31,
+   "groupe": "seul",
+   "moteur": "Jarvis",
+   "titre": "Données pour l'interface 3D",
+   "fini_quand": "Produits, appels, vitrines, vidéos, campagnes, dépenses et feuille de route disponibles par l'API pour l'interface de Codex.",
+   "etat": "a_faire"
+  },
+  {
+   "n": 32,
+   "rang": 32,
+   "groupe": "seul",
+   "moteur": "Mesure",
+   "titre": "Apprentissage sur les résultats",
+   "fini_quand": "Chaque semaine, ce qui a marché (accroches, formats, heures) nourrit le plan suivant, par écrit.",
+   "etat": "a_faire"
+  },
+  {
+   "n": 33,
+   "rang": 33,
+   "groupe": "seul",
+   "moteur": "Mesure",
+   "titre": "Suivi des revenus : 2 000 € par mois sur chacune de TikTok, YouTube et Instagram",
+   "fini_quand": "Jarvis donne, chaque mois, la monétisation de TikTok, YouTube et Instagram face à 2 000 € chacune (6 000 € au total), et à part les ventes de produits et de rAIme.",
+   "etat": "a_faire"
+  },
+  {
+   "n": 34,
+   "rang": 34,
+   "groupe": "seul",
+   "moteur": "Mesure",
+   "titre": "Réglage du goût sur les résultats réels",
+   "fini_quand": "Les seuils du goût sont ajustés à partir des suites notées des jugements ; changement tracé.",
+   "etat": "a_faire"
+  },
+  {
+   "n": 39,
+   "rang": 35,
+   "groupe": "seul",
+   "moteur": "Mesure",
+   "titre": "L'économe compte toutes les dépenses réelles",
+   "fini_quand": "JEV, Higgsfield, Google et publicité comptés ; alerte avant tout dépassement.",
+   "etat": "a_faire"
+  },
+  {
+   "n": 36,
+   "rang": 36,
+   "groupe": "seul",
+   "moteur": "Fiabilité",
+   "titre": "Configuration d'Hermes posée à chaque livraison",
+   "fini_quand": "Une livraison qui change hermes/config.yaml la pose sur le serveur et redémarre Hermes quand il est libre.",
+   "etat": "a_faire"
+  },
+  {
+   "n": 37,
+   "rang": 37,
+   "groupe": "seul",
+   "moteur": "Fiabilité",
+   "titre": "Page de confidentialité : retirer Oracle Cloud",
+   "fini_quand": "raime.fr ne cite plus de prestataire retiré (Oracle : vérifié absent le 01/10/2026) et décrit juste l'hébergement (Hetzner en Finlande, pas en Allemagne).",
+   "etat": "en_cours"
+  },
+  {
+   "n": 38,
+   "rang": 38,
+   "groupe": "seul",
+   "moteur": "Fiabilité",
+   "titre": "Anciens ordres échoués (14 à 21)",
+   "fini_quand": "Chacun relancé ou clos avec son motif.",
+   "etat": "a_faire"
+  },
+  {
+   "n": 40,
+   "rang": 39,
+   "groupe": "seul",
+   "moteur": "Fiabilité",
+   "titre": "Suivi de chaque tâche de bout en bout",
+   "fini_quand": "Une demande se suit de Jarvis à l'agent, à l'outil et au résultat, avec son coût.",
+   "etat": "a_faire"
+  },
+  {
+   "n": 41,
+   "rang": 40,
+   "groupe": "seul",
+   "moteur": "Fiabilité",
+   "titre": "Un seul flux de réflexion",
+   "fini_quand": "Architecte, réflexif, penseur et prospective regroupés ; un seul flux d'idées jugées par le goût.",
+   "etat": "fait",
+   "preuve": "Livré le 08/10/2026 (agents/directeur.js, commits du 08/10, en service 06f1ed0) : architecte, superviseur, réflexif, prospective et penseur retirés de la boucle ; le Directeur passe une fois par jour (5 h-7 h), lit l'état réel des agents et la production en base, appelle le penseur et fait juger ses idées par le goût, écrit un seul bilan (table direction) lu par l'e-mail de 7 h 30, /api/etat, /api/direction et Jarvis. Premier bilan en production le 08/10 : 7 candidatures, 26 commerces, 89 adresses, 27 appels en 24 h. Banc : 357 tests, 0 échec."
+  },
+  {
+   "n": 5,
+   "rang": 41,
+   "groupe": "seul",
+   "moteur": "Accès",
+   "titre": "Chantiers GitHub ouverts par le cerveau",
+   "fini_quand": "Le jeton GITHUB_CHANTIER_TOKEN (au coffre, vérifié le 02/10/2026 : il voit le dépôt et ses tickets) est donné aux agents ; le cerveau ouvre un chantier, la routine d’ingénierie le traite en pull request.",
+   "etat": "a_faire"
+  },
+  {
+   "n": 27,
+   "rang": 42,
+   "groupe": "basile",
+   "moteur": "Contenu",
+   "titre": "Clip farming",
+   "il_faut": "Décidé le 01/10/2026 : comptes séparés (TikTok, Instagram, YouTube, Page) ; sources = uniquement les créateurs qui lancent une campagne de clipping officielle et rémunérée (Whop « Content Rewards » et équivalents), jamais leurs vidéos sans accord. Reste : les comptes du clip farming.",
+   "fini_quand": "D'une vidéo autorisée : moments forts repérés, clips verticaux sous-titrés, source et autorisation notées, en file de publication.",
+   "etat": "attend_basile"
+  },
+  {
+   "n": 43,
+   "groupe": "seul",
+   "moteur": "Jarvis",
+   "titre": "Raccord Jarvis → Claude (« demande à Claude de… »)",
+   "etat": "en_cours",
+   "fini_quand": "Une demande adressée à Claude dans Jarvis ouvre un ticket « chantier » ; la routine Ingénierie la traite à son passage (7 h 07, 19 h 07) ; le compte rendu jarvis/ordres/<n°>.md clôt l’ordre ; cinq par jour au plus. Code écrit le 02/10/2026 (jarvis/prestataire.cjs), banc et mise en service à faire.",
+   "rang": 43
+  },
+  {
+   "n": 44,
+   "groupe": "basile",
+   "moteur": "Moteur 3 : rAIme",
+   "titre": "Refonte de raime.fr d’après les références de Basile",
+   "etat": "attend_basile",
+   "il_faut": "Ses captures ou vidéos de référence (motion design clair, épuré). Trois pistes générées refusées le 02/10/2026 (espace 3D v1 et v2, jetons) : on part de ses références, hero d’abord, restriction Sam Crawford.",
+   "fini_quand": "Un hero validé par Basile, puis chaque section validée une à une ; mise en ligne sur raime.fr avec son accord ; version anglaise et mode jour repris.",
+   "rang": 44
+  },
+  {
+   "n": 45,
+   "groupe": "seul",
+   "moteur": "Moteur 3 : rAIme",
+   "titre": "Prospection des automatisations",
+   "etat": "en_cours",
+   "fini_quand": "Sur le modèle des vitrines : l’agent repère des entreprises dont une tâche répétitive se voit (prise de rendez-vous, devis, relances, réponses), prépare une démonstration et un brouillon d’e-mail ; Basile valide avant tout envoi.",
+   "rang": 45,
+   "avance": "08/10/2026 : e-mail des vitrines + pré-audit du métier (9 pré-audits en ligne, dont immobilier, recrutement, courtage) ; Fureteur réécrit (site prouvé par SIREN ou nom et ville, adresse lue sur le site, 94 sites prouvés et 87 adresses au 08/10) ; sourcing Sherlock recentré sur les niches à but lucratif ; entreprises sans site gardées (fiches vitrines « à appeler » ou « à compléter »). Reste : un moteur de recherche qui réponde au serveur pour conclure « sans site » (clé Google Places ou Brave, décision de Basile)."
+  },
+  {
+   "n": 46,
+   "groupe": "seul",
+   "moteur": "Moteur 1 : sites à 500 €",
+   "titre": "Juge visuel des sites (laid ou ancien, même récent techniquement)",
+   "etat": "a_faire",
+   "fini_quand": "Chaque site trouvé est capturé (navigateur d’Hermes) et noté par un modèle de vision gratuit ; un site récent mais laid ou illisible sur téléphone devient une cible, avec la raison écrite dans la fiche.",
+   "rang": 46
+  },
+  {
+   "n": 47,
+   "groupe": "seul",
+   "moteur": "Moteur 1 : sites à 500 €",
+   "titre": "Vitrines : toute la France, triée par région",
+   "etat": "a_faire",
+   "fini_quand": "La découverte passe des 5 départements de départ (74, GE, 01, 73, 38) à toute la France, région par région, en gardant l’ordre de priorité ; le tiroir VITRINES filtre par région.",
+   "rang": 47,
+   "avance": "08/10/2026 : découverte réparée (plusieurs serveurs Overpass, une requête par ville et par contour de commune, homonymes repris) : 49 commerces à Cluses, 114 à Carouge au premier essai."
+  },
+  {
+   "n": 48,
+   "groupe": "seul",
+   "moteur": "Moteur 3 : clip farming (KinGKlip)",
+   "titre": "Pôles de clip farming : 1 pôle = 1 niche = 3 chaînes (YouTube, TikTok, Instagram)",
+   "etat": "en_cours",
+   "fini_quand": "Chaque pôle a son réglage (niche, campagnes, 3 chaînes Buffer) et tourne avec le même programme, sans Claude ; le brief de chaque campagne est obligatoire (pas de brief = pas de découpe) ; clips de 18 à 20 s en moyenne ; pôle 1 = KinGKlip, en service le 02/10/2026 ; le pôle suivant s'ouvre quand le premier rapporte.",
+   "rang": 48
+  },
+  {
+   "n": 49,
+   "groupe": "seul",
+   "moteur": "Moteur 3 : clip farming (KinGKlip)",
+   "titre": "Superviseur des pôles : surveille, coupe ce qui n'avance pas, prévient Basile",
+   "etat": "en_cours",
+   "fini_quand": "Il suit découpes, publications Buffer, échecs et vues par pôle ; dépense plafonnée à 0 € tant que tout est gratuit ; il prévient Basile sur Jarvis et par e-mail (Resend), relance après le délai fixé ; SMS ou appel seulement avec l'accord de Basile (payant).",
+   "rang": 49,
+   "avance": "22/10 : le gouverneur des agents (6 h 25) et le Médecin du système (6 h 35) surveillent ; couper seul ce qui n'avance pas attend encore l'accord de Basile."
+  },
+  {
+   "n": 50,
+   "groupe": "seul",
+   "moteur": "Moteur 2 : la niche (contenus et produits)",
+   "titre": "Influenceur IA : étudier Pinokio + Wan2GP (« One2GP ») + modèle MiniMax cité par Basile",
+   "etat": "a_faire",
+   "fini_quand": "Nom exact, licence (usage commercial), coût et faisabilité sur le PC de Basile vérifiés ; une vidéo test de 15 s produite en local ; note Obsidian 16.",
+   "rang": 50
+  },
+  {
+   "n": 51,
+   "groupe": "seul",
+   "moteur": "Moteur 3 : clip farming (KinGKlip)",
+   "titre": "Chercheur de campagnes Whop + récupération des sources YouTube depuis le PC",
+   "etat": "en_cours",
+   "fini_quand": "Chaque jour, l'agent lit les campagnes Content Rewards dans le navigateur du serveur (Basile s'y connecte une fois à Whop), les note avec clippeur/selection.json et propose les 3 meilleures sur Jarvis ; une tâche planifiée du PC télécharge les vidéos YouTube attendues par le serveur et les dépose, sans Claude.",
+   "rang": 51
+  },
+  {
+   "n": 52,
+   "groupe": "seul",
+   "moteur": "Moteur 3 : clip farming (KinGKlip)",
+   "titre": "Agent de soumission Whop : chaque lien publié est soumis dans « Submit clip » de SA campagne en moins de 25 minutes",
+   "etat": "en_cours",
+   "fini_quand": "Dans le navigateur du serveur (Basile connecté une fois à Whop), l'agent soumet chaque lien publié (YouTube, TikTok, Instagram) à la seule campagne pour laquelle le clip a été fait, coche la case des conditions, vérifie l'acceptation ; captcha ou page changée = arrêt et e-mail à Basile, jamais de contournement. Accord de Basile du 02/10/2026. À construire après la recharge des crédits (mercredi).",
+   "rang": 52,
+   "avance": "22/10 : declarer.py soumet chaque lien à sa campagne (Content Rewards) ; 4 déclarés sur 24 du 19 au 22/10 : la fenêtre est de 30 min après la publication, l'agent plantait en lisant la réponse (corrigé, 1e8a468) ; restent les campagnes non rejointes et les liens « absents des déclarations »."
+  },
+  {
+   "n": 53,
+   "groupe": "seul",
+   "moteur": "Moteur 3 : clip farming (KinGKlip)",
+   "titre": "Agent Analytics : vues, rétention, likes, partages par clip (YouTube, TikTok, Instagram) pour savoir ce qui marche",
+   "etat": "en_cours",
+   "fini_quand": "Chaque jour, les statistiques de chaque clip publié (via Buffer, qui les fournit, puis les API des plateformes) sont rangées par campagne ; un retour hebdomadaire par e-mail dit quels sujets, durées, accroches et heures font le plus de vues payées ; le clippeur et la sélection des campagnes en tiennent compte. Demande de Basile du 02/10/2026.",
+   "rang": 53,
+   "avance": "22/10 : l'analyste des clips (clippeur/analyste.py, 6 h 10 UTC) range vues, rétention, niche et format par clip et fixe la répartition 70/30 ; reste le retour hebdomadaire par e-mail."
+  },
+  {
+   "n": 54,
+   "groupe": "seul",
+   "moteur": "Socle",
+   "titre": "Le veilleur GitHub se met à jour : il fouille GitHub, essaie et propose les outils et agents utiles",
+   "fini_quand": "Le veilleur (qui lit déjà GitHub, Hacker News, Hugging Face, arXiv) passe à l’acte : pour chaque outil ou agent open source utile à un point de cette feuille, il l’essaie sur le banc, écrit ce qu’il apporte, et ouvre un chantier ; l’installation se fait après accord. Demande de Basile du 07/10/2026.",
+   "etat": "en_cours",
+   "rang": 54,
+   "avance": "22/10 : le Médecin peut demander à Hermes de chercher un correctif connu sur GitHub (lecture seule) ; la compétence dédiée reste à écrire."
+  },
+  {
+   "n": 55,
+   "groupe": "basile",
+   "moteur": "Moteur 4 : agents de revenus",
+   "titre": "Agent bourse : analyse et portefeuille simulé d’abord",
+   "il_faut": "Demande de Basile du 07/10/2026 (elle remplace « aucun trading » du point 42 pour ce point). Claude ne passe jamais d’ordre ni ne déplace d’argent et ne donne pas de conseil en investissement : l’agent tourne d’abord en portefeuille simulé, mesuré ; le compte de courtage, l’argent et l’activation réelle restent à Basile.",
+   "fini_quand": "Un portefeuille simulé tenu chaque jour, avec ses règles écrites et sa performance comparée à un indice, visible dans Jarvis ; décision de Basile ensuite.",
+   "etat": "en_cours",
+   "rang": 55,
+   "avance": "08/10/2026 : réponses de Basile (tous les univers, plusieurs stratégies, 1 000 € fictifs). Agent agents/bourse.js : long terme diversifié, tendance (moyenne 200 jours), momentum grandes actions, et l'indice Monde en référence ; ETF UCITS (achetables en France), frais et change comptés ; simulation tenue chaque soir + rétro-test 12 mois ; /api/bourse et e-mail du matin. Reste : des semaines de mesure."
+  },
+  {
+   "n": 56,
+   "groupe": "basile",
+   "moteur": "Moteur 4 : agents de revenus",
+   "titre": "Agent trading (ajouté après l’agent bourse, même règle)",
+   "il_faut": "Même règle que le point 55 : simulation d’abord, aucun ordre réel passé par Claude ; le compte, l’argent et l’activation restent à Basile.",
+   "fini_quand": "Une stratégie simulée sur données réelles, avec frais et pertes comptés, mesurée plusieurs semaines ; décision de Basile ensuite.",
+   "etat": "en_cours",
+   "rang": 56,
+   "avance": "22/10 : agents à la seconde et à la minute ARRÊTÉS (−99,8 % et −94 % : les frais mangeaient tout), sur la proposition du gouverneur ; valeur suivie, données gardées."
+  },
+  {
+   "n": 57,
+   "groupe": "seul",
+   "moteur": "Contenu",
+   "titre": "Comptes Buffer : réparer le suivi en boucle et brancher les comptes",
+   "fini_quand": "Le suivi Buffer ne boucle plus en erreurs (« trop de demandes », « publication introuvable ») ; chaque compte branché publie depuis la file, et ses statistiques remontent au point 53. Demande de Basile du 07/10/2026.",
+   "etat": "a_faire",
+   "rang": 57
+  },
+  {
+   "n": 58,
+   "groupe": "basile",
+   "moteur": "Direction",
+   "titre": "Une seule entité : le système agentique rAIme, avec sa direction",
+   "il_faut": "Demande de Basile du 07/10/2026 : tous les agents (prospection, candidatures, vitrines, revenus, bourse, trading, clipping, Buffer, Instagram, YouTube, dropshipping, veille GitHub) forment une seule entité qui tourne seule ; chaque agent peut créer ses sous-agents pour réussir. Outils à télécharger permis (open source vérifié).",
+   "fini_quand": "Le Directeur (point 41) répartit le travail entre les agents, chacun rend compte au même endroit, et Basile ne reçoit que les décisions qui lui reviennent.",
+   "etat": "attend_basile",
+   "rang": 58,
+   "avance": "08/10/2026 : le Directeur existe (point 41) : un seul bilan, les alertes, et un premier sous-agent (diagnostic confié à Hermes, lecture seule, un par jour). Reste : chaque nouvel agent (revenus, bourse, trading, clipping, dropshipping, veille GitHub) rend compte au Directeur à sa création."
+  },
+  {
+   "n": 59,
+   "rang": 59,
+   "groupe": "seul",
+   "moteur": "Direction",
+   "titre": "Agenda des relances : ce que Basile doit rappeler revient seul le jour J",
+   "fini_quand": "Une page /agenda (en retard, aujourd'hui, demain, semaine, plus tard ; semaine en glisser-déposer), le résumé chiffré et l'alerte dans le cockpit, les relances du jour dans l'e-mail de 7 h 30, le report par boutons, glisser-déposer ou voix, les états fixes après un appel, l'historique de chaque contact. Demande de Basile du 07/10/2026, réponses du 08/10.",
+   "etat": "fait",
+   "preuve": "Livré le 08/10/2026 (commits d8d9374, 041138b, en service 5bdeea7) : GET /agenda 200 et /api/agenda/jour en production, le « plus tard » de Fillon-Billaud repris pour le 10/10 ; banc 341 tests sur 342 (1 sauté), 0 échec."
+  },
+  {
+   "n": 60,
+   "groupe": "seul",
+   "moteur": "Fiabilité",
+   "titre": "Médecin du système : santé quotidienne, réparations, correctifs confiés à Hermes",
+   "fini_quand": "Chaque matin il relève agents, erreurs, pertes d'argent et machine ; il répare seul ce qui est sûr ; chaque nouvelle panne devient un correctif testé et LIVRÉ automatiquement (banc vert + Gardien), sans geste de Basile.",
+   "etat": "en_cours",
+   "avance": "22/10 : relevé et ordres en service (tools/medecin.py, 6 h 35 UTC) ; reste la livraison automatique des correctifs.",
+   "rang": 60
+  },
+  {
+   "n": 61,
+   "groupe": "seul",
+   "moteur": "Direction",
+   "titre": "Boucle des objectifs : chaque objectif manqué déclenche une action",
+   "fini_quand": "Un objectif du gouverneur du matin manqué (ex. clips déclarés 1 sur 8, Hermes à 16 M jetons) donne le même jour une cause, une action appliquée et sa mesure le lendemain ; sinon il remonte à Basile avec la décision à prendre.",
+   "etat": "a_faire",
+   "rang": 61
+  },
+  {
+   "n": 62,
+   "groupe": "seul",
+   "moteur": "Direction",
+   "titre": "Une seule source d'information, lue par le cockpit, Jarvis et Hermes",
+   "fini_quand": "Un relevé daté unique (en direct quand c'est possible) ; plus aucun état d'agent écrit à la main qui vieillit ; Jarvis et Hermes répondent depuis la même source que le cockpit.",
+   "etat": "a_faire",
+   "rang": 62
+  },
+  {
+   "n": 63,
+   "groupe": "basile",
+   "moteur": "Accès",
+   "titre": "Hermes sur DeepSeek (modèle deepseek-flash, sans revendeur)",
+   "il_faut": "La clé API DeepSeek déposée par Basile dans le coffre du cockpit, et un plafond mensuel.",
+   "fini_quand": "Hermes répond et exécute ses ordres sur deepseek-flash ; coût réel noté par l'économe ; repli gratuit gardé.",
+   "etat": "attend_basile",
+   "rang": 63
+  },
+  {
+   "n": 64,
+   "groupe": "seul",
+   "moteur": "Candidatures",
+   "titre": "Postuler en un clic partout où c'est possible (300 candidatures)",
+   "fini_quand": "Jobup/jobs.ch, formulaires d'employeurs sans compte, Michael Page et LinkedIn simplifié envoient seuls ce que Basile valide ; chaque arrêt dit sa raison avec sa capture ; 300 candidatures envoyées au total.",
+   "etat": "en_cours",
+   "avance": "22/10 : formulaires sans compte en service, LinkedIn et Michael Page écrits (connexion de Basile), HelloWork supprimé, 29 envoyées.",
+   "rang": 64
+  },
+  {
+   "n": 65,
+   "groupe": "seul",
+   "moteur": "Moteur 2 : la niche (contenus et produits)",
+   "titre": "Dropshipping sans stock : un produit tendance, une vidéo Higgsfield, TikTok Shop",
+   "fini_quand": "Un produit choisi sur les tendances TikTok (marge et conformité vérifiées), une vidéo produite avec Higgsfield, publiée avec son lien d'affiliation TikTok Shop ou sa page de vente ; premières ventes mesurées.",
+   "depend_de": [
+    24
+   ],
+   "etat": "a_faire",
+   "rang": 65
+  },
+  {
+   "n": 66,
+   "groupe": "seul",
+   "moteur": "Moteur 3 : clip farming (KinGKlip)",
+   "titre": "VOD Kick téléchargeables (streamers)",
+   "fini_quand": "yt-dlp télécharge les VOD Kick (module d'usurpation de navigateur installé) ; un clip Kick publié.",
+   "etat": "a_faire",
+   "avance": "22/10 : trouvé par le Médecin (« impersonation » absente dans yt-dlp).",
+   "rang": 66
+  }
+ ]
 }
