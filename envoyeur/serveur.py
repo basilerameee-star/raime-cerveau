@@ -27,6 +27,7 @@ from pathlib import Path
 
 from playwright.sync_api import sync_playwright
 
+import formulaire
 import michaelpage
 from jobcloud import AToi, postuler
 
@@ -120,7 +121,14 @@ def michael_page(page, f, dos, p, envoyer=True):
 
 # Un canal = une façon de postuler sans Basile. Jarvis ne propose à la validation que les offres des canaux de sa liste
 # CANAUX_AUTO (jarvis/candidatures.cjs) : « michaelpage » n'y entre qu'après un essai à blanc validé par Basile (08/10/2026).
-POSTULER = {"jobcloud": jobcloud, "michaelpage": michael_page}
+def formulaire_employeur(page, f, dos, p, envoyer=True):
+    return formulaire.postuler(page, f, dos, p, envoyer=envoyer, journal=dire)
+
+
+POSTULER = {"jobcloud": jobcloud, "michaelpage": michael_page, "formulaire": formulaire_employeur}
+# 22/10/2026 : jobup / jobs.ch sont postulés par l'Envoyeur du PC de Basile (ses connexions marchent) ; celui du serveur prend
+# les autres canaux. Jamais deux envoyeurs sur le même canal : une candidature ne part jamais deux fois.
+CANAUX_ICI = [c.strip() for c in os.environ.get("CANAUX_SERVEUR", "michaelpage,formulaire").split(",") if c.strip()]
 
 
 def canal_de(o):
@@ -150,7 +158,7 @@ def passage():
     except Exception as e:
         dire(f"Jarvis injoignable : {e}")
         return
-    auto = [f for f in file if f.get("canal", "jobcloud") in POSTULER][:PAR_PASSAGE]
+    auto = [f for f in file if f.get("canal", "jobcloud") in POSTULER and f.get("canal", "jobcloud") in CANAUX_ICI][:PAR_PASSAGE]
     if not auto:
         return
     p = profil()
@@ -321,9 +329,12 @@ def essai(oid="", canal=""):
         return
     f = None
     try:
-        f = next((x for x in jarvis("/envoyeur/file") if x.get("id") == oid), None)
-    except Exception as e:
-        dire(f"essai : file de Jarvis illisible ({str(e)[:120]}), offre cherchée dans offres.json")
+        f = jarvis("/envoyeur/offre/" + oid)           # 22/10/2026 : n'importe quelle offre, validée ou non
+    except Exception:
+        try:
+            f = next((x for x in jarvis("/envoyeur/file") if x.get("id") == oid), None)
+        except Exception as e:
+            dire(f"essai : file de Jarvis illisible ({str(e)[:120]}), offre cherchée dans offres.json")
     if f is None:
         base = json.loads((DONNEES / "offres.json").read_text(encoding="utf-8"))
         o = base.get(oid) or next((x for x in base.values() if x.get("id") == oid), None)
@@ -332,7 +343,7 @@ def essai(oid="", canal=""):
             return
         f = {"id": o["id"], "source": o.get("source", ""), "lien": o.get("lien", ""), "titre": o.get("titre", ""),
              "entreprise": o.get("entreprise", ""), "pays": o.get("pays", "CH"), "methode": o.get("methode", ""),
-             "cv": None, "langue": None, "lettre": ""}
+             "url_externe": o.get("url_externe", ""), "cv": None, "langue": None, "lettre": ""}
     canal = canal or f.get("canal") or canal_de(f)
     if canal not in POSTULER:
         dire(f"essai : pas de canal automatique pour {oid} ({f.get('source')})")

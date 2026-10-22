@@ -29,8 +29,13 @@ function canal(o) {
   // une annonce Michael Page se postule sur michaelpage.ch, même si son texte cite une adresse e-mail
   if (o.source === 'Michael Page') return 'michaelpage';
   if (adresseCandidature(o)) return 'email';
+  // 22/10/2026 : le formulaire du site de l'employeur, quand il ne demande pas de compte (envoyeur/formulaire.py)
+  if (/^https?:\/\//.test(o.url_externe || '') && !AVEC_COMPTE.test(o.url_externe)) return 'formulaire';
+  if (o.source === 'LinkedIn') return 'linkedin';
   return 'manuel';
 }
+// Les outils de recrutement qui exigent un compte candidat : jamais automatisés (même liste que envoyeur/formulaire.py)
+const AVEC_COMPTE = /myworkdayjobs|workday\.com|successfactors|csod\.com|dayforcehcm|taleo\.net|icims\.com|oraclecloud|brassring|kenexa|ultipro|adp\.com/i;
 
 // Le canal « candidature par e-mail » (07/10/2026) : l'annonce dit d'envoyer le dossier à une adresse. On ne retient que
 // une vraie consigne de candidature (verbe d'envoi + dossier/CV + adresse dans la même phrase), jamais une adresse de
@@ -275,13 +280,19 @@ async function importer(fiches) {
   return { ok: true, n };
 }
 
-async function file(max = 300) {
-  const l = await lire("SELECT id, offre, fiche FROM candidatures WHERE statut = 'valide' ORDER BY maj LIMIT $1", [max]);
-  return l.filter((x) => auto(x.offre)).map((x) => ({ id: x.id, source: x.offre.source, canal: canal(x.offre),
+const pourEnvoyeur = (x) => ({ id: x.id, source: x.offre.source, canal: canal(x.offre),
     methode: x.offre.methode || '', url_externe: x.offre.url_externe || '',
     ...(canal(x.offre) === 'email' ? { email: adresseCandidature(x.offre).email } : {}),
     titre: x.offre.titre, entreprise: x.offre.entreprise, lien: x.offre.lien, pays: x.offre.pays || 'CH',
-    cv: (x.fiche || {}).cv, langue: (x.fiche || {}).langue, lettre: (x.fiche || {}).lettre }));
+    cv: (x.fiche || {}).cv, langue: (x.fiche || {}).langue, lettre: (x.fiche || {}).lettre });
+async function file(max = 300) {
+  const l = await lire("SELECT id, offre, fiche FROM candidatures WHERE statut = 'valide' ORDER BY maj LIMIT $1", [max]);
+  return l.filter((x) => auto(x.offre)).map(pourEnvoyeur);
+}
+// Une offre précise, quel que soit son statut, pour l'essai à blanc d'un canal (22/10/2026) : rien n'est envoyé
+async function uneOffre(id) {
+  const [x] = await lire('SELECT id, offre, fiche FROM candidatures WHERE id = $1', [String(id)]);
+  return x ? pourEnvoyeur(x) : null;
 }
 
 // Le compte rendu de l'Envoyeur. Envoyée (ou déjà envoyée) : c'est fini. Annonce retirée : rangée. Question dont la réponse
@@ -335,6 +346,8 @@ async function router(req, res, { url, m, envoyer, json, autorise, fichierInterf
     if (m === 'GET' && url === '/envoyeur/file') { envoyer(res, 200, await file()); return true; }
     if (m === 'POST' && url === '/envoyeur/resultat') { envoyer(res, 200, await resultat(await json(req, 20000))); return true; }
     if (m === 'GET' && url === '/envoyeur/ping') { envoyer(res, 200, { ok: true }); return true; }
+    const u = m === 'GET' && url.match(/^\/envoyeur\/offre\/([\w.-]{1,80})$/);
+    if (u) { const o = await uneOffre(u[1]); envoyer(res, o ? 200 : 404, o || { ok: false }); return true; }
     envoyer(res, 404, { ok: false }); return true;
   }
   return false;
