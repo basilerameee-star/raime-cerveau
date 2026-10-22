@@ -185,12 +185,18 @@ def choisir(mots, langue, n, mini, maxi, consignes, cle):
         prompt += ("\n\nMOMENTS FORTS DÉJÀ REPÉRÉS : OBLIGATOIRE, fais UN clip autour de CHACUN de ces moments (si deux se chevauchent, garde le mieux noté), "
                    "avec juste son contexte et sa réaction ; aucun autre passage sauf s'il est aussi fort :\n" + "\n".join("- %.0f s, note %s : %s" % (float(m.get("t") or 0), m.get("note"), m.get("citation", ""))
                                                    for m in moments))
-    choix = gemini(prompt, cle)
     bons = []
-    for c in choix if isinstance(choix, list) else []:
-        d, f = float(c.get("debut", 0)), float(c.get("fin", 0))
-        if mini - 3 <= f - d <= maxi + 5:
-            bons.append(dict(c, debut=d, fin=f))
+    # 22/10/2026 : une réponse vide de Gemini (Jay Guapo, 66 min) donnait 0 clip ; rejouée, 7 moments notés 8-9 : un 2e essai
+    for _ in range(2):
+        choix = gemini(prompt, cle)
+        for c in choix if isinstance(choix, list) else []:
+            if not isinstance(c, dict):
+                continue
+            d, f = float(c.get("debut", 0)), float(c.get("fin", 0))
+            if mini - 3 <= f - d <= maxi + 5:
+                bons.append(dict(c, debut=d, fin=f))
+        if bons:
+            break
     # la qualité avant le volume (décision de Basile, 02/10/2026) : un clip sous 3 000 vues ne paie rien ; on ne garde que
     # les passages notés 7/10 ou plus, les meilleurs d'abord (s'il n'y en a aucun, les 3 meilleurs restent)
     def note(c):

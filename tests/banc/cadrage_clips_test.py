@@ -168,3 +168,21 @@ VRAI = C.visages
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ChoixVide(unittest.TestCase):
+    # 22/10/2026 : Jay Guapo (Kick, 66 min) a donné 0 clip : Gemini avait rendu une liste vide ; rejouée, 7 moments notés 8-9
+    def test_une_reponse_vide_est_redemandee_une_fois(self):
+        mots = [{"d": float(i), "f": i + .9, "m": "word."} for i in range(200)]
+        reponses = [Exception("saturé"), [], [{"debut": 10, "fin": 45, "note": 8}]]
+
+        def faux(prompt, cle):
+            r = reponses.pop(0)
+            if isinstance(r, Exception):
+                raise r
+            return r
+        vrai, C.gemini = C.gemini, faux
+        try:
+            self.assertEqual([(c["debut"], c["fin"]) for c in C.choisir(mots, "en", 5, 30, 60, "", "cle")], [(10.0, 45.0)])
+        finally:
+            C.gemini = vrai
