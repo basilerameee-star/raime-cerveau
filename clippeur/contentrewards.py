@@ -18,7 +18,9 @@ import urllib.request
 API = "https://contentrewards.com/api/campaign/campaigns"
 FICHE = "https://contentrewards.com/c/campaigns/"          # la page publique : bouton « Rejoindre la campagne »
 AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0 Safari/537.36"
-NOS_PLATEFORMES = ("instagram", "youtube")                  # KinGKlip ; TikTok en pause (compte banni le 04/10/2026)
+NOS_PLATEFORMES = ("instagram", "youtube")                  # la sélection et la réserve se jugent sur ces deux-là
+# 22/10/2026 : nouveau compte TikTok KinGKlip relié (Buffer et Content Rewards) ; une campagne qui paie aussi TikTok y publie
+AUSSI = ("tiktok",)
 PRIX_MINI = 1.0                                             # 1 $ les 1 000 vues au moins (grille du 02/10/2026)
 PRIX_ABERRANT = 20.0
 # 22/10/2026 : un clip n'est payé qu'au-dessus du minimum de la campagne ; les nôtres font 150 vues de médiane (record
@@ -121,7 +123,8 @@ def evaluer(c, d=None):
     candidature = bool(c.get("requiresApplication") or d.get("requiresApplication")
                        or ((d.get("configuration") or {}).get("requirement") or {}).get("preApproval"))
     e = {"cr_id": c.get("id"), "nom": c.get("name", "").strip(), "marque": c.get("organizationName") or (d.get("organization") or {}).get("name", ""),
-         "lien": FICHE + str(c.get("id")), "plateformes": sorted(nos), "ig": t.get("instagram", (0,))[0], "yt": t.get("youtube", (0,))[0],
+         "lien": FICHE + str(c.get("id")),
+         "plateformes": sorted(list(nos) + ([p for p in AUSSI if p in t and t[p][0] >= PRIX_MINI] if nos else [])), "ig": t.get("instagram", (0,))[0], "yt": t.get("youtube", (0,))[0],
          "restant": round(restant), "total": round(total), "createurs": m.get("creatorCount") or 0, "approuves": approuves,
          "candidature": candidature, "dedies": bool(COMPTES_DEDIES.search(texte)), "public": bool(PUBLIC_EXIGE.search(texte)),
          "sources": liens_video(texte), "exclusion": "", "note": 0}

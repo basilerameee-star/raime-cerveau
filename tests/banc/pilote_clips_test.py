@@ -62,7 +62,7 @@ class Grille(unittest.TestCase):
     def test_hardscope_retenue_avec_le_lien_pour_rejoindre(self):
         e = cr.evaluer(campagne())
         self.assertEqual(e["exclusion"], "")
-        self.assertEqual(e["plateformes"], ["instagram", "youtube"])
+        self.assertEqual(e["plateformes"], ["instagram", "tiktok", "youtube"])       # TikTok de nouveau relié (22/10/2026)
         self.assertEqual(e["restant"], 3611)
         self.assertEqual(e["lien"], "https://contentrewards.com/c/campaigns/58795e60-259f-4f9d-932c-87cf1aac7c8d")
         self.assertGreater(e["note"], 60)
@@ -76,6 +76,8 @@ class Grille(unittest.TestCase):
     def test_plateformes_non_payees(self):
         seul_tiktok = [{"platform": "tiktok", "rateCents": 300, "payoutType": "cpm"}, {"platform": "youtube", "rateCents": 50, "payoutType": "cpm"}]
         self.assertIn("ni Instagram ni YouTube", cr.evaluer(campagne(payouts=seul_tiktok))["exclusion"])
+        # 22/10/2026 : nouveau compte TikTok relié ; une campagne qui paie aussi TikTok y publie (la sélection reste IG/YT)
+        self.assertEqual(cr.evaluer(campagne())["plateformes"], ["instagram", "tiktok", "youtube"])
         # la fiche l'emporte sur la liste : YouTube retiré du modèle de paiement
         fiche = {"configuration": {"payoutModel": [{"platform": "instagram", "rate": 100, "minPayout": 100, "maxPayout": 35000}],
                                    "content": {"contentTypes": [{"id": "clipping"}]}}}
