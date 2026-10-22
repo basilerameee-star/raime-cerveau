@@ -331,6 +331,16 @@ def decider(champs, p, f, fait=None, garder=True):
                     if str(code) != actuel:
                         agir(c, "choisir", str(code), "indicatif : " + next(t for v, t in c["options"] if v == code))
                     continue
+            # une liste Oui / Non est une question Oui / Non (Lidl, 22/10/2026)
+            textes = {simple(t) for v, t in c.get("options") or [] if str(v) not in ("", "_none") and simple(t) not in VIDES}
+            if textes and textes <= OUI | NON and not (cle and valeur(cle, p, libelle)):
+                rep = repondre(libelle)
+                if rep is None:
+                    raise AToi("question", libelle[:200])
+                cible = next(v for v, t in c["options"] if simple(t) in (OUI if rep == "Oui" else NON))
+                if str(cible) != actuel:
+                    agir(c, "choisir", str(cible), f"{libelle[:60]} : {rep}")
+                continue
             val = valeur(cle, p, libelle) if cle and cle != "lettre" else None
             choix = choisir_option(c.get("options") or [], val, cle) if val else None
             if choix is not None:

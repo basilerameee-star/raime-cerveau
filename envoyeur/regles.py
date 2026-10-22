@@ -9,6 +9,8 @@ import re
 # Faits connus (profil confirmé par Basile) — le premier motif qui correspond gagne.
 FAITS = [
     (r"\bCFC\b|certificat f[ée]d[ée]ral", "Non"),
+    # 22/10/2026 (Lidl) : personne n'a recommandé Basile ; le « Oui » par défaut y aurait été faux
+    (r"recommand[ée]s?.{0,80}(collaborat|employ|salari|personnel)|referred by|empfohlen", "Non"),
     (r"nationalit[ée] suisse|citoyen suisse|passeport suisse", "Non"),
     (r"allemand|german|deutsch|suisse[- ]allemand|schwiizer|italien|italian", "Non"),
     (r"permis de conduire|v[ée]hicule|voiture", "Oui"),

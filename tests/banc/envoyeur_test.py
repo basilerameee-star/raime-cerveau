@@ -165,3 +165,14 @@ class Confirmation(unittest.TestCase):
                   "Merci pour votre candidature"):
             self.assertTrue(formulaire.CONFIRMATION.search(t), t)
         self.assertFalse(formulaire.CONFIRMATION.search("Veuillez remplir ce champ"))
+
+
+class ListeOuiNon(unittest.TestCase):
+    # 22/10/2026 (Lidl) : « Avons-nous été recommandés en tant qu'employeur par un(e) collaborateur/-trice ? » en liste Oui/Non
+    def test_recommandation_non_et_liste_oui_non(self):
+        q = "Recommandation (Avons-nous été recommandés en tant qu'employeur par un(e) collaborateur/-trice Lidl ?)"
+        self.assertEqual(regles.repondre(q), "Non")
+        c = {"n": 0, "tag": "select", "type": "select", "name": "reco", "id": "", "label": q, "question": "", "placeholder": "",
+             "required": True, "value": "", "checked": False, "maxlength": 0, "options": [["", "--"], ["1", "Oui"], ["0", "Non"]]}
+        actions, _ = mp.decider([c], {}, {}, set())
+        self.assertEqual([(a["n"], a["valeur"]) for a in actions], [(0, "0")])
