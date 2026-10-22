@@ -222,6 +222,17 @@ class Relais(unittest.TestCase):
         self.assertEqual(ordre[:3], ["A", "B", "A"])
         self.assertTrue(all(x != y for x, y in zip(ordre, ordre[1:4])), ordre)
         self.assertEqual(sorted(ordre), sorted("AAAAABBC"))
+
+    def test_payees_le_plus_tot_d_abord(self):
+        # 22/10/2026 : un créneau donné à un clip payé dès 1 000 vues peut rapporter, à un clip payé dès 4 000 jamais encore
+        lignes = [{"id": i, "campagne": c} for i, c in enumerate("AAAABBC", 1)]
+        seuils = {"A": 4000, "B": 1000, "C": 2000}
+        ordre = [b["campagne"] for b in self.buffer.prochains(lignes, None, 7, seuils=seuils)]
+        self.assertEqual(ordre[:4], ["B", "C", "B", "A"])
+        self.assertEqual(sorted(ordre), sorted("AAAABBC"), "rien n'est perdu")
+        inconnue = [b["campagne"] for b in self.buffer.prochains([{"id": 1, "campagne": "X"}, {"id": 2, "campagne": "A"}], None, 2,
+                                                                seuils=seuils)]
+        self.assertEqual(inconnue, ["X", "A"], "seuil inconnu : rang moyen, devant les campagnes à 4 000 vues")
         # la dernière publiée sur la chaîne était de A : B passe d'abord
         self.assertEqual(self.buffer.prochains(lignes, "A", 1)[0]["campagne"], "B")
         self.assertEqual([b["campagne"] for b in self.buffer.prochains(lignes[:2], "A", 2)], ["A", "A"])

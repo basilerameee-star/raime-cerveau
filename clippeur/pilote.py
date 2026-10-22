@@ -255,6 +255,15 @@ def mesurer_niche(sql, actives):
     return out
 
 
+def ecrire_seuils(notes, chemin=None):
+    """{campagne: vues à partir desquelles un clip est payé} pour le relais Buffer (buffer.prochains, 22/10/2026) : les
+    clips des campagnes payées le plus tôt passent d'abord."""
+    seuils = {slug(e["nom"]): e["vues_min"] for e in notes if e.get("vues_min") is not None}
+    with open(chemin or os.path.join(ICI, "seuils.json"), "w", encoding="utf-8") as f:
+        json.dump(seuils, f, ensure_ascii=False)
+    return seuils
+
+
 def ecrire_reserve(sql, reserve):
     """L'avance de chaque chaîne, en jours, pour le rapport du matin et le cockpit (table clips_reserve, 15/10/2026)."""
     sql("""CREATE TABLE IF NOT EXISTS clips_reserve (plateforme text PRIMARY KEY, pret int NOT NULL, attendu int NOT NULL,
@@ -362,6 +371,8 @@ def main():
             if d.get("cr_id") and d["cr_id"] not in vivantes:
                 sql("""UPDATE clips_buffer SET etat = 'campagne_close', message = 'campagne fermée ou budget épuisé', maj = now()
                        WHERE campagne = :'p0' AND etat = 'a_faire';""", d["campagne"])
+    if notes:
+        ecrire_seuils(notes)
     reserve = mesurer(sql, actives)
     try:
         rejointes = rejoindre_et_lire(notes, reserve, prevenir, sql=sql)
