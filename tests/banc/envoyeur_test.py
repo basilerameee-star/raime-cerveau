@@ -58,6 +58,13 @@ class PauseOubliee(unittest.TestCase):
     def test_seule_une_pause_de_geste_vieille_de_2_h_est_levee(self):
         import tempfile
         import time
+        try:
+            import playwright.sync_api  # noqa: F401
+        except ImportError:                                # la CI n'a pas Playwright : serveur.py n'en a pas besoin ici
+            import types
+            for nom in ("playwright", "playwright.sync_api"):
+                sys.modules[nom] = types.ModuleType(nom)
+            sys.modules["playwright.sync_api"].sync_playwright = None
         import serveur
         with tempfile.TemporaryDirectory() as d:
             p = Path(d) / "pause"
