@@ -425,7 +425,8 @@ function factures() {
       <ul class="histo">${f.lignes.map(([d, t]) => `<li><time>${esc(d)}</time><span>${esc(t)}</span></li>`).join('')}</ul>
       <div class="bloc"><span class="etiq">Prochaine échéance</span><div style="font-weight:650">${esc(f.prochaineTxt)}</div></div>
       <p class="date-txt" style="margin:0">Relevé du ${jj(f.date)}${f.dernierMail ? ' ; e-mails reçus depuis : lus en direct' : ''}.</p>
-      ${f.lien ? `<a class="btn noir petit" style="align-self:flex-start" href="${esc(f.lien.url)}" target="_blank" rel="noopener">${esc(f.lien.texte)}</a>` : ''}</div>`).join('')}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">${f.lien && f.etat !== 'ok' ? `<a class="btn noir petit" href="${esc(f.lien.url)}" target="_blank" rel="noopener">${esc(f.lien.texte)}</a>` : ''}
+        ${f.etat !== 'ok' ? `<button class="btn petit" type="button" data-reglee="${esc(f.cle)}">C’est réglé</button>` : ''}</div></div>`).join('')}</div>
     ${creditsHTML()}
     <div class="carte"><div class="carte-tete"><h2>Les modèles d’IA et ce qu’ils coûtent</h2><span class="note plus">${esc(D.modelesSource)}</span></div><div class="defile"><table class="tableau"><thead><tr><th>Modèle</th><th>Chez</th><th>Prix</th><th class="droite">Jetons 7 j</th><th class="droite">Jetons 30 j</th><th class="droite">Coût 30 j</th><th>Qui l’utilise</th></tr></thead><tbody>
       ${D.modelesIA.map((m) => `<tr><td><b>${esc(m.nom)}</b></td><td style="color:var(--doux)">${esc(m.fournisseur)}</td><td><span class="puce${/^Gratuit/.test(m.prix) ? ' ok' : /coupé/.test(m.prix) ? '' : ' alerte'}">${esc(m.prix)}</span></td><td class="droite num">${m.j7 == null ? '—' : kJ(m.j7)}</td><td class="droite num">${m.j30 == null ? '—' : kJ(m.j30)}</td><td class="droite num">${esc(m.cout)}</td><td style="color:var(--doux);font-size:12.5px">${esc(m.agents)}</td></tr>`).join('')}</tbody></table></div>
@@ -833,6 +834,11 @@ function brancher() {
   $$('[data-jour]', v).forEach((c) => { c.addEventListener('dragover', (e) => { e.preventDefault(); c.style.outline = '2px dashed var(--orange)'; }); c.addEventListener('dragleave', () => { c.style.outline = ''; });
     c.addEventListener('drop', async (e) => { e.preventDefault(); c.style.outline = ''; const r = RAPPELS.find((x) => x.id === Number(e.dataTransfer.getData('text/plain'))); if (!r || r.jour === c.dataset.jour) return;
       try { await poster('/api/agenda/' + r.id, { action: 'reporter', echeance: c.dataset.jour }); toast(`${r.nom} reporté ${quand(c.dataset.jour)}`); await charger(false); } catch (err) { toast(`${r.nom} : ${err.message}`); } }); });
+  // « C'est réglé » : ta parole, datée, quand aucun e-mail ne confirme le paiement (Hetzner n'en envoie pas)
+  $$('[data-reglee]', v).forEach((b) => b.onclick = async () => {
+    const f = D.factures.find((x) => x.cle === b.dataset.reglee);
+    try { await poster('/api/v6/facture/' + b.dataset.reglee, {}, b); toast(`${f ? f.nom : 'Facture'} : notée réglée`); await charger(false); } catch (e) { toast(e.message); }
+  });
   $$('[data-segc]', v).forEach((b) => b.onclick = () => { segC = b.dataset.segc; rendre(); });
   $$('[data-statc]', v).forEach((b) => b.onclick = () => { statC = b.dataset.statc; rendre(); });
   const cc = $('#cherche-c'); if (cc) cc.oninput = () => { chercheC = cc.value; const p = cc.selectionStart; rendre(); const n = $('#cherche-c'); n.focus(); n.setSelectionRange(p, p); };

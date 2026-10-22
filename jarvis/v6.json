@@ -2302,6 +2302,10 @@
     [
      "08/10",
      "Rappel de paiement reçu (PDF joint à l’e-mail)"
+    ],
+    [
+     "14/10",
+     "Dernier avertissement : à régler avant le 16/10"
     ]
    ],
    "prochaine": null,
@@ -2312,9 +2316,13 @@
    },
    "courriels": {
     "de": "hetzner",
-    "sujets": "(payment|invoice|rechnung|zahlung|mahnung)"
+    "sujets": "(payment|invoice|rechnung|zahlung|mahnung|credit card|charge)",
+    "echec": "credit card charge failed|payment reminder|payment warning|mahnung|zahlungserinnerung",
+    "paye": "payment received|zahlungseingang|zahlungsbestätigung|payment confirmation",
+    "neutre": "^hetzner online gmbh - invoice"
    },
-   "montant_eur": 14.98
+   "montant_eur": 14.98,
+   "prochaineTxtPaye": "Prochaine facture attendue fin octobre (mensuelle, la précédente le 27/09)"
   },
   {
    "cle": "claude",
@@ -2338,7 +2346,9 @@
    "prochaineTxt": "Prochain prélèvement : jeudi 29 octobre, 21,60 €",
    "courriels": {
     "de": "(anthropic|claude)",
-    "sujets": "(receipt|reçu|payment|paiement|invoice|facture)"
+    "sujets": "(receipt|reçu|payment|paiement|invoice|facture|subscription|unsuccessful|paused)",
+    "echec": "unsuccessful|paused|failed|échec",
+    "paye": "^your receipt from anthropic|receipt|reçu|paid"
    },
    "montant_eur": 21.6
   },
@@ -2348,26 +2358,32 @@
    "quoi": "contact@raime.fr",
    "montant": "≈ 9 €",
    "rythme": "chaque mois",
-   "etat": "alerte",
-   "etatTxt": "Date inconnue",
+   "etat": "panne",
+   "etatTxt": "Paiement échoué le 01/10, suite inconnue",
    "lignes": [
     [
-     "—",
-     "Aucune facture dans basilerameee@gmail.com"
+     "01/10",
+     "Échec du paiement Google Workspace Business Starter (3 e-mails, mis à la corbeille) : suspension annoncée au 06/10 si rien n’est réglé"
     ],
     [
      "—",
-     "Les factures se lisent dans la console d’administration Google, rubrique Facturation"
+     "Aucun e-mail depuis : ni confirmation, ni suspension"
     ],
     [
      "—",
-     "Carte à remplacer : en attente de ta décision"
+     "La date de facturation se lit dans la console d’administration Google, rubrique Facturation"
     ]
    ],
    "prochaine": null,
-   "prochaineTxt": "Date à relever dans la console d’administration",
+   "prochaineTxt": "Date à relever dans la console d’administration Google",
    "montant_eur": 9,
-   "approx": true
+   "approx": true,
+   "courriels": {
+    "de": "(workspace-noreply|payments-noreply)@google",
+    "sujets": "(paiement|payment|facture|invoice|workspace)",
+    "echec": "échec d'un paiement|échec du paiement|payment failed|suspen",
+    "paye": "reçu|receipt|paiement reçu|payment received"
+   }
   }
  ],
  "factures_date": "2026-10-08",

@@ -53,6 +53,32 @@ const propre = (t, n = 160) => { const s = String(t || '').replace(/\s+/g, ' ').
 async function preparer() {
   // le relevé du serveur (tools/releve_hote.py, cron de l'hôte) : créé ici aussi, pour que son absence se lise « pas encore de relevé »
   await bases.lire(`CREATE TABLE IF NOT EXISTS releve_hote (id bigserial PRIMARY KEY, le timestamptz NOT NULL DEFAULT now(), donnees jsonb NOT NULL)`);
+  // 22/10/2026 : « C'est réglé », dit par Basile sur une facture (Hetzner n'envoie aucune confirmation de paiement dans sa boîte)
+  await bases.lire(`CREATE TABLE IF NOT EXISTS factures_reglees (id bigserial PRIMARY KEY, cle text NOT NULL, le timestamptz NOT NULL DEFAULT now(), par text NOT NULL)`);
+}
+// L'état d'une facture d'après ses e-mails (du plus récent au plus ancien) et la dernière déclaration « réglée » de Basile.
+// Un e-mail neutre (facture émise, alerte de coût) ne décide rien ; le premier échec ou paiement rencontré décide, sauf si
+// Basile a déclaré la facture réglée après cet échec. Rien de connu : l'état relevé à la main reste (null).
+function etatFacture(f, mails, reglee) {
+  const c = f.courriels || {}, re = (x) => (x ? new RegExp(x, 'i') : null);
+  const echec = re(c.echec) || /warning|reminder|mahnung|overdue|failed|échec|rappel|unpaid|impay/i;
+  const paye = re(c.paye) || /receipt|reçu|paid|payé|payment received|zahlungseingang/i, neutre = re(c.neutre);
+  const declare = () => ({ etat: 'ok', etatTxt: `Payé (déclaré par Basile le ${court(jourDe(reglee.le))})`, etatDate: jourDe(reglee.le) });
+  for (const x of mails || []) {
+    const s = String(x.sujet || '');
+    if (neutre && neutre.test(s)) continue;
+    if (echec.test(s)) {
+      if (reglee && new Date(reglee.le) > new Date(x.recu_le)) return declare();
+      return { etat: 'panne', etatTxt: /failed|échec|unsuccessful|paused|refus/i.test(s) ? 'Paiement refusé' : 'Paiement en retard', etatDate: jourDe(x.recu_le) };
+    }
+    if (paye.test(s)) return { etat: 'ok', etatTxt: 'Payé', etatDate: jourDe(x.recu_le) };
+  }
+  return reglee ? declare() : null;
+}
+async function declarerReglee(cle, par) {
+  if (!TEXTES.factures.some((f) => f.cle === cle)) return { ok: false, erreur: 'facture inconnue' };
+  const [r] = await bases.lire('INSERT INTO factures_reglees (cle, par) VALUES ($1, $2) RETURNING id, le', [cle, propre(par || 'Basile, depuis le cockpit', 80)]);
+  return r ? { ok: true, id: Number(r.id), le: r.le } : { ok: false, erreur: 'la base est illisible pour l’instant' };
 }
 
 // ── La porte (journal de livraison, transmis par le relevé du serveur) ──────────────────────────
@@ -336,7 +362,7 @@ async function assembler({ maintenant = new Date(), executant = EXECUTANT, fetch
 
   const [passages, debutPassages, causes, executions, debutN8n, actifs, releve, vitrines, vitStats, appelsR, rappels, autresRappels,
     offres, candStats, candAlerte, outreach, outStats, runs, runsAgents, runsDerniers, ordresOuverts, ordresStats, enRetard, clips, demandes, campagnes,
-    buffer, direction, courriels, budget, pensees, veillePoles, envoiVit, envoiConf, bougie, bourseJour, prosStats, mails, hermes, trading, bourse, fureteur] = await Promise.all([
+    buffer, direction, courriels, budget, pensees, veillePoles, envoiVit, envoiConf, bougie, bourseJour, prosStats, mails, hermes, trading, bourse, fureteur, reglees] = await Promise.all([
     B('passages', `WITH a AS (SELECT agent, max(fin_le) FILTER (WHERE statut <> 'ok') AS de, max(fin_le) FILTER (WHERE statut = 'ok') AS dok FROM boucle_passages GROUP BY agent)
       SELECT p.agent, count(*)::int AS n, min(p.fin_le) AS premier, max(p.fin_le) AS dernier, (array_agg(p.statut ORDER BY p.fin_le DESC))[1] AS statut,
         a.de AS dernier_echec, count(*) FILTER (WHERE p.statut <> 'ok')::int AS echecs,
@@ -425,6 +451,7 @@ async function assembler({ maintenant = new Date(), executant = EXECUTANT, fetch
     simulations.then((s) => s.resumeTrading(bases.cerveau)).catch((e) => { erreurs.push(`trading (cerveau) : ${pourquoi(e)}`); return null; }),
     simulations.then((s) => s.resumeBourse(bases.cerveau)).catch((e) => { erreurs.push(`bourse (cerveau) : ${pourquoi(e)}`); return null; }),
     B('journal', `SELECT changement, motif, created_at FROM journal WHERE acteur = 'fureteur' AND created_at > now() - interval '24 hours'`),
+    B('factures réglées', 'SELECT DISTINCT ON (cle) cle, le, par FROM factures_reglees ORDER BY cle, le DESC'),
   ]);
   const { ECHELLES } = await simulations.catch(() => ({ ECHELLES: {} }));
   // Les e-mails envoyés depuis Jarvis après un appel (15/10/2026) : la preuve de l'envoi, à l'heure de Paris.
@@ -458,15 +485,13 @@ async function assembler({ maintenant = new Date(), executant = EXECUTANT, fetch
   const factures = TEXTES.factures.map((f) => {
     const sortie = { ...f, lignes: f.lignes.slice(), date: TEXTES.factures_date };
     const m = (mailsPar[f.cle] || []).filter((x) => jourDe(x.recu_le) > TEXTES.factures_date);
-    if (m.length) {
-      for (const x of m.slice().reverse()) sortie.lignes.push([court(jourDe(x.recu_le)), `E-mail reçu : « ${propre(x.sujet, 90)} »`]);
-      sortie.dernierMail = { le: iso(m[0].recu_le), sujet: propre(m[0].sujet, 90) };
-      if (/warning|reminder|mahnung|overdue|failed|échec|rappel|unpaid|impay/i.test(m[0].sujet)) {
-        Object.assign(sortie, { etat: 'panne', etatTxt: 'Paiement en retard', etatDate: jourDe(m[0].recu_le) });
-      } else if (/receipt|reçu|paid|payé|payment received|zahlungseingang/i.test(m[0].sujet)) {
-        Object.assign(sortie, { etat: 'ok', etatTxt: 'Payé', etatDate: jourDe(m[0].recu_le) });
-      }
-    }
+    const reglee = (reglees || []).find((r) => r.cle === f.cle) || null;
+    for (const x of m.slice().reverse()) sortie.lignes.push([court(jourDe(x.recu_le)), `E-mail reçu : « ${propre(x.sujet, 90)} »`]);
+    if (m.length) sortie.dernierMail = { le: iso(m[0].recu_le), sujet: propre(m[0].sujet, 90) };
+    if (reglee) sortie.lignes.push([court(jourDe(reglee.le)), `Déclarée réglée par ${propre(reglee.par, 60)}`]);
+    const e = etatFacture(f, m, reglee);
+    if (e) Object.assign(sortie, e);
+    if (sortie.etat === 'ok' && f.prochaineTxtPaye) sortie.prochaineTxt = f.prochaineTxtPaye;
     if (mailsPar[f.cle] === null) sortie.lecture = 'courriels illisibles';
     return sortie;
   });
@@ -900,6 +925,12 @@ async function router(req, res, { url, m, envoyer, json, autorise }) {
     if (x.ok && x.statut === 'envoye') await relancerDans7('p' + r[1]);
     envoyer(res, 200, x.ok ? x : { ...x, erreur: x.message }); return true;
   }
+  // « C'est réglé » sur une facture (22/10/2026) : la parole de Basile, datée, quand aucun e-mail ne confirme le paiement
+  if (m === 'POST' && (r = url.match(/^\/api\/v6\/facture\/([a-z]{2,20})$/))) {
+    if (!autorise(req)) { envoyer(res, 403, { ok: false }); return true; }
+    await json(req, 2000);
+    envoyer(res, 200, await declarerReglee(r[1], 'Basile, depuis le cockpit')); return true;
+  }
   if (m === 'POST' && url === '/api/v6/demande') {
     if (!autorise(req)) { envoyer(res, 403, { ok: false }); return true; }
     envoyer(res, 200, await demande(await json(req, 10000))); return true;
@@ -907,4 +938,4 @@ async function router(req, res, { url, m, envoyer, json, autorise }) {
   return false;
 }
 
-module.exports = { router, page, assembler, noterAppel, demande, preparer, livraisons, etatSource, cibleDe, MESURES, TEXTES };
+module.exports = { router, page, assembler, noterAppel, demande, preparer, livraisons, etatSource, cibleDe, etatFacture, declarerReglee, MESURES, TEXTES };
