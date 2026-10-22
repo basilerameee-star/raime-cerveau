@@ -18,7 +18,7 @@ import michaelpage as mp
 from jobcloud import AToi
 
 # Ces outils exigent un compte candidat : jamais automatisés (Basile ne veut pas qu'on crée de comptes à sa place)
-AVEC_COMPTE = re.compile(r"myworkdayjobs|workday\.com|successfactors|csod\.com|dayforcehcm|taleo\.net|icims\.com|oraclecloud|"
+AVEC_COMPTE = re.compile(r"myworkdayjobs|workday\.com|successfactors|/apply/authentication|csod\.com|dayforcehcm|taleo\.net|icims\.com|oraclecloud|"
                          r"brassring|kenexa|ultipro|adp\.com", re.I)
 COMPTE = re.compile(r"cr[ée]e[rz]? (un|votre) compte|create (an|your) account|sign in to apply|log ?in to apply|"
                     r"connectez-vous pour postuler|se connecter pour postuler|konto erstellen|registrieren sie sich|"
@@ -156,16 +156,25 @@ def meilleur(page):
     return choix
 
 
+# un bouton court qui parle de postuler (« Postuler maintenant », « Jetzt online bewerben », « Apply for this position »),
+# jamais celui d'un réseau (« Postuler avec LinkedIn ») ni un lien d'alerte
+POSTULER_LARGE = re.compile(r"postul|apply|bewerb|candidat", re.I)
+PAS_CELUI_LA = re.compile(r"linkedin|xing|indeed|google|facebook|alerte|alert|abonn|partager|share|spontan", re.I)
+
+
 def suivre_postuler(page):
-    """Sur la page de l'annonce, le bouton « Postuler » qui ouvre le formulaire (même onglet ou nouvel onglet)."""
-    try:
-        liens = page.evaluate(LIENS_POSTULER)
-    except Exception:
-        return page
-    for i, texte in liens:
-        if not BOUTON_POSTULER.search(texte or ""):
+    """Sur la page de l'annonce, le bouton « Postuler » qui ouvre le formulaire (même onglet ou nouvel onglet), cadres compris."""
+    candidats = []
+    for cadre in page.frames:
+        try:
+            for i, texte in cadre.evaluate(LIENS_POSTULER):
+                t = (texte or "").strip()
+                if t and len(t) <= 45 and not PAS_CELUI_LA.search(t) and (BOUTON_POSTULER.search(t) or POSTULER_LARGE.search(t)):
+                    candidats.append((0 if BOUTON_POSTULER.search(t) else 1, cadre, i))
+        except Exception:
             continue
-        loc = page.locator('[data-raime-lien="%s"]' % i).first
+    for _, cadre, i in sorted(candidats, key=lambda x: x[0]):
+        loc = cadre.locator('[data-raime-lien="%s"]' % i).first
         try:
             with page.context.expect_page(timeout=4000) as nouvelle:
                 loc.click(timeout=5000)
