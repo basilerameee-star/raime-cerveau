@@ -50,3 +50,15 @@ class Degel(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Couper(unittest.TestCase):
+    # 22/10/2026 : le Médecin coupe ce que l'analyste a jugé inutile, en mettant sa ligne de cron en commentaire (réversible)
+    def test_la_ligne_du_cron_est_commentee_une_fois(self):
+        cron = "*/2 * * * * python3 /opt/x/clippeur/file.py\n0 6 * * * node /opt/x/agents/bourse.js >> /tmp/b.log\n"
+        nouveau, n = medecin.couper_cron(cron, "agents/bourse.js", "trading : ne rapporte rien", "2026-10-22")
+        self.assertEqual(n, 1)
+        self.assertIn("# coupé par le Médecin le 2026-10-22 (trading : ne rapporte rien) : 0 6 * * * node", nouveau)
+        self.assertIn("*/2 * * * * python3 /opt/x/clippeur/file.py", nouveau)
+        self.assertEqual(medecin.couper_cron(nouveau, "agents/bourse.js", "x", "2026-10-23")[1], 0, "déjà coupée")
+        self.assertEqual(medecin.couper_cron(cron, "", "x", "2026-10-22")[1], 0, "sans source connue, rien")

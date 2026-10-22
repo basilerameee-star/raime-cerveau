@@ -139,6 +139,45 @@ def soigner(m, deja):
     return faits
 
 
+COUPES_PAR_JOUR = 2
+
+
+def couper_cron(texte, src, raison, jour):
+    """(nouveau texte, nombre de lignes coupées) : les lignes actives du cron qui lancent src passent en commentaire, avec la
+    date et la raison (réversible : il suffit d'ôter le commentaire). Fonction pure."""
+    nom = os.path.basename(src or "")
+    if not nom:
+        return texte, 0
+    out, n = [], 0
+    for l in texte.splitlines():
+        if l.strip() and not l.lstrip().startswith("#") and re.search(r"(^|[/\s])" + re.escape(nom) + r"(\s|$)", l):
+            out.append("# coupé par le Médecin le %s (%s) : %s" % (jour, raison, l))
+            n += 1
+        else:
+            out.append(l)
+    return "\n".join(out) + ("\n" if texte.endswith("\n") else ""), n
+
+
+def couper(filtre, jour):
+    """Les coupes décidées par l'analyste (gouverneur des agents, verdict « couper ») : jamais la santé du système, deux par
+    jour au plus, la crontab gardée avant chaque changement. Un agent sans ligne de cron est signalé, pas touché."""
+    faites, a_la_main = [], []
+    for x in filtre:
+        if x.get("verdict") != "couper" or x.get("secteur") in ("serveur", "gouvernance", "jarvis", "direction"):
+            continue
+        if len(faites) >= COUPES_PAR_JOUR:
+            break
+        cron = sh(["crontab", "-l"])
+        nouveau, n = couper_cron(cron, x.get("src"), "%s : %s" % (x.get("secteur"), x.get("raison")), jour)
+        if not n:
+            a_la_main.append(x.get("nom"))
+            continue
+        open("/opt/raime/backups/crontab.avant-coupe-%s" % jour, "w").write(cron)
+        subprocess.run(["crontab", "-"], input=nouveau, text=True, timeout=30)
+        faites.append("%s coupé (%s)" % (x.get("nom"), x.get("raison")))
+    return faites, a_la_main
+
+
 def ordre_pour_hermes(panne):
     return ("Médecin du système — panne à soigner (signature %s), vue %d fois en 24 h dans %s.\n"
             "Message : %s\nExtrait du journal :\n%s\n\n"
@@ -220,6 +259,14 @@ def main():
     for r in remedes:
         vus["relance:" + r.split(" : ")[-1]] = {"le": aujourd}
     confiees = confier(erreurs, vus, maintenant)
+    try:
+        filtre = json.load(open(os.path.join(TRAVAIL, "analyse", "agents.json"), encoding="utf-8")).get("filtre", [])
+    except (OSError, ValueError):
+        filtre = []
+    coupes, a_la_main = couper(filtre, aujourd)
+    remedes += coupes
+    if a_la_main:
+        remedes.append("à couper, sans ligne de cron (conteneur ou cockpit) : " + ", ".join(a_la_main))
     json.dump(vus, open(chemin_vus, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
     sortie = {"le": time.strftime("%Y-%m-%d %H:%M", time.gmtime(maintenant)), "agents": agents, "erreurs": erreurs[:30],
               "pertes": pertes, "machine": m, "remedes": remedes, "confiees": confiees,
