@@ -201,7 +201,8 @@ def main():
             prevenir("source trop faible : " + d["campagne"], "La vidéo source est en %sp. Il faut %dp au moins pour ne jamais grossir l'image : trouve une version de meilleure qualité (lien du brief, Drive de la marque) et relance." % (h, mini))
             return
     env = dict(os.environ, GEMINI_API_KEY=cle_gemini())
-    cmd = ["docker", "run", "--rm", "--cpus", COEURS, "-e", "GEMINI_API_KEY", "-v", "%s:/sortie" % CLIPS, "-v", "clippeur-modeles:/root/.cache",
+    nom_conteneur = "clippeur-demande-%s" % d["id"]
+    cmd = ["docker", "run", "--rm", "--name", nom_conteneur, "--cpus", COEURS, "-e", "GEMINI_API_KEY", "-v", "%s:/sortie" % CLIPS, "-v", "clippeur-modeles:/root/.cache",
            "-v", "/opt/raime/clippeur/campagnes:/campagnes:ro", "-v", "/opt/raime/clippeur/clippeur.py:/app/clippeur.py:ro",
            "raime-clippeur", source, "--campagne", d["campagne"], "--nombre", str(d["nombre"])]
     # le profil de la campagne (tags, hashtags, mots interdits, consignes du brief), s'il existe
@@ -209,27 +210,23 @@ def main():
         cmd += ["--profil", "/campagnes/%s.json" % d["campagne"]]
     if d.get("consignes"):
         cmd += ["--consignes", d["consignes"]]
-    r = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=4 * 3600)
+    try:
+        r = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=4 * 3600)
+    except subprocess.TimeoutExpired:
+        # 22/10/2026 : la découpe de Seal (VOD de plusieurs heures) a dépassé 4 h ; la demande restait « en cours » à vie et
+        # ses 8 clips finis n'entraient jamais dans la file. On arrête le conteneur et on garde ce qui est fait.
+        subprocess.run(["docker", "rm", "-f", nom_conteneur], capture_output=True)
+        n = len(mettre_en_file(d, dossier, profil))
+        sql("UPDATE clips_demandes SET etat = :'p0', message = :'p1', maj = now() WHERE id = :p2;", "fait" if n else "echec",
+            "FINI (partiel, découpe arrêtée après 4 h) : %d clips dans /sortie/%s" % (n, d["campagne"]) if n
+            else "Découpe arrêtée après 4 h sans clip fini", d["id"])
+        return
     print(chr(10).join((r.stdout + r.stderr).splitlines()[-25:]), flush=True)   # le compte rendu de la découpe, pour le diagnostic
     fin = [l for l in r.stdout.splitlines() if l.startswith("FINI")]
     if r.returncode == 0 and fin:
         sql("UPDATE clips_demandes SET etat = 'fait', message = :'p0', maj = now() WHERE id = :p1;", fin[-1][:300], d["id"])
         prevenir("clips prêts : " + d["campagne"], fin[-1] + chr(10) + "Ils partent seuls dans Buffer, 4 par jour et par chaîne. Les liens publiés arrivent sur la page Clips.")
-        # publication automatique (brief : "publication_auto": true, accord de Basile du 02/10/2026) : chaque clip entre
-        # dans la file Buffer des 3 chaînes ; buffer.py l'envoie au rythme des créneaux réglés dans Buffer
-        brief = json.load(open(profil, encoding="utf-8"))
-        if brief.get("publication_auto"):
-            try:
-                clips = json.load(open(os.path.join(dossier, "clips.json"), encoding="utf-8"))["clips"]
-            except (OSError, ValueError, KeyError):
-                clips = []
-            deja = brief.get("deja_publies", [])            # moments déjà publiés ailleurs [début, fin] : jamais deux fois
-            for c in clips:
-                if any(c["debut"] < f and c["fin"] > d0 for d0, f in deja):
-                    continue
-                for pl in plateformes_a_publier(d):
-                    sql("""INSERT INTO clips_buffer (campagne, clip, plateforme, quand) VALUES (:'p0', :'p1', :'p2', now())
-                           ON CONFLICT (campagne, clip, plateforme) DO NOTHING;""", d["campagne"], c["clip"], pl)
+        mettre_en_file(d, dossier, profil)
     elif "QUOTA_DRIVE" in (r.stderr + r.stdout) and not trop_vieux(d):
         # fichier Drive très demandé (« quota dépassé ») : rien à forcer, on retente dans 3 heures, 3 jours au plus (15/10/2026)
         sql("UPDATE clips_demandes SET etat = 'a_faire', message = :'p0', maj = now() WHERE id = :p1;",
@@ -238,6 +235,27 @@ def main():
         sql("UPDATE clips_demandes SET etat = 'echec', message = :'p0', maj = now() WHERE id = :p1;",
             (r.stderr or r.stdout)[-300:].replace("\n", " "), d["id"])
         prevenir("échec de découpe : " + d["campagne"], (r.stderr or r.stdout)[-600:])
+
+
+def mettre_en_file(d, dossier, profil):
+    """Publication automatique (brief : "publication_auto": true, accord de Basile du 02/10/2026) : chaque clip fini
+    (clips.json) entre dans la file Buffer de ses plateformes ; buffer.py l'envoie au rythme des créneaux. Rend les clips."""
+    brief = json.load(open(profil, encoding="utf-8"))
+    try:
+        clips = json.load(open(os.path.join(dossier, "clips.json"), encoding="utf-8"))["clips"]
+    except (OSError, ValueError, KeyError):
+        clips = []
+    clips = [c for c in clips if os.path.isfile(os.path.join(dossier, c["clip"]))]
+    if not brief.get("publication_auto"):
+        return clips
+    deja = brief.get("deja_publies", [])                    # moments déjà publiés ailleurs [début, fin] : jamais deux fois
+    for c in clips:
+        if any(c["debut"] < f and c["fin"] > d0 for d0, f in deja):
+            continue
+        for pl in plateformes_a_publier(d):
+            sql("""INSERT INTO clips_buffer (campagne, clip, plateforme, quand) VALUES (:'p0', :'p1', :'p2', now())
+                   ON CONFLICT (campagne, clip, plateforme) DO NOTHING;""", d["campagne"], c["clip"], pl)
+    return clips
 
 
 if __name__ == "__main__":

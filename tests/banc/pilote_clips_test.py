@@ -52,6 +52,10 @@ class Grille(unittest.TestCase):
         self.assertEqual(vus, ["irubyana"])
         self.assertEqual(s["url"], "https://www.twitch.tv/videos/2901902468")
         self.assertIsNone(pilote.source_du_brief(note("x"), brief)["url"], "sans résolveur : la chaîne entière reste refusée")
+        # 22/10/2026 (BrettLiftsXP, 0 clip) : les Shorts du brief sont des exemples de clips, jamais une source à découper
+        exemples = {"requirements": {"text": "Ideas: https://www.youtube.com/shorts/4Xeuo7IjDA4 Twitch: https://m.twitch.tv/brettliftsxp/home"}}
+        s = pilote.source_du_brief(note("x"), exemples, lambda ch: "https://www.twitch.tv/videos/2901902468" if ch == "brettliftsxp" else None)
+        self.assertEqual(s["url"], "https://www.twitch.tv/videos/2901902468")
         self.assertEqual(pilote.derniere_video_twitch("x", lancer=lambda c: "v1234567|300.0\nv2901902468|3944.0\n"),
                          "https://www.twitch.tv/videos/2901902468", "moins de 15 min : écartée")
 

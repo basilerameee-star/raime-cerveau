@@ -78,7 +78,7 @@ def une_video(u):
 
 def chaine_twitch(u):
     """Le nom de la chaîne d'un lien Twitch qui désigne une chaîne entière (twitch.tv/irubyana), sinon None."""
-    m = re.match(r"https?://(?:www\.|m\.)?twitch\.tv/([A-Za-z0-9_]{3,25})/?(?:videos?/?)?(?:[?#].*)?$", u or "")
+    m = re.match(r"https?://(?:www\.|m\.)?twitch\.tv/([A-Za-z0-9_]{3,25})/?(?:videos?/?|home/?)?(?:[?#].*)?$", u or "")
     return m.group(1) if m and m.group(1).lower() not in ("videos", "directory", "p", "downloads", "jobs") else None
 
 
@@ -103,7 +103,8 @@ def source_du_brief(e, brief, resoudre=None):
     import cr_agent
     morceaux = cr_agent.textes(brief.get("requirements")) if isinstance(brief, dict) else []
     texte = "\n".join(dict.fromkeys(morceaux))
-    liens = sorted([u for u in dict.fromkeys(cr.liens_video(texte)) if une_video(u)], key=lambda u: (not any(v in u for v in ("drive.google", "dropbox")), u))
+    # les Shorts cités sont des exemples de clips, jamais une source à découper (BrettLiftsXP, 0 clip le 22/10/2026)
+    liens = sorted([u for u in dict.fromkeys(cr.liens_video(texte)) if une_video(u) and "/shorts/" not in u], key=lambda u: (not any(v in u for v in ("drive.google", "dropbox")), u))
     if not liens and resoudre:                     # une chaîne Twitch : sa dernière vidéo enregistrée (22/10/2026)
         for chaine in dict.fromkeys(filter(None, map(chaine_twitch, cr.liens_video(texte) + (e.get("sources") or [])))):
             v = resoudre(chaine)
