@@ -1096,6 +1096,31 @@
    "ensuite": "Livrer seul un correctif dont le banc d’essai est vert et que le Gardien accepte."
   },
   {
+   "secteur": "gouvernance",
+   "id": "objectifs",
+   "nom": "Boucle des objectifs",
+   "rythme": "chaque matin, 6 h 40 UTC",
+   "src": {
+    "mesure": true
+   },
+   "mesure": "objectifs",
+   "outils": [
+    [
+     "Bilan du gouverneur du matin",
+     "0 jeton",
+     "code"
+    ],
+    [
+     "Hermes (actions)",
+     "jetons justifiés",
+     "ia"
+    ]
+   ],
+   "maintenant": "Pour chaque objectif manqué la veille : la cause, une action (appliquée seule si elle est sûre, confiée à Hermes sinon, ou à toi si elle dépend d’un compte ou d’une clé), puis la vérification le lendemain ; suit aussi les résultats : clips payables (4 000 vues), candidatures, euros encaissés.",
+   "bloque": "Hermes passera sur DeepSeek dès que la clé sera déposée ; ses actions attendent encore une relecture.",
+   "ensuite": "Appliquer seul les actions d’Hermes dont le banc d’essai est vert."
+  },
+  {
    "outils": [],
    "id": "penseur",
    "secteur": "direction",

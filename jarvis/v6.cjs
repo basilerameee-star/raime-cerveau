@@ -171,6 +171,13 @@ const MESURES = {
     const s = sortieDe('sante/aujourdhui.json'), f = fraicheur([s], 30, A), j = lireJson(s);
     return { ...f, texte: j ? `${(j.lignes || [])[0] || ''}${(j.confiees || []).length ? ` ${pluriel(j.confiees.length, 'panne confiée', 'pannes confiées')} à Hermes.` : ''}` : 'Bilan illisible.' };
   },
+  objectifs(L, A) {
+    const s = sortieDe('analyse/objectifs.json'), f = fraicheur([s], 30, A), j = lireJson(s);
+    if (!j) return { ...f, texte: 'Bilan illisible.' };
+    const n = (j.actions || []).length, b = (j.basile || []).length, c = (j.resultats || {}).clips;
+    return { ...f, texte: `${n ? pluriel(n, 'objectif manqué traité', 'objectifs manqués traités') : 'Aucun objectif manqué'}${b ? `, dont ${b} pour toi` : ''}.`
+      + (c ? ` Clips : ${c.au_dessus_4000} au-dessus de 4 000 vues (payables), record ${nombre(c.record)}.` : '') };
+  },
   gouv_matin(L, A) {
     const s = sortieDe('analyse/matin.json'), f = fraicheur([s], 30, A), j = lireJson(s);
     const n = j && j.jugement ? j.jugement.filter((o) => o.tenu).length : null;
