@@ -307,7 +307,8 @@ class Relais(unittest.TestCase):
         source = (DEPOT / "clippeur" / "file.py").read_text(encoding="utf-8")
         montage = [l for l in source.splitlines() if '"docker", "run"' in l and "GEMINI_API_KEY" in l]
         self.assertEqual(len(montage), 1, montage)
-        self.assertIn('"docker", "run", "--rm", "--cpus", COEURS,', montage[0])
+        self.assertIn('"--cpus", COEURS,', montage[0])
+        self.assertIn('"--name", nom_conteneur,', montage[0], "22/10 : nommé, pour être arrêté après 4 h")
 
     def test_hauteur_minimale(self):
         self.assertEqual(self.file.hauteur_minimale("bandes"), 1080)
