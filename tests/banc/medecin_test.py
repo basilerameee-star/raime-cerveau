@@ -62,3 +62,15 @@ class Couper(unittest.TestCase):
         self.assertIn("*/2 * * * * python3 /opt/x/clippeur/file.py", nouveau)
         self.assertEqual(medecin.couper_cron(nouveau, "agents/bourse.js", "x", "2026-10-23")[1], 0, "déjà coupée")
         self.assertEqual(medecin.couper_cron(cron, "", "x", "2026-10-22")[1], 0, "sans source connue, rien")
+
+
+class CouperFiche(unittest.TestCase):
+    # la fiche du cockpit décrit sa source ({"hote": ["chercheur"], ...}), pas un fichier : seule une tâche de l'hôte se coupe
+    def test_source_de_fiche(self):
+        self.assertEqual(medecin.noms_cron({"hote": ["chercheur"], "toutes_h": 8}), ["chercheur.py", "chercheur.sh", "chercheur.js"])
+        self.assertEqual(medecin.noms_cron({"n8n": "abc"}), [])
+        self.assertEqual(medecin.noms_cron("agents/bourse.js"), ["bourse.js"])
+        self.assertEqual(medecin.noms_cron(None), [])
+        cron = "0 5,13,21 * * * python3 /opt/raime/clippeur/chercheur.py >> /x.log" + chr(10)
+        n = sum(medecin.couper_cron(cron, nom, "r", "j")[1] for nom in medecin.noms_cron({"hote": ["chercheur"]}))
+        self.assertEqual(n, 1)

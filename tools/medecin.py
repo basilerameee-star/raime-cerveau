@@ -158,6 +158,14 @@ def couper_cron(texte, src, raison, jour):
     return "\n".join(out) + ("\n" if texte.endswith("\n") else ""), n
 
 
+def noms_cron(src):
+    """Les fichiers qu'une ligne de cron lancerait pour cette source : une tâche de l'hôte ({"hote": [...]}) ou un chemin ;
+    une boucle, un flux n8n ou le cockpit ne se coupent pas par le cron."""
+    if isinstance(src, dict):
+        return [n + ext for n in src.get("hote") or [] for ext in (".py", ".sh", ".js")]
+    return [os.path.basename(src)] if isinstance(src, str) and src else []
+
+
 def couper(filtre, jour):
     """Les coupes décidées par l'analyste (gouverneur des agents, verdict « couper ») : jamais la santé du système, deux par
     jour au plus, la crontab gardée avant chaque changement. Un agent sans ligne de cron est signalé, pas touché."""
@@ -168,7 +176,10 @@ def couper(filtre, jour):
         if len(faites) >= COUPES_PAR_JOUR:
             break
         cron = sh(["crontab", "-l"])
-        nouveau, n = couper_cron(cron, x.get("src"), "%s : %s" % (x.get("secteur"), x.get("raison")), jour)
+        nouveau, n = cron, 0
+        for nom in noms_cron(x.get("src")):
+            nouveau, k = couper_cron(nouveau, nom, "%s : %s" % (x.get("secteur"), x.get("raison")), jour)
+            n += k
         if not n:
             a_la_main.append(x.get("nom"))
             continue
