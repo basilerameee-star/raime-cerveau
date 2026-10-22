@@ -122,18 +122,44 @@ def buffer(requete, variables=None):
     return d["data"]
 
 
+# Les comptes bannis ou abandonnés, jamais choisis même s'ils restent branchés dans Buffer (22/10/2026)
+EXCLUES = {"bahethora0"}
+# TikTok a banni le premier compte le 04/10 pour « trop de publications par API » : le nouveau démarre à 1 par jour
+TIKTOK_PAR_JOUR = int(os.environ.get("TIKTOK_PAR_JOUR", "1"))
+
+
 def chaines():
-    """Les chaînes branchées dans Buffer, par service ; un seul appel, puis le fichier CHAINES."""
+    """Les chaînes branchées dans Buffer, par service ; relues toutes les 6 heures (un compte relié par Basile est vu seul) ;
+    un compte exclu ou déconnecté n'est jamais choisi. Un nouveau compte TikTok relié lève seul la pause de TikTok."""
     try:
-        return json.load(open(CHAINES, encoding="utf-8"))
+        if time.time() - os.path.getmtime(CHAINES) < 6 * 3600:
+            return json.load(open(CHAINES, encoding="utf-8"))
     except (OSError, ValueError):
         pass
     out = {}
-    for c in buffer("query($i: ChannelsInput!) { channels(input: $i) { id service } }", {"i": {"organizationId": ORGANISATION}})["channels"]:
+    for c in buffer("query($i: ChannelsInput!) { channels(input: $i) { id service name isDisconnected } }",
+                    {"i": {"organizationId": ORGANISATION}})["channels"]:
+        if c.get("isDisconnected") or (c.get("name") or "").lower() in EXCLUES:
+            continue
         out.setdefault(str(c["service"]).lower(), c["id"])
     with open(CHAINES, "w", encoding="utf-8") as f:
         json.dump(out, f)
+    pause = os.path.join(ICI, "pause-tiktok")
+    if "tiktok" in out and os.path.exists(pause):
+        os.remove(pause)
+        print(time.strftime("%Y-%m-%d %H:%M"), "nouveau compte TikTok relié : la pause de TikTok est levée", flush=True)
     return out
+
+
+def tiktok_du_jour(quand):
+    """Les publications TikTok programmées ou faites le jour du créneau (plafond TIKTOK_PAR_JOUR)."""
+    jour = time.strftime("%Y-%m-%d", time.gmtime(quand))
+    r = sql("""SELECT count(*) FROM clips_buffer WHERE plateforme = 'tiktok' AND etat IN ('programme', 'publie')
+               AND to_char(coalesce(prevu, maj) AT TIME ZONE 'UTC', 'YYYY-MM-DD') = :'p0';""", jour)
+    try:
+        return int(str(r).strip().splitlines()[-1])
+    except (ValueError, IndexError):
+        return TIKTOK_PAR_JOUR
 
 
 def en_pause(pl):
@@ -339,6 +365,8 @@ def main():
         depart = max([time.time() + 900] + [float(x) for x in futurs])
         for quand, clip in repartir(lignes, actives, dernier, creneaux_apres(depart, manque), parts_analyste()):
             for b in clip:
+                if b.get("plateforme") == "tiktok" and tiktok_du_jour(quand) >= TIKTOK_PAR_JOUR:
+                    continue                               # au-delà du plafond du jour, le clip TikTok attend le jour suivant
                 try:
                     programmer(b, ids, quand)
                 except FileBufferPleine:
