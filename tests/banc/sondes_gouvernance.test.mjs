@@ -35,7 +35,7 @@ test('sortie fraîche : le chiffre du jour ; sortie trop vieille : en panne', ()
   ecrire('analyse/prospection.json', JSON.stringify({ preaudits: [{}, {}] }));
   ecrire('clips/analyse.json', JSON.stringify({ clips_suivis: 85 }));
   const j = v6.MESURES.gouv_jetons({}, A());
-  assert.equal(j.etat, undefined); assert.match(j.texte, /1 314 910 jetons sur 3 000 000 \(43 %\)/);
+  assert.equal(j.etat, undefined); assert.match(j.texte, /1\s314\s910 jetons sur 3\s000\s000 \(43 %\)/, 'séparateur des milliers de fr-FR (espace fine)');
   assert.match(v6.MESURES.gouv_matin({}, A()).texte, /2 tenus sur 3/);
   assert.match(v6.MESURES.analystes({}, A()).texte, /85 clips suivis ; prospection : 2 métiers jugés/);
   assert.equal(v6.MESURES.gouv_jetons({}, A(1)).etat, 'panne', 'le gouverneur des jetons passe toutes les 10 min : 1 h sans sortie = panne');
