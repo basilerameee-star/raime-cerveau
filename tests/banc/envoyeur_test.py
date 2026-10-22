@@ -153,3 +153,15 @@ class CantonExige(unittest.TestCase):
 
     def test_sans_canton_rien_ne_change(self):
         self.assertEqual(self.adresse(False), {0: "74100", 1: "Ville-la-Grand", 2: "2 rue des Voirons"})
+
+
+class Confirmation(unittest.TestCase):
+    # 22/10/2026 : JUST a répondu « Merci beaucoup pour ta candidature. Elle a été transmise avec succès. » ; le robot l'a
+    # lue comme un refus et l'aurait renvoyée en double
+    def test_les_reponses_de_succes_reelles(self):
+        import formulaire
+        for t in ("Merci beaucoup pour ta candidature. Elle a été transmise avec succès. Tu peux maintenant fermer cette page.",
+                  "Votre candidature a bien été envoyée", "Your application was successfully submitted",
+                  "Merci pour votre candidature"):
+            self.assertTrue(formulaire.CONFIRMATION.search(t), t)
+        self.assertFalse(formulaire.CONFIRMATION.search("Veuillez remplir ce champ"))

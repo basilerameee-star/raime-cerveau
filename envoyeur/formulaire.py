@@ -352,7 +352,10 @@ def etapes(pg, f, p, cv, lettre_pdf, envoyer, dire, photo, photos, oid, exiger_c
 
 
 CONFIRMATION = re.compile(mp.CONFIRMATION.pattern + r"|thank you for (your )?appl|we have received your appl|"
-                          r"vielen dank f[üu]r ihre bewerbung|votre candidature (a [ée]t[ée] )?(bien )?(envoy|enregistr|re[çc])", re.I)
+                          r"vielen dank f[üu]r ihre bewerbung|votre candidature (a [ée]t[ée] )?(bien )?(envoy|enregistr|re[çc])|"
+                          # 22/10/2026 (JUST) : « Merci beaucoup pour ta candidature. Elle a été transmise avec succès. »
+                          r"merci (beaucoup )?(pour|de) ta candidature|(transmise?|envoy[ée]e?|enregistr[ée]e?) avec succ[eè]s|"
+                          r"successfully (submitted|sent|received)", re.I)
 
 
 def attendre_confirmation(page, recap):
@@ -363,5 +366,7 @@ def attendre_confirmation(page, recap):
         captcha(page)
         _, e = meilleur(page)
         if e is not None and e["erreurs"]:
+            if CONFIRMATION.search(" ".join(e["erreurs"])):   # un bandeau « alerte » qui dit en fait le succès
+                return {"envoye": True, "url": page.url, "quand": time.strftime("%d.%m.%Y %H:%M"), "reponses": " | ".join(recap)[:1500]}
             raise AToi("formulaire", "envoi refusé : " + "; ".join(e["erreurs"])[:200])
     raise AToi("incertain", "« Envoyer » cliqué, confirmation non reconnue : vérifie dans ta boîte e-mail avant de revalider")
