@@ -972,17 +972,12 @@
   {
    "outils": [
     [
+     "Compteur des jetons d’Hermes",
+     "0 jeton",
+     "code"
+    ],
+    [
      "Économe",
-     "0 jeton",
-     "code"
-    ],
-    [
-     "Gardien du budget",
-     "0 jeton",
-     "code"
-    ],
-    [
-     "Compteur agent_runs",
      "0 jeton",
      "code"
     ]
@@ -990,13 +985,14 @@
    "id": "gouv_jetons",
    "secteur": "gouvernance",
    "nom": "Gouverneur des jetons",
-   "rythme": "à chaque appel d’un modèle",
-   "etat": "construction",
-   "depuis": "2026-10-08",
-   "duree": "en conception",
-   "maintenant": "Plus de la moitié des appels aux modèles ne passent par aucun compteur : Jarvis, le courrier, les fiches de candidature, le clippeur, l’éclaireur. Hermes compte à part (2,73 M jetons en 30 jours au 09/10, 0 € réel).",
-   "bloque": "Trois budgets différents (16 €, 15 € et 150 €) et aucun filtre par agent.",
-   "ensuite": "Un seul point de passage pour tous les appels : le code d’abord, puis le modèle gratuit ; un budget par pôle et par agent ; les réponses déjà obtenues réutilisées ; tout compté au même endroit."
+   "rythme": "toutes les 10 min",
+   "maintenant": "Compte toutes les 10 minutes les jetons d’Hermes, par tâche et par modèle ; au-delà du plafond du jour (3 M), il met la veille en pause, et les ordres non urgents au-delà de 1,5 M.",
+   "bloque": "Les appels faits hors d’Hermes (Jarvis, courrier, fiches de candidature, clippeur) ne passent pas encore par lui.",
+   "ensuite": "Un seul point de passage pour tous les appels aux modèles, avec un budget par pôle.",
+   "src": {
+    "mesure": true
+   },
+   "mesure": "gouv_jetons"
   },
   {
    "outils": [],
@@ -1012,17 +1008,69 @@
    "ensuite": "Chaque jour : chaque pôle écrit ses leçons dans une mémoire unique, les relit au passage suivant ; chaque idée reçoit un verdict ; une mesure qui recule déclenche une alerte et une proposition de retour arrière."
   },
   {
-   "outils": [],
+   "outils": [
+    [
+     "Statistiques Instagram et YouTube",
+     "0 jeton",
+     "code"
+    ],
+    [
+     "Base des envois",
+     "0 jeton",
+     "code"
+    ]
+   ],
    "id": "analystes",
    "secteur": "gouvernance",
-   "nom": "Analystes de pôle (proposé)",
-   "rythme": "chaque jour",
-   "etat": "afaire",
-   "depuis": "2026-10-14",
-   "duree": "à décider avec toi",
-   "maintenant": "Proposition : un analyste par pôle, en code (0 jeton), qui calcule les mesures propres au pôle ; le gouverneur réflexif les lit et juge si le pôle progresse.",
-   "bloque": "Ta décision sur l’organisation : un gouverneur des jetons et un gouverneur réflexif pour tout le système, un analyste par pôle.",
-   "ensuite": "Trading : gain après frais, pire baisse. Clipping : vues et € par clip. Commerce : réponses, rendez-vous, ventes. Candidatures : envois, réponses, entretiens. Dropshipping : marge et retour sur la pub."
+   "nom": "Analystes des clips et de la prospection",
+   "rythme": "chaque matin, 6 h 10 et 6 h 20 UTC",
+   "maintenant": "Chaque matin : l’analyste des clips mesure vues, rétention, niches et formats et fixe la répartition des prochains clips (70 % au meilleur) ; celui de la prospection juge les pré-audits par métier (envois, rebonds, réponses, intérêt).",
+   "bloque": "Rien ne les bloque.",
+   "ensuite": "Un analyste pour le trading et un pour les candidatures.",
+   "src": {
+    "mesure": true
+   },
+   "mesure": "analystes"
+  },
+  {
+   "secteur": "gouvernance",
+   "id": "gouv_agents",
+   "nom": "Gouverneur des agents",
+   "rythme": "chaque matin, 6 h 25 UTC",
+   "src": {
+    "mesure": true
+   },
+   "mesure": "gouv_agents",
+   "outils": [
+    [
+     "Fiches des agents",
+     "0 jeton",
+     "code"
+    ]
+   ],
+   "maintenant": "Repère chaque matin les agents en panne ou à vide depuis longtemps, dit pourquoi et propose de les réparer ou de les arrêter.",
+   "bloque": "Ses propositions attendent ta décision (« État des agents »).",
+   "ensuite": "Arrêter seul ce qui tourne à vide depuis plus de deux semaines, après ton accord une fois pour toutes."
+  },
+  {
+   "secteur": "gouvernance",
+   "id": "gouv_matin",
+   "nom": "Gouverneur du matin",
+   "rythme": "chaque matin, 6 h 30 UTC",
+   "src": {
+    "mesure": true
+   },
+   "mesure": "gouv_matin",
+   "outils": [
+    [
+     "État commun",
+     "0 jeton",
+     "code"
+    ]
+   ],
+   "maintenant": "Juge chaque matin les objectifs de la veille (clips publiés et déclarés, jetons, rebonds d’e-mails, nouvelles pannes) et l’écrit dans l’état commun que lisent Hermes et le cockpit.",
+   "bloque": "Rien ne le bloque.",
+   "ensuite": "Ajouter les objectifs de vente et de candidatures."
   },
   {
    "outils": [],

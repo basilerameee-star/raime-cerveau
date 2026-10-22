@@ -137,7 +137,41 @@ function fusionner(etats) {
 
 // ── Les mesures propres à chaque agent : une phrase lue en direct, parfois un état (à vide, en panne) ──
 // L : tout ce qui a été lu ; chaque fonction rend { texte?, dernier?, etat?, depuis?, derniere_panne? } ou null (rien lu).
+// Les sorties datées des gouverneurs et des analystes (22/10/2026), dans le dossier de travail partagé (/travail) :
+// leur date de modification est la preuve du passage ; trop vieille, l'agent est en panne.
+function sortieDe(rel) {
+  const f = path.join(process.env.LIVRABLES_DIR || '/travail', rel);
+  try { const st = fs.statSync(f); return { le: st.mtime, texte: fs.readFileSync(f, 'utf8') }; } catch (e) { return null; }
+}
+function fraicheur(sorties, retardH, A) {
+  const l = sorties.filter(Boolean);
+  if (!l.length) return { etat: 'panne', derniere_panne: { le: null, texte: 'aucune sortie trouvée dans le dossier de travail' } };
+  const vieux = l.find((x) => A.maintenant - x.le > retardH * H);
+  const dernier = l.map((x) => x.le).sort((u, v) => u - v).pop();
+  return vieux ? { etat: 'panne', dernier, depuis: vieux.le, derniere_panne: { le: vieux.le, texte: `ne passe plus depuis ${quand(vieux.le, A.auj)}` } } : { dernier };
+}
+const lireJson = (x) => { try { return x ? JSON.parse(x.texte) : null; } catch (e) { return null; } };
 const MESURES = {
+  gouv_jetons(L, A) {
+    const s = sortieDe('gouverneur/aujourdhui.txt'), f = fraicheur([s], 0.75, A);
+    const total = s && /Total du jour : ([\d ]+) jetons sur ([\d ]+) \((\d+) %\)/.exec(s.texte);
+    return { ...f, texte: total ? `Aujourd’hui : ${nombre(Number(total[1].replace(/ /g, '')))} jetons sur ${nombre(Number(total[2].replace(/ /g, '')))} (${total[3]} %).` : 'Relevé du jour illisible.' };
+  },
+  analystes(L, A) {
+    const c = sortieDe('clips/analyse.json'), p = sortieDe('analyse/prospection.json'), f = fraicheur([c, p], 30, A);
+    const cj = lireJson(c), pj = lireJson(p);
+    const morceaux = [cj && `clips : ${pluriel(cj.clips_suivis || 0, 'clip suivi', 'clips suivis')}`, pj && pj.preaudits && `prospection : ${pluriel(pj.preaudits.length, 'métier jugé', 'métiers jugés')}`].filter(Boolean);
+    return { ...f, texte: morceaux.length ? `Bilans du matin, ${morceaux.join(' ; ')}.` : 'Aucun bilan lu.' };
+  },
+  gouv_agents(L, A) {
+    const s = sortieDe('analyse/agents.json'), f = fraicheur([s], 30, A), j = lireJson(s);
+    return { ...f, texte: j ? `${pluriel((j.suivis || []).length, 'agent suivi', 'agents suivis')} sur ${j.fiches || '?'} ; ses propositions sont dans « État des agents ».` : 'Bilan illisible.' };
+  },
+  gouv_matin(L, A) {
+    const s = sortieDe('analyse/matin.json'), f = fraicheur([s], 30, A), j = lireJson(s);
+    const n = j && j.jugement ? j.jugement.filter((o) => o.tenu).length : null;
+    return { ...f, texte: j ? `Objectifs d’hier : ${n} tenus sur ${j.jugement.length}.` : 'Bilan illisible.' };
+  },
   vitrines(L) {
     if (!L.vitStats) return null;
     const s = (k) => (L.vitStats.find((x) => x.statut === k) || { n: 0 }).n, n24 = L.vitStats.reduce((t, x) => t + x.n24, 0);
