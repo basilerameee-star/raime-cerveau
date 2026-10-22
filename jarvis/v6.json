@@ -660,7 +660,7 @@
    },
    "mesure": "chercheur",
    "maintenant": "Lit les 700 campagnes de Content Rewards, rejoint celles qui passent ta grille et lance la découpe quand la réserve de clips baisse.",
-   "bloque": "Rien : la réserve couvre 14 jours, il ne relance qu’en dessous de 5.",
+   "bloque": "Rien : il lance une source dès que la réserve passe sous 14 jours (ou la niche streamers sous 2 jours), et préfère depuis le 22/10 les campagnes payées dès 1 000 vues.",
    "ensuite": "Suivre la part des créneaux donnée par l’analyste des clips (21/10)."
   },
   {
@@ -695,7 +695,7 @@
    },
    "mesure": "decoupeur",
    "maintenant": "Découpe une vidéo en clips : il choisit les moments, sous-titre et cadre.",
-   "bloque": "Aucune campagne choisie : rien à découper.",
+   "bloque": "Rien ne le bloque. Gemini (gratuit) choisit les moments, redemandé s’il est saturé ; une découpe de plus de 4 h garde ses clips finis (22/10).",
    "ensuite": "Monter la prochaine campagne retenue."
   },
   {
@@ -715,7 +715,7 @@
    },
    "mesure": "publication",
    "maintenant": "Publie les clips prêts sur YouTube, Instagram et TikTok, par Buffer.",
-   "bloque": "Rien à publier : aucune campagne en cours. TikTok a coupé la publication le 04/10.",
+   "bloque": "Rien ne la bloque. TikTok : nouveau compte relié le 22/10, une publication par jour.",
    "ensuite": "Au moins 3 publications par jour et par compte, dès la prochaine campagne."
   },
   {
@@ -874,7 +874,7 @@
    "depuis": "2026-09-04",
    "duree": "attend tes réponses",
    "maintenant": "N’existe pas : aucun agent de dropshipping ne tourne.",
-   "bloque": "La niche (point 30) et la clé AliExpress (point 20) attendent tes réponses.",
+   "bloque": "Pas encore construit (point 65, lancé le 22/10) : l’affiliation TikTok Shop France demande 500 abonnés, le nouveau compte TikTok part de zéro ; Higgsfield : 10 crédits, coût d’une vidéo à vérifier.",
    "ensuite": "3 produits par semaine, avec leur rentabilité."
   },
   {
@@ -981,7 +981,7 @@
     ]
    ],
    "maintenant": "Repère chaque matin les agents en panne ou à vide depuis longtemps, dit pourquoi et propose de les réparer ou de les arrêter.",
-   "bloque": "Ses propositions attendent ta décision (« État des agents »).",
+   "bloque": "Rien ne le bloque. Depuis le 22/10, il rend un verdict par agent (garder, réparer, couper) selon des critères écrits ; le Médecin applique, deux coupes par jour au plus.",
    "ensuite": "Arrêter seul ce qui tourne à vide depuis plus de deux semaines, après ton accord une fois pour toutes."
   },
   {
@@ -1026,7 +1026,7 @@
     ]
    ],
    "maintenant": "Chaque matin : relève les agents qui ne vont pas, les erreurs des journaux, les pertes sur la chaîne de l’argent (clips non déclarés, candidatures en échec) et l’état de la machine ; relance seul un conteneur arrêté ; confie chaque nouvelle panne à Hermes, qui propose un correctif testé.",
-   "bloque": "Les correctifs d’Hermes attendent encore une relecture avant la livraison ; Hermes passera sur DeepSeek dès que la clé sera déposée.",
+   "bloque": "Ses remèdes sûrs s’appliquent seuls ; les correctifs écrits par Hermes attendent une relecture avant la livraison.",
    "ensuite": "Livrer seul un correctif dont le banc d’essai est vert et que le Gardien accepte."
   },
   {
@@ -1051,7 +1051,7 @@
     ]
    ],
    "maintenant": "Pour chaque objectif manqué la veille : la cause, une action (appliquée seule si elle est sûre, confiée à Hermes sinon, ou à toi si elle dépend d’un compte ou d’une clé), puis la vérification le lendemain ; suit aussi les résultats : clips payables (4 000 vues), candidatures, euros encaissés.",
-   "bloque": "Hermes passera sur DeepSeek dès que la clé sera déposée ; ses actions attendent encore une relecture.",
+   "bloque": "Ses actions sûres s’appliquent seules ; celles confiées à Hermes attendent une relecture.",
    "ensuite": "Appliquer seul les actions d’Hermes dont le banc d’essai est vert."
   },
   {
@@ -1866,7 +1866,7 @@
     ],
     [
      "Attend toi",
-     "La niche (point 30), la clé AliExpress (point 20), la déclaration d’activité de vente (point 22)."
+     "Rien pour l’instant : le compte TikTok doit d’abord atteindre 500 abonnés (affiliation TikTok Shop France, politique du 03/09/2026 à confirmer dans l’application)."
     ]
    ],
    "avenir": [

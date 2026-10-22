@@ -33,6 +33,8 @@ function canal(o) {
   if (adresseCandidature(o)) return 'email';
   // 22/10/2026 : le formulaire du site de l'employeur, quand il ne demande pas de compte (envoyeur/formulaire.py)
   if (/^https?:\/\//.test(o.url_externe || '') && !AVEC_COMPTE.test(o.url_externe)) return 'formulaire';
+  // 22/10/2026 : Manor et Globus publient sur leur propre site : leur lien est déjà le formulaire de l'employeur
+  if (['Manor', 'Globus'].includes(o.source) && /^https?:\/\//.test(o.lien || '') && !AVEC_COMPTE.test(o.lien)) return 'formulaire';
   if (o.source === 'LinkedIn') return 'linkedin';
   return 'manuel';
 }

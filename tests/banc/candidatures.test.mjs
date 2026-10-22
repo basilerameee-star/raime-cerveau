@@ -87,6 +87,9 @@ test('seules les offres d’un canal automatique sont proposées ; les autres so
   assert.ok(ids.includes('banc-ok')); assert.ok(!ids.includes('banc-li')); assert.ok(!ids.includes('banc-ext'));
   assert.ok(l.compte.hors_auto >= 2);
   assert.equal(c.canal({ source: 'HelloWork' }), 'hellowork');
+  // 22/10/2026 : Manor et Globus publient sur leur propre site : leur lien EST le formulaire (5 offres restaient bloquées)
+  assert.equal(c.canal({ source: 'Manor', lien: 'https://live.solique.ch/manor/job/details/4077360/' }), 'formulaire');
+  assert.equal(c.canal({ source: 'Globus', lien: 'https://jobs.globus.ch/x.html' }), 'formulaire');
   // une offre nouvelle d'un canal manuel est rangée sans passer par un modèle
   await c.recevoirOffres([{ id: 'banc-n', titre: 'Vendeur', source: 'LinkedIn' }]);
   await c.traiterNouvelles({ max: 0 });
