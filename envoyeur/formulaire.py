@@ -56,6 +56,11 @@ ETAT = r"""() => {
     if (!l && el.getAttribute('aria-label')) l = el.getAttribute('aria-label');
     if (!l && el.getAttribute('aria-labelledby')) l = el.getAttribute('aria-labelledby').split(/\s+/).map((i) => txt(document.getElementById(i))).join(' ');
     if (!l) { const bloc = el.closest('.form-group, .form-item, .field, .form-field, .input-group, .row, div'); const x = bloc && bloc.querySelector('label, .label, legend'); if (x) l = txt(x); }
+    // 22/10/2026 (Adecco) : l'accord de confidentialité n'a pour libellé qu'un paragraphe-lien juste avant la liste
+    for (let a = el, i = 0; !l && a && i < 3; a = a.parentElement, i++) {
+      const prec = a.previousElementSibling, t = txt(prec);
+      if (t && t.length < 700) l = t;
+    }
     return l.slice(0, 300);
   };
   const champs = [];
@@ -63,6 +68,10 @@ ETAT = r"""() => {
   // le champ du CV peut vivre dans un autre <form> de la page (zone de dépôt à part) : il est lu aussi
   const liste = utiles(racine);
   if (!liste.some((el) => el.type === 'file')) liste.push(...[...document.querySelectorAll('input[type="file"]')].filter((el) => !el.disabled));
+  // 22/10/2026 (Adecco) : l'accord de confidentialité obligatoire vit hors du <form> principal ; les champs obligatoires de la
+  // page sont lus aussi (jamais les facultatifs d'un autre formulaire, comme une inscription aux alertes)
+  if (racine !== document.body) liste.push(...utiles(document).filter((el) => !liste.includes(el)
+    && (el.required || el.getAttribute('aria-required') === 'true')));
   for (const el of liste) {
     const type = (el.tagName === 'INPUT' ? (el.getAttribute('type') || 'text') : el.tagName).toLowerCase();
     const bloc = el.closest('.form-group, .form-item, .field, .form-field, label, div') || el.parentElement;
@@ -76,7 +85,7 @@ ETAT = r"""() => {
       const lg = g ? g.querySelector('legend, [class*="label"], [class*="question"]') : null;
       if (lg) question = txt(lg).slice(0, 300);
     }
-    const etoile = /\*\s*$/.test(label) || /\*\s*$/.test(question) || !!(bloc && bloc.querySelector('.required, .mandatory, abbr[title*="requis" i], abbr[title*="required" i]'));
+    const etoile = /\*\s*$/.test(label) || /\((obligatoire|required|pflichtfeld)\)/i.test(label) || /\*\s*$/.test(question) || !!(bloc && bloc.querySelector('.required, .mandatory, abbr[title*="requis" i], abbr[title*="required" i]'));
     const requis = el.required || el.getAttribute('aria-required') === 'true' || etoile;
     champs.push({ n: n++, tag: el.tagName.toLowerCase(), type, name: el.name || '', id: el.id || '', label, question,
       placeholder: el.getAttribute('placeholder') || '', required: requis, value: type === 'file' ? (el.files && el.files[0] ? el.files[0].name : '') : (el.value || ''),
