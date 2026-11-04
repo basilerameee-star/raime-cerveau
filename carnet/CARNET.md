@@ -464,3 +464,9 @@ Merci pour le travail de cette nuit : le banc a déjà trouvé un vrai défaut e
 - Veilleur des ordres (`jarvis/ordres_retard.cjs`, agent de boucle `agents/veilleur_ordres.js`) : un ordre à faire ou en cours depuis plus de 24 h est en rouge dans l'e-mail de 7 h 30 (`n8n/heraut_format_email.js`, posé par `n8n/poser_veilleurs.py`) et en tête du cockpit ; une table illisible se dit « lecture en échec ».
 - Leçon : la lecture du Cockpit (`bases.cjs`) rend une liste vide quand la base échoue ; un veilleur ne doit pas s'en servir, sinon une panne devient « rien à signaler ».
 - Défaut constaté à la vérification, le jour même : la première pose a collé la clause de la Sentinelle au `GROUP BY` (« w.nameUNION ALL ») ; sa requête ne passait plus. Réparé sur le serveur à 15 h 33 UTC, avant son passage de 16 h ; la requête en service a été rejouée en lecture et rend la ligne « Clips disparus ». Le script garde désormais l'espace, et un test exécute la requête recomposée (il échoue avec l'ancienne clause).
+
+## 2026-11-04 — allègement : plus d'e-mails d'alerte, plus de vente externe
+- Demande de Basile : pause de Moon & Pillow, fin de la vente externe, plus aucun e-mail automatique (au plus une newsletter), serveur moins cher.
+- Constat : ~200 e-mails reçus en 14 jours (≈ 170 « [Clips] », ~10 « [Candidatures] », la Sentinelle et le rapport chaque jour) ; disque à 97 % (78 Go de clips).
+- Fait : `prevenir()` n'envoie plus (journal `alertes.log`) ; boucle réduite à 4 agents ; n8n : Sentinelle, Expéditeur, Vitrines dépubliés ; routines Claude désactivées. Test `tests/banc/allegement.test.mjs`.
+- Leçon : une alerte par e-mail pour chaque petit incident noie l'essentiel ; le cockpit suffit.

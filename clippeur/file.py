@@ -36,6 +36,14 @@ def cle_gemini():
 
 def prevenir(sujet, texte, prefixe="[Clips]", page="https://cockpit.raime.fr/clips"):
     """Alerte à Basile, de son Gmail vers son Gmail (GMAIL_ADRESSE et GMAIL_MOT_DE_PASSE_APPLI du coffre). Jamais bloquant."""
+    # 04/11/2026, décision de Basile : plus aucun e-mail d alerte, il lit le cockpit. L alerte reste notée dans
+    # alertes.log (à côté de ce fichier) ; pour rétablir l envoi, créer le fichier EMAILS_ACTIFS au même endroit.
+    import time
+    ici = os.path.dirname(os.path.abspath(__file__))
+    if not os.path.exists(os.path.join(ici, "EMAILS_ACTIFS")):
+        with open(os.path.join(ici, "alertes.log"), "a", encoding="utf-8") as j:
+            j.write(time.strftime("%Y-%m-%d %H:%M") + " " + prefixe + " " + sujet + " | " + " ".join(texte.split())[:300] + chr(10))
+        return
     import smtplib
     from email.message import EmailMessage
     try:

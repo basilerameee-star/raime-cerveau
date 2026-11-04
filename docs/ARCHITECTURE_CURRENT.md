@@ -5,6 +5,16 @@ ce fichier dit ce qui tourne VRAIMENT, vérifié sur le serveur et par les tests
 chaque reprise, avant tout nouveau chantier. Le journal détaillé reste `carnet/CARNET.md` ; la reprise de
 Codex du 28/09 : `REPRISE_CODEX.md`.
 
+## Allègement du 04/11/2026 (à lire en premier)
+
+Basile met la boutique Moon & Pillow en pause et arrête toute vente externe (sites, sourcing, systèmes
+agentiques). Le système ne sert plus que son travail interne. Il s'informe par le cockpit, pas par e-mail.
+- Boucle : seuls `cordon`, `bibliothecaire`, `veilleur_ordres` et `directeur` tournent (`agents/rythmes.js`).
+- E-mails : `prevenir()` (clips, candidatures) écrit dans `/opt/raime/clippeur/alertes.log`, sans envoi ;
+  rétablir = créer `/opt/raime/clippeur/EMAILS_ACTIFS`. Sentinelle, Expéditeur, Vitrines dépubliés dans n8n.
+- Routines Claude « Ingénierie » et « Moteur de contenu » désactivées.
+- Le reste de ce document décrit l'état d'avant : ce qui touche à la prospection et aux vitrines est arrêté.
+
 ## Comment vérifier (sans rien casser)
 
 - Code : `git log --oneline -20` ; la CI « Livraison » passe le banc complet (Postgres) avant tout
