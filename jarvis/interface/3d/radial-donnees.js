@@ -8,13 +8,16 @@
 //  - Moon & Pillow : dépôt Moon-Pillow (22 commits du 23/10 au 04/11 22 h 11), moonandpillow.com répond (200, relevé le 05/11) ;
 //    pause de la boutique notée au carnet le 04/11 ; 568 images virtuelles dans public/img/virtuelles ; 39 décors dans
 //    public/img/decors, tous datés du 29/10, non suivis par Git ;
-//  - cockpit : cockpit.raime.fr répond 401 (mot de passe) depuis 2.29.6.94 le 05/11 à 14 h 25 ; il refusait la connexion
-//    le 04/11 vers 21 h 30 (premier essai de bascule vers le CX23) ;
+//  - cockpit : cockpit.raime.fr répond 401 (mot de passe) le 05/11 à 19 h 37 ; il refusait la connexion le 04/11 vers 21 h 30
+//    (premier essai de bascule) ;
+//  - migration : message de la session de migration du 05/11 : bascule de 19 h 24 à 19 h 36 (heure de Paris), le CX23 porte
+//    les adresses de l'ancien serveur ; cockpit 401, boucle à 4 agents, n8n /healthz 200, 9 conteneurs en marche, porte active ;
+//    l'ancien CX43 est éteint, pas supprimé ;
 //  - disque : 39 Go utilisés sur 160 Go après l'allègement (note du 04/11) ; sauvegardes R2 : dernière vérification relevée le 30/09.
 // Quand la page est servie par le cockpit, /api/v6 est lu en plus : il donne le dernier passage réel de chaque agent.
 // États : actif · garde (tourne, sans e-mail) · coupe (arrêté le 04/11, réversible) · supprime · encours · nonreleve
 window.RAIME = {
-  releve: '2026-11-05T14:25:00+01:00',
+  releve: '2026-11-05T19:40:00+01:00',
   titre: 'rAIme',
   sousTitre: 'Système interne seul · allégé le 04/11/2026',
   anneaux: [
@@ -22,17 +25,17 @@ window.RAIME = {
     { cle: 'boucle', valeur: '4 / 20', texte: 'agents de la boucle encore actifs' },
     { cle: 'n8n', valeur: '1', texte: 'flux n8n publié, le Héraut (21 dépubliés le 04/11)' },
     { cle: 'services', valeur: '9', texte: 'services sur le serveur (5 supprimés)' },
-    { cle: 'disque', valeur: '24 %', texte: 'disque de l’ancien serveur : 39 Go sur 160 (97 % avant)' },
+    { cle: 'serveur', valeur: '5,99 €', texte: 'par mois HT pour le serveur CX23 (environ 19,70 € avant)' },
   ],
   poles: [
     {
-      cle: 'machine', nom: 'Machine', etat: 'encours',
-      resume: 'Migration vers le petit serveur CX23 en cours. L’ancien CX43 sert tout tant que le nouveau n’est pas vérifié.',
+      cle: 'machine', nom: 'Machine', etat: 'actif',
+      resume: 'Tout tourne sur le petit serveur CX23 depuis le 05/11 à 19 h 36. L’ancien CX43 est éteint, gardé en secours.',
       branches: [
-        { id: 'machine', nom: 'Ancien serveur CX43', etat: 'actif', texte: 'L’ancien serveur. Il sert tout le système en attendant la bascule. Ses 9 services ont été relancés après le premier essai de bascule ; disque à 24 % (39 Go sur 160).', detail: ['8 cœurs · 16 Go · 160 Go', 'environ 19,70 €/mois HT avec sauvegardes et IPv4'] },
-        { id: 'cx23', nom: 'Petit serveur CX23 (Helsinki)', etat: 'encours', texte: 'Créé (5,99 €/mois HT). Le premier essai de bascule, le 04/11 au soir, a échoué sur un réglage de Docker, corrigé depuis. La copie finale est à refaire.', detail: ['2 cœurs · 4 Go · 40 Go', 'environ 0,20 € par jour tant que les deux tournent'] },
-        { id: 'bascule', nom: 'Bascule des adresses IP', etat: 'encours', texte: 'À faire : déplacer les deux adresses de l’ancien serveur vers le nouveau dans la console Hetzner. Le domaine n’a rien à changer.', detail: ['ensuite : supprimer l’ancien serveur, avec ton accord'] },
-        { id: 'nettoyage_clips', nom: 'Nettoyage des vidéos de clips', etat: 'encours', texte: 'Le script existe, il n’est pas encore planifié. Il évitera qu’une vidéo source (3 à 11 Go) remplisse le petit disque.' },
+        { id: 'machine', nom: 'Ancien serveur CX43', etat: 'encours', texte: 'Éteint le 05/11, pas supprimé : il reste en secours. Sa suppression attend ton accord.', detail: ['8 cœurs · 16 Go · 160 Go', 'environ 19,70 €/mois HT avec sauvegardes et IPv4 tant qu’il existe'] },
+        { id: 'cx23', nom: 'Petit serveur CX23 (Helsinki)', etat: 'actif', texte: 'Sert tout le système depuis le 05/11 à 19 h 36 (5,99 €/mois HT). Vérifié : cockpit, boucle à 4 agents, n8n, 9 services, porte.', detail: ['2 cœurs · 4 Go · 40 Go', 'le premier essai, le 04/11 au soir, avait échoué sur un réglage de Docker'] },
+        { id: 'bascule', nom: 'Bascule des adresses IP', etat: 'actif', texte: 'Faite le 05/11 entre 19 h 24 et 19 h 36 : le CX23 a repris les adresses de l’ancien serveur. Le domaine n’a rien changé.' },
+        { id: 'nettoyage_clips', nom: 'Nettoyage des vidéos de clips', etat: 'nonreleve', texte: 'Le script existe. Sa planification sur le nouveau serveur n’est pas relevée ici. Il évite qu’une vidéo source (3 à 11 Go) remplisse le petit disque.' },
         { id: 'sauvegardes', nom: 'Sauvegardes de nuit', etat: 'nonreleve', texte: 'Prévues chaque nuit, sur le serveur et dans Cloudflare R2. Gardées, mais leur dernière vérification relevée date du 30/09.' },
         { id: 'livraison', nom: 'Livraison du code (la porte)', etat: 'actif', texte: 'A livré l’allègement le 04/11 à 16 h 05 UTC (commit 0d3737c), test vert sur le serveur.' },
         { id: 'conteneurs', nom: 'Services en marche', etat: 'actif', texte: 'hermes, n8n, postgres, cockpit, caddy, boucle, executant, mcp, envoyeur.' },
@@ -74,7 +77,7 @@ window.RAIME = {
         { id: 'sentinelle', nom: 'Sentinelle', etat: 'coupe', texte: 'Flux n8n dépublié le 04/11 (un e-mail par jour avant).' },
         { id: 'voix', nom: 'Voix de Jarvis', etat: 'supprime', texte: 'Service raime-voix supprimé le 04/11.' },
         { id: 'courrier', nom: 'Tri du courrier', etat: 'nonreleve', texte: 'État non relevé après l’allègement.' },
-        { id: 'cockpit', nom: 'Cockpit', etat: 'actif', texte: 'Répond sur l’ancien serveur (vérifié le 05/11 à 14 h 25). Il a été injoignable le 04/11 au soir, pendant le premier essai de bascule.' },
+        { id: 'cockpit', nom: 'Cockpit', etat: 'actif', texte: 'Répond sur le CX23 (vérifié le 05/11 à 19 h 37). Coupé le 04/11 au soir pendant le premier essai de bascule, puis 12 minutes le 05/11 pendant la bascule.' },
       ],
     },
     {
