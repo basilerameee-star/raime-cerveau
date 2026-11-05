@@ -139,7 +139,15 @@ test('livrables : servis en lecture, isolés (sandbox), sans sortie du dossier',
 test('l’interface, le coffre (présent ou absent, jamais la valeur), la santé avec la version', async () => {
   // Depuis le 22/10/2026 : / et /jarvis sont le cockpit v8 (le « oui » de Basile) ; la v6 reste en secours à /v6 ; la 3D d'avant
   // reste à /jarvis3d et l'ancienne page à /jarvis/classique. Les deux gardent la conversation, la dictée, la saisie et la sphère.
-  for (const u of ['/', '/jarvis', '/v8']) {
+  // Depuis le 04/11/2026 : / et /jarvis sont le cockpit radial ; la v8 reste entière à /v8.
+  for (const u of ['/', '/jarvis', '/radial']) {
+    const radial = await (await fetch(base + u)).text();
+    assert.match(radial, /<title>Cockpit rAIme · radial<\/title>/, u);
+    assert.match(radial, /src="\/3d\/radial-donnees\.js"/, u);
+    assert.match(radial, /href="\/v8"/, u + ' : le lien vers le cockpit complet');
+  }
+  assert.equal((await fetch(base + '/3d/radial-donnees.js')).status, 200, 'les données du radial sont servies');
+  for (const u of ['/v8']) {
     const v8 = await (await fetch(base + u)).text();
     assert.match(v8, /<title>rAIme · Cockpit<\/title>/, u);
     assert.match(v8, /src="\/3d\/v8-app\.js"/, u);

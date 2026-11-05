@@ -299,6 +299,10 @@ async function router(req, res) {
   // 22/10/2026, Basile : « elle me va : fais-en le cockpit principal sur / et /jarvis (garde la v6 en secours) ». / et /jarvis
   // sont le cockpit v8 (le style de ses captures, tout le cockpit rassemblé, l'agence en 3D qu'on visite) ; /v8 aussi.
   // La v6 reste en secours à /v6 (jarvis/v6.cjs) ; elle revient seule à / si la page v8 manquait. Retour arrière : retirer la ligne suivante.
+  // 04/11/2026, Basile : « Oui, mets-le en ligne » : / et /jarvis sont le cockpit radial (jarvis/interface/3d/radial.html, l'état du système
+  // après l'allègement, données dans radial-donnees.js, dernier passage des agents lu sur /api/v6) ; /radial aussi. La v8 reste entière à
+  // /v8 (conversation, appels, agenda) et reprend / si la page radiale manquait. Retour arrière : retirer la ligne suivante.
+  if (m === 'GET' && (url === '/' || url === '/jarvis' || url === '/radial') && fs.existsSync(path.join(TROIS_D, 'radial.html'))) return servir3d(req, res, path.join(TROIS_D, 'radial.html'), false);
   if (m === 'GET' && (url === '/' || url === '/jarvis' || url === '/v8') && fs.existsSync(path.join(TROIS_D, 'v8.html'))) return servir3d(req, res, path.join(TROIS_D, 'v8.html'), false);
   if (v6 && await v6.router(req, res, { url, m, envoyer, json, autorise })) return;
   // 15/10/2026 → 22/10/2026 : / et /jarvis étaient le cockpit v6 ; il les reprend si la v8 manque. La 3D d'avant reste à /jarvis3d.

@@ -1,0 +1,637 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Cockpit rAIme · radial</title>
+<style>
+/* COCKPIT RADIAL rAIme (04/11/2026). Un centre, des pôles, leurs agents : on plonge du système entier jusqu'à un agent.
+   Données : donnees.js (relevé du 04/11) + /api/v6 quand la page est servie par le cockpit. */
+:root {
+  --fond: #030405; --charbon: #0b0d10; --charbon2: #12151a; --trait: rgba(160, 200, 220, .14);
+  --texte: #e8edf1; --doux: #9aa6b0; --pale: #5d6770;
+  --actif: #59f0d2; --garde: #7fa8ff; --encours: #f2c46d; --coupe: #59606a; --supprime: #c4646b; --nonreleve: #8b949c;
+  --accent: #59f0d2;
+  --sans: "Inter", "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: "JetBrains Mono", "Cascadia Mono", "SF Mono", ui-monospace, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--fond); color: var(--texte); font-family: var(--sans); overflow: hidden;
+  -webkit-font-smoothing: antialiased; touch-action: none; }
+#scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; user-select: none; -webkit-user-select: none; }
+#scene.glisse { cursor: grabbing; }
+.voile { position: fixed; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse 70% 60% at 50% 48%, rgba(40, 70, 80, .16), transparent 70%),
+              radial-gradient(ellipse 120% 90% at 50% 50%, transparent 55%, rgba(0, 0, 0, .75)); }
+
+/* ── l'en-tête, la légende, les commandes : de petits textes posés sur le vide ── */
+.haut { position: fixed; top: 0; left: 0; right: 0; display: flex; justify-content: space-between; align-items: flex-start;
+  padding: max(18px, env(safe-area-inset-top)) 24px 0; pointer-events: none; gap: 16px; }
+.marque { font: 600 11px/1 var(--mono); letter-spacing: .28em; text-transform: uppercase; color: var(--doux); }
+.marque b { color: var(--texte); font-weight: 600; }
+.fil { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13px; color: var(--pale); pointer-events: auto; }
+.fil button { background: none; border: 0; padding: 2px 0; color: var(--doux); font: inherit; cursor: pointer; }
+.fil button:hover, .fil button:focus-visible { color: var(--texte); outline: none; }
+.fil button[aria-current] { color: var(--texte); cursor: default; }
+.fil .sep { opacity: .5; }
+.releve { text-align: right; font: 500 11px/1.6 var(--mono); color: var(--pale); letter-spacing: .04em; }
+.complet { display: block; margin-top: 8px; text-align: right; font: 500 11px/1.4 var(--mono); color: var(--doux); text-decoration: none; pointer-events: auto; letter-spacing: .03em; }
+.complet:hover, .complet:focus-visible { color: var(--actif); outline: none; }
+.releve .pt { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--pale); margin-right: 6px; vertical-align: 1px; }
+.releve .pt.direct { background: var(--actif); box-shadow: 0 0 8px var(--actif); }
+
+.bas { position: fixed; left: 0; right: 0; bottom: 0; display: flex; justify-content: space-between; align-items: flex-end;
+  padding: 0 24px max(18px, env(safe-area-inset-bottom)); pointer-events: none; gap: 16px; }
+.legende { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; color: var(--doux); pointer-events: auto; max-width: 640px; }
+.legende button { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; opacity: .9; }
+.legende button[aria-pressed="false"] { opacity: .35; }
+.legende i { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+.legende .n { font-family: var(--mono); color: var(--pale); }
+.zoom { display: flex; gap: 4px; pointer-events: auto; }
+.zoom button { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--trait); background: rgba(11, 13, 16, .6);
+  color: var(--doux); font: 400 16px/1 var(--sans); cursor: pointer; backdrop-filter: blur(6px); }
+.zoom button:hover, .zoom button:focus-visible { color: var(--texte); border-color: rgba(89, 240, 210, .45); outline: none; }
+
+/* ── le panneau de lecture : un texte flottant, un trait lumineux, pas de carte ── */
+#lecture { position: fixed; right: 28px; top: 50%; width: min(360px, 34vw); transform: translate(12px, -50%); opacity: 0;
+  pointer-events: none; transition: opacity .45s ease, transform .55s cubic-bezier(.2, .8, .2, 1);
+  padding: 4px 0 4px 22px; border-left: 1px solid rgba(89, 240, 210, .35);
+  background: linear-gradient(90deg, rgba(5, 7, 9, .9), rgba(5, 7, 9, .8)); backdrop-filter: blur(4px); max-height: 76vh; overflow: auto; }
+#lecture.ouvert { opacity: 1; transform: translate(0, -50%); pointer-events: auto; }
+#lecture .sur { font: 600 10.5px/1 var(--mono); letter-spacing: .24em; text-transform: uppercase; color: var(--pale); }
+#lecture h2 { margin: 10px 0 6px; font-weight: 500; font-size: 22px; letter-spacing: -.01em; line-height: 1.2; }
+#lecture .etat { display: inline-flex; align-items: center; gap: 8px; font: 500 12px/1 var(--mono); color: var(--doux); letter-spacing: .04em; }
+#lecture .etat i { width: 7px; height: 7px; border-radius: 50%; }
+#lecture p { margin: 14px 0 0; font-size: 14.5px; line-height: 1.6; color: #c9d2d9; }
+#lecture ul { list-style: none; margin: 14px 0 0; padding: 0; }
+#lecture li { font: 400 12px/1.5 var(--mono); color: var(--doux); padding: 3px 0; }
+#lecture .liste button { all: unset; display: flex; gap: 10px; align-items: baseline; width: 100%; padding: 7px 0; cursor: pointer;
+  font-size: 13.5px; color: #c9d2d9; border-bottom: 1px solid rgba(255, 255, 255, .04); }
+#lecture .liste button:hover, #lecture .liste button:focus-visible { color: var(--texte); }
+#lecture .liste i { flex: none; width: 6px; height: 6px; border-radius: 50%; transform: translateY(-1px); }
+#lecture .direct { margin-top: 14px; font: 500 11.5px/1.5 var(--mono); color: var(--actif); }
+#lecture .direct.alerte { color: var(--supprime); }
+#lecture h2:focus { outline: none; }
+#lecture .fermer { position: absolute; top: 0; right: 0; all: unset; }
+
+@media (max-width: 760px) {
+  .haut { padding: max(14px, env(safe-area-inset-top)) 16px 0; }
+  .releve { font-size: 10px; }
+  .releve .long { display: none; }
+  .complet { font-size: 10px; margin-top: 4px; }
+  .complet::before { content: "Cockpit complet →"; } .complet { font-size: 0; } .complet::before { font-size: 10px; }
+  .releve { white-space: nowrap; }
+  .marque { letter-spacing: .2em; font-size: 10px; }
+  .bas { padding: 0 14px max(12px, env(safe-area-inset-bottom)); }
+  .legende { font-size: 11px; gap: 4px 12px; }
+  #lecture { left: 0; right: 0; top: auto; bottom: 0; width: auto; max-height: 46vh; transform: translateY(24px);
+    border-left: 0; border-top: 1px solid rgba(89, 240, 210, .35); padding: 18px 20px max(20px, env(safe-area-inset-bottom));
+    background: linear-gradient(180deg, rgba(6, 8, 10, .94), rgba(3, 4, 5, .98)); }
+  #lecture.ouvert { transform: translateY(0); }
+  #lecture h2 { font-size: 19px; }
+  body.lit .bas { opacity: 0; pointer-events: none; }
+}
+
+/* ── la scène ── */
+.lien { fill: none; stroke-linecap: round; }
+.pulse { fill: none; stroke-linecap: round; stroke-dasharray: 2 60; animation: courant 5s linear infinite; }
+@keyframes courant { to { stroke-dashoffset: -62; } }
+.noeud { cursor: pointer; outline: none; }
+.noeud .halo { transition: opacity .4s; }
+.noeud:hover .halo, .noeud:focus-visible .halo { opacity: .9 !important; }
+.noeud:focus-visible .anneau { stroke: #fff; }
+.respire { animation: respire 4.5s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes respire { 50% { opacity: .35; transform: scale(1.18); } }
+.tourne { animation: tourne 120s linear infinite; transform-origin: 0 0; }
+.tourne.lent { animation-duration: 260s; animation-direction: reverse; }
+@keyframes tourne { to { transform: rotate(360deg); } }
+text { font-family: var(--sans); }
+.etq text { paint-order: stroke; stroke: #030405; stroke-width: 4px; stroke-linejoin: round; stroke-opacity: .85; }
+.mono { font-family: var(--mono); }
+@media (prefers-reduced-motion: reduce) { .pulse, .respire, .tourne { animation: none; } }
+</style>
+</head>
+<body>
+<svg id="scene" role="application" aria-label="Carte radiale du système rAIme">
+  <defs>
+    <radialGradient id="g-hub" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#173038" stop-opacity=".95"/><stop offset=".55" stop-color="#0c1418"/><stop offset="1" stop-color="#07090b"/>
+    </radialGradient>
+    <radialGradient id="g-lueur" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#59f0d2" stop-opacity=".22"/><stop offset="1" stop-color="#59f0d2" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="f-lueur" x="-200%" y="-200%" width="500%" height="500%"><feGaussianBlur stdDeviation="3"/></filter>
+  </defs>
+  <g id="monde"></g>
+</svg>
+<div class="voile"></div>
+
+<header class="haut">
+  <div>
+    <div class="marque"><b>rAIme</b> · Jarvis</div>
+    <nav class="fil" id="fil" aria-label="Où je suis"></nav>
+  </div>
+  <div><div class="releve" id="releve"></div><a class="complet" href="/v8">Cockpit complet (conversation, appels, agenda) →</a></div>
+</header>
+
+<aside id="lecture" inert></aside>
+<div id="annonce" aria-live="polite" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)"></div>
+
+<footer class="bas">
+  <div class="legende" id="legende" aria-label="États"></div>
+  <div class="zoom">
+    <button id="z-moins" aria-label="Dézoomer">−</button>
+    <button id="z-centre" aria-label="Revenir au centre">◎</button>
+    <button id="z-plus" aria-label="Zoomer">+</button>
+  </div>
+</footer>
+
+<script src="/3d/radial-donnees.js"></script>
+<script>
+'use strict';
+const R = window.RAIME;
+const NS = 'http://www.w3.org/2000/svg';
+const ETATS = {
+  actif: ['Fonctionne', 'var(--actif)', '#59f0d2'],
+  garde: ['Gardé, sans e-mail', 'var(--garde)', '#7fa8ff'],
+  encours: ['En cours', 'var(--encours)', '#f2c46d'],
+  coupe: ['Coupé le 04/11', 'var(--coupe)', '#59606a'],
+  supprime: ['Supprimé', 'var(--supprime)', '#c4646b'],
+  nonreleve: ['Non relevé', 'var(--nonreleve)', '#8b949c'],
+};
+const vivant = (e) => e === 'actif' || e === 'garde' || e === 'encours';
+
+// ── une graine fixe : la composition est organique mais la même à chaque visite ──
+let graine = 7;
+const hasard = () => ((graine = (graine * 16807) % 2147483647) - 1) / 2147483646;
+
+const svg = document.getElementById('scene'), monde = document.getElementById('monde');
+const el = (nom, attrs = {}, parent) => {
+  const n = document.createElementNS(NS, nom);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  if (parent) parent.appendChild(n);
+  return n;
+};
+
+// ── LA COMPOSITION : le centre, puis les pôles autour, puis les agents en éventail vers l'extérieur ──
+const HUB = 150;
+// la forme suit l'écran : un ovale couché sur un écran large, debout sur un téléphone
+let AX = 1, AY = 1;
+function forme() {
+  const w = innerWidth || 1280, h = innerHeight || 800, por = h / w;
+  AX = por > 1.3 ? .64 : Math.pow(Math.min(1.5, Math.max(1, w / h)), .55);
+  AY = por > 1.3 ? Math.min(2.2, por) * .9 : 1;
+}
+forme();
+const n = R.poles.length;
+const poles = R.poles.map((p, i) => {
+  const poids = p.branches.length;
+  const a = -Math.PI / 2 + (i / n) * Math.PI * 2 + (hasard() - .5) * .22;
+  const r = 610 + (hasard() - .5) * 110 + poids * 6;
+  return { ...p, a, r, x: 0, y: 0, taille: 15 + poids * 1.6 };
+});
+for (const p of poles) {
+  const m = p.branches.length;
+  const eventail = Math.min(Math.PI * 1.05, .36 * m + .5);
+  p.branches = p.branches.map((b, j) => {
+    const t = m === 1 ? .5 : j / (m - 1);
+    const a = p.a + (t - .5) * eventail + (hasard() - .5) * .08;
+    const r = 132 + (j % 2) * 34 + hasard() * 14;
+    return { ...b, pole: p, a, r, x: 0, y: 0 };
+  });
+}
+const TOUS = poles.flatMap((p) => p.branches);
+// les positions dépendent de la forme de l'écran : recalculées à chaque changement de taille
+const EXT = { x: 1, y: 1 };
+function disposer() {
+  for (const p of poles) {
+    p.x = Math.cos(p.a) * p.r * AX; p.y = Math.sin(p.a) * p.r * AY;
+    for (const b of p.branches) { b.x = p.x + Math.cos(b.a) * b.r; b.y = p.y + Math.sin(b.a) * b.r; }
+  }
+  EXT.x = Math.max(...poles.map((p) => Math.abs(p.x))); EXT.y = Math.max(...poles.map((p) => Math.abs(p.y)));
+}
+disposer();
+function redisposer() {
+  disposer();
+  for (const p of poles) {
+    const ang = Math.atan2(p.y, p.x), x1 = Math.cos(ang) * (HUB + 8), y1 = Math.sin(ang) * (HUB + 8);
+    const d = courbe(x1, y1, p.x - Math.cos(ang) * p.taille, p.y - Math.sin(ang) * p.taille, .12);
+    p.lienD.forEach((l) => l.setAttribute('d', d));
+    p.g.setAttribute('transform', `translate(${p.x},${p.y})`);
+    for (const b of p.branches) {
+      b.lien.setAttribute('d', courbe(p.x, p.y, b.x, b.y, .22 * (b.a > p.a ? 1 : -1)));
+      b.g.setAttribute('transform', `translate(${b.x},${b.y})`);
+    }
+  }
+}
+
+// ── le fond : de fins cercles de repère et une poussière lente ──
+const fond = el('g', { 'pointer-events': 'none' }, monde);
+for (const [r, o] of [[260, .07], [420, .05], [700, .045], [980, .03]]) el('circle', { r, fill: 'none', stroke: '#a0c8dc', 'stroke-opacity': o, 'stroke-width': .6, 'vector-effect': 'non-scaling-stroke' }, fond);
+const poussiere = el('g', { class: 'tourne lent' }, fond);
+for (let i = 0; i < 140; i++) {
+  const a = hasard() * Math.PI * 2, r = 180 + Math.pow(hasard(), .7) * 1100;
+  el('circle', { cx: Math.cos(a) * r, cy: Math.sin(a) * r, r: hasard() * 1.1 + .25, fill: '#cfe8f0', 'fill-opacity': hasard() * .35 + .05 }, poussiere);
+}
+
+// ── les liens : du centre aux pôles, des pôles aux agents ; un courant passe dans ce qui tourne ──
+const liens = el('g', {}, monde);
+const courbe = (x1, y1, x2, y2, f = .18) => {
+  const mx = (x1 + x2) / 2, my = (y1 + y2) / 2, dx = x2 - x1, dy = y2 - y1;
+  return `M${x1},${y1} Q${mx - dy * f},${my + dx * f} ${x2},${y2}`;
+};
+for (const p of poles) {
+  const ang = Math.atan2(p.y, p.x), x1 = Math.cos(ang) * (HUB + 8), y1 = Math.sin(ang) * (HUB + 8);
+  const d = courbe(x1, y1, p.x - Math.cos(ang) * p.taille, p.y - Math.sin(ang) * p.taille, .12);
+  const c = ETATS[p.etat][2];
+  p.lienD = [];
+  p.lienD.push(el('path', { d, class: 'lien', stroke: c, 'stroke-opacity': vivant(p.etat) ? .38 : .16, 'stroke-width': 1, 'vector-effect': 'non-scaling-stroke', 'stroke-dasharray': vivant(p.etat) ? '' : '3 5' }, liens));
+  if (vivant(p.etat)) p.lienD.push(el('path', { d, class: 'pulse', stroke: c, 'stroke-opacity': .85, 'stroke-width': 1.6, style: `animation-delay:${-hasard() * 5}s` }, liens));
+  for (const b of p.branches) {
+    const cb = ETATS[b.etat][2];
+    const db = courbe(p.x, p.y, b.x, b.y, .22 * (b.a > p.a ? 1 : -1));
+    b.lien = el('path', { d: db, class: 'lien', stroke: cb, 'stroke-opacity': vivant(b.etat) ? .32 : .13, 'stroke-width': .8, 'vector-effect': 'non-scaling-stroke', 'stroke-dasharray': vivant(b.etat) ? '' : '2 4' }, liens);
+  }
+}
+
+// ── le centre : le cœur, puis des anneaux d'information concentriques ──
+const centreN = el('g', { class: 'noeud', tabindex: 0, role: 'button', 'aria-label': 'Le système entier' }, monde);
+const centre = el('g', {}, centreN);
+el('circle', { r: HUB * 2.3, fill: 'url(#g-lueur)', 'pointer-events': 'none' }, centre);
+el('circle', { r: HUB, fill: 'url(#g-hub)', stroke: '#59f0d2', 'stroke-opacity': .5, 'stroke-width': 1, 'vector-effect': 'non-scaling-stroke' }, centre);
+el('circle', { r: HUB - 10, fill: 'none', stroke: '#59f0d2', 'stroke-opacity': .12, 'stroke-width': 1, 'vector-effect': 'non-scaling-stroke' }, centre);
+const graduation = el('g', { class: 'tourne', 'pointer-events': 'none' }, centre);
+for (let i = 0; i < 120; i++) {
+  const a = (i / 120) * Math.PI * 2, r1 = HUB + 14, r2 = HUB + (i % 10 === 0 ? 24 : 18);
+  el('line', { x1: Math.cos(a) * r1, y1: Math.sin(a) * r1, x2: Math.cos(a) * r2, y2: Math.sin(a) * r2, stroke: '#a0c8dc', 'stroke-opacity': i % 10 === 0 ? .4 : .14, 'stroke-width': .7, 'vector-effect': 'non-scaling-stroke' }, graduation);
+}
+// anneau des états : la part de chaque état parmi tous les agents
+const compte = {}; for (const b of TOUS) compte[b.etat] = (compte[b.etat] || 0) + 1;
+{
+  const r = HUB + 40, tot = TOUS.length; let a0 = -Math.PI / 2;
+  for (const e of Object.keys(ETATS)) {
+    if (!compte[e]) continue;
+    const a1 = a0 + (compte[e] / tot) * Math.PI * 2 - .025;
+    el('path', { d: `M${Math.cos(a0) * r},${Math.sin(a0) * r} A${r},${r} 0 ${a1 - a0 > Math.PI ? 1 : 0} 1 ${Math.cos(a1) * r},${Math.sin(a1) * r}`, fill: 'none', stroke: ETATS[e][2], 'stroke-opacity': vivant(e) ? .85 : .5, 'stroke-width': 2.2, 'stroke-linecap': 'round', 'vector-effect': 'non-scaling-stroke', 'pointer-events': 'none' }, centre);
+    a0 = a1 + .025;
+  }
+}
+// anneau des chiffres : cinq mesures posées sur un cercle, lisibles quand on s'approche
+const chiffres = el('g', { 'pointer-events': 'none', class: 'etq' }, centre), chiffresG = [];
+R.anneaux.forEach((m, i) => {
+  const a = -Math.PI / 2 + Math.PI * .2 + (i / R.anneaux.length) * Math.PI * 2, r = HUB + 100;
+  const g0 = el('g', { transform: `translate(${Math.cos(a) * r},${Math.sin(a) * r})` }, chiffres), g = el('g', {}, g0);
+  chiffresG.push(g);
+  el('circle', { r: 1.6, fill: '#59f0d2', 'fill-opacity': .7 }, g);
+  const t1 = el('text', { y: -7, 'text-anchor': 'middle', 'font-size': 17, fill: '#e8edf1', 'font-weight': 500, class: 'mono' }, g); t1.textContent = m.valeur;
+  const lignes = coupe(m.texte, 26);
+  lignes.forEach((l, k) => { const t = el('text', { y: 11 + k * 12.5, 'text-anchor': 'middle', 'font-size': 10, fill: '#9aa6b0' }, g); t.textContent = l; });
+});
+const tNom = el('text', { y: -8, 'text-anchor': 'middle', 'font-size': 34, 'font-weight': 300, fill: '#e8edf1', 'letter-spacing': '.04em', 'pointer-events': 'none' }, centre); tNom.textContent = R.titre;
+const tSous = el('text', { y: 17, 'text-anchor': 'middle', 'font-size': 11.5, fill: '#9aa6b0', 'letter-spacing': '.16em', class: 'mono', 'pointer-events': 'none' }, centre); tSous.textContent = 'SYSTÈME INTERNE';
+const tVif = el('text', { y: 38, 'text-anchor': 'middle', 'font-size': 13, fill: '#59f0d2', class: 'mono', 'pointer-events': 'none' }, centre);
+tVif.textContent = `${TOUS.filter((b) => vivant(b.etat)).length} en marche · ${TOUS.filter((b) => !vivant(b.etat)).length} à l’arrêt`;
+
+function coupe(txt, max) {
+  const mots = txt.split(' '), l = ['']; for (const m of mots) { if ((l[l.length - 1] + ' ' + m).trim().length > max) l.push(m); else l[l.length - 1] = (l[l.length - 1] + ' ' + m).trim(); }
+  return l;
+}
+
+// ── les pôles et leurs agents ──
+const etiquettes = [];
+const coucheNoeuds = el('g', {}, monde);
+for (const p of poles) {
+  const c = ETATS[p.etat][2];
+  const g = el('g', { class: 'noeud', transform: `translate(${p.x},${p.y})`, tabindex: 0, role: 'button', 'aria-label': `${p.nom} : ${ETATS[p.etat][0]}` }, coucheNoeuds);
+  el('circle', { r: p.taille * 3.2, fill: c, 'fill-opacity': .05, class: 'halo', opacity: .5 }, g);
+  if (vivant(p.etat)) el('circle', { r: p.taille + 7, fill: 'none', stroke: c, 'stroke-opacity': .5, 'stroke-width': 1, 'vector-effect': 'non-scaling-stroke', class: 'respire' }, g);
+  el('circle', { r: p.taille, fill: '#0b0d10', class: 'anneau', stroke: c, 'stroke-opacity': vivant(p.etat) ? .95 : .55, 'stroke-width': 1.2, 'vector-effect': 'non-scaling-stroke' }, g);
+  el('circle', { r: p.taille * .34, fill: c, 'fill-opacity': vivant(p.etat) ? .9 : .35, filter: vivant(p.etat) ? 'url(#f-lueur)' : '' }, g);
+  el('circle', { r: p.taille * .22, fill: c, 'fill-opacity': vivant(p.etat) ? 1 : .5 }, g);
+  // les petits satellites : un point par agent, l'avant-goût du niveau suivant
+  p.branches.forEach((b, j) => {
+    const a = (j / p.branches.length) * Math.PI * 2 - Math.PI / 2, r = p.taille + 3.5;
+    el('circle', { cx: Math.cos(a) * r, cy: Math.sin(a) * r, r: 1.3, fill: ETATS[b.etat][2], 'fill-opacity': vivant(b.etat) ? .9 : .4 }, g);
+  });
+  g.addEventListener('click', (ev) => { ev.stopPropagation(); allerPole(p); });
+  g.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); allerPole(p); } });
+  p.g = g;
+  // l'étiquette du pôle, côté extérieur
+  const dx = Math.cos(p.a), dy = Math.sin(p.a);
+  const lab = el('g', { 'pointer-events': 'none', class: 'etq' }, coucheNoeuds);
+  const ancre = dx > .35 ? 'start' : dx < -.35 ? 'end' : 'middle';
+  const t = el('text', { 'text-anchor': ancre, 'font-size': 15, 'font-weight': 500, fill: '#e8edf1', 'letter-spacing': '.01em' }, lab); t.textContent = p.nom;
+  const s = el('text', { y: 15, 'text-anchor': ancre, 'font-size': 9.5, fill: c, class: 'mono', 'fill-opacity': .9 }, lab);
+  s.textContent = `${ETATS[p.etat][0].toLowerCase()} · ${p.branches.filter((b) => vivant(b.etat)).length}/${p.branches.length}`;
+  etiquettes.push({ g: lab, n: p, r: p.taille, ux: dx, uy: dy, ancre, h: 2, niveau: 0, pole: p });
+
+  for (const b of p.branches) {
+    const cb = ETATS[b.etat][2], v = vivant(b.etat);
+    const gb = el('g', { class: 'noeud', transform: `translate(${b.x},${b.y})`, tabindex: 0, role: 'button', 'aria-label': `${b.nom} : ${ETATS[b.etat][0]}` }, coucheNoeuds);
+    el('circle', { r: 16, fill: cb, 'fill-opacity': .06, class: 'halo', opacity: .4 }, gb);
+    el('circle', { r: 6.5, fill: '#0b0d10', class: 'anneau', stroke: cb, 'stroke-opacity': v ? .95 : .5, 'stroke-width': 1, 'vector-effect': 'non-scaling-stroke', 'stroke-dasharray': b.etat === 'nonreleve' ? '2 2' : '' }, gb);
+    if (b.etat !== 'nonreleve') el('circle', { r: 2.6, fill: cb, 'fill-opacity': v ? 1 : .45 }, gb);
+    if (b.etat === 'supprime') el('path', { d: 'M-3.2,-3.2 L3.2,3.2', stroke: cb, 'stroke-width': 1, 'vector-effect': 'non-scaling-stroke' }, gb);
+    gb.addEventListener('click', (ev) => { ev.stopPropagation(); allerAgent(b); });
+    gb.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); allerAgent(b); } });
+    b.g = gb;
+    const bx = Math.cos(b.a), ba = bx > .2 ? 'start' : bx < -.2 ? 'end' : 'middle';
+    const lb = el('g', { 'pointer-events': 'none', class: 'etq' }, coucheNoeuds);
+    coupe(b.nom, 22).forEach((l, k) => { const t = el('text', { y: k * 11, 'text-anchor': ba, 'font-size': 9.6, fill: v ? '#dfe6ea' : '#8a939b' }, lb); t.textContent = l; });
+    etiquettes.push({ g: lb, n: b, r: 6.5, ux: bx, uy: Math.sin(b.a), ancre: ba, h: coupe(b.nom, 22).length, niveau: 1, pole: p, agent: b });
+  }
+}
+
+// la mire : un anneau lumineux autour de l'agent choisi
+const mire = el('g', { 'pointer-events': 'none', opacity: 0 }, monde);
+el('circle', { r: 13, fill: 'none', stroke: '#59f0d2', 'stroke-opacity': .9, 'stroke-width': 1, 'vector-effect': 'non-scaling-stroke', class: 'respire' }, mire);
+el('circle', { r: 22, fill: 'none', stroke: '#59f0d2', 'stroke-opacity': .25, 'stroke-width': 1, 'stroke-dasharray': '1 5', 'vector-effect': 'non-scaling-stroke' }, mire);
+
+// ── LA CAMÉRA : position (x, y) et grossissement k ; les vols passent par un léger recul ──
+const cam = { x: 0, y: 0, k: 1 };
+let vol = null, coeur = false, selPole = null, selAgent = null, filtre = new Set(Object.keys(ETATS));
+const taille = () => { const r = svg.getBoundingClientRect(); return { w: r.width || innerWidth || 1280, h: r.height || innerHeight || 800 }; };
+const kVue = () => { const { w, h } = taille(); const m = w < 560; return Math.max(.05, Math.min((w - (m ? 16 : 40)) / (2 * EXT.x + (m ? 250 : 520)), (h - (m ? 190 : 150)) / (2 * EXT.y + (m ? 260 : 420)))); };
+const KMIN = () => kVue() * .5, KMAX = () => kVue() * 14;
+function appliquer() {
+  const { w, h } = taille();
+  monde.setAttribute('transform', `translate(${w / 2},${h / 2}) scale(${cam.k}) translate(${-cam.x},${-cam.y})`);
+  const z = cam.k / kVue(); // 1 = vue d'ensemble
+  // le texte garde une taille lisible à l'écran ; les détails apparaissent en s'approchant
+  const mobile = Math.min(w, h) < 560;
+  const poses = [], basLibre = lecture.classList.contains('ouvert') && w <= 760 ? lecture.offsetHeight + 8 : 64;
+  for (const e of etiquettes) {
+    let o = 1;
+    if (e.niveau === 1) {
+      o = lisse(1.55, 2.3, z);
+      if (selPole && e.pole !== selPole) o = 0;
+      if (coeur) o = 0;
+    } else if (selPole && e.pole !== selPole) o = lisse(1.6, 1.2, z) * .5 + .25;
+    if (e.agent && !filtre.has(e.agent.etat)) o *= .15;
+    const px = e.niveau === 1 ? (mobile ? 11.5 : 12) : (mobile ? 12.5 : 14.5), base = e.niveau === 1 ? 9.6 : 15;
+    const s = (px / base) / cam.k * Math.pow(Math.max(z, 1), .12);
+    // la place de l'étiquette : à l'extérieur du nœud, l'écart compté en pixels d'écran
+    const lh = (e.niveau === 1 ? 11 : 15) * s, gap = 9 / cam.k;
+    let x = e.n.x, y = e.n.y;
+    const rr = e.agent && e.agent === selAgent ? 24 : e.r;
+    if (e.ancre === 'middle') y += e.uy > 0 ? rr + gap + 10 * s : -e.r - gap - (e.h - 1) * lh - 4 * s;
+    else { x = e.n.x + Math.sign(e.ux) * (rr + gap); y += 4 * s - (e.h - 1) * lh / 2; }
+    // plusieurs places possibles : sur le côté, au-dessus, au-dessous ; jamais hors de l'écran
+    if (!e.bw) { try { e.bw = e.g.getBBox().width; } catch { e.bw = 0; } }
+    const larg = e.bw * s, haut = (e.h - 1) * lh, bordG = cam.x - (w / 2 - 6) / cam.k, bordD = cam.x + (w / 2 - 6) / cam.k;
+    const bordH = cam.y - (h / 2 - (mobile ? 84 : 70)) / cam.k, bordB = cam.y + (h / 2 - basLibre) / cam.k;
+    const place = (x, y, ancre) => {
+      let g = ancre === 'end' ? x - larg : ancre === 'middle' ? x - larg / 2 : x;
+      if (g < bordG) { x += bordG - g; g = bordG; } else if (g + larg > bordD) { x -= g + larg - bordD; g = bordD - larg; }
+      const b = [g, y - 10 * s, g + larg, y + haut + 3 * s];
+      return { x, y, b, dehors: b[1] < bordH || b[3] > bordB };
+    };
+    const ax = ancre => ancre === 'end' ? larg / 2 : ancre === 'start' ? -larg / 2 : 0;
+    const dessus = place(e.n.x + ax(e.ancre), e.n.y - rr - gap - haut - 4 * s, e.ancre);
+    const dessous = place(e.n.x + ax(e.ancre), e.n.y + rr + gap + 10 * s, e.ancre);
+    let cand;
+    if (e.ancre === 'middle') cand = e.uy > 0 ? [dessous, dessus] : [dessus, dessous];
+    else {
+      const cote = place(x, y, e.ancre), g0 = e.ancre === 'end' ? x - larg : x;
+      cand = g0 < bordG || g0 + larg > bordD ? [dessus, dessous, cote] : [cote, dessus, dessous];
+    }
+    // un nœud hors de l'écran n'a pas d'étiquette (sinon elle flotterait, détachée de lui)
+    if (e.n.x < bordG - 4 / cam.k || e.n.x > bordD + 4 / cam.k || e.n.y < bordH - 40 / cam.k || e.n.y > bordB + 20 / cam.k) o = e.niveau === 0 ? Math.min(o, .0) : 0;
+    const prio = e.niveau === 0 ? 0 : e.agent === selAgent ? 1 : e.pole === selPole ? 2 : 3;
+    poses.push({ e, o, s, cand, prio: prio + (e.agent && !vivant(e.agent.etat) ? .5 : 0) });
+  }
+  // deux étiquettes ne se recouvrent jamais : chacune prend la première place libre, sinon s'efface
+  poses.sort((a, b) => a.prio - b.prio);
+  const prises = [], m = 3 / cam.k;
+  const libre = (bx) => !prises.some(([c1, d1, c2, d2]) => bx[0] < c2 + m && bx[2] > c1 - m && bx[1] < d2 + m && bx[3] > d1 - m);
+  for (const q of poses) {
+    let c = q.cand[0];
+    if (q.o > .02) {
+      const ok = q.cand.find((k) => !k.dehors && libre(k.b));
+      if (ok) { c = ok; if (q.o > .2) prises.push(c.b); } else if (q.prio === 0) prises.push(c.b); else q.o = 0;
+    }
+    q.e.g.setAttribute('transform', `translate(${c.x},${c.y}) scale(${q.s})`);
+    q.e.g.setAttribute('opacity', q.o.toFixed(3));
+    q.e.g.style.display = q.o < .02 ? 'none' : '';
+  }
+  // le cœur reste dominant même sur un petit écran
+  const plafond = (Math.min(...poles.map((p) => Math.hypot(p.x, p.y))) - 70) / (HUB + 45);
+  const sH = Math.max(1, Math.min(3, plafond, .70 / cam.k));
+  centre.setAttribute('transform', `scale(${sH})`);
+  // les chiffres gardent une taille lisible ; ils ne s'affichent que s'il y a la place entre le cœur et les pôles
+  const sC = 1 / (cam.k * sH);
+  for (const g of chiffresG) g.setAttribute('transform', `scale(${sC})`);
+  const anneauEcran = (HUB + 100) * sH * cam.k, poleEcran = Math.min(...poles.map((p) => Math.hypot(p.x, p.y))) * cam.k;
+  const place = lisse(0, 40, poleEcran - anneauEcran - 55);
+  chiffres.setAttribute('opacity', (selPole ? .25 : 1) * Math.max(place, lisse(1.5, 2.1, z)));
+}
+const lisse = (a, b, v) => { const t = Math.max(0, Math.min(1, (v - a) / (b - a))); return t * t * (3 - 2 * t); };
+function voler(x, y, k, duree = 1100) {
+  if (!(k > 0) || !isFinite(k) || !isFinite(x) || !isFinite(y)) return;
+  const d0 = { ...cam }, dist = Math.hypot(x - d0.x, y - d0.y) * Math.min(d0.k, k);
+  const recul = Math.min(.45, dist / 2400);
+  const t0 = performance.now();
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches || /[?&]fixe/.test(location.search)) duree = 1;
+  cancelAnimationFrame(vol);
+  if (duree <= 1) { cam.x = x; cam.y = y; cam.k = k; appliquer(); return; }
+  const pas = (t) => {
+    const u = Math.max(0, Math.min(1, (t - t0) / duree)), e = u < .5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
+    cam.x = d0.x + (x - d0.x) * e; cam.y = d0.y + (y - d0.y) * e;
+    cam.k = Math.exp(Math.log(d0.k) + (Math.log(k) - Math.log(d0.k)) * e) * (1 - recul * Math.sin(Math.PI * u));
+    appliquer();
+    if (u < 1) vol = requestAnimationFrame(pas);
+  };
+  vol = requestAnimationFrame(pas);
+}
+const decalage = () => { // le panneau de lecture prend un côté : on recentre la cible dans ce qui reste
+  const { w, h } = taille();
+  if (w <= 760) return { dx: 0, dy: -Math.min(h * .46, 400) / 2 };
+  return { dx: -Math.min(360, w * .34) / 2 - 14, dy: 0 };
+};
+
+function allerCentre() {
+  selPole = selAgent = null; coeur = false; marquer(); lire(null);
+  voler(0, 0, kVue());
+}
+function allerCoeur() {
+  selPole = selAgent = null; coeur = true; marquer();
+  const off = decalage(), { w, h } = taille();
+  const brut = Math.min(Math.max(1, w - Math.abs(off.dx) * 2 - 40), Math.max(1, h - Math.abs(off.dy) * 2 - 170)) / ((HUB + 100 + 130) * 2);
+  const k = Math.max(KMIN(), Math.min(KMAX(), brut));
+  voler(-off.dx / k, -off.dy / k, k);
+  lire({ coeur: true });
+}
+function allerPole(p) {
+  selPole = p; selAgent = null; coeur = false; marquer();
+  // cadrer le pôle et tout son éventail
+  const xs = [p.x, ...p.branches.map((b) => b.x)], ys = [p.y, ...p.branches.map((b) => b.y)];
+  const cx = (Math.min(...xs) + Math.max(...xs)) / 2, cy = (Math.min(...ys) + Math.max(...ys)) / 2;
+  const { w, h } = taille(), off = decalage();
+  const lw = Math.max(1, w - Math.abs(off.dx) * 2), lh = Math.max(1, h - Math.abs(off.dy) * 2 - (w <= 760 ? 70 : 120));
+  const mob = w <= 760, mx = mob ? 150 : 260, my = mob ? 110 : 200;
+  const k = Math.max(KMIN(), Math.min(lw / (Math.max(...xs) - Math.min(...xs) + mx), lh / (Math.max(...ys) - Math.min(...ys) + my), KMAX()));
+  voler(cx - off.dx / k, cy - off.dy / k, k);
+  lire({ pole: p });
+}
+function allerAgent(b) {
+  selPole = b.pole; selAgent = b; coeur = false; marquer();
+  const off = decalage(), k = Math.max(kVue() * 5.2, cam.k);
+  voler(b.x - off.dx / k, b.y - off.dy / k, Math.min(k, KMAX()));
+  lire({ agent: b });
+}
+function marquer() {
+  if (selAgent) { mire.setAttribute('transform', `translate(${selAgent.x},${selAgent.y})`); mire.setAttribute('opacity', 1); } else mire.setAttribute('opacity', 0);
+  for (const p of poles) {
+    p.g.setAttribute('opacity', !selPole || p === selPole ? 1 : .32);
+    for (const b of p.branches) {
+      const vis = filtre.has(b.etat);
+      b.g.setAttribute('opacity', !vis ? .12 : selAgent ? (b === selAgent ? 1 : p === selPole ? .55 : .2) : !selPole || p === selPole ? 1 : .3);
+      b.lien.setAttribute('stroke-opacity', (!vis ? .04 : vivant(b.etat) ? .32 : .13) * (b === selAgent ? 2.6 : 1));
+    }
+  }
+  fil(); appliquer();
+}
+
+// ── la lecture : ce que dit le nœud choisi ──
+const lecture = document.getElementById('lecture');
+const pastille = (e) => `<span class="etat"><i style="background:${ETATS[e][1]};box-shadow:0 0 8px ${ETATS[e][2]}88"></i>${ETATS[e][0]}</span>`;
+const echap = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function lire(cible) {
+  if (!cible) { lecture.classList.remove('ouvert'); lecture.inert = true; document.body.classList.remove('lit'); appliquer(); return; }
+  const depuisPanneau = lecture.contains(document.activeElement);
+  let h;
+  if (cible.coeur) {
+    h = `<div class="sur">Le système entier</div><h2>${echap(R.titre)}</h2><p>${echap(R.sousTitre)}.</p>
+      <ul>${R.anneaux.map((m) => `<li><b style="color:var(--texte);font-weight:500">${echap(m.valeur)}</b> · ${echap(m.texte)}</li>`).join('')}</ul>
+      <div class="liste">${poles.map((p, i) => `<button data-p="${i}"><i style="background:${ETATS[p.etat][1]}"></i><span>${echap(p.nom)}</span></button>`).join('')}</div>`;
+  } else if (cible.pole) {
+    const p = cible.pole;
+    h = `<div class="sur">Pôle · ${p.branches.length} éléments</div><h2>${echap(p.nom)}</h2>${pastille(p.etat)}<p>${echap(p.resume)}</p>
+      <div class="liste">${p.branches.map((b, i) => `<button data-i="${i}"><i style="background:${ETATS[b.etat][1]}"></i><span>${echap(b.nom)}</span></button>`).join('')}</div>`;
+  } else {
+    const b = cible.agent;
+    h = `<div class="sur">${echap(b.pole.nom)}</div><h2>${echap(b.nom)}</h2>${pastille(b.etat)}<p>${echap(b.texte)}</p>
+      ${b.detail ? `<ul>${b.detail.map((d) => `<li>${echap(d)}</li>`).join('')}</ul>` : ''}
+      ${b.direct ? `<div class="direct">${echap(b.direct)}</div>` : ''}
+      ${b.alerte ? `<div class="direct alerte">${echap(b.alerte)}</div>` : ''}`;
+  }
+  lecture.innerHTML = h;
+  lecture.querySelectorAll('.liste button').forEach((bt) => bt.addEventListener('click', () => bt.dataset.p ? allerPole(poles[+bt.dataset.p]) : allerAgent(cible.pole.branches[+bt.dataset.i])));
+  lecture.classList.add('ouvert'); lecture.inert = false; document.body.classList.add('lit');
+  const titre = lecture.querySelector('h2'); titre.tabIndex = -1;
+  if (depuisPanneau) titre.focus({ preventScroll: true });
+  document.getElementById('annonce').textContent = titre.textContent;
+  appliquer();
+}
+
+// ── le fil d'Ariane ──
+function fil() {
+  const f = document.getElementById('fil'), parts = [['Système', allerCentre, !selPole]];
+  if (selPole) parts.push([selPole.nom, () => allerPole(selPole), !selAgent]);
+  if (selAgent) parts.push([selAgent.nom, null, true]);
+  f.innerHTML = '';
+  parts.forEach(([nom, fn, ici], i) => {
+    if (i) { const s = document.createElement('span'); s.className = 'sep'; s.textContent = '/'; f.appendChild(s); }
+    const b = document.createElement('button'); b.textContent = nom; if (ici) b.setAttribute('aria-current', 'page'); else b.onclick = fn; f.appendChild(b);
+  });
+}
+
+// ── la légende, qui sert aussi de filtre ──
+const leg = document.getElementById('legende');
+for (const [e, [nom, c]] of Object.entries(ETATS)) {
+  if (!compte[e]) continue;
+  const b = document.createElement('button'); b.setAttribute('aria-pressed', 'true');
+  b.innerHTML = `<i style="background:${c}"></i>${nom} <span class="n">${compte[e]}</span>`;
+  b.onclick = () => { if (filtre.has(e)) filtre.delete(e); else filtre.add(e); b.setAttribute('aria-pressed', filtre.has(e)); marquer(); };
+  leg.appendChild(b);
+}
+
+// ── les gestes : glisser, molette, pincer, clavier ──
+const pointeurs = new Map(); let glisse = null, bouge = false;
+svg.addEventListener('pointerdown', (e) => {
+  pointeurs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  cancelAnimationFrame(vol);
+  if (pointeurs.size === 1) { glisse = { x: e.clientX, y: e.clientY, cx: cam.x, cy: cam.y }; bouge = false; }
+  else glisse = null;
+});
+addEventListener('pointermove', (e) => {
+  if (!pointeurs.has(e.pointerId)) return;
+  const avant = [...pointeurs.values()].map((p) => ({ ...p }));
+  pointeurs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (pointeurs.size === 2) {
+    const [a, b] = avant, [c, d] = [...pointeurs.values()];
+    const f = Math.hypot(c.x - d.x, c.y - d.y) / Math.max(1, Math.hypot(a.x - b.x, a.y - b.y));
+    zoomer(f, (c.x + d.x) / 2, (c.y + d.y) / 2); bouge = true; return;
+  }
+  if (glisse) {
+    const dx = e.clientX - glisse.x, dy = e.clientY - glisse.y;
+    if (Math.hypot(dx, dy) > 4) { bouge = true; svg.classList.add('glisse'); }
+    if (bouge) { cam.x = glisse.cx - dx / cam.k; cam.y = glisse.cy - dy / cam.k; appliquer(); }
+  }
+});
+const finPointeur = (e) => { pointeurs.delete(e.pointerId); if (!pointeurs.size) { glisse = null; svg.classList.remove('glisse'); } };
+addEventListener('pointerup', finPointeur); addEventListener('pointercancel', finPointeur);
+svg.addEventListener('click', (e) => { if (bouge) { e.stopPropagation(); bouge = false; return; } if (e.target === svg || e.target.closest('#monde') && !e.target.closest('.noeud')) remonter(); }, true);
+centreN.addEventListener('click', (e) => { e.stopPropagation(); if (!bouge) (selPole || cam.k / kVue() > 1.4 ? allerCentre() : allerCoeur()); });
+centreN.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); allerCoeur(); } });
+svg.addEventListener('wheel', (e) => { e.preventDefault(); cancelAnimationFrame(vol); zoomer(Math.exp(-e.deltaY * (e.ctrlKey ? .01 : .0016)), e.clientX, e.clientY); }, { passive: false });
+function zoomer(f, sx, sy) {
+  coeur = false;
+  const { w, h } = taille(), r = svg.getBoundingClientRect();
+  const k = Math.max(KMIN(), Math.min(KMAX(), cam.k * f));
+  const wx = cam.x + (sx - r.left - w / 2) / cam.k, wy = cam.y + (sy - r.top - h / 2) / cam.k;
+  cam.k = k; cam.x = wx - (sx - r.left - w / 2) / k; cam.y = wy - (sy - r.top - h / 2) / k; appliquer();
+}
+function remonter() { if (selAgent) allerPole(selPole); else allerCentre(); }
+addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' || e.key === 'Backspace') { e.preventDefault(); remonter(); }
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.key === '+' || e.key === '=') zoomerCentre(1.35);
+  if (e.key === '-') zoomerCentre(1 / 1.35);
+});
+const zoomerCentre = (f) => { const r = svg.getBoundingClientRect(); const k = Math.max(KMIN(), Math.min(KMAX(), cam.k * f)); voler(cam.x, cam.y, k, 380); };
+document.getElementById('z-plus').onclick = () => zoomerCentre(1.5);
+document.getElementById('z-moins').onclick = () => zoomerCentre(1 / 1.5);
+document.getElementById('z-centre').onclick = allerCentre;
+let attente = null;
+addEventListener('resize', () => {
+  clearTimeout(attente);
+  attente = setTimeout(() => { forme(); redisposer(); marquer(); if (selAgent) allerAgent(selAgent); else if (selPole) allerPole(selPole); else if (coeur) allerCoeur(); else { cam.x = cam.y = 0; cam.k = kVue(); appliquer(); } }, 120);
+});
+
+// ── le relevé : la date des données, et le direct quand le cockpit répond ──
+const releve = document.getElementById('releve');
+const dateRel = new Date(R.releve).toLocaleString('fr-FR', { timeZone: 'Europe/Paris', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(' ', ' · ');
+releve.innerHTML = `<span class="pt"></span>Relevé du ${dateRel}<span class="long"><br>${R.sousTitre}</span>`;
+(async () => {
+  try {
+    const ctl = new AbortController(); setTimeout(() => ctl.abort(), 5000);
+    const r = await fetch('/api/v6', { signal: ctl.signal, cache: 'no-store' });
+    if (!r.ok) throw new Error(r.status);
+    const D = await r.json(), parId = Object.fromEntries((D.agents || []).map((a) => [a.id, a]));
+    let n = 0, pannes = 0;
+    for (const b of TOUS) {
+      const a = parId[b.id]; if (!a) continue;
+      if (a.dernier) { b.direct = `Dernier passage : ${new Date(a.dernier).toLocaleString('fr-FR', { timeZone: 'Europe/Paris', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`; n++; }
+      // l'état figé dit « vivant » mais le serveur voit une panne ou un arrêt : on le signale
+      if (vivant(b.etat) && (a.etat === 'panne' || a.etat === 'arret')) {
+        b.alerte = a.etat === 'panne' ? `Le serveur signale une panne${a.derniere_panne && a.derniere_panne.texte ? ` : ${a.derniere_panne.texte}` : ''}` : 'Le serveur le voit à l’arrêt';
+        pannes++;
+      }
+    }
+    if (selAgent) lire({ agent: selAgent });
+    const suite = pannes ? ` · ${pannes} en panne` : '';
+    releve.innerHTML = n ? `<span class="pt direct"></span>Derniers passages lus · ${n} agents${suite}<span class="long"><br>Relevé du ${dateRel} · ${R.sousTitre}</span>`
+      : `<span class="pt"></span>Relevé du ${dateRel}<span class="long"><br>${R.sousTitre}<br><span style="opacity:.7">Aucun passage lu en direct</span></span>`;
+  } catch { releve.innerHTML += `<span class="long"><br><span style="opacity:.7">Direct indisponible ici</span></span>`; }
+})();
+
+// ── l'arrivée : on part de loin, on s'approche du centre ──
+cam.k = kVue() * .45; appliquer(); fil();
+requestAnimationFrame(() => { if (!selPole) voler(0, 0, kVue(), 1800); });
+const h = location.hash.slice(1);
+if (h) setTimeout(() => { const p = poles.find((x) => x.cle === h); const b = TOUS.find((x) => x.id === h); if (p) allerPole(p); else if (b) allerAgent(b); }, 1900);
+</script>
+</body>
+</html>
