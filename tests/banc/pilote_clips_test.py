@@ -305,7 +305,17 @@ class Relais(unittest.TestCase):
 
     def test_montage_bride_a_trois_coeurs(self):
         # 16/10 : le montage occupait plus de 5 cœurs sur 8 ; la commande du conteneur porte la limite de docker
-        self.assertEqual(self.file.COEURS, "3")
+        c = self.file.coeurs_montage
+        self.assertEqual(c(8), "3")
+        self.assertEqual(c(16), "3")
+        self.assertEqual(c(4), "3")
+        # 19/11 : sur le CX23 (2 cœurs), « --cpus 3 » était refusé par docker et plus aucun clip ne sortait depuis le 07/11
+        self.assertEqual(c(2), "1.5")
+        self.assertEqual(c(1), "0.5")
+        for n in range(1, 33):
+            self.assertLessEqual(float(c(n)), n, n)
+            self.assertLessEqual(float(c(n)), 3.0, n)
+        self.assertEqual(self.file.COEURS, c())
         source = (DEPOT / "clippeur" / "file.py").read_text(encoding="utf-8")
         montage = [l for l in source.splitlines() if '"docker", "run"' in l and "GEMINI_API_KEY" in l]
         self.assertEqual(len(montage), 1, montage)

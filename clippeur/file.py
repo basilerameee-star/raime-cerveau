@@ -146,7 +146,15 @@ def trop_vieux(d, jours=3, maintenant=None):
 
 # 16/10/2026, demande de Basile : le montage n'occupe jamais plus de 3 cœurs sur les 8 du serveur. Le 15/10 à 23 h 37,
 # ffmpeg en prenait plus de 5 (charge de 13) et le modèle local d'Hermes tombait à 0,65 mot par seconde.
-COEURS = "3"
+# 19/11/2026 : le serveur CX23 (depuis le 05/11) n'a que 2 cœurs ; docker refusait « --cpus 3 » (« range of CPUs is from
+# 0.01 to 2.00 ») et AUCUN clip n'est sorti du 07/11 au 19/11. La limite suit maintenant la machine : 3 au plus, et
+# toujours un demi-cœur laissé au reste du système (2 cœurs → 1,5).
+def coeurs_montage(n=None):
+    n = n or os.cpu_count() or 1
+    return "%g" % max(0.5, min(3.0, n - 0.5))
+
+
+COEURS = coeurs_montage()
 
 
 def main():

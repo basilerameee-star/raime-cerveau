@@ -115,6 +115,89 @@ class Montage(unittest.TestCase):
         self.assertFalse(any(",Fin," in l for l in sans))
 
 
+def faux_png(chemin, largeur, hauteur):
+    """Juste l'en-tête d'un PNG (signature + IHDR) : assez pour lire sa taille, sans image ni bibliothèque."""
+    import struct
+    Path(chemin).write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00\x00\x00\rIHDR" + struct.pack(">II", largeur, hauteur) + b"\x08\x06\x00\x00\x00")
+
+
+class Incrustation(unittest.TestCase):
+    """19/11/2026, KreekCraft GTA 6 : « The official KreekCraft logo overlay must remain clearly visible throughout the
+    entire clip. Clips without it will be rejected. » et « Watch KreekCraft on YouTube and Twitch » dans la légende."""
+
+    def montages(self, *appels):
+        vus = []
+        C.lancer, avant = vus.append, C.lancer
+        try:
+            for args, kw in appels:
+                C.monter("s.mp4", 0, 10, Path("c.ass"), Path("c.mp4"), *args, **kw)
+        finally:
+            C.lancer = avant
+        return vus
+
+    def test_sans_logo_la_commande_ne_change_pas(self):
+        sans, = self.montages((("visage", None, "bandes", (.5, 16 / 9)), {}))
+        self.assertEqual(sans.count("-i"), 1)
+        self.assertTrue(sans[sans.index("-filter_complex") + 1].endswith("[v]"))
+        self.assertNotIn("[lg]", " ".join(sans))
+
+    def test_le_logo_reste_tout_le_clip_au_dessus_du_titre(self):
+        with tempfile.TemporaryDirectory() as d:
+            logo = str(Path(d) / "logo.png")
+            faux_png(logo, 1600, 533)                          # la vraie taille du logo de KreekCraft
+            bandes, vertical, plein = self.montages(
+                (("visage", None, "bandes", (.5, 16 / 9)), {"logo": (logo, 520)}),
+                (("visage", None, "bandes", (.5, 9 / 16)), {"logo": (logo, 520)}),
+                (("centre", None, "plein", None), {"logo": (logo, 520)}))
+        for cmd in (bandes, vertical, plein):
+            self.assertEqual(cmd.count("-i"), 2)
+            self.assertEqual(cmd[cmd.index("-i", cmd.index("-i") + 1) + 1], logo)     # 2e entrée : l'image du logo
+            self.assertLess(cmd.index("-ss"), cmd.index("-i"))  # la coupe ne vise que la vidéo
+            graphe = cmd[cmd.index("-filter_complex") + 1]
+            self.assertIn("[1:v]scale=520:174,format=rgba[lg]", graphe)
+            self.assertTrue(graphe.endswith("[v]"))
+            self.assertEqual(cmd[cmd.index("-map") + 1], "[v]")
+            self.assertNotIn("eof_action", graphe)             # overlay répète l'image jusqu'à la fin du clip
+        # 16:9 : image de 636 à 1244 ; le logo (174 px) finit 200 px au-dessus, à la place d'un titre de deux lignes
+        self.assertIn("[v0][lg]overlay=280:262[v]", bandes[bandes.index("-filter_complex") + 1])
+        # source verticale : pas la place au-dessus (le haut de l'image est à 290 px) : en haut de l'image
+        self.assertIn("[v0][lg]overlay=280:310[v]", vertical[vertical.index("-filter_complex") + 1])
+        self.assertIn("[v0][lg]overlay=280:170[v]", plein[plein.index("-filter_complex") + 1])
+        # jamais sous la barre du haut des plateformes, jamais sur le titre d'une source 16:9 ou 4:3
+        for rapport in (16 / 9, 4 / 3):
+            _, _, haut = C.disposition(rapport)
+            with tempfile.TemporaryDirectory() as d:
+                logo = str(Path(d) / "logo.png")
+                faux_png(logo, 1600, 533)
+                _, _, h, _, y = C.place_logo((logo, 520), haut)
+            self.assertGreaterEqual(y, 150)
+            self.assertLessEqual(y + h, haut - 190)
+
+    def test_logo_exige_mais_absent_arrete_la_decoupe(self):
+        self.assertIsNone(C.incrustation({}))
+        with self.assertRaises(SystemExit):
+            C.incrustation({"incrustation": "/nulle/part/logo.png"})
+        with tempfile.TemporaryDirectory() as d:
+            logo = str(Path(d) / "logo.png")
+            faux_png(logo, 1600, 533)
+            self.assertEqual(C.incrustation({"incrustation": logo}), (logo, 520))
+            self.assertEqual(C.incrustation({"incrustation": {"image": logo, "largeur": 5000}}), (logo, 1000))
+
+    def test_la_phrase_exigee_dans_chaque_legende(self):
+        tags = {"instagram": "KreekCraft", "youtube": "@Kreek"}
+        h = ["#GTA6", "#KreekCraft", "#GrandTheftAutoVI", "#gaming"]
+        texte, par = C.legendes_clip("Bank heist fail", "Would you run?", tags, h, "Watch KreekCraft on YouTube and Twitch")
+        self.assertEqual(texte, "Bank heist fail\n\nWatch KreekCraft on YouTube and Twitch\n\n#GTA6 #KreekCraft #GrandTheftAutoVI #gaming")
+        self.assertEqual(par["youtube"], "Bank heist fail @Kreek\n\nWatch KreekCraft on YouTube and Twitch\n\nWould you run?\n\n"
+                                         "#GTA6 #KreekCraft #GrandTheftAutoVI")
+        self.assertIn("Watch KreekCraft on YouTube and Twitch", par["instagram"])
+        # sans phrase exigée : exactement les légendes d'avant le 19/11
+        texte, par = C.legendes_clip("Titre", "Question ?", {"instagram": "@x"}, ["#a", "#b"])
+        self.assertEqual(texte, "Titre\n\n#a #b")
+        self.assertEqual(par, {"instagram": "Titre @x\n\nQuestion ?\n\n#a #b"})
+        self.assertEqual(C.legendes_clip("T", "", None, ["#a"]), ("T\n\n#a", {}))
+
+
 class Titres(unittest.TestCase):
     def test_titre_court_et_percutant(self):
         # Basile (21/10/2026) : « 15k/month at 22 » plutôt que « How a 22-year-old makes 15k a month »

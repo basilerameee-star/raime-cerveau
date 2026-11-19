@@ -18,6 +18,7 @@ import json
 import os
 import pathlib
 import re
+import struct
 import subprocess
 import sys
 import time
@@ -397,7 +398,62 @@ def variante(campagne, clip, essais=True):
     return {"barre": tirage("barre"), "fin": tirage("fin")} if essais else {"barre": False, "fin": True}
 
 
-def monter(source, debut, fin, ass, sortie, cadrage="visage", garde=None, format_="plein", cadre=None, barre=False):
+def taille_image(chemin):
+    """(largeur, hauteur) d'une image : l'en-tête PNG, sinon OpenCV."""
+    with open(chemin, "rb") as f:
+        tete = f.read(24)
+    if tete[:8] == b"\x89PNG\r\n\x1a\n":
+        return struct.unpack(">II", tete[16:24])
+    import cv2
+    im = cv2.imread(str(chemin), cv2.IMREAD_UNCHANGED)
+    if im is None:
+        raise ValueError("image illisible : %s" % chemin)
+    return im.shape[1], im.shape[0]
+
+
+def incrustation(profil):
+    """Le logo que la campagne exige sur toute la durée du clip (KreekCraft GTA 6, 19/11/2026 : « The official KreekCraft
+    logo overlay must remain clearly visible throughout the entire clip. Clips without it will be rejected. »).
+    Profil : "incrustation": chemin de l'image (PNG), ou {"image": chemin, "largeur": px}. Rend (chemin, largeur) ou None.
+    Un logo exigé mais introuvable arrête la découpe : un clip sans lui serait refusé."""
+    inc = profil.get("incrustation")
+    if not inc:
+        return None
+    chemin, largeur = (inc, 520) if isinstance(inc, str) else (inc.get("image"), int(inc.get("largeur") or 520))
+    if not chemin or not os.path.isfile(chemin):
+        sys.exit("Logo exigé par la campagne introuvable : %s" % chemin)
+    return chemin, max(200, min(1000, largeur))
+
+
+def place_logo(logo, haut=None):
+    """(chemin, largeur, hauteur, x, y) : le logo centré, sous la barre du haut des plateformes (150 px) et au-dessus de la
+    place d'un titre de deux lignes ; sans cette place (source verticale) ou en plein écran, en haut de l'image."""
+    chemin, largeur = logo
+    l0, h0 = taille_image(chemin)
+    h = max(2, int(round(largeur * h0 / l0 / 2)) * 2)
+    x = (1080 - largeur) // 2
+    if haut is None:
+        return chemin, largeur, h, x, 170
+    y = haut - 200 - h
+    return chemin, largeur, h, x, (y if y >= 150 else haut + 20)
+
+
+def avec_logo(cmd, logo):
+    """La commande ffmpeg du montage, avec le logo posé par-dessus la sortie [v] du graphe (2e entrée : l'image, répétée
+    jusqu'à la fin par overlay). logo : place_logo(...) ou None."""
+    if not logo:
+        return cmd
+    chemin, l, h, x, y = logo
+    i = cmd.index("-filter_complex")
+    graphe = cmd[i + 1]
+    if not graphe.endswith("[v]"):
+        raise ValueError("graphe de montage inattendu : " + graphe[-40:])
+    return (cmd[:i] + ["-i", str(chemin), "-filter_complex",
+                       graphe[:-3] + "[v0];[1:v]scale=%d:%d,format=rgba[lg];[v0][lg]overlay=%d:%d[v]" % (l, h, x, y)]
+            + cmd[i + 2:])
+
+
+def monter(source, debut, fin, ass, sortie, cadrage="visage", garde=None, format_="plein", cadre=None, barre=False, logo=None):
     if garde and len(garde) > 1:
         sel = "+".join("between(t,%.2f,%.2f)" % (a, b) for a, b in garde)
         coupe = "[0:v]select='%s',setpts=N/FRAME_RATE/TB[vc];[0:a]aselect='%s',asetpts=N/SR/TB[ac]" % (sel, sel)
@@ -422,9 +478,9 @@ def monter(source, debut, fin, ass, sortie, cadrage="visage", garde=None, format
                      ("[net0];color=c=0xFFE600:s=%dx10:r=30[bj];[net0][bj]overlay=x='-w+w*t/%.2f':y=main_h-10:eval=frame:shortest=1"
                       % (l, max(fin - debut, 1)) if barre else ""),
                      (1080 - l) // 2, haut, str(ass).replace(":", "\\:")))
-        lancer(["ffmpeg", "-y", "-ss", "%.2f" % debut, "-to", "%.2f" % fin, "-i", str(source), "-filter_complex", filtre,
+        lancer(avec_logo(["ffmpeg", "-y", "-ss", "%.2f" % debut, "-to", "%.2f" % fin, "-i", str(source), "-filter_complex", filtre,
                 "-map", "[v]", "-map", "0:a?", "-r", "30", "-c:v", "libx264", "-preset", "slow", "-crf", "16", "-pix_fmt", "yuv420p",
-                "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", str(sortie)])
+                "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", str(sortie)], logo and place_logo(logo, haut)))
         return
     cx = centre_visage(source, debut, fin) if cadrage == "visage" else None
     if cx is None and cadrage == "centre":
@@ -433,18 +489,30 @@ def monter(source, debut, fin, ass, sortie, cadrage="visage", garde=None, format
         # recadrage plein écran sur le visage : une fenêtre 9:16 dans la hauteur de la source, centrée sur lui
         filtre = ("[0:v]crop='min(iw,ih*9/16)':ih:'max(0,min(iw-ih*9/16,%.4f*iw-ih*9/32))':0,scale='if(gt(ih,1920),1080,trunc(ih*9/32)*2)':'if(gt(ih,1920),1920,ih)':flags=lanczos,unsharp=3:3:0.4:3:3:0.0,"
                   "subtitles=%s:fontsdir=/usr/share/fonts[v]" % (cx, str(ass).replace(":", "\\:")))
-        lancer(["ffmpeg", "-y", "-ss", "%.2f" % debut, "-to", "%.2f" % fin, "-i", str(source), "-filter_complex", filtre,
+        lancer(avec_logo(["ffmpeg", "-y", "-ss", "%.2f" % debut, "-to", "%.2f" % fin, "-i", str(source), "-filter_complex", filtre,
                 "-map", "[v]", "-map", "0:a?", "-r", "30", "-c:v", "libx264", "-preset", "slow", "-crf", "16", "-pix_fmt", "yuv420p",
-                "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart", str(sortie)])
+                "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart", str(sortie)], logo and place_logo(logo)))
         return
 
     # fond : la même image, couvrante, floutée et assombrie ; devant : l'image nette, en largeur, jamais agrandie au-delà de 1080
     filtre = ("[0:v]split[a][b];[a]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=24:2,"
               "eq=brightness=-0.12[fond];[b]scale='min(1080,iw)':-2[net];[fond][net]overlay=(W-w)/2:(H-h)/2-80,"
               "subtitles=%s:fontsdir=/usr/share/fonts[v]" % str(ass).replace(":", "\\:"))
-    lancer(["ffmpeg", "-y", "-ss", "%.2f" % debut, "-to", "%.2f" % fin, "-i", str(source), "-filter_complex", filtre,
+    lancer(avec_logo(["ffmpeg", "-y", "-ss", "%.2f" % debut, "-to", "%.2f" % fin, "-i", str(source), "-filter_complex", filtre,
             "-map", "[v]", "-map", "0:a?", "-r", "30", "-c:v", "libx264", "-preset", "slow", "-crf", "16", "-pix_fmt", "yuv420p",
-            "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart", str(sortie)])
+            "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart", str(sortie)], logo and place_logo(logo)))
+
+
+def legendes_clip(titre, question, tags, tags_h, mention=""):
+    """(légende commune de clip-XX.txt, {plateforme: légende} de clip-XX.json). Par plateforme : 1re ligne = titre avec les
+    mots qu'on cherche et le tag de la campagne ; la phrase exigée par la campagne (mention) ; la question ; les mots-dièse
+    (YouTube 3 au plus, Instagram et TikTok 5 au plus : au-delà, ça n'aide plus et ça fait spam)."""
+    m = (mention + "\n\n") if mention else ""
+    texte = "%s\n\n%s%s" % (titre, m, " ".join(tags_h))
+    maxi_h = {"youtube": 3}
+    par = {pl: "%s %s\n\n%s%s%s" % (titre, tg, m, (question + "\n\n") if question else "", " ".join(tags_h[:maxi_h.get(pl, 5)]))
+           for pl, tg in (tags or {}).items()}
+    return texte, par
 
 
 def main():
@@ -459,6 +527,8 @@ def main():
         o.min, o.max = profil.get("min", o.min), profil.get("max", o.max)
         o.consignes = (profil.get("consignes", "") + " " + o.consignes).strip()
     interdits = [m.lower() for m in profil.get("interdits", [])]
+    logo = incrustation(profil)                           # le logo exigé par la campagne, vérifié AVANT le téléchargement
+    mention = (profil.get("mention") or "").strip()       # la phrase exigée dans la légende (KreekCraft, 19/11/2026)
     cle = os.environ.get("GEMINI_API_KEY")
     if not cle:
         sys.exit("GEMINI_API_KEY absente")
@@ -516,7 +586,7 @@ def main():
             sous_titres(mots_c, 0, duree, c.get("accroche", ""), ass, profil.get("sous_titres", True), fmt, cadre[1] if cadre else 1.0, profil.get("fin_abonnement", True) and v["fin"])
         else:
             sous_titres(mots, c["debut"], c["fin"], c.get("accroche", ""), ass, profil.get("sous_titres", True), fmt, cadre[1] if cadre else 1.0, profil.get("fin_abonnement", True) and v["fin"])
-        monter(source, c["debut"], c["fin"], ass, mp4, profil.get("cadrage", "visage"), garde, fmt, cadre, v["barre"])
+        monter(source, c["debut"], c["fin"], ass, mp4, profil.get("cadrage", "visage"), garde, fmt, cadre, v["barre"], logo)
         try:
             os.remove(str(mp4) + ".coupe.mp4")
         except OSError:
@@ -530,16 +600,10 @@ def main():
             c["accroche"] = c.get("titre", "") if censurer(c.get("titre", "")) == c.get("titre", "") else c.get("accroche", "")
         c["titre"], c["accroche"] = censurer(c.get("titre", "")), censurer(c.get("accroche", ""))
         tags_h = list(dict.fromkeys(["#" + h.lstrip("#") for h in profil.get("hashtags", [])] + ["#" + h.lstrip("#") for h in c.get("hashtags", [])]))
-        legende = "%s\n\n%s" % (c.get("titre", ""), " ".join(tags_h))
+        # la légende finit par une question (commentaires) ; une par plateforme, avec le tag de la campagne
+        legende, par = legendes_clip(c.get("titre", ""), censurer(c.get("question", "")).strip(), profil.get("tags"), tags_h, mention)
         (dossier / ("clip-%02d.txt" % k)).write_text(legende, encoding="utf-8")
-        if profil.get("tags"):
-            # une légende par plateforme, avec le tag obligatoire de la campagne
-            q = censurer(c.get("question", "")).strip()       # la légende finit par une question (commentaires)
-            # une légende par plateforme : 1re ligne = titre avec les mots qu'on cherche ; question ; mention ; hashtags
-            # (YouTube 3 au plus, Instagram et TikTok 5 au plus : au-delà, ça n'aide plus et ça fait spam)
-            maxi_h = {"youtube": 3}
-            par = {pl: "%s %s\n\n%s%s" % (c.get("titre", ""), tg, (q + "\n\n") if q else "", " ".join(tags_h[:maxi_h.get(pl, 5)]))
-                   for pl, tg in profil["tags"].items()}
+        if par:
             (dossier / ("clip-%02d.json" % k)).write_text(json.dumps(par, ensure_ascii=False, indent=1), encoding="utf-8")
         # la note prédite est gardée : l'agent Analytics la comparera aux vues réelles pour calibrer la notation
         rendus.append(dict(clip=mp4.name, debut=c["debut"], fin=c["fin"], titre=c.get("titre", ""), accroche=c.get("accroche", ""),
